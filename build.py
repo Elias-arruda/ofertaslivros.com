@@ -588,7 +588,7 @@ def home_sections(offers, bot=None, ch=()):
         hot_title = "Em alta"
         hot = sorted((o for o in pool if o["trending_rank"]), key=lambda o: o["trending_rank"])[:HOT_MAX]
     else:  # sem dado de popularidade, título honesto
-        hot_title = "Maiores descontos agora"
+        hot_title = "Outros descontos"
         hot = sorted((o for o in pool if discount(o) > 0), key=lambda o: -discount(o))[:HOT_MAX]
 
     def cards(items):
@@ -1072,7 +1072,7 @@ def selftest():
     assert "<script" not in h and h.count('aria-roledescription="slide"') == 5
     assert '<input type="checkbox" id="pausar"><label for="pausar">Pausar passagem</label>' in h
     assert "Destaques de hoje" in h and "Destaques da curadoria" not in h
-    assert "Maiores descontos agora" in h and "Em alta" not in h        # sem trending_rank
+    assert "Outros descontos" in h and "Em alta" not in h        # sem trending_rank
     assert "Mais livros em oferta" in h and 'href="/manga/"' in h
     assert 'class="join"' not in h and "Crie um alerta" not in h         # sem canais nem bot
     assert max(h.count(f'href="/r/l-{k}"') for k in range(14)) <= 2      # no máximo 2 seções
