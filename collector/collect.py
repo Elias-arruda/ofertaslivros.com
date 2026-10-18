@@ -12,9 +12,11 @@ Foto da Amazon também não: image_url só vem do ML.
 
 Mercado Livre: o link do painel aponta para PRODUTO de catálogo (/p/MLB...). Por produto:
   1. GET /products/{ml_product_id} -> buy_box_winner.item_id, pictures (image_url) e o
-     atributo GTIN (doc "Buscador de produtos", 29/12/2025). Produto inativo ou sem
-     vencedor (sem estoque) conta como "inativo". GTIN diferente do ISBN do catálogo:
-     o preço do ML daquele livro é descartado e vai para o log.
+     atributo GTIN (doc "Buscador de produtos", 29/12/2025). A doc mostra produto
+     status=active com buy_box_winner null: sem vencedor não quer dizer sem anúncio.
+     GTIN diferente do ISBN do catálogo: o preço do ML daquele livro é descartado.
+  1b. Sem buy_box_winner: GET /products/{id}/items (anúncios que competem no produto),
+     item de menor preço em BRL. Sem nenhum item (results vazio ou 404) = "inativo".
   2. GET /items/{item_id}/sale_price?context=channel_marketplace -> amount/regular_amount,
      o preço que o comprador vê (doc "Preços de produtos", 14/10/2026).
 Token de app via client_credentials (ML_CLIENT_ID/ML_CLIENT_SECRET), nunca logado.
@@ -74,7 +76,7 @@ _urlopen = urlopen  # ponto de mock dos testes
 
 
 class MLError(Exception):
-    pass
+    code = None  # status HTTP, quando houver
 
 
 class Deadline(MLError):
@@ -328,7 +330,9 @@ def ml_request(path, token=None, form=None, deadline=None, clock=time.monotonic,
                 return json.loads(r.read(MAX_BYTES), parse_float=Decimal)
         except HTTPError as e:
             if (e.code != 429 and e.code < 500) or attempt == RETRIES:
-                raise MLError(f"HTTP {e.code} em {where}") from None
+                err = MLError(f"HTTP {e.code} em {where}")
+                err.code = e.code
+                raise err from None
             ra = (e.headers or {}).get("Retry-After", "") or ""
             wait = int(ra) if ra.isascii() and ra.isdigit() else 2 ** attempt
         except (URLError, HTTPException, OSError) as e:
@@ -359,16 +363,53 @@ def ml_token(deadline=None, clock=time.monotonic):
 
 
 def winner(prod):
-    """buy_box_winner do produto, ou None se inativo/sem vencedor (sem estoque)."""
+    """buy_box_winner do produto, ou None se não houver (aí vale o /items).
+    Sem checar status: a doc mostra inactive sempre com buy_box_winner null, e active
+    também pode vir com null."""
     if not isinstance(prod, dict):
         raise MLError("produto malformado")
-    if prod.get("status") != "active" or prod.get("buy_box_winner") is None:
+    if prod.get("buy_box_winner") is None:
         return None
     w = prod["buy_box_winner"]
     if not isinstance(w, dict) or not isinstance(w.get("item_id"), str) \
             or not MLB_RE.fullmatch(w["item_id"]):
         raise MLError("buy_box_winner malformado")
     return w
+
+
+def cheapest_item(body):
+    """De /products/{id}/items: item_id do anúncio ativo mais barato em BRL, ou None.
+    Item sem status conta como ativo (o recurso lista quem compete); outra moeda, preço
+    inválido ou item_id fora do MLB_RE: descartado. O preço final vem do sale_price."""
+    res = body.get("results") if isinstance(body, dict) else None
+    if not isinstance(res, list):
+        raise MLError("/items malformado")
+    best = None
+    # ponytail: só a 1ª página (paging); paginar se um livro tiver muitos anúncios
+    for it in res:
+        if not isinstance(it, dict) or it.get("currency_id") != "BRL" \
+                or it.get("status", "active") != "active" \
+                or not isinstance(it.get("item_id"), str) or not MLB_RE.fullmatch(it["item_id"]):
+            continue
+        try:
+            c = to_cents(it.get("price"))
+        except Invalid:
+            continue
+        if best is None or c < best[0]:
+            best = (c, it["item_id"])
+    return best and best[1]
+
+
+def product_items(pid, token, **kw):
+    """-> (resposta de /products/{pid}/items, nº de itens). 404 = nenhum anúncio."""
+    try:
+        body = ml_request(f"/products/{pid}/items", token, **kw)
+    except MLError as e:
+        if e.code == 404:
+            return {"results": []}, 0
+        raise
+    res = body.get("results") if isinstance(body, dict) else None
+    return body, len(res) if isinstance(res, list) else 0
 
 
 def product_image(prod):
@@ -415,30 +456,50 @@ def collect_ml(books, token, now, deadline, start=0, clock=time.monotonic, sleep
     n = {"ok": 0, "inativo": 0, "gtin_divergente": 0, "erro": 0, "adiado": 0}
     kw = {"deadline": deadline, "clock": clock, "sleep": sleep}
     for i, b in enumerate(ml):
+        # diagnóstico (log público): só id do livro, status HTTP, contagens e caminho
+        d = {"http": "-", "buy_box": "não", "items": "-", "caminho": "erro"}
         try:
-            prod = ml_request(f"/products/{b['ml_product_id']}", token, **kw)
+            try:
+                prod = ml_request(f"/products/{b['ml_product_id']}", token, **kw)
+            except MLError as e:
+                d["http"] = e.code or "-"
+                raise
+            d["http"] = 200
             w = winner(prod)
+            d["buy_box"] = "sim" if w else "não"
             gtins = product_gtins(prod)
             if "isbn" in b and gtins and b["isbn"] not in gtins:
                 # ponytail: só ISBN-13; GTIN em ISBN-10 contaria como divergente
                 print(f"::warning::ML: {b['id']}: GTIN do produto não bate com o isbn do "
                       f"catálogo; preço do ML descartado")
                 n["gtin_divergente"] += 1
+                d["caminho"] = "gtin_divergente"
                 continue
             img = product_image(prod)
             if img:
                 images[b["id"]] = img
-            if w is None:
-                n["inativo"] += 1
-                continue
-            rows.append(sale_row(b["id"], ml_request(_sale_path(w["item_id"]), token, **kw), now))
+            if w:
+                item_id, d["caminho"] = w["item_id"], "buy_box"
+            else:
+                body, d["items"] = product_items(b["ml_product_id"], token, **kw)
+                item_id = cheapest_item(body)
+                if item_id is None:
+                    n["inativo"] += 1
+                    d["caminho"] = "inativo"
+                    continue
+                d["caminho"] = "items"
+            rows.append(sale_row(b["id"], ml_request(_sale_path(item_id), token, **kw), now))
             n["ok"] += 1
         except Deadline:
             n["adiado"] += len(ml) - i
+            d["caminho"] = "adiado"
             break
         except (MLError, Invalid) as e:
             print(f"ML: {b['id']}: {e}")
             n["erro"] += 1
+        finally:
+            print(f"ML diag: {b['id']} /products={d['http']} buy_box={d['buy_box']} "
+                  f"/items={d['items']} caminho={d['caminho']}")
     return rows, n, images
 
 
@@ -635,11 +696,22 @@ def probe(ids):
         except MLError as e:
             print(f"  vencedor: {e}")
             continue
+        item_id = w and w["item_id"]
         if w is None:
-            print("  resultado: inativo (sem vencedor)")
-            continue
-        st, sp = _probe_get(_sale_path(w["item_id"]), token)
-        print(f"  {w['item_id']} /sale_price -> {st} chaves={_keys(sp)}")
+            st, body = _probe_get(f"/products/{pid}/items", token)
+            res = body.get("results") if isinstance(body, dict) else None
+            print(f"  sem buy_box_winner; /items -> {st} itens="
+                  f"{len(res) if isinstance(res, list) else '-'}")
+            try:
+                item_id = cheapest_item(body) if st != 404 else None
+            except MLError as e:
+                print(f"  /items: {e}")
+                continue
+            if item_id is None:
+                print("  resultado: inativo (nenhum item ativo em BRL)")
+                continue
+        st, sp = _probe_get(_sale_path(item_id), token)
+        print(f"  {item_id} /sale_price -> {st} chaves={_keys(sp)}")
         if isinstance(sp, dict):
             print(f"  amount={sp.get('amount')} regular_amount={sp.get('regular_amount')} "
                   f"currency={sp.get('currency_id')!r}")

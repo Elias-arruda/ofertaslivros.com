@@ -48,6 +48,7 @@ class FakeML:
         self.hosts, self.paths = [], []
         self.products = {"MLB11": prod("MLB9001"), "MLB22": prod("MLB9002", gtin=None)}
         self.sale = {"amount": 39.9, "regular_amount": 59.9, "currency_id": "BRL"}
+        self.items = {}  # /products/{id}/items; produto fora daqui responde 404
         self.on_call = None
 
     def __call__(self, req, timeout=None):
@@ -60,6 +61,11 @@ class FakeML:
             self.on_call()
         if u.path == "/oauth/token":
             body = {"access_token": "APP_USR-sentinela", "expires_in": 21600}
+        elif u.path.startswith("/products/") and u.path.endswith("/items"):
+            pid = u.path.split("/")[2]
+            if pid not in self.items:
+                raise HTTPError(req.full_url, 404, "x", {}, None)
+            body = self.items[pid]
         elif u.path.startswith("/products/"):
             body = self.products[u.path.rsplit("/", 1)[1]]
         elif u.path.endswith("/sale_price"):
@@ -384,15 +390,75 @@ def test_validate_offers_exemplo_do_contrato(monkeypatch):
 
 # ---- ML: inativo, moeda, malformado, falha total, deadline, rotação ----
 
-@pytest.mark.parametrize("p", [
-    {"id": "x", "status": "inactive", "buy_box_winner": None},
-    {"id": "x", "status": "active", "buy_box_winner": None},  # sem vencedor / sem estoque
-])
-def test_produto_sem_vencedor_e_inativo(env, p):
+def item(iid, price, cur="BRL", **kw):
+    return {"item_id": iid, "seller_id": 999, "price": price, "currency_id": cur, **kw}
+
+
+def test_buy_box_presente_nao_chama_items(env, capsys):
+    assert env["run"]() == 0
+    assert not [p for p in env["fake"].paths if p.endswith("/items")]
+    out = capsys.readouterr().out
+    assert "ML diag: livro-duplo /products=200 buy_box=sim /items=- caminho=buy_box" in out
+    assert "ML: 2 ok, 0 inativo" in out
+
+
+@pytest.mark.parametrize("status", ["active", None])  # doc: active com buy_box_winner null
+def test_sem_buy_box_usa_items_menor_preco_brl(env, capsys, status):
+    p = prod()
+    p["buy_box_winner"] = None
+    if status is None:
+        del p["status"]
     env["fake"].products["MLB11"] = p
+    env["fake"].items["MLB11"] = {"paging": {"total": 5}, "results": [
+        item("MLB7001", 45),
+        item("MLB7002", 20, cur="USD"),               # moeda diferente: descartado
+        item("MLB7003", 25, status="paused"),         # não ativo: descartado
+        item("MLB7004", 31.5),                         # vence (JSON vira Decimal)
+        item("x/../MLB1", 10),                         # item_id fora do MLB_RE
+    ]}
+    assert env["run"]() == 0
+    paths = env["fake"].paths
+    i = paths.index("/products/MLB11/items")
+    assert paths[i - 1] == "/products/MLB11" and paths[i + 1] == "/items/MLB7004/sale_price"
+    assert "livro-duplo,mercadolivre,3990,5990,2026-10-18T12:00:00+00:00,ml_api" in rows(env["hist"])
+    out = capsys.readouterr().out
+    assert "ML diag: livro-duplo /products=200 buy_box=não /items=5 caminho=items" in out
+    assert "999" not in out and "MLB7004" not in out  # nada de vendedor nem anúncio no log
+
+
+@pytest.mark.parametrize("items", [
+    None,                                              # 404: nenhum anúncio
+    {"results": []},
+    {"results": [item("MLB7002", 20, cur="USD")]},     # só moeda diferente
+])
+def test_sem_buy_box_e_sem_item_ativo_e_inativo(env, capsys, items):
+    env["fake"].products["MLB11"] = {"id": "x", "status": "active", "buy_box_winner": None}
+    if items is not None:
+        env["fake"].items["MLB11"] = items
     assert env["run"]() == 0
     ml = [r for r in rows(env["hist"]) if r.endswith(",ml_api")]
     assert len(ml) == 1 and ml[0].startswith("livro-ml-2,")
+    out = capsys.readouterr().out
+    assert "ML: 1 ok, 1 inativo, 0 gtin_divergente, 0 erro" in out
+    assert "caminho=inativo" in out and not [p for p in env["fake"].paths
+                                             if p.startswith("/items/MLB7")]
+
+
+def test_produto_inativo_sem_itens(env):
+    env["fake"].products["MLB11"] = {"id": "x", "status": "inactive", "buy_box_winner": None}
+    assert env["run"]() == 0
+    assert "/products/MLB11/items" in env["fake"].paths
+
+
+def test_fallback_items_sem_amazon_e_sem_token_no_log(env, capsys):
+    for pid in ("MLB11", "MLB22"):
+        env["fake"].products[pid]["buy_box_winner"] = None
+        env["fake"].items[pid] = {"results": [item("MLB7004", 30)]}
+    assert env["run"]() == 0
+    assert set(env["fake"].hosts) == {"api.mercadolibre.com"}
+    out = capsys.readouterr()
+    assert "sentinela" not in out.out + out.err and "segredo" not in out.out + out.err
+    assert "Bearer" not in out.out + out.err
 
 
 @pytest.mark.parametrize("bad", [
@@ -402,12 +468,16 @@ def test_produto_sem_vencedor_e_inativo(env, p):
     {"prod": {"status": "active", "buy_box_winner": {"item_id": 123}}},
     {"prod": {"status": "active", "buy_box_winner": "x"}},
     {"prod": ["lista"]},
+    {"prod": {"status": "active", "buy_box_winner": None}, "items": ["lista"]},
+    {"prod": {"status": "active", "buy_box_winner": None}, "items": {"results": "x"}},
 ])
 def test_resposta_ruim_vira_erro_e_job_vermelho(env, bad):
     if "sale" in bad:
         env["fake"].sale = bad["sale"]
     else:
         env["fake"].products["MLB11"] = bad["prod"]
+    if "items" in bad:
+        env["fake"].items["MLB11"] = bad["items"]
     assert env["run"]() == 1
     assert not any(r.startswith("livro-duplo,mercadolivre") for r in rows(env["hist"]))
 
