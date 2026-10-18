@@ -13,7 +13,7 @@ import os
 import re
 import shutil
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import parse_qsl, urlsplit
 
@@ -47,7 +47,7 @@ TAG_RE = re.compile(r"[A-Za-z0-9-]{1,64}")
 CTRL_RE = re.compile(r"[\x00-\x1f\x7f]")
 
 COMMON = {"id", "store", "genre", "title", "author", "price_cents", "list_price_cents",
-          "lowest_90d_cents", "checked_at"}
+          "lowest_90d_cents", "checked_at", "history_start"}
 STORE_KEY = {"amazon": "asin", "mercadolivre": "ml_item_id"}
 # O link do ML é opaco (param ref cifrado), então vem do painel e é validado.
 STORE_EXTRA = {"amazon": set(), "mercadolivre": {"ml_url"}}
@@ -173,6 +173,18 @@ def validate_offer(o):
     if dt.tzinfo is None:
         raise Invalid("checked_at precisa ter fuso")
     out["checked_at"] = dt
+    # Opcional: data (BRT) do 1º preço no histórico do item. Sem ela, nada de selo (CDC).
+    hs = o.get("history_start")
+    if hs is not None:
+        if not isinstance(hs, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", hs):
+            raise Invalid(f"history_start precisa ser data AAAA-MM-DD: {hs!r}")
+        try:
+            hs = date.fromisoformat(hs)
+        except ValueError:
+            raise Invalid(f"history_start inválida: {hs!r}") from None
+        if hs > dt.astimezone(BRT).date():
+            raise Invalid("history_start depois de checked_at")
+    out["history_start"] = hs
     return out
 
 
@@ -211,15 +223,29 @@ def when(dt):
     return f"{d:%d/%m} às {d:%H}h{d:%M}"
 
 
+def discount(o):
+    return (o["list_price_cents"] - o["price_cents"]) * 100 // o["list_price_cents"]  # piso: não exagera
+
+
+def seal(o):
+    """"90d" só com 90 dias reais de histórico (CDC); "since" com histórico curto; senão None."""
+    hs = o["history_start"]
+    if hs is None or o["price_cents"] > o["lowest_90d_cents"]:
+        return None
+    return "90d" if (o["checked_at"].astimezone(BRT).date() - hs).days >= 90 else "since"
+
+
 def card(o, i):
-    off = (o["list_price_cents"] - o["price_cents"]) * 100 // o["list_price_cents"]  # piso: não exagera
-    low = o["price_cents"] <= o["lowest_90d_cents"]
+    off = discount(o)
     store = STORES[o["store"]]
     t, a = e(o["title"]), e(o["author"])
     old = (f'<s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>'
            if off else "")
     disc = f'<span class="off">−{off}%</span>' if off else ""
-    stamp = '<p class="stamp">Menor preço em 90 dias</p>' if low else ""
+    kind = seal(o)
+    stamp = ('<p class="stamp">Menor preço em 90 dias</p>' if kind == "90d" else
+             f'<p class="stamp stamp--since">Menor preço desde {o["history_start"]:%d/%m}</p>'
+             if kind == "since" else "")
     prep = "no" if o["store"] == "mercadolivre" else "na"
     return f"""<li class="card">
   <div class="top">
@@ -294,8 +320,8 @@ def page(all_offers, genre=None):
 <p class="status">Atualizado em {when(latest)}, {n} {"oferta" if n == 1 else "ofertas"}.</p>
 {nav(all_offers, genre)}"""
     title = (f"{e(GENRES[genre])}: ofertas de livros" if genre
-             else "Ofertas Livros: descontos verificados com histórico de 90 dias")
-    desc = "Ofertas de livros na Amazon e no Mercado Livre, conferidas uma a uma, com aviso de menor preço em 90 dias."
+             else "Ofertas Livros: descontos de livros conferidos na loja")
+    desc = "Ofertas de livros na Amazon e no Mercado Livre, conferidas uma a uma e comparadas com o histórico de preço."
     return shell(title, desc, mast, f'<ol class="grid">\n{cards}\n</ol>')
 
 
@@ -440,6 +466,16 @@ def selftest():
     xss = load_offers({"offers": [{**good, "title": '<script>alert(1)</script>"'}]})
     assert "<script>" not in page(xss) and "&lt;script&gt;" in page(xss)
     assert brl(123456) == "R$ 1.234,56" and brl(5) == "R$ 0,05"
+    # selo de 90 dias: só com history_start cobrindo 90 dias (checked_at 18/10 BRT)
+    def stamp(**kw):
+        return page(load_offers({"offers": [{**good, **kw}]}))
+    assert 'class="stamp' not in stamp()                                   # sem histórico
+    assert "Menor preço desde 21/07" in stamp(history_start="2026-07-21")  # 89 dias
+    assert "Menor preço em 90 dias" not in stamp(history_start="2026-07-21")
+    assert "Menor preço em 90 dias" in stamp(history_start="2026-07-20")   # 90 dias
+    assert 'class="stamp' not in stamp(history_start="2026-07-20", lowest_90d_cents=1000)
+    for bad in ("2026-10-19", "20260720", "2026-02-30", "2026-07-20T00:00", 20260720):
+        assert rejects({**good, "history_start": bad}), bad
     print("selftest ok")
 
 
