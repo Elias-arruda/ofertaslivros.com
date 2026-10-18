@@ -922,15 +922,15 @@ def selftest():
     assert "<script>" not in page(xss) and "&lt;script&gt;" in page(xss)
     # botão de alerta: só com TELEGRAM_BOT_USERNAME válido
     assert "t.me" not in page(o) and 'class="alert"' not in page(o)
-    pb = page(o, bot="OfertasLivrosBot")
-    assert ('<a class="alert" href="https://t.me/OfertasLivrosBot?start=livro-1" '
+    pb = page(o, bot="ofertaslivros_bot")
+    assert ('<a class="alert" href="https://t.me/ofertaslivros_bot?start=livro-1" '
             'rel="noopener noreferrer" target="_blank">Me avise se baixar') in pb
     assert pb.count("?start=") == 2  # um botão por card; o bloco de alerta usa t.me/<bot> sem start
-    pb = page(xss, bot="OfertasLivrosBot")
+    pb = page(xss, bot="ofertaslivros_bot")
     assert "<script>" not in pb and "alerta de preço de &lt;script&gt;" in pb
     saved = os.environ.pop("TELEGRAM_BOT_USERNAME", None)
     assert tg_bot() is None
-    for ok in ("OfertasLivrosBot", "@abc_bot", "x1BOT"):
+    for ok in ("ofertaslivros_bot", "@abc_bot", "x1BOT"):
         os.environ["TELEGRAM_BOT_USERNAME"] = ok
         assert tg_bot() == ok.removeprefix("@")
     for bad in ("Ofertas", "bot", "1abcbot", "a" * 30 + "bot", "ab-cbot", "x.bot\n",
@@ -945,16 +945,16 @@ def selftest():
     if saved is not None:
         os.environ["TELEGRAM_BOT_USERNAME"] = saved
     try:
-        tg_alert_url("OfertasLivrosBot", "a" * 65)
+        tg_alert_url("ofertaslivros_bot", "a" * 65)
         raise AssertionError("id longo")
     except Invalid:
         pass
     # privacidade: linkada no rodapé de todas as páginas
     assert '<a href="/privacidade/">Privacidade</a>' in page(o)
     assert '<a href="/privacidade/" aria-current="page">' in privacy()
-    pv = privacy("OfertasLivrosBot")
+    pv = privacy("ofertaslivros_bot")
     assert all(w in pv for w in ("chat_id", "Cloudflare D1", "90 dias", "/parar", "bloquear o bot",
-                                 "https://t.me/OfertasLivrosBot"))
+                                 "https://t.me/ofertaslivros_bot"))
     # _redirects: 4 linhas por livro de uma loja + curinga; tag da Amazon por canal
     saved = {k: os.environ.pop(k, None) for k in ("AMAZON_TAG_TG", "AMAZON_TAG_WA")}
     r = redirects(o).splitlines()
@@ -1006,7 +1006,7 @@ def selftest():
     ch = channels()
     assert ch == [("Telegram", "https://t.me/ofertaslivros"),
                   ("WhatsApp", "https://whatsapp.com/channel/0029VaAbCdEfGhIjKlMnOp12")]
-    for html_ in (page(o, ch=ch), canais(ch, "OfertasLivrosBot")):
+    for html_ in (page(o, ch=ch), canais(ch, "ofertaslivros_bot")):
         assert ('<a href="https://t.me/ofertaslivros" rel="noopener noreferrer" target="_blank">' in html_
                 and 'href="https://whatsapp.com/channel/0029VaAbCdEfGhIjKlMnOp12" rel="noopener noreferrer"' in html_)
     assert '<a href="/canais/">' in page(o, ch=ch)
@@ -1086,10 +1086,10 @@ def selftest():
     assert sec.count('class="card"') == 1                               # só o curado
     alta = h[h.index("Em alta"):]
     assert alta.index('href="/r/l-1"') < alta.index('href="/r/l-0"')    # ordem do trending_rank
-    h = page(offers_n(2), bot="OfertasLivrosBot", ch=[("Telegram", "https://t.me/ofertaslivros")])
+    h = page(offers_n(2), bot="ofertaslivros_bot", ch=[("Telegram", "https://t.me/ofertaslivros")])
     assert "carrossel" not in h                                          # menos de 3: sem banner
     assert 'class="join"' in h and "Receba as próximas ofertas" in h
-    assert 'href="https://t.me/OfertasLivrosBot" rel="noopener noreferrer"' in h  # bloco de alerta, sem start
+    assert 'href="https://t.me/ofertaslivros_bot" rel="noopener noreferrer"' in h  # bloco de alerta, sem start
     g = page(offers_n(4), "manga")
     assert "carrossel" not in g and 'href="/manga/" aria-current="page"' in g
     for k, v in saved.items():
