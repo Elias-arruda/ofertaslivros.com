@@ -310,36 +310,190 @@ def post_text(o, url):
     return "\n".join(lines)
 
 
-def card(o, i, bot=None):
+def cover(o, i, text=True):
+    """Capa tipográfica. A cor vem do índice da oferta, igual em todas as seções."""
+    t = e(o["title"])
+    spans = (f'\n      <span class="cover-t" aria-hidden="true">{t}</span>'
+             f'\n      <span class="cover-a" aria-hidden="true">{e(o["author"])}</span>' if text else "")
+    return (f'<div class="cover cover--{i % 6}{"" if text else " cover--sm"}">\n'
+            f'      <img src="/capa.svg" alt="Capa ilustrativa de {t}" width="120" height="180" '
+            f'loading="lazy" decoding="async">{spans}\n    </div>')
+
+
+def price_html(o):
     off = discount(o)
-    store = STORES[o["store"]]
-    t, a = e(o["title"]), e(o["author"])
-    old = (f'<s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>'
-           if off else "")
-    disc = f'<span class="off">−{off}%</span>' if off else ""
+    old = (f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>'
+           f' <span class="off">−{off}%</span>' if off else "")
+    return f'<span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong>{old}'
+
+
+def stamp_html(o):
     kind = seal(o)
-    stamp = ('\n  <p class="stamp">Menor preço em 90 dias</p>' if kind == "90d" else
-             f'\n  <p class="stamp stamp--since">Menor preço desde {o["history_start"]:%d/%m}</p>'
-             if kind == "since" else "")
+    return ('<p class="stamp">Menor preço em 90 dias</p>' if kind == "90d" else
+            f'<p class="stamp stamp--since">Menor preço desde {o["history_start"]:%d/%m}</p>'
+            if kind == "since" else "")
+
+
+def meta_html(o):
+    return (f'<span class="store">{STORES[o["store"]]}</span>, verificado em '
+            f'<time datetime="{e(o["checked_at"].isoformat())}">{when(o["checked_at"])}</time>')
+
+
+def go(o, cls="go"):
+    """Link de afiliado: sempre o nosso /r/<id>, nunca a URL da loja."""
+    prep = "no" if o["store"] == "mercadolivre" else "na"
+    return (f'<a class="{cls}" href="/r/{e(o["id"])}" rel="sponsored noopener noreferrer" target="_blank">'
+            f'Ver {prep} {STORES[o["store"]]}<span class="sr">: {e(o["title"])} (abre em nova aba)</span></a>')
+
+
+def card(o, i, bot=None, h=2):
+    t = e(o["title"])
+    stamp = "\n  " + stamp_html(o) if seal(o) else ""
     alert = (f' <a class="alert" href="{e(tg_alert_url(bot, o["id"]))}" rel="noopener noreferrer" target="_blank">'
              f'Me avise se baixar (Telegram)<span class="sr">: alerta de preço de {t} (abre o Telegram)</span></a>' if bot else "")
-    prep = "no" if o["store"] == "mercadolivre" else "na"
     return f"""<li class="card">
   <div class="top">
-    <div class="cover cover--{i % 6}">
-      <img src="/capa.svg" alt="Capa ilustrativa de {t}" width="120" height="180" loading="lazy" decoding="async">
-      <span class="cover-t" aria-hidden="true">{t}</span>
-      <span class="cover-a" aria-hidden="true">{a}</span>
-    </div>
+    {cover(o, i)}
     <div class="head">
-      <h2 class="title">{t}</h2>
-      <p class="author">{a}</p>
+      <h{h} class="title">{t}</h{h}>
+      <p class="author">{e(o["author"])}</p>
     </div>
   </div>{stamp}
-  <p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong> {old} {disc}</p>
-  <p class="meta"><span class="store">{store}</span>, verificado em <time datetime="{e(o["checked_at"].isoformat())}">{when(o["checked_at"])}</time></p>
-  <p class="acts"><a class="go" href="/r/{e(o["id"])}" rel="sponsored noopener noreferrer" target="_blank">Ver {prep} {store}<span class="sr">: {t} (abre em nova aba)</span></a>{alert}</p>
+  <p class="price">{price_html(o)}</p>
+  <p class="meta">{meta_html(o)}</p>
+  <p class="acts">{go(o)}{alert}</p>
 </li>"""
+
+
+def slide(o, i, k, n):
+    stamp = "\n    " + stamp_html(o) if seal(o) else ""
+    return f"""<div class="slide" id="d-{e(o["id"])}" role="group" aria-roledescription="slide" aria-label="{k} de {n}">
+  {cover(o, i)}
+  <div class="slide-body">{stamp}
+    <h3 class="slide-title">{e(o["title"])}</h3>
+    <p class="author">{e(o["author"])}</p>
+    <p class="price">{price_html(o)}</p>
+    <p class="meta">{meta_html(o)}</p>
+    <p class="acts">{go(o)}</p>
+  </div>
+</div>"""
+
+
+def hero(items, idx):
+    """Carrossel só com CSS: passagem por @keyframes, pausa (hover, foco, checkbox),
+    manual com scroll-snap em prefers-reduced-motion ou depois de tocar num indicador."""
+    n = len(items)
+    if not 3 <= n <= 5:
+        return ""
+    slides = "\n".join(slide(o, idx[o["id"]], k, n) for k, o in enumerate(items, 1))
+    dots = "".join(f'<li><a href="#d-{e(o["id"])}"><span class="sr">Mostrar destaque {k} de {n}: '
+                   f'{e(o["title"])}</span></a></li>' for k, o in enumerate(items, 1))
+    return f"""<section class="hero hero--{n}" aria-roledescription="carrossel" aria-labelledby="h-destaque">
+<h2 class="sr" id="h-destaque">Em destaque</h2>
+<div class="hero-view">
+<div class="hero-track">
+{slides}
+</div>
+</div>
+<div class="hero-bar">
+<ol class="dots">{dots}</ol>
+<p class="pause"><input type="checkbox" id="pausar"><label for="pausar">Pausar passagem</label></p>
+</div>
+</section>"""
+
+
+def mini(o, i):
+    return f"""<li class="mini">
+  {cover(o, i, text=False)}
+  <div class="mini-body">
+    <h3 class="mini-title">{e(o["title"])}</h3>
+    <p class="price">{price_html(o)}</p>
+    <p class="meta">{meta_html(o)}</p>
+  </div>
+  {go(o)}
+</li>"""
+
+
+def section(sid, title, body, intro=""):
+    intro = f'\n<p class="sec-intro">{intro}</p>' if intro else ""
+    return f'<section class="sec" aria-labelledby="{sid}">\n<h2 id="{sid}">{title}</h2>{intro}\n{body}\n</section>'
+
+
+def join_banner(ch):
+    """Banner dos canais. Sem TELEGRAM_CHANNEL_ID nem WHATSAPP_CHANNEL_ID, não sai."""
+    if not ch:
+        return ""
+    links = "".join(f"<li>{ext(url, f'Canal no {name}')}</li>" for name, url in ch)
+    return f"""<section class="join" aria-labelledby="h-canais">
+<h2 id="h-canais">Receba as próximas ofertas</h2>
+<p>As mesmas ofertas do site, com o preço conferido, chegam no canal. Sem cadastro.</p>
+<ul class="join-links">{links}</ul>
+</section>"""
+
+
+def monitor(bot):
+    """Explica o alerta de preço. Sem TELEGRAM_BOT_USERNAME, não sai."""
+    if not bot:
+        return ""
+    cta = ext(f"https://t.me/{bot}", f"Abrir o @{e(bot)} no Telegram").replace("<a ", '<a class="alert alert--solid" ', 1)
+    return section("h-alerta", "Crie um alerta de preço", f"""<ol class="steps">
+<li>Escolha um livro e toque em “Me avise se baixar (Telegram)”.</li>
+<li>No Telegram, toque em Iniciar. O bot confirma o alerta.</li>
+<li>Quando o preço cair abaixo do de hoje, avisamos você por lá.</li>
+</ol>
+<p class="acts">{cta}</p>""",
+                   "Escolha um livro e avisamos no Telegram quando o preço cair.")
+
+
+HOME_GRID = 8  # cards em "Ofertas ativas"; o resto vai para "Mais livros"
+HOT_MAX = 4
+
+
+def ranked(offers):
+    """Destaque: featured primeiro; sem ele, selo válido e depois o maior desconto."""
+    return sorted(offers, key=lambda o: (not o["featured"], seal(o) is None, -discount(o)))
+
+
+def home_sections(offers, bot=None, ch=()):
+    """Seções da home. Um livro aparece em no máximo 2: banner + destaques,
+    ou banner/ativas/mais livros + maiores descontos."""
+    idx = {o["id"]: i for i, o in enumerate(offers)}
+    top = ranked(offers)
+    slides = top[:5] if len(top) >= 3 else []
+    curated = any(o["featured"] for o in offers)
+    feat = [o for o in top[:4] if o["featured"] or not curated]
+    in_feat = {o["id"] for o in feat}
+    rest = [o for o in offers if o["id"] not in in_feat]
+    grid, more = rest[:HOME_GRID], rest[HOME_GRID:]
+    # ponytail: "Mais livros" = ofertas da 9ª em diante; com data/catalog.json, pode virar os monitorados.
+    in_hero = {o["id"] for o in slides}
+    pool = [o for o in offers if o["id"] not in in_hero]
+    if any(o["trending_rank"] for o in offers):  # popularidade real, vinda do back
+        hot_title = "Em alta"
+        hot = sorted((o for o in pool if o["trending_rank"]), key=lambda o: o["trending_rank"])[:HOT_MAX]
+    else:  # sem dado de popularidade, título honesto
+        hot_title = "Maiores descontos agora"
+        hot = sorted((o for o in pool if discount(o) > 0), key=lambda o: -discount(o))[:HOT_MAX]
+
+    def cards(items):
+        return "\n".join(card(o, idx[o["id"]], bot, h=3) for o in items)
+
+    def minis(items, tag="ul"):
+        return f'<{tag} class="minis">\n' + "\n".join(mini(o, idx[o["id"]]) for o in items) + f"\n</{tag}>"
+
+    parts = [
+        hero(slides, idx),
+        feat and section("h-curadoria", "Destaques da curadoria" if curated else "Destaques de hoje",
+                         f'<ol class="grid grid--feat">\n{cards(feat)}\n</ol>',
+                         "" if curated else "Primeiro os que estão no menor preço do histórico, depois os maiores descontos."),
+        section("h-nichos", "Por tipo de livro", nav(offers, None)),
+        grid and section("h-ativas", "Ofertas ativas", f'<ol class="grid">\n{cards(grid)}\n</ol>'),
+        join_banner(ch),
+        more and section("h-mais", "Mais livros em oferta", minis(more)),
+        hot and section("h-alta", hot_title, minis(hot, "ol")),
+        monitor(bot),
+    ]
+    return "\n".join(p for p in parts if p)
 
 
 def nav(offers, current):
@@ -415,6 +569,9 @@ def page(all_offers, genre=None, bot=None, ch=()):
              else "Ofertas Livros: descontos de livros conferidos na loja")
     desc = (f"{e(GENRES[genre])} em oferta" if genre else "Ofertas de livros") + (
         " na Amazon e no Mercado Livre, conferidas uma a uma e comparadas com o histórico de preço.")
+    if genre is None:
+        mast = mast.replace(f"\n{nav(all_offers, genre)}", "")  # na home, os nichos viram a seção 3
+        return shell(title, desc, mast, home_sections(offers, bot, ch), ch)
     return shell(title, desc, mast, f'<ol class="grid">\n{cards}\n</ol>', ch)
 
 
@@ -629,7 +786,7 @@ def selftest():
     pb = page(o, bot="OfertasLivrosBot")
     assert ('<a class="alert" href="https://t.me/OfertasLivrosBot?start=livro-1" '
             'rel="noopener noreferrer" target="_blank">Me avise se baixar') in pb
-    assert pb.count('class="alert"') == 2
+    assert pb.count("?start=") == 2  # um botão por card; o bloco de alerta usa t.me/<bot> sem start
     pb = page(xss, bot="OfertasLivrosBot")
     assert "<script>" not in pb and "alerta de preço de &lt;script&gt;" in pb
     saved = os.environ.pop("TELEGRAM_BOT_USERNAME", None)
@@ -751,6 +908,39 @@ def selftest():
     for bad in (0, -1, True, 1.0, "1"):
         assert rejects({**good, "trending_rank": bad}), bad
     assert load_offers({"offers": [{**good, "featured": True, "trending_rank": 3}]})[0]["trending_rank"] == 3
+    # home: seções, carrossel sem JS, fallbacks honestos
+    def offers_n(n, extra=None):
+        return load_offers({"offers": [{**good, "id": f"l-{k}", "title": f"Livro {k}",
+                                        "price_cents": 4000 - 100 * k, "list_price_cents": 4000,
+                                        **(extra or {}).get(k, {})} for k in range(n)]})
+    saved = {k: os.environ.pop(k, None) for k in ("TELEGRAM_CHANNEL_ID", "WHATSAPP_CHANNEL_ID")}
+    h = page(offers_n(14))
+    assert "<script" not in h and h.count('aria-roledescription="slide"') == 5
+    assert '<input type="checkbox" id="pausar"><label for="pausar">Pausar passagem</label>' in h
+    assert "Destaques de hoje" in h and "Destaques da curadoria" not in h
+    assert "Maiores descontos agora" in h and "Em alta" not in h        # sem trending_rank
+    assert "Mais livros em oferta" in h and 'href="/manga/"' in h
+    assert 'class="join"' not in h and "Crie um alerta" not in h         # sem canais nem bot
+    assert max(h.count(f'href="/r/l-{k}"') for k in range(14)) <= 2      # no máximo 2 seções
+    # fallback do destaque: selo válido antes do maior desconto (l-13 tem o maior)
+    h = page(offers_n(10, {2: {"history_start": "2026-06-01", "lowest_90d_cents": 3800}}))
+    assert h.index('id="d-l-2"') < h.index('id="d-l-9"')
+    assert "Mais livros" not in h                                        # sobram 6 para a grade
+    h = page(offers_n(10, {7: {"featured": True}, 0: {"trending_rank": 2}, 1: {"trending_rank": 1}}))
+    assert "Destaques da curadoria" in h and h.index('id="d-l-7"') < h.index('id="d-l-9"')
+    sec = h[h.index('id="h-curadoria"'):h.index('id="h-nichos"')]
+    assert sec.count('class="card"') == 1                               # só o curado
+    alta = h[h.index("Em alta"):]
+    assert alta.index('href="/r/l-1"') < alta.index('href="/r/l-0"')    # ordem do trending_rank
+    h = page(offers_n(2), bot="OfertasLivrosBot", ch=[("Telegram", "https://t.me/ofertaslivros")])
+    assert "carrossel" not in h                                          # menos de 3: sem banner
+    assert 'class="join"' in h and "Receba as próximas ofertas" in h
+    assert 'href="https://t.me/OfertasLivrosBot" rel="noopener noreferrer"' in h  # bloco de alerta, sem start
+    g = page(offers_n(4), "manga")
+    assert "carrossel" not in g and 'href="/manga/" aria-current="page"' in g
+    for k, v in saved.items():
+        if v is not None:
+            os.environ[k] = v
     print("selftest ok")
 
 
