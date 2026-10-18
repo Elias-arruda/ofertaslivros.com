@@ -125,30 +125,25 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
 /* Histórico ainda curto: afirmação menor, só contorno (borda #4a5670: 7,3:1) */
 .stamp--since { color: var(--ink); background: var(--card); border-color: var(--muted); font-weight: 600; }
 
-/* Capa tipográfica: cor de encadernação por variante, textura do SVG por cima */
+/* Capa: quadro 2:3 neutro. A foto real entra inteira (contain, sem corte); sem foto,
+   o placeholder do capa.svg (carimbo pequeno) com o título discreto, sem fingir ser capa. */
 .cover {
   position: relative;
   aspect-ratio: 2 / 3;
   overflow: hidden;
-  padding: .45rem .35rem .4rem .75rem;
-  display: flex; flex-direction: column; justify-content: space-between;
-  color: #fbf8f2;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  padding: .5rem .4rem;
+  background: #f1f4f7; /* o mesmo cinza do capa.svg */
+  outline: 1px solid var(--rule); outline-offset: -1px;
 }
 .cover img { position: absolute; inset: 0; width: 100%; height: 100%; }
-.cover-t, .cover-a { position: relative; overflow-wrap: anywhere; }
-/* Título longo na capa: corta em 5 linhas para o autor continuar visível (decorativo, aria-hidden) */
-.cover-t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5; line-clamp: 5; overflow: hidden; }
-.cover-t { font: 700 clamp(.6875rem, .6rem + .3vw, .8125rem)/1.1 var(--serif); }
-.cover-a { font: 600 .5rem/1.2 var(--sans); }
-.cover--0 { background: #23395b; }
-.cover--1 { background: #7a2e1f; }
-.cover--2 { background: #2f4a3a; }
-.cover--3 { background: #d9ad3c; color: #1c2b4a; }
-.cover--4 { background: #4a3a5c; }
-.cover--5 { background: #9c4a24; }
-/* Foto do ML: inteira, sem corte, sobre a ficha */
-.cover--photo { padding: 0; background: var(--card); }
 .cover--photo img { object-fit: contain; }
+/* Título no placeholder: até 4 linhas, texto secundário (6,6:1 no cinza) */
+.cover-t {
+  position: relative;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden;
+  font: 600 .6875rem/1.2 var(--serif); color: var(--muted); text-align: center; overflow-wrap: anywhere;
+}
 
 /* Ações: o link da loja cobre a ficha toda para facilitar o toque.
    Lado a lado quando cabem; senão, empilham com a largura toda (sem botões em escada). */
@@ -244,9 +239,8 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
   gap: clamp(1rem, .6rem + 1.6vw, 2rem);
   padding: clamp(1.25rem, .8rem + 1.8vw, 2.5rem);
 }
-.slide .cover { align-self: start; padding: .6rem .5rem .55rem 1rem; }
-.slide .cover-t { font-size: clamp(.75rem, .55rem + .7vw, 1.125rem); -webkit-line-clamp: 6; line-clamp: 6; }
-.slide .cover-a { font-size: clamp(.5rem, .42rem + .3vw, .6875rem); }
+.slide .cover { align-self: start; padding: .75rem; }
+.slide .cover-t { font-size: clamp(.6875rem, .5rem + .6vw, 1rem); }
 .slide-body { min-width: 0; display: flex; flex-direction: column; gap: var(--space); }
 .slide-title { font: 700 clamp(1.5rem, 1.1rem + 1.8vw, 2.5rem)/1.1 var(--serif); text-wrap: balance; overflow-wrap: anywhere; }
 .slide .author { margin-top: -.5rem; }
@@ -276,7 +270,7 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
   display: grid; grid-template-columns: 3rem 1fr; gap: .25rem .85rem;
   padding: .75rem; background: var(--card); border: 1px solid var(--rule);
 }
-.cover--sm { grid-row: span 2; align-self: start; padding: 0; }
+.cover--sm { grid-row: span 2; align-self: start; }
 .mini-body { min-width: 0; }
 .mini-title { font: 700 1.0625rem/1.25 var(--serif); overflow-wrap: anywhere; }
 .mini .price { padding: .15rem 0 0; border: 0; }
@@ -339,7 +333,7 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
   /* Ficha mais baixa: capa menor e sem texto (decorativa; título e autor estão ao lado), pautas mais justas */
   .grid { gap: .75rem; }
   .card { --pad: .75rem; --space: .625rem; }
-  .card :is(.cover-t, .cover-a) { display: none; }
+  .card .cover-t { display: none; } /* capa estreita: o título já está ao lado */
   .price strong, .slide .price strong { font-size: 1.5rem; }
   .meta { font-size: .8125rem; }
   /* Banner: capa ao lado só do título; preço, meta e botão na largura toda (sem quebrar) */

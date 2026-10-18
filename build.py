@@ -434,18 +434,18 @@ def post_text(o, url):
     return "\n".join(lines)
 
 
-def cover(o, i, text=True):
-    """Foto do ML, se houver; senão capa tipográfica. A cor vem do índice da oferta, igual em todas as seções."""
-    t = e(o["title"])
+def cover(o, small=False, eager=False):
+    """Foto real do ML num quadro 2:3 neutro (object-fit: contain). Sem foto, um placeholder sóbrio
+    que não finge ser capa: carimbo pequeno + título discreto (decorativo, o título está ao lado)."""
+    cls = "cover cover--sm" if small else "cover"
+    load = 'loading="eager" fetchpriority="high"' if eager else 'loading="lazy"'
     if o["image_url"]:
-        return (f'<div class="cover cover--photo{"" if text else " cover--sm"}">\n'
-                f'      <img src="{e(o["image_url"])}" alt="Capa de {t}" width="120" height="180" '
-                f'loading="lazy" decoding="async">\n    </div>')
-    spans = (f'\n      <span class="cover-t" aria-hidden="true">{t}</span>'
-             f'\n      <span class="cover-a" aria-hidden="true">{e(o["author"])}</span>' if text else "")
-    return (f'<div class="cover cover--{i % 6}{"" if text else " cover--sm"}">\n'
-            f'      <img src="/capa.svg" alt="Capa ilustrativa de {t}" width="120" height="180" '
-            f'loading="lazy" decoding="async">{spans}\n    </div>')
+        return (f'<div class="{cls} cover--photo">\n'
+                f'      <img src="{e(o["image_url"])}" alt="Capa de {e(o["title"])}, de {e(o["author"])}" '
+                f'width="120" height="180" {load} decoding="async">\n    </div>')
+    title = "" if small else f'\n      <span class="cover-t" aria-hidden="true">{e(o["title"])}</span>'
+    return (f'<div class="{cls} cover--none">\n'
+            f'      <img src="/capa.svg" alt="" width="120" height="180" {load} decoding="async">{title}\n    </div>')
 
 
 def price_html(o):
@@ -540,13 +540,13 @@ def buy(o):
     return f'<div class="buy">{go(o)}\n    {other}</div>'
 
 
-def card(o, i, bot=None, h=2):
+def card(o, bot=None, h=2):
     t = e(o["title"])
     alert = (f' <a class="alert" href="{e(tg_alert_url(bot, o["id"]))}" rel="noopener noreferrer" target="_blank">'
              f'Me avise se baixar (Telegram)<span class="sr">: alerta de preço de {t} (abre o Telegram)</span></a>' if bot else "")
     return f"""<li class="card">
   <div class="top">
-    {cover(o, i)}
+    {cover(o)}
     <div class="head">
       <h{h} class="title">{t}</h{h}>
       <p class="author">{e(o["author"])}</p>
@@ -558,9 +558,9 @@ def card(o, i, bot=None, h=2):
 </li>"""
 
 
-def slide(o, i, k, n):
+def slide(o, k, n):
     return f"""<div class="slide" id="d-{e(o["id"])}" role="group" aria-roledescription="slide" aria-label="{k} de {n}">
-  {cover(o, i)}
+  {cover(o, eager=k == 1)}
   <div class="slide-body">
     <h3 class="slide-title">{e(o["title"])}</h3>
     <p class="author">{e(o["author"])}</p>
@@ -571,13 +571,13 @@ def slide(o, i, k, n):
 </div>"""
 
 
-def hero(items, idx):
+def hero(items):
     """Carrossel só com CSS: passagem por @keyframes, pausa (hover, foco, checkbox),
     manual com scroll-snap em prefers-reduced-motion ou depois de tocar num indicador."""
     n = len(items)
     if not 3 <= n <= 5:
         return ""
-    slides = "\n".join(slide(o, idx[o["id"]], k, n) for k, o in enumerate(items, 1))
+    slides = "\n".join(slide(o, k, n) for k, o in enumerate(items, 1))
     dots = "".join(f'<li><a href="#d-{e(o["id"])}"><span class="sr">Mostrar destaque {k} de {n}: '
                    f'{e(o["title"])}</span></a></li>' for k, o in enumerate(items, 1))
     return f"""<section class="hero hero--{n}" aria-roledescription="carrossel" aria-labelledby="h-destaque">
@@ -594,9 +594,9 @@ def hero(items, idx):
 </section>"""
 
 
-def mini(o, i):
+def mini(o):
     return f"""<li class="mini">
-  {cover(o, i, text=False)}
+  {cover(o, small=True)}
   <div class="mini-body">
     <h3 class="mini-title">{e(o["title"])}</h3>
     <p class="price">{price_html(o)}</p>
@@ -649,7 +649,6 @@ def ranked(offers):
 def home_sections(offers, bot=None, ch=()):
     """Seções da home. Um livro aparece em no máximo 2: banner + destaques,
     ou banner/ativas/mais livros + maiores descontos."""
-    idx = {o["id"]: i for i, o in enumerate(offers)}
     top = ranked(offers)
     slides = top[:5] if len(top) >= 3 else []
     curated = any(o["featured"] for o in offers)
@@ -668,13 +667,13 @@ def home_sections(offers, bot=None, ch=()):
         hot = sorted((o for o in pool if discount(o) > 0), key=lambda o: -discount(o))[:HOT_MAX]
 
     def cards(items):
-        return "\n".join(card(o, idx[o["id"]], bot, h=3) for o in items)
+        return "\n".join(card(o, bot, h=3) for o in items)
 
     def minis(items, tag="ul"):
-        return f'<{tag} class="minis">\n' + "\n".join(mini(o, idx[o["id"]]) for o in items) + f"\n</{tag}>"
+        return f'<{tag} class="minis">\n' + "\n".join(mini(o) for o in items) + f"\n</{tag}>"
 
     parts = [
-        hero(slides, idx),
+        hero(slides),
         feat and section("h-curadoria", "Destaques da curadoria" if curated else "Destaques de hoje",
                          f'<ol class="grid grid--feat">\n{cards(feat)}\n</ol>',
                          "" if curated else "Primeiro os que estão no menor preço do histórico, depois os maiores descontos."),
@@ -759,7 +758,7 @@ def shell(title, desc, mast, body, ch=(), here=""):
 def page(all_offers, genre=None, bot=None, ch=()):
     offers = [o for o in all_offers if genre is None or o["genre"] == genre]
     latest = max(o["checked_at"] for o in offers)
-    cards = "\n".join(card(o, i, bot) for i, o in enumerate(offers))
+    cards = "\n".join(card(o, bot) for o in offers)
     n = len(offers)
     head = (f'{brand()}\n<h1>{e(GENRES[genre])}</h1>' if genre else brand("h1"))
     mast = f"""{head}
@@ -1330,10 +1329,22 @@ def selftest():
     assert '<time datetime="2026-10-18T08:00:00-03:00">18/10 às 08h00</time>' in h
     assert "<details" not in page(load({**good, "stores": [amz, {**mls, "price_cents": 1890}]},
                                        now=datetime(2026, 10, 18, 10, 31, tzinfo=BRT)))  # ML velho: sem seta
+    # capa real (só mlstatic) x placeholder sóbrio; alt, dimensões, lazy e eager só no 1º slide
     h = page(load({**good, "image_url": img}))
-    assert (f'<img src="{img}" alt="Capa de T" width="120" height="180" loading="lazy" decoding="async">' in h
-            and "/capa.svg" not in h)
-    assert 'src="/capa.svg" alt="Capa ilustrativa de T"' in page(load(good))
+    assert (f'<div class="cover cover--photo">\n      <img src="{img}" alt="Capa de T, de A" width="120" height="180" '
+            'loading="lazy" decoding="async">' in h and "/capa.svg" not in h)
+    h = page(load(good))
+    assert ('<div class="cover cover--none">\n      <img src="/capa.svg" alt="" width="120" height="180" '
+            'loading="lazy" decoding="async">\n      <span class="cover-t" aria-hidden="true">T</span>' in h)
+    assert '<div class="cover cover--sm cover--none">\n      <img src="/capa.svg" alt="" width="120" height="180"' in h
+    assert not re.search(r"cover--\d", h) and "Capa ilustrativa" not in h        # sem capa falsa colorida
+    h = page(load({**good, "image_url": img, "title": 'O "x" <b>', "author": "A & B"}))
+    assert 'alt="Capa de O &quot;x&quot; &lt;b&gt;, de A &amp; B"' in h and "<b>" not in h
+    h = page(offers_n(5, {k: {"image_url": img} for k in range(5)}))
+    hero_ = h[:h.index('id="h-curadoria"')]
+    assert hero_.count('loading="eager" fetchpriority="high"') == 1 and h.count('loading="eager"') == 1
+    assert hero_.index('loading="eager"') < hero_.index('loading="lazy"')
+    assert h.count("<img ") == h.count('width="120" height="180"') + 2                # + logo do topo e do rodapé
     # CSP: só a foto do ML entra além do próprio site
     csp = HEADERS.split("Content-Security-Policy: ")[1].splitlines()[0]
     assert "img-src 'self' https://http2.mlstatic.com;" in csp and csp.count("https://") == 1
