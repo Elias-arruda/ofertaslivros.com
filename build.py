@@ -424,10 +424,18 @@ def price_html(o):
 
 
 def stamp_html(o):
+    """Pílula vermelha cheia (90 dias reais) ou contorno ("desde"), sempre logo acima do preço."""
     kind = seal(o)
     return ('<p class="stamp">Menor preço em 90 dias</p>' if kind == "90d" else
             f'<p class="stamp stamp--since">Menor preço desde {o["since"]:%d/%m}</p>'
             if kind == "since" else "")
+
+
+def deal(o, pad="      "):
+    """Selo colado ao preço: os dois num bloco só, na mesma ordem em todo lugar."""
+    stamp = stamp_html(o)
+    stamp = f"\n{pad}  {stamp}" if stamp else ""
+    return f'<div class="deal">{stamp}\n{pad}  <p class="price">{price_html(o)}</p>\n{pad}</div>'
 
 
 def checked(s):
@@ -464,7 +472,6 @@ def buy(o):
 
 def card(o, i, bot=None, h=2):
     t = e(o["title"])
-    stamp = "\n  " + stamp_html(o) if seal(o) else ""
     alert = (f' <a class="alert" href="{e(tg_alert_url(bot, o["id"]))}" rel="noopener noreferrer" target="_blank">'
              f'Me avise se baixar (Telegram)<span class="sr">: alerta de preço de {t} (abre o Telegram)</span></a>' if bot else "")
     return f"""<li class="card">
@@ -473,22 +480,21 @@ def card(o, i, bot=None, h=2):
     <div class="head">
       <h{h} class="title">{t}</h{h}>
       <p class="author">{e(o["author"])}</p>
+      {deal(o)}
     </div>
-  </div>{stamp}
-  <p class="price">{price_html(o)}</p>
+  </div>
   <p class="meta">{meta_html(o)}</p>
   <div class="acts">{buy(o)}{alert}</div>
 </li>"""
 
 
 def slide(o, i, k, n):
-    stamp = "\n    " + stamp_html(o) if seal(o) else ""
     return f"""<div class="slide" id="d-{e(o["id"])}" role="group" aria-roledescription="slide" aria-label="{k} de {n}">
   {cover(o, i)}
-  <div class="slide-body">{stamp}
+  <div class="slide-body">
     <h3 class="slide-title">{e(o["title"])}</h3>
     <p class="author">{e(o["author"])}</p>
-    <p class="price">{price_html(o)}</p>
+    {deal(o, "    ")}
     <p class="meta">{meta_html(o)}</p>
     <div class="acts">{buy(o)}</div>
   </div>
@@ -1069,6 +1075,13 @@ def selftest():
     assert "Menor preço desde 21/07" in stamp(history_since="2026-07-21")  # 89 dias
     assert "Menor preço em 90 dias" not in stamp(history_since="2026-07-21")
     assert "Menor preço em 90 dias" in stamp(history_since="2026-07-20")   # 90 dias
+    # selo colado ao preço: pílula (90 dias) ou contorno (desde), logo antes do <p class="price">
+    assert re.search(r'<div class="deal">\s*<p class="stamp">Menor preço em 90 dias</p>\s*<p class="price">',
+                     stamp(history_since="2026-07-20"))
+    assert re.search(r'<p class="stamp stamp--since">Menor preço desde 21/07</p>\s*<p class="price">',
+                     stamp(history_since="2026-07-21"))
+    assert stamp().count('<p class="price">') == stamp(history_since="2026-07-20").count('<p class="price">')
+    assert stamp(history_since="2026-07-20").count("−50%") == 2  # uma vez por ficha (destaque + lista compacta)
     assert 'class="stamp' not in stamp(history_since="2026-07-20", lowest_90d_cents=1000)
     for bad in ("2026-10-19", "20260720", "2026-02-30", "2026-07-20T00:00", 20260720):
         assert rejects(A(history_since=bad)), bad

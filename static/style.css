@@ -13,6 +13,10 @@
   --gutter: clamp(1rem, .6rem + 1.6vw, 2rem);
   --gap: clamp(1rem, .7rem + 1vw, 1.5rem);
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  /* Um padding e um espaço só para toda ficha (card, banner, lista compacta): bordas alinham */
+  --pad: clamp(1rem, .85rem + .5vw, 1.25rem);
+  --space: .75rem;
+  --cover-w: clamp(5rem, 4.4rem + 2vw, 6rem);
   color-scheme: light;
 }
 
@@ -75,55 +79,44 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
 }
 
+/* Ficha: uma pilha com um espaço só. Capa à esquerda; título, autor, selo e preço ao lado,
+   com o preço no pé da capa. Meta e botões na largura toda. */
 .card {
   position: relative;
-  display: flex; flex-direction: column;
-  padding: clamp(1rem, .85rem + .5vw, 1.25rem);
+  display: flex; flex-direction: column; gap: var(--space);
+  padding: var(--pad);
   background: var(--card);
   border: 1px solid var(--rule);
 }
-/* Cabeça da ficha acima da linha vermelha; o resto em linhas pautadas */
-.top {
-  display: grid; grid-template-columns: clamp(4.5rem, 3.9rem + 2vw, 5.5rem) 1fr; gap: .9rem;
-  padding-bottom: .9rem;
-  border-bottom: 2px solid var(--red);
-}
-.head { min-width: 0; align-self: end; }
-.title { font: 700 clamp(1.25rem, 1.15rem + .4vw, 1.4375rem)/1.2 var(--serif); text-wrap: balance; overflow-wrap: anywhere; }
+.top { display: grid; grid-template-columns: var(--cover-w) 1fr; gap: var(--space); }
+.head { min-width: 0; display: flex; flex-direction: column; }
+.title { font: 700 clamp(1.1875rem, 1.1rem + .4vw, 1.375rem)/1.2 var(--serif); text-wrap: balance; overflow-wrap: anywhere; }
 .author { margin-top: .2rem; font: italic 1rem/1.35 var(--serif); color: var(--muted); }
+.deal { margin-top: auto; padding-top: .5rem; display: flex; flex-direction: column; align-items: flex-start; gap: .3rem; }
 
-.price, .meta { padding: .55rem 0; border-bottom: 1px solid var(--rule); }
+/* Preço (Baymard): grande e tabular; riscado e desconto ao lado, uma vez só */
 .price {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: .15rem .6rem;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 .5rem;
   font-variant-numeric: tabular-nums lining-nums;
 }
 .price > * { white-space: nowrap; } /* "R$" não se separa do valor */
-.price strong { font-size: clamp(1.625rem, 1.5rem + .4vw, 1.875rem); line-height: 1.1; }
-.old { color: var(--muted); }
-.off { font-size: 1.125rem; font-weight: 700; color: var(--red); }
+.price strong { font: 700 clamp(1.625rem, 1.5rem + .4vw, 1.875rem)/1.1 var(--serif); word-spacing: -.2em; } /* em tabular-nums o espaço de "R$ " fica largo como um algarismo */
+.old { font-size: .9375rem; color: var(--muted); }
+.off { font-size: 1rem; font-weight: 700; color: var(--red); }
 .meta { font-size: .875rem; color: var(--muted); }
 .store { font-weight: 700; color: var(--ink); }
 
-/* O carimbo: atravessa a linha vermelha, como carimbo de data na ficha */
+/* Selo: pílula vermelha cheia, colada ao preço (branco sobre #b3262f: 6,5:1) */
 .stamp {
-  align-self: flex-end;
-  margin: -.95rem .25rem -.2rem 0;
-  padding: .3rem .55rem;
-  font: 700 .8125rem/1.2 var(--sans);
-  color: var(--red);
-  background: var(--card);
-  border: 2px solid var(--red);
-  box-shadow: inset 0 0 0 2px var(--card), inset 0 0 0 3px var(--red);
-  transform: rotate(-3deg);
+  padding: .125rem .45rem;
+  font: 700 .75rem/1.35 var(--sans);
+  color: var(--card);
+  background: var(--red);
+  border: 1px solid var(--red); /* contorno em forced-colors */
+  border-radius: 2px;
 }
-/* Histórico ainda curto: afirmação menor, sem carimbo */
-.stamp--since {
-  color: var(--ink);
-  border: 1px dashed var(--muted);
-  box-shadow: none;
-  transform: none;
-  font-weight: 600;
-}
+/* Histórico ainda curto: afirmação menor, só contorno (borda #4a5670: 7,3:1) */
+.stamp--since { color: var(--ink); background: var(--card); border-color: var(--muted); font-weight: 600; }
 
 /* Capa tipográfica: cor de encadernação por variante, textura do SVG por cima */
 .cover {
@@ -152,7 +145,7 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
 
 /* Ações: o link da loja cobre a ficha toda para facilitar o toque.
    Lado a lado quando cabem; senão, empilham com a largura toda (sem botões em escada). */
-.acts { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: auto; padding-top: .9rem; }
+.acts { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: auto; }
 .go, .alert {
   flex: 1 1 auto;
   min-height: 2.75rem;
@@ -247,14 +240,10 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
 .slide .cover { align-self: start; padding: .6rem .5rem .55rem 1rem; }
 .slide .cover-t { font-size: clamp(.75rem, .55rem + .7vw, 1.125rem); -webkit-line-clamp: 6; line-clamp: 6; }
 .slide .cover-a { font-size: clamp(.5rem, .42rem + .3vw, .6875rem); }
-.slide-body { min-width: 0; display: flex; flex-direction: column; }
-.slide-title {
-  font: 700 clamp(1.5rem, 1.1rem + 1.8vw, 2.5rem)/1.1 var(--serif);
-  text-wrap: balance; overflow-wrap: anywhere;
-  padding-bottom: .5rem; border-bottom: 2px solid var(--red);
-}
-.slide .author { margin-top: .5rem; }
-.slide .stamp { align-self: flex-start; margin: 0 0 .75rem .2rem; }
+.slide-body { min-width: 0; display: flex; flex-direction: column; gap: var(--space); }
+.slide-title { font: 700 clamp(1.5rem, 1.1rem + 1.8vw, 2.5rem)/1.1 var(--serif); text-wrap: balance; overflow-wrap: anywhere; }
+.slide .author { margin-top: -.5rem; }
+.slide .deal { margin-top: 0; padding-top: 0; }
 .slide .price strong { font-size: clamp(1.75rem, 1.4rem + 1.4vw, 2.5rem); }
 .slide .acts { margin-top: 0; }
 .hero-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 1rem; }
@@ -342,23 +331,18 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
   .grid--feat > li:nth-child(n+3) { display: none; }
   /* Ficha mais baixa: capa menor e sem texto (decorativa; título e autor estão ao lado), pautas mais justas */
   .grid { gap: .75rem; }
-  .card { padding: .75rem; }
-  .top { grid-template-columns: 3rem 1fr; gap: .75rem; padding-bottom: .6rem; }
+  .card { --pad: .75rem; --space: .625rem; }
   .card :is(.cover-t, .cover-a) { display: none; }
-  .card .stamp { margin-top: -.8rem; } /* cruza a linha vermelha sem encostar no autor */
-  .title { font-size: 1.1875rem; }
-  .price, .meta { padding: .35rem 0; }
-  .price strong { font-size: 1.4375rem; }
+  .price strong, .slide .price strong { font-size: 1.5rem; }
   .meta { font-size: .8125rem; }
-  .acts { padding-top: .5rem; }
   /* Banner: capa ao lado só do título; preço, meta e botão na largura toda (sem quebrar) */
   .slide { grid-template-columns: 4.5rem 1fr; gap: 0 1rem; padding: 1rem; align-content: start; }
   .slide-body { display: contents; }
   .slide .cover { grid-row: 1 / span 3; }
-  .slide .stamp, .slide-title, .slide .author { grid-column: 2; }
-  .slide .stamp { justify-self: start; margin: 0 0 .5rem; }
-  .slide .price, .slide .meta, .slide .acts { grid-column: 1 / -1; }
-  .slide .acts { padding-top: .6rem; }
+  .slide-title, .slide .author, .slide .deal { grid-column: 2; }
+  .slide .author { margin-top: .2rem; }
+  .slide .deal { padding-top: .5rem; }
+  .slide .meta, .slide .acts { grid-column: 1 / -1; margin-top: .625rem; }
   /* Lista compacta: sem a capa decorativa, botão na largura toda */
   .minis { gap: .375rem; }
   .mini { grid-template-columns: 1fr; padding: .5rem .75rem .625rem; gap: .25rem; }
