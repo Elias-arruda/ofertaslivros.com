@@ -112,6 +112,7 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
   background: var(--card);
   border: 1px solid var(--rule);
 }
+.card { container-type: inline-size; }
 .top { display: grid; grid-template-columns: var(--cover-w) 1fr; gap: var(--space); }
 .head { min-width: 0; display: flex; flex-direction: column; }
 .title { font: 700 clamp(1.1875rem, 1.1rem + .4vw, 1.375rem)/1.2 var(--serif); text-wrap: balance; overflow-wrap: anywhere; }
@@ -129,6 +130,16 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
 .off { font-size: 1rem; font-weight: 700; color: var(--red); }
 .meta { font-size: .875rem; color: var(--muted); }
 .store { font-weight: 700; color: var(--ink); }
+/* Ficha estreita (celular ou 3 colunas): preço menor para caber na linha ao lado da capa */
+@container (max-width: 24rem) {
+  .price strong { font-size: 1.5rem; }
+  .old { font-size: .875rem; }
+}
+@container (max-width: 22.5rem) {
+  .top { grid-template-columns: 4.5rem 1fr; }
+  .price strong { font-size: 1.375rem; }
+  .price { column-gap: .375rem; }
+}
 /* Queda real, vista no histórico: verde de sucesso da Ficha (6,4:1 na ficha), linha própria */
 .drop { display: block; font-weight: 700; color: #1e6b45; }
 
@@ -362,7 +373,7 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
   .grid { gap: .75rem; }
   .card { --pad: .75rem; --space: .625rem; }
   .card .cover-t { display: none; } /* capa estreita: o título já está ao lado */
-  .price strong, .slide .price strong { font-size: 1.5rem; }
+  .slide .price strong { font-size: 1.5rem; }
   .meta { font-size: .8125rem; }
   /* Banner */
   .slide { grid-template-columns: 4.5rem 1fr; gap: 0 1rem; padding: 1rem; align-content: start; }
