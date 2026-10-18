@@ -381,7 +381,7 @@ def resolve(books, now):
         win = min(el, key=lambda s: (s["price_cents"], -s["checked_at"].timestamp()))
         seal, since = seal_of(win, el)
         out.append({**b, **win, "stores": el, "alt": next((s for s in el if s is not win), None),
-                    "seal": seal, "since": since})
+                    "seal": seal, "since": since, "now": now})  # now: relógio do build, para o "visto hoje"
     if not out:
         raise Invalid("nenhuma oferta com preço dentro do prazo de frescor")
     return out
@@ -508,12 +508,28 @@ def chart(o, pad="  "):
             f'<span>{e(label)}</span></p>')
 
 
-def checked(s):
-    return f'verificado em <time datetime="{e(s["checked_at"].isoformat())}">{when(s["checked_at"])}</time>'
+def checked(s, now):
+    """"visto hoje às 08h47" ou "visto em 17/10 às 08h47", relativo ao relógio do build (BRT).
+    ponytail: o "hoje" congela no build; vale porque o cron refaz o site bem antes de virar o dia."""
+    d = s["checked_at"].astimezone(BRT)
+    day = "hoje" if d.date() == now.astimezone(BRT).date() else f"em {d:%d/%m}"
+    return f'visto {day} às <time datetime="{e(s["checked_at"].isoformat())}">{d:%H}h{d:%M}</time>'
+
+
+def drop(o):
+    """(queda em centavos, data) do último preço diferente do atual na série, se era maior.
+    Se o último diferente foi menor (o preço subiu depois), não há queda a mostrar."""
+    day = o["checked_at"].astimezone(BRT).date()
+    for d, c in reversed([pt for pt in o["price_points"] if pt[0] < day]):
+        if c != o["price_cents"]:
+            return (c - o["price_cents"], d) if c > o["price_cents"] else None
+    return None
 
 
 def meta_html(o):
-    return f'<span class="store">{STORES[o["store"]]}</span>, {checked(o)}'
+    dr = drop(o)
+    fell = f'. <span class="drop">Caiu {brl(dr[0])} desde {dr[1]:%d/%m}</span>' if dr else ""
+    return f'<span class="store">{na(o["store"])}</span>, {checked(o, o["now"])}{fell}'
 
 
 def na(store):
@@ -536,7 +552,7 @@ def buy(o):
              f'      <p class="alt-box"><a href="/r/{e(o["id"])}/{a["store"]}" rel="sponsored noopener noreferrer" '
              f'target="_blank">Também {na(a["store"])}: {brl(a["price_cents"])}'
              f'<span class="sr">, {e(o["title"])} (abre em nova aba)</span></a>'
-             f'<span class="alt-when">{checked(a)}</span></p></details>')
+             f'<span class="alt-when">{checked(a, o["now"])}</span></p></details>')
     return f'<div class="buy">{go(o)}\n    {other}</div>'
 
 
@@ -755,6 +771,13 @@ def shell(title, desc, mast, body, ch=(), here=""):
 """
 
 
+def carimbo(dt):
+    """Assinatura "feito à mão": carimbo girado com a hora da coleta mais recente. Só CSS."""
+    d = dt.astimezone(BRT)
+    return (f'<p class="carimbo">conferido <time datetime="{e(dt.isoformat())}">'
+            f'<b>{d:%d/%m}</b> às {d:%H}h{d:%M}</time></p>')
+
+
 def page(all_offers, genre=None, bot=None, ch=()):
     offers = [o for o in all_offers if genre is None or o["genre"] == genre]
     latest = max(o["checked_at"] for o in offers)
@@ -763,7 +786,8 @@ def page(all_offers, genre=None, bot=None, ch=()):
     head = (f'{brand()}\n<h1>{e(GENRES[genre])}</h1>' if genre else brand("h1"))
     mast = f"""{head}
 <p class="lede">Só entra aqui livro que baixou de preço de verdade. Conferimos cada um na loja e comparamos com o histórico de preço.</p>
-<p class="status">Atualizado em {when(latest)}, {n} {"oferta" if n == 1 else "ofertas"}.</p>
+<p class="status">{n} {"oferta ativa" if n == 1 else "ofertas ativas"}.</p>
+{carimbo(latest)}
 {nav(all_offers, genre)}"""
     title = (f"{e(GENRES[genre])}: ofertas de livros" if genre
              else "Ofertas Livros: descontos de livros conferidos na loja")
@@ -1324,9 +1348,24 @@ def selftest():
         assert ('<a href="/r/' in h and '/amazon" rel="sponsored noopener noreferrer" target="_blank">'
                 'Também na Amazon: R$\u00a019,90' in h)
     h = page(two)
-    assert h.count("<details") == h.count('class="go"') and h.count("verificado em") == 4  # 2 seções x 2 lojas
-    assert '<time datetime="2026-10-18T08:30:00-03:00">18/10 às 08h30</time>' in h
-    assert '<time datetime="2026-10-18T08:00:00-03:00">18/10 às 08h00</time>' in h
+    assert h.count("<details") == h.count('class="go"') and h.count("visto hoje às") == 4  # 2 seções x 2 lojas
+    assert 'no Mercado Livre</span>, visto hoje às <time datetime="2026-10-18T08:30:00-03:00">08h30</time>' in h
+    assert '<span class="alt-when">visto hoje às <time datetime="2026-10-18T08:00:00-03:00">08h00</time>' in h
+    # urgência honesta: "visto em DD/MM" quando não é hoje (relógio do build); nada de contador
+    h = page(load(A(checked_at="2026-10-17T22:00:00-03:00")))
+    assert 'visto em 17/10 às <time datetime="2026-10-17T22:00:00-03:00">22h00</time>' in h and "visto hoje" not in h
+    assert page(load(A(checked_at="2026-10-18T01:30:00Z"))).count("visto em 17/10 às") == 2  # 22h30 BRT do dia 17
+    # "caiu R$ X desde DD/MM": último preço diferente do atual na série, se era maior
+    def fell(price=1990, **kw):
+        return page(load(A(history_since="2026-10-01", price_cents=price, **kw)))
+    assert "Caiu R$\u00a05,00 desde 10/10</span>" in fell(price_points=ok_pp)
+    assert "Caiu R$\u00a010,00 desde 01/10" in fell(price_points=pp(("2026-10-01", 2990), ("2026-10-12", 1990)))
+    assert "Caiu R$\u00a010,00 desde 01/10" in fell(price_points=pp(("2026-10-01", 2990), ("2026-10-18", 2500)))  # hoje não conta
+    assert "Caiu" not in fell(2490, price_points=pp(("2026-10-01", 2990), ("2026-10-10", 1990)))  # subiu depois de cair
+    assert "Caiu" not in fell(price_points=pp(("2026-10-01", 1990))) and "Caiu" not in fell()
+    h = fell(price_points=pp(("2026-10-01", 2990)))
+    assert "Caiu R$\u00a010,00 desde 01/10" in h and 'class="hist"' not in h        # 1 ponto: queda sim, gráfico não
+    assert not re.search(r"acaba|restam|minutos|últimas", page(o))
     assert "<details" not in page(load({**good, "stores": [amz, {**mls, "price_cents": 1890}]},
                                        now=datetime(2026, 10, 18, 10, 31, tzinfo=BRT)))  # ML velho: sem seta
     # capa real (só mlstatic) x placeholder sóbrio; alt, dimensões, lazy e eager só no 1º slide
@@ -1339,7 +1378,7 @@ def selftest():
     assert '<div class="cover cover--sm cover--none">\n      <img src="/capa.svg" alt="" width="120" height="180"' in h
     assert not re.search(r"cover--\d", h) and "Capa ilustrativa" not in h        # sem capa falsa colorida
     h = page(load({**good, "image_url": img, "title": 'O "x" <b>', "author": "A & B"}))
-    assert 'alt="Capa de O &quot;x&quot; &lt;b&gt;, de A &amp; B"' in h and "<b>" not in h
+    assert 'alt="Capa de O &quot;x&quot; &lt;b&gt;, de A &amp; B"' in h and '"x" <b>' not in h
     h = page(offers_n(5, {k: {"image_url": img} for k in range(5)}))
     hero_ = h[:h.index('id="h-curadoria"')]
     assert hero_.count('loading="eager" fetchpriority="high"') == 1 and h.count('loading="eager"') == 1

@@ -39,8 +39,32 @@ a:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 .skip { position: absolute; left: 1rem; top: -4rem; padding: .75rem 1rem; background: var(--ink); color: var(--card); z-index: 2; }
 .skip:focus { top: .5rem; }
 
-/* Cabeçalho: discreto, alinhado à esquerda */
-.mast { max-width: 72rem; margin: 0 auto; padding: clamp(1.5rem, .9rem + 2.4vw, 3rem) var(--gutter) 1rem; }
+/* Cabeçalho: alinhado à esquerda; o carimbo fica no canto, ao lado do logo no celular */
+.mast {
+  max-width: 72rem; margin: 0 auto; padding: clamp(1.5rem, .9rem + 2.4vw, 3rem) var(--gutter) 1rem;
+  display: grid; grid-template-columns: 1fr auto; column-gap: 1rem; align-items: start;
+}
+.mast > * { grid-column: 1 / -1; }
+.mast > .brand { grid-column: 1; align-self: center; }
+/* Carimbo "conferido": o único elemento girado da página, em vermelho (5,5:1 no fundo) */
+.carimbo {
+  grid-column: 2; grid-row: 1;
+  width: 5.75rem; aspect-ratio: 1; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center;
+  font: 600 .6875rem/1.2 var(--sans); color: var(--red);
+  border: 2px solid var(--red);
+  box-shadow: inset 0 0 0 3px var(--desk), inset 0 0 0 4px var(--red);
+  transform: rotate(-10deg);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.carimbo time { display: block; }
+.carimbo b { display: block; font: 700 1.25rem/1.05 var(--serif); }
+@media (min-width: 40rem) {
+  .mast > * { grid-column: 1; }
+  .carimbo { grid-column: 2; grid-row: 1 / span 3; align-self: center; width: 7.5rem; font-size: .8125rem; }
+  .carimbo b { font-size: 1.625rem; }
+}
 .brand a { display: inline-block; }
 /* Logo 360x72 com 10 unidades de respiro à esquerda: a margem negativa alinha o carimbo à borda do texto */
 .brand { --logo-w: clamp(15rem, 13rem + 5vw, 18rem); }
@@ -105,6 +129,8 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
 .off { font-size: 1rem; font-weight: 700; color: var(--red); }
 .meta { font-size: .875rem; color: var(--muted); }
 .store { font-weight: 700; color: var(--ink); }
+/* Queda real, vista no histórico: verde de sucesso da Ficha (6,4:1 na ficha), linha própria */
+.drop { display: block; font-weight: 700; color: #1e6b45; }
 
 /* Gráfico do histórico: linha em texto secundário, ponto vermelho no preço de hoje */
 .hist { display: flex; align-items: center; gap: .625rem; font-size: .8125rem; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -357,6 +383,9 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  /* O único movimento da página sem ação do leitor: o carimbo desce uma vez, como carimbo de verdade */
+  @keyframes carimbar { from { opacity: 0; transform: rotate(-10deg) scale(1.35); } }
+  .carimbo { animation: carimbar .35s cubic-bezier(.2, .7, .3, 1.2) .2s backwards; }
   .go, .alert, .nichos a, .join-links a { transition: background-color .15s, border-color .15s, transform .1s; }
   .alt summary::before { transition: transform .15s; }
 
