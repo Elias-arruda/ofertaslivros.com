@@ -91,6 +91,14 @@ def partner_tag():
     return _env_id("AMAZON_PARTNER_TAG", "exemplo-20")
 
 
+def channel_tags():
+    """Tag da Amazon por caminho do /r/. Sem AMAZON_TAG_TG/WA (ou vazias), usa a tag do site."""
+    site = partner_tag()
+    return {"": site, **{f"/{c}": _env_id(f"AMAZON_TAG_{c.upper()}", site)
+                         if os.environ.get(f"AMAZON_TAG_{c.upper()}") else site
+                         for c in ("tg", "wa")}}
+
+
 def ml_affiliate():
     return _env_id("ML_AFFILIATE_ID", "exemplo")
 
@@ -378,6 +386,20 @@ def privacy(bot=None):
                  "O que o Ofertas Livros guarda, onde, por quanto tempo e como apagar.", mast, body)
 
 
+MAX_REDIRECTS = 2000  # limite de regras estáticas do _redirects na Cloudflare
+
+
+def redirects(offers):
+    """/r/<id>, /r/<id>/tg e /r/<id>/wa por oferta; vencida cai na home pelo curinga."""
+    tags, aff = channel_tags(), ml_affiliate()
+    lines = [f"/r/{o['id']}{suffix} {affiliate_url(o, tag, aff)} 302\n"  # ML: mesmo ml_url
+             for o in offers for suffix, tag in tags.items()]
+    lines.append("/r/* / 302\n")
+    if len(lines) > MAX_REDIRECTS:
+        raise Invalid(f"{len(lines)} regras no _redirects (máximo {MAX_REDIRECTS})")
+    return "".join(lines)
+
+
 HEADERS = """/*
   Content-Security-Policy: default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
@@ -408,13 +430,13 @@ def build(dev=False):
     for g in {o["genre"] for o in offers}:
         pages[f"{g}/index.html"] = page(offers, g, bot)
     pages["privacidade/index.html"] = privacy(bot)
-    redirects = "".join(f"/r/{o['id']} {o['url']} 302\n" for o in offers)
+    rules = redirects(offers)
     shutil.rmtree(DIST, ignore_errors=True)
     shutil.copytree(STATIC, DIST)
     for path, body in pages.items():
         (DIST / path).parent.mkdir(exist_ok=True)
         (DIST / path).write_text(body, encoding="utf-8")
-    (DIST / "_redirects").write_text(redirects, encoding="utf-8")
+    (DIST / "_redirects").write_text(rules, encoding="utf-8")
     (DIST / "_headers").write_text(HEADERS, encoding="utf-8")
     print(f"ok: {len(offers)} ofertas, {len(pages)} páginas -> {DIST}")
 
@@ -554,6 +576,35 @@ def selftest():
     pv = privacy("OfertasLivrosBot")
     assert all(w in pv for w in ("chat_id", "Cloudflare D1", "90 dias", "/parar", "bloquear o bot",
                                  "https://t.me/OfertasLivrosBot"))
+    # _redirects: 3 linhas por oferta + curinga; tag da Amazon por canal
+    saved = {k: os.environ.pop(k, None) for k in ("AMAZON_TAG_TG", "AMAZON_TAG_WA")}
+    r = redirects(o).splitlines()
+    t = partner_tag()
+    assert len(r) == 7 and r[-1] == "/r/* / 302"
+    assert f"/r/livro-1/tg https://www.amazon.com.br/dp/B0ABCDEFGH?tag={t} 302" in r
+    assert f"/r/livro-2/wa {ml_link} 302" in r and f"/r/livro-2 {ml_link} 302" in r
+    os.environ.update(AMAZON_TAG_TG="sitetg-20", AMAZON_TAG_WA="")
+    r = redirects(o).splitlines()
+    assert "/r/livro-1/tg https://www.amazon.com.br/dp/B0ABCDEFGH?tag=sitetg-20 302" in r
+    assert f"/r/livro-1/wa https://www.amazon.com.br/dp/B0ABCDEFGH?tag={t} 302" in r
+    for bad in ("x&tag=evil", "a b", "x\n/r/y https://evil.com 302"):
+        os.environ["AMAZON_TAG_TG"] = bad
+        try:
+            redirects(o)
+            raise AssertionError(bad)
+        except Invalid:
+            pass
+    for k, v in saved.items():
+        os.environ.pop(k, None)
+        if v is not None:
+            os.environ[k] = v
+    many = [{**good, "id": f"l-{n}"} for n in range(667)]
+    try:
+        redirects(load_offers({"offers": many}))
+        raise AssertionError("limite do _redirects")
+    except Invalid:
+        pass
+    assert len(redirects(load_offers({"offers": many[:666]})).splitlines()) == 1999
     assert brl(123456) == "R$ 1.234,56" and brl(5) == "R$ 0,05"
     # selo de 90 dias: só com history_start cobrindo 90 dias (checked_at 18/10 BRT)
     def stamp(**kw):
