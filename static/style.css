@@ -181,7 +181,7 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
 .sec-intro { margin-top: .35rem; max-width: 40rem; color: var(--muted); text-wrap: pretty; }
 .sec h2 + .grid, .sec-intro + .grid, .sec h2 + .minis, .sec-intro + .steps { margin-top: 1rem; }
 .sec .nichos { margin-top: .75rem; }
-.grid--feat { grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); }
+.grid--feat { grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr)); } /* 2x2 no desktop: botões lado a lado */
 
 /* 1. Banner: carrossel só com CSS. Sem movimento é um trilho com scroll-snap;
    a passagem automática fica no @media de movimento, no fim do arquivo. */
