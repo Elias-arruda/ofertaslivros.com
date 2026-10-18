@@ -284,6 +284,23 @@ def seal(o):
     return "90d" if (o["checked_at"].astimezone(BRT).date() - hs).days >= 90 else "since"
 
 
+def post_text(o, url):
+    """Texto puro do post nos canais (sem parse_mode). url = nosso /r/<id>[/tg|/wa], nunca a da loja."""
+    p = urlsplit(url)
+    if (p.scheme != "https" or not p.hostname or p.hostname in ALLOWED_HOSTS
+            or p.path not in {f"/r/{o['id']}", f"/r/{o['id']}/tg", f"/r/{o['id']}/wa"}
+            or p.query or p.fragment):
+        raise Invalid(f"post_text só aceita o /r/ do nosso domínio: {url!r}")
+    _ascii(url)
+    off = discount(o)
+    price = brl(o["price_cents"]) + (f" (de {brl(o['list_price_cents'])}, -{off}%)" if off else "")
+    lines = ["Menor preço em 90 dias"] if seal(o) == "90d" else []
+    lines += [f"{o['title']}, de {o['author']}", price,
+              f"{STORES[o['store']]} · preço verificado em {when(o['checked_at'])}. O preço final é o da loja.",
+              f"Link de afiliado: {url}"]
+    return "\n".join(lines)
+
+
 def card(o, i, bot=None):
     off = discount(o)
     store = STORES[o["store"]]
@@ -680,6 +697,27 @@ def selftest():
         os.environ.pop(k, None)
         if v is not None:
             os.environ[k] = v
+    # texto do post: mesmo brl/when/desconto/selo do card
+    torto = load_offers({"offers": [{**good, "title": "Torto Arado", "author": "Itamar Vieira Junior",
+                                     "price_cents": 4290, "list_price_cents": 7490, "lowest_90d_cents": 4590,
+                                     "checked_at": "2026-10-18T08:47:00-03:00",
+                                     "history_start": "2026-06-01"}]})[0]
+    nb = "\u00a0"
+    assert post_text(torto, "https://ofertaslivros.com/r/livro-1/tg") == (
+        "Menor preço em 90 dias\nTorto Arado, de Itamar Vieira Junior\n"
+        f"R${nb}42,90 (de R${nb}74,90, -42%)\n"
+        "Amazon · preço verificado em 18/10 às 08h47. O preço final é o da loja.\n"
+        "Link de afiliado: https://ofertaslivros.com/r/livro-1/tg")
+    plain = post_text({**torto, "history_start": None, "list_price_cents": 4290}, "https://x.com/r/livro-1")
+    assert plain.splitlines()[:2] == ["Torto Arado, de Itamar Vieira Junior", f"R${nb}42,90"]
+    assert "Menor preço" not in post_text({**torto, "history_start": date(2026, 7, 21)}, "https://x.com/r/livro-1")
+    for bad in ("https://www.amazon.com.br/r/livro-1", "http://x.com/r/livro-1", "https://x.com/r/outro",
+                "https://x.com/r/livro-1?u=https://evil.com", "https://x.com/r/livro-1/tg\nhttps://evil.com"):
+        try:
+            post_text(torto, bad)
+            raise AssertionError(bad)
+        except Invalid:
+            pass
     assert brl(123456) == "R$ 1.234,56" and brl(5) == "R$ 0,05"
     # selo de 90 dias: só com history_start cobrindo 90 dias (checked_at 18/10 BRT)
     def stamp(**kw):
