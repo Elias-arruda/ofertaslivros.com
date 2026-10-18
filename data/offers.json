@@ -1,0 +1,129 @@
+{
+  "_exemplo": true,
+  "_nota": "Dados de exemplo. ASINs, MLB ids e links do ML são fictícios (só o formato é válido). Preços em centavos. ml_url = link completo do painel de afiliados do ML (não o meli.la).",
+  "offers": [
+    {
+      "id": "habitos-atomicos",
+      "store": "amazon",
+      "asin": "B0EXEMPL01",
+      "genre": "negocios",
+      "title": "Hábitos Atômicos",
+      "author": "James Clear",
+      "price_cents": 3490,
+      "list_price_cents": 6490,
+      "lowest_90d_cents": 3490,
+      "checked_at": "2026-10-18T08:52:00-03:00"
+    },
+    {
+      "id": "torto-arado",
+      "store": "amazon",
+      "asin": "B0EXEMPL02",
+      "genre": "literatura-brasileira",
+      "title": "Torto Arado",
+      "author": "Itamar Vieira Junior",
+      "price_cents": 4290,
+      "list_price_cents": 7490,
+      "lowest_90d_cents": 4590,
+      "checked_at": "2026-10-18T08:47:00-03:00"
+    },
+    {
+      "id": "one-piece-vol-1",
+      "store": "mercadolivre",
+      "ml_item_id": "MLB9000000001",
+      "genre": "manga",
+      "title": "One Piece Vol. 1 (3 em 1)",
+      "author": "Eiichiro Oda",
+      "price_cents": 5990,
+      "list_price_cents": 7990,
+      "lowest_90d_cents": 5490,
+      "checked_at": "2026-10-18T08:31:00-03:00",
+      "ml_url": "https://www.mercadolivre.com.br/social/exemplo?matt_word=exemplo&matt_tool=00000000&forceInApp=true&ref=EXEMPLO1"
+    },
+    {
+      "id": "rapido-e-devagar",
+      "store": "amazon",
+      "asin": "B0EXEMPL03",
+      "genre": "nao-ficcao",
+      "title": "Rápido e Devagar: Duas Formas de Pensar",
+      "author": "Daniel Kahneman",
+      "price_cents": 3990,
+      "list_price_cents": 8490,
+      "lowest_90d_cents": 4190,
+      "checked_at": "2026-10-18T08:15:00-03:00"
+    },
+    {
+      "id": "tudo-e-rio",
+      "store": "amazon",
+      "asin": "B0EXEMPL04",
+      "genre": "literatura-brasileira",
+      "title": "Tudo É Rio",
+      "author": "Carla Madeira",
+      "price_cents": 3790,
+      "list_price_cents": 5490,
+      "lowest_90d_cents": 3590,
+      "checked_at": "2026-10-18T07:58:00-03:00"
+    },
+    {
+      "id": "berserk-vol-1",
+      "store": "mercadolivre",
+      "ml_item_id": "MLB9000000002",
+      "genre": "manga",
+      "title": "Berserk Vol. 1: Edição de Luxo",
+      "author": "Kentaro Miura",
+      "price_cents": 6490,
+      "list_price_cents": 8990,
+      "lowest_90d_cents": 6490,
+      "checked_at": "2026-10-18T07:40:00-03:00",
+      "ml_url": "https://www.mercadolivre.com.br/social/exemplo?matt_word=exemplo&matt_tool=00000000&forceInApp=true&ref=EXEMPLO2"
+    },
+    {
+      "id": "a-psicologia-financeira",
+      "store": "amazon",
+      "asin": "B0EXEMPL05",
+      "genre": "negocios",
+      "title": "A Psicologia Financeira",
+      "author": "Morgan Housel",
+      "price_cents": 4490,
+      "list_price_cents": 5990,
+      "lowest_90d_cents": 4290,
+      "checked_at": "2026-10-18T07:22:00-03:00"
+    },
+    {
+      "id": "1984-orwell",
+      "store": "amazon",
+      "asin": "B0EXEMPL06",
+      "genre": "ficcao",
+      "title": "1984",
+      "author": "George Orwell",
+      "price_cents": 2290,
+      "list_price_cents": 4490,
+      "lowest_90d_cents": 2490,
+      "checked_at": "2026-10-18T06:55:00-03:00"
+    },
+    {
+      "id": "o-avesso-da-pele",
+      "store": "amazon",
+      "asin": "B0EXEMPL07",
+      "genre": "literatura-brasileira",
+      "title": "O Avesso da Pele",
+      "author": "Jeferson Tenório",
+      "price_cents": 4690,
+      "list_price_cents": 6990,
+      "lowest_90d_cents": 4490,
+      "checked_at": "2026-10-18T06:30:00-03:00"
+    },
+    {
+      "id": "dom-casmurro",
+      "store": "mercadolivre",
+      "ml_item_id": "MLB9000000003",
+      "genre": "literatura-brasileira",
+      "title": "Dom Casmurro",
+      "author": "Machado de Assis",
+      "price_cents": 1490,
+      "list_price_cents": 2990,
+      "lowest_90d_cents": 1590,
+      "checked_at": "2026-10-18T06:12:00-03:00",
+      "ml_url": "https://www.mercadolivre.com.br/social/exemplo?matt_word=exemplo&matt_tool=00000000&forceInApp=true&ref=EXEMPLO3"
+    }
+  ]
+}
