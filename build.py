@@ -394,8 +394,11 @@ def post_text(o, url):
     price = brl(o["price_cents"]) + (f" (de {brl(o['list_price_cents'])}, -{off}%)" if off else "")
     lines = ["Menor preço em 90 dias"] if seal(o) == "90d" else []
     lines += [f"{o['title']}, de {o['author']}", price,
-              f"{STORES[o['store']]} · preço verificado em {when(o['checked_at'])}. O preço final é o da loja.",
-              f"Link de afiliado: {url}"]
+              f"{STORES[o['store']]} · preço verificado em {when(o['checked_at'])}. O preço final é o da loja."]
+    a = o["alt"]
+    if a and a["price_cents"] * 10 <= o["price_cents"] * 11:  # outra loja até 10% mais cara; sem link
+        lines.append(f"Também {na(a['store'])} por {brl(a['price_cents'])}")
+    lines.append(f"Link de afiliado: {url}")
     return "\n".join(lines)
 
 
@@ -1189,6 +1192,24 @@ def selftest():
     csp = HEADERS.split("Content-Security-Policy: ")[1].splitlines()[0]
     assert "img-src 'self' https://http2.mlstatic.com;" in csp and csp.count("https://") == 1
     assert "script-src" not in csp and "default-src 'none'" in csp
+    # post: linha "também" só com a outra loja elegível até 10% mais cara, sem URL de loja
+    def post(ml_price, now=NOW):
+        r = load({**good, "title": "Torto Arado", "author": "Itamar Vieira Junior",
+                  "stores": [{**amz, "price_cents": 4290, "list_price_cents": 7490, "lowest_90d_cents": 4290},
+                             {**mls, "price_cents": ml_price, "list_price_cents": 7490,
+                              "checked_at": "2026-10-18T08:40:00-03:00"}]}, now=now)[0]
+        return post_text(r, "https://ofertaslivros.com/r/livro-1/wa")
+    assert post(4719).splitlines() == [
+        "Torto Arado, de Itamar Vieira Junior", f"R${nb}42,90 (de R${nb}74,90, -42%)",
+        "Amazon · preço verificado em 18/10 às 08h00. O preço final é o da loja.",
+        f"Também no Mercado Livre por R${nb}47,19", "Link de afiliado: https://ofertaslivros.com/r/livro-1/wa"]
+    assert "Também" not in post(4720)                                     # 10,02% mais cara
+    t = post(4290)                                                        # empate: ML verificado depois vence
+    assert t.splitlines()[2].startswith("Mercado Livre · ") and f"Também na Amazon por R${nb}42,90" in t
+    assert "Também" not in post(4719, now=datetime(2026, 10, 18, 10, 41, tzinfo=BRT))  # ML fora do prazo
+    w = post(3990)                                                        # ML vence; Amazon 7,5% mais cara
+    assert w.splitlines()[2].startswith("Mercado Livre · ") and f"Também na Amazon por R${nb}42,90" in w
+    assert "mercadolivre.com" not in w and "amazon.com" not in w and w.count("https://") == 1
     print("selftest ok")
 
 
