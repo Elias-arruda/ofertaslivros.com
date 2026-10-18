@@ -1,7 +1,7 @@
 {
   "version": 2,
   "_exemplo": true,
-  "_nota": "Dados de exemplo (contrato v2, docs/produto/comparacao-lojas.md). ASINs, MLB ids e links do ML são fictícios (só o formato é válido). Preços em centavos. Sem image_url: a foto do ML é testada no selftest. history_since recente de propósito: o exemplo não tem 90 dias de histórico. Casos: ML vence (habitos-atomicos, dom-casmurro), Amazon vence (torto-arado, a-psicologia-financeira), empate com o ML verificado depois (tudo-e-rio), ML fora do prazo de 2 h (1984-orwell) e livros com uma loja. price_points (proposta ao contrato) só com dias depois do history_since, sem inventar 90 dias: gráfico em torto-arado, habitos-atomicos, rapido-e-devagar e one-piece-vol-1 (subiu depois de cair: sem \"caiu\"); dom-casmurro tem um ponto só (sem gráfico).",
+  "_nota": "Dados de exemplo (contrato v2, docs/produto/comparacao-lojas.md). ASINs, MLB ids e links do ML são fictícios (só o formato é válido). Preços em centavos. Sem image_url: a foto do ML é testada no selftest. history_since recente de propósito: o exemplo não tem 90 dias de histórico. Casos: ML vence (habitos-atomicos, dom-casmurro), Amazon vence (torto-arado, a-psicologia-financeira), empate com o ML verificado depois (tudo-e-rio), ML fora do prazo de 2 h (1984-orwell) e livros com uma loja. price_points (proposta ao contrato) só com dias depois do history_since, sem inventar 90 dias: gráfico em torto-arado, habitos-atomicos, rapido-e-devagar e one-piece-vol-1 (subiu depois de cair: sem \"caiu\"); dom-casmurro tem um ponto só (sem gráfico). blurb (proposta ao contrato) em rapido-e-devagar e torto-arado: resumo do livro, não citação nem resenha.",
   "offers": [
     {
       "id": "habitos-atomicos",
@@ -50,6 +50,7 @@
       "genre": "literatura-brasileira",
       "title": "Torto Arado",
       "author": "Itamar Vieira Junior",
+      "blurb": "Duas irmãs, uma faca antiga e a luta pela terra no sertão da Bahia.",
       "stores": [
         {
           "store": "amazon",
@@ -131,6 +132,7 @@
       "genre": "nao-ficcao",
       "title": "Rápido e Devagar: Duas Formas de Pensar",
       "author": "Daniel Kahneman",
+      "blurb": "Por que decidimos tão rápido, erramos com tanta confiança e quase nunca percebemos.",
       "stores": [
         {
           "store": "amazon",

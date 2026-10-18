@@ -49,7 +49,9 @@ CTRL_RE = re.compile(r"[\x00-\x1f\x7f]")
 ISBN_RE = re.compile(r"\d{9}[\dX]|\d{13}")
 IMG_HOST = "http2.mlstatic.com"  # único host de foto liberado no img-src da CSP
 
-BOOK_KEYS = {"id", "isbn", "genre", "title", "author", "image_url", "stores", "featured", "trending_rank"}
+BOOK_KEYS = {"id", "isbn", "genre", "title", "author", "image_url", "stores", "featured", "trending_rank",
+             "blurb"}  # blurb: opcional, proposto ao contrato (frase curta da curadoria no banner)
+BLURB_MAX = 140
 STORE_COMMON = {"store", "price_cents", "list_price_cents", "lowest_90d_cents", "history_since", "checked_at",
                 "price_points"}  # price_points: opcional, proposto ao contrato (gráfico do histórico)
 # O link do ML é opaco (param ref cifrado), então vem do painel e é validado.
@@ -324,6 +326,11 @@ def validate_offer(o, tag, aff):
     if tr is not None and (type(tr) is not int or tr < 1):  # type() exclui bool e float
         raise Invalid(f"trending_rank precisa ser inteiro >= 1: {tr!r}")
     out["trending_rank"] = tr
+    bl = o.get("blurb")
+    if bl is not None and (not isinstance(bl, str) or not bl.strip() or len(bl.strip()) > BLURB_MAX
+                           or CTRL_RE.search(bl)):
+        raise Invalid(f"blurb precisa ser texto de 1 a {BLURB_MAX} chars, sem controle: {bl!r}")
+    out["blurb"] = bl and bl.strip()
     return out
 
 
@@ -575,11 +582,13 @@ def card(o, bot=None, h=2):
 
 
 def slide(o, k, n):
+    # Emoção, depois decisão: a frase da curadoria (se houver) vem logo antes do preço
+    blurb = f'\n    <p class="blurb">{e(o["blurb"])}</p>' if o["blurb"] else ""
     return f"""<div class="slide" id="d-{e(o["id"])}" role="group" aria-roledescription="slide" aria-label="{k} de {n}">
   {cover(o, eager=k == 1)}
   <div class="slide-body">
     <h3 class="slide-title">{e(o["title"])}</h3>
-    <p class="author">{e(o["author"])}</p>
+    <p class="author">{e(o["author"])}</p>{blurb}
     {deal(o, "    ")}
     <p class="meta">{meta_html(o)}</p>{chart(o, "    ")}
     <div class="acts">{buy(o)}</div>
@@ -1231,6 +1240,12 @@ def selftest():
     for bad in (0, -1, True, 1.0, "1"):
         assert rejects({**good, "trending_rank": bad}), bad
     assert load({**good, "featured": True, "trending_rank": 3})[0]["trending_rank"] == 3
+    # blurb: opcional, até 140 chars, escapado, só no banner e antes do preço
+    for bad in ("", "   ", "x" * 141, "a\x00b", "linha\nquebrada", 1, True, ["x"]):
+        assert rejects({**good, "blurb": bad}), bad
+    assert load({**good, "blurb": "x" * 140})[0]["blurb"] == "x" * 140
+    assert load({**good, "blurb": "  Duas irmãs.  "})[0]["blurb"] == "Duas irmãs."
+    assert load(good)[0]["blurb"] is None
     # home: seções, carrossel sem JS, fallbacks honestos
     def offers_n(n, extra=None, store=None):
         return load(*({**good, "id": f"l-{k}", "title": f"Livro {k}", **(extra or {}).get(k, {}),
@@ -1384,6 +1399,10 @@ def selftest():
     assert hero_.count('loading="eager" fetchpriority="high"') == 1 and h.count('loading="eager"') == 1
     assert hero_.index('loading="eager"') < hero_.index('loading="lazy"')
     assert h.count("<img ") == h.count('width="120" height="180"') + 2                # + logo do topo e do rodapé
+    h = page(offers_n(5, {0: {"blurb": '<i>"Duas" & irmãs</i>'}}))
+    assert h.count('class="blurb"') == 1 and '<i>"Duas"' not in h
+    assert re.search(r'<p class="blurb">&lt;i&gt;&quot;Duas&quot; &amp; irmãs&lt;/i&gt;</p>\s*<div class="deal">', h)
+    assert 'class="blurb"' not in page(offers_n(5))
     # CSP: só a foto do ML entra além do próprio site
     csp = HEADERS.split("Content-Security-Policy: ")[1].splitlines()[0]
     assert "img-src 'self' https://http2.mlstatic.com;" in csp and csp.count("https://") == 1

@@ -271,6 +271,8 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
 .slide-title { font: 700 clamp(1.5rem, 1.1rem + 1.8vw, 2.5rem)/1.1 var(--serif); text-wrap: balance; overflow-wrap: anywhere; }
 .slide .author { margin-top: -.5rem; }
 .slide .deal { margin-top: 0; padding-top: 0; }
+/* Frase da curadoria: a voz humana do banner, antes do preço */
+.blurb { max-width: 34rem; font: italic clamp(1.0625rem, 1rem + .3vw, 1.25rem)/1.4 var(--serif); text-wrap: pretty; }
 .slide .price strong { font-size: clamp(1.75rem, 1.4rem + 1.4vw, 2.5rem); }
 .slide .acts { margin-top: 0; }
 .hero-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 1rem; }
@@ -362,14 +364,14 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
   .card .cover-t { display: none; } /* capa estreita: o título já está ao lado */
   .price strong, .slide .price strong { font-size: 1.5rem; }
   .meta { font-size: .8125rem; }
-  /* Banner: capa ao lado só do título; preço, meta e botão na largura toda (sem quebrar) */
+  /* Banner */
   .slide { grid-template-columns: 4.5rem 1fr; gap: 0 1rem; padding: 1rem; align-content: start; }
   .slide-body { display: contents; }
-  .slide .cover { grid-row: 1 / span 3; }
-  .slide-title, .slide .author, .slide .deal { grid-column: 2; }
+  /* Capa ao lado de título e autor; frase, preço, meta e botão seguem na largura toda, na ordem do HTML */
+  .slide .cover { grid-row: 1 / span 2; }
+  .slide-title, .slide .author { grid-column: 2; }
   .slide .author { margin-top: .2rem; }
-  .slide .deal { padding-top: .5rem; }
-  .slide .meta, .slide .hist, .slide .acts { grid-column: 1 / -1; margin-top: .625rem; }
+  .slide :is(.blurb, .deal, .meta, .hist, .acts) { grid-column: 1 / -1; margin-top: .625rem; }
   /* Lista compacta: sem a capa decorativa, botão na largura toda */
   .minis { gap: .375rem; }
   .mini { grid-template-columns: 1fr; padding: .5rem .75rem .625rem; gap: .25rem; }
