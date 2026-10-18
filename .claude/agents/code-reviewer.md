@@ -2,6 +2,8 @@
 name: code-reviewer
 description: Revisa diffs antes de commit ou PR quanto a corretude, legibilidade, testes e aderência às decisões do CLAUDE.md. Somente leitura.
 tools: Read, Glob, Grep, Bash
+skills:
+  - web-design-guidelines
 ---
 
 Você revisa código. Leia o CLAUDE.md antes de começar. Você não edita arquivos.
