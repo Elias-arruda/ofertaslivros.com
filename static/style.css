@@ -170,9 +170,103 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
 @media (hover: hover) {
   .card:hover .go, .go:hover { background: var(--red); }
   .alert:hover, .nichos a:not([aria-current]):hover { background: var(--desk); border-color: var(--ink); }
+  .alert--solid:hover, .join-links a:hover { background: var(--red); border-color: var(--red); color: var(--card); }
 }
 /* Pressionado: resposta imediata ao toque */
 .go:active, .alert:active, .nichos a:active { transform: translateY(1px); }
+
+/* ---------- Home: seções ---------- */
+.sec { margin-top: clamp(2.25rem, 1.6rem + 2.4vw, 3.75rem); }
+.sec h2, .join h2 { font: 700 clamp(1.5rem, 1.2rem + 1.2vw, 2.125rem)/1.15 var(--serif); text-wrap: balance; }
+.sec-intro { margin-top: .35rem; max-width: 40rem; color: var(--muted); text-wrap: pretty; }
+.sec h2 + .grid, .sec-intro + .grid, .sec h2 + .minis, .sec-intro + .steps { margin-top: 1rem; }
+.sec .nichos { margin-top: .75rem; }
+.grid--feat { grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); }
+
+/* 1. Banner: carrossel só com CSS. Sem movimento é um trilho com scroll-snap;
+   a passagem automática fica no @media de movimento, no fim do arquivo. */
+.hero { margin-top: .25rem; }
+.hero-view {
+  overflow-x: auto; overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  background: var(--card); border: 1px solid var(--rule);
+}
+/* Todas as fichas na mesma linha do grid: a altura é a da maior, sem layout shift */
+.hero-track { display: grid; grid-auto-flow: column; grid-auto-columns: 100%; }
+.slide {
+  position: relative;
+  scroll-snap-align: start; scroll-margin-top: 1rem;
+  display: grid; grid-template-columns: clamp(5rem, 2.6rem + 9vw, 11rem) 1fr;
+  gap: clamp(1rem, .6rem + 1.6vw, 2rem);
+  padding: clamp(1.25rem, .8rem + 1.8vw, 2.5rem);
+}
+.slide .cover { align-self: start; padding: .6rem .5rem .55rem 1rem; }
+.slide .cover-t { font-size: clamp(.75rem, .55rem + .7vw, 1.125rem); -webkit-line-clamp: 6; line-clamp: 6; }
+.slide .cover-a { font-size: clamp(.5rem, .42rem + .3vw, .6875rem); }
+.slide-body { min-width: 0; display: flex; flex-direction: column; }
+.slide-title {
+  font: 700 clamp(1.5rem, 1.1rem + 1.8vw, 2.5rem)/1.1 var(--serif);
+  text-wrap: balance; overflow-wrap: anywhere;
+  padding-bottom: .5rem; border-bottom: 2px solid var(--red);
+}
+.slide .author { margin-top: .5rem; }
+.slide .stamp { align-self: flex-start; margin: 0 0 .75rem .2rem; }
+.slide .price strong { font-size: clamp(1.75rem, 1.4rem + 1.4vw, 2.5rem); }
+.slide .acts { margin-top: 0; }
+.hero-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 1rem; }
+.dots { list-style: none; margin: 0; padding: 0; display: flex; }
+.dots a { display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; }
+.dots a::before { content: ""; width: .75rem; height: .75rem; border: 2px solid var(--ink); }
+.hero:has(.slide:nth-child(1):target) .dots li:nth-child(1) a::before,
+.hero:has(.slide:nth-child(2):target) .dots li:nth-child(2) a::before,
+.hero:has(.slide:nth-child(3):target) .dots li:nth-child(3) a::before,
+.hero:has(.slide:nth-child(4):target) .dots li:nth-child(4) a::before,
+.hero:has(.slide:nth-child(5):target) .dots li:nth-child(5) a::before { background: var(--ink); }
+.pause { display: none; } /* sem movimento, não há o que pausar */
+.pause { align-items: center; gap: .5rem; }
+.pause label { display: inline-flex; align-items: center; min-height: 2.75rem; font-size: .9375rem; cursor: pointer; }
+.pause input { width: 1.25rem; height: 1.25rem; margin: 0; accent-color: var(--ink); }
+.pause input:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+/* 6 e 7. Lista compacta */
+.minis { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr)); }
+.mini {
+  position: relative;
+  display: grid; grid-template-columns: 3rem 1fr; gap: .25rem .85rem;
+  padding: .75rem; background: var(--card); border: 1px solid var(--rule);
+}
+.cover--sm { grid-row: span 2; align-self: start; padding: 0; }
+.mini-body { min-width: 0; }
+.mini-title { font: 700 1.0625rem/1.25 var(--serif); overflow-wrap: anywhere; }
+.mini .price { padding: .15rem 0 0; border: 0; }
+.mini .price strong { font-size: 1.25rem; }
+.mini .meta { padding: 0; border: 0; font-size: .8125rem; }
+.mini .go { justify-self: start; }
+
+/* 5. Canais: o único bloco em negativo da página */
+.join {
+  margin-top: clamp(2.25rem, 1.6rem + 2.4vw, 3.75rem);
+  padding: clamp(1.5rem, 1rem + 2vw, 2.5rem);
+  background: var(--ink); color: var(--card);
+  border-top: 4px solid var(--red);
+}
+.join p { margin-top: .4rem; max-width: 36rem; }
+.join-links { list-style: none; margin: 1rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+.join-links a {
+  display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 1.1rem;
+  font: 700 .9375rem/1.2 var(--sans); text-decoration: none;
+  color: var(--ink); background: var(--card);
+}
+.join a:focus-visible { outline-color: var(--card); }
+
+/* 8. Alerta em 3 passos (sequência de verdade, por isso numerada) */
+.steps { list-style: none; counter-reset: passo; margin: 0; padding: 0; display: grid; gap: .5rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
+.steps li { counter-increment: passo; padding: .9rem 1rem; background: var(--card); border: 1px solid var(--rule); text-wrap: pretty; }
+.steps li::before { content: counter(passo); display: block; font: 700 1.75rem/1 var(--serif); color: var(--red); margin-bottom: .35rem; }
+.sec > .acts { padding-top: 1rem; }
+.alert--solid { color: var(--card); background: var(--ink); border-color: var(--ink); flex: 0 1 auto; }
 
 /* Rodapé */
 .foot {
@@ -195,5 +289,60 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
 .doc code { font-size: .9375em; }
 
 @media (prefers-reduced-motion: no-preference) {
-  .go, .alert, .nichos a { transition: background-color .15s, border-color .15s, transform .1s; }
+  .go, .alert, .nichos a, .join-links a { transition: background-color .15s, border-color .15s, transform .1s; }
+
+  /* Passagem automática do banner (WCAG 2.2.2): pausa com hover, foco ou "Pausar";
+     tocar num indicador (:target) devolve o controle manual, com scroll-snap. */
+  .pause { display: flex; }
+  .hero-view { overflow: hidden; }
+  @keyframes pass-3 {
+    0%, 30% { transform: translateX(-0%); }
+    33.33%, 63.33% { transform: translateX(-100%); }
+    66.67%, 96.67% { transform: translateX(-200%); }
+    100% { transform: translateX(0); }
+  }
+  @keyframes show-3 { 0%, 33.33%, 96.67%, 100% { visibility: visible; } 33.34%, 96.66% { visibility: hidden; } }
+  @keyframes dot-3 { 0%, 33.33% { background: var(--ink); } 33.34%, 100% { background: transparent; } }
+  .hero--3 .hero-track { animation: pass-3 18s infinite; }
+  .hero--3 .slide { animation: show-3 18s infinite; }
+  .hero--3 .dots a::before { animation: dot-3 18s infinite; }
+  .hero--3 .slide:nth-child(2), .hero--3 .dots li:nth-child(2) a::before { animation-delay: -12s; }
+  .hero--3 .slide:nth-child(3), .hero--3 .dots li:nth-child(3) a::before { animation-delay: -6s; }
+  @keyframes pass-4 {
+    0%, 22.5% { transform: translateX(-0%); }
+    25%, 47.5% { transform: translateX(-100%); }
+    50%, 72.5% { transform: translateX(-200%); }
+    75%, 97.5% { transform: translateX(-300%); }
+    100% { transform: translateX(0); }
+  }
+  @keyframes show-4 { 0%, 25%, 97.5%, 100% { visibility: visible; } 25.01%, 97.49% { visibility: hidden; } }
+  @keyframes dot-4 { 0%, 25% { background: var(--ink); } 25.01%, 100% { background: transparent; } }
+  .hero--4 .hero-track { animation: pass-4 24s infinite; }
+  .hero--4 .slide { animation: show-4 24s infinite; }
+  .hero--4 .dots a::before { animation: dot-4 24s infinite; }
+  .hero--4 .slide:nth-child(2), .hero--4 .dots li:nth-child(2) a::before { animation-delay: -18s; }
+  .hero--4 .slide:nth-child(3), .hero--4 .dots li:nth-child(3) a::before { animation-delay: -12s; }
+  .hero--4 .slide:nth-child(4), .hero--4 .dots li:nth-child(4) a::before { animation-delay: -6s; }
+  @keyframes pass-5 {
+    0%, 18% { transform: translateX(-0%); }
+    20%, 38% { transform: translateX(-100%); }
+    40%, 58% { transform: translateX(-200%); }
+    60%, 78% { transform: translateX(-300%); }
+    80%, 98% { transform: translateX(-400%); }
+    100% { transform: translateX(0); }
+  }
+  @keyframes show-5 { 0%, 20%, 98%, 100% { visibility: visible; } 20.01%, 97.99% { visibility: hidden; } }
+  @keyframes dot-5 { 0%, 20% { background: var(--ink); } 20.01%, 100% { background: transparent; } }
+  .hero--5 .hero-track { animation: pass-5 30s infinite; }
+  .hero--5 .slide { animation: show-5 30s infinite; }
+  .hero--5 .dots a::before { animation: dot-5 30s infinite; }
+  .hero--5 .slide:nth-child(2), .hero--5 .dots li:nth-child(2) a::before { animation-delay: -24s; }
+  .hero--5 .slide:nth-child(3), .hero--5 .dots li:nth-child(3) a::before { animation-delay: -18s; }
+  .hero--5 .slide:nth-child(4), .hero--5 .dots li:nth-child(4) a::before { animation-delay: -12s; }
+  .hero--5 .slide:nth-child(5), .hero--5 .dots li:nth-child(5) a::before { animation-delay: -6s; }  .hero:is(:hover, :focus-within, :has(#pausar:checked)) :is(.hero-track, .slide),
+  .hero:is(:hover, :focus-within, :has(#pausar:checked)) .dots a::before { animation-play-state: paused; }
+  .hero:has(.slide:target) :is(.hero-track, .slide),
+  .hero:has(.slide:target) .dots a::before { animation: none; }
+  .hero:has(.slide:target) .hero-view { overflow-x: auto; }
+  .hero:has(.slide:target) .pause { display: none; }
 }
