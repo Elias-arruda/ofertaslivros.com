@@ -87,6 +87,28 @@ def tg_alert_url(bot, oid):
     return f"https://t.me/{bot}?start={oid}"
 
 
+TG_CHANNEL_RE = re.compile(r"[a-z][a-z0-9_]{4,31}", re.I)  # @username público do canal
+# ponytail: formato observado do id de Canal do WhatsApp (~24 alfanuméricos), sem spec oficial;
+# ajustar a faixa se um id real falhar.
+WA_CHANNEL_RE = re.compile(r"[A-Za-z0-9]{16,40}")
+
+
+def channels():
+    """[(nome, url)] dos canais definidos por env. Sem a env, o canal não aparece."""
+    out = []
+    tg = os.environ.get("TELEGRAM_CHANNEL_ID", "").removeprefix("@")
+    if tg:
+        if not TG_CHANNEL_RE.fullmatch(tg):
+            raise Invalid("TELEGRAM_CHANNEL_ID precisa ser o @username público do canal")
+        out.append(("Telegram", f"https://t.me/{tg}"))
+    wa = os.environ.get("WHATSAPP_CHANNEL_ID", "")
+    if wa:
+        if not WA_CHANNEL_RE.fullmatch(wa):
+            raise Invalid("WHATSAPP_CHANNEL_ID com formato inválido")
+        out.append(("WhatsApp", f"https://whatsapp.com/channel/{wa}"))
+    return out
+
+
 def partner_tag():
     return _env_id("AMAZON_PARTNER_TAG", "exemplo-20")
 
@@ -305,13 +327,22 @@ def nav(offers, current):
     return f'<nav class="nichos" aria-label="Nichos"><ul>{links}</ul></nav>'
 
 
-FOOT = """<footer class="foot">
-  <p>Como associado da Amazon, ganhamos com compras qualificadas. Também participamos do programa de afiliados do Mercado Livre. Preços verificados no horário indicado; o preço final é o da loja.</p>
+def ext(href, label):
+    return f'<a href="{e(href)}" rel="noopener noreferrer" target="_blank">{label}</a>'
+
+
+def foot(ch):
+    follow = ""
+    if ch:
+        links = " ou no ".join(ext(url, name) for name, url in ch)
+        follow = f'\n  <p>Siga as ofertas no {links}. <a href="/canais/">Sobre os canais</a></p>'
+    return f"""<footer class="foot">
+  <p>Como associado da Amazon, ganhamos com compras qualificadas. Também participamos do programa de afiliados do Mercado Livre. Preços verificados no horário indicado; o preço final é o da loja.</p>{follow}
   <p><a href="/privacidade/">Privacidade</a></p>
 </footer>"""
 
 
-def shell(title, desc, mast, body):
+def shell(title, desc, mast, body, ch=()):
     """Esqueleto comum. title/desc/mast/body já chegam escapados."""
     return f"""<!doctype html>
 <html lang="pt-BR">
@@ -332,13 +363,13 @@ def shell(title, desc, mast, body):
 <main id="conteudo">
 {body}
 </main>
-{FOOT}
+{foot(ch)}
 </body>
 </html>
 """
 
 
-def page(all_offers, genre=None, bot=None):
+def page(all_offers, genre=None, bot=None, ch=()):
     offers = [o for o in all_offers if genre is None or o["genre"] == genre]
     latest = max(o["checked_at"] for o in offers)
     cards = "\n".join(card(o, i, bot) for i, o in enumerate(offers))
@@ -352,10 +383,10 @@ def page(all_offers, genre=None, bot=None):
     title = (f"{e(GENRES[genre])}: ofertas de livros" if genre
              else "Ofertas Livros: descontos de livros conferidos na loja")
     desc = "Ofertas de livros na Amazon e no Mercado Livre, conferidas uma a uma e comparadas com o histórico de preço."
-    return shell(title, desc, mast, f'<ol class="grid">\n{cards}\n</ol>')
+    return shell(title, desc, mast, f'<ol class="grid">\n{cards}\n</ol>', ch)
 
 
-def privacy(bot=None):
+def privacy(bot=None, ch=()):
     bot_name = (f'o bot <a href="https://t.me/{e(bot)}" rel="noopener noreferrer" target="_blank">@{e(bot)}</a>'
                 if bot else "o nosso bot")
     mast = '<p class="brand"><a href="/">Ofertas Livros</a></p>\n<h1>Privacidade</h1>'
@@ -383,7 +414,25 @@ def privacy(bot=None):
 </ul>
 </article>"""
     return shell("Privacidade: Ofertas Livros",
-                 "O que o Ofertas Livros guarda, onde, por quanto tempo e como apagar.", mast, body)
+                 "O que o Ofertas Livros guarda, onde, por quanto tempo e como apagar.", mast, body, ch)
+
+
+def canais(ch, bot=None):
+    desc = {"Telegram": "as ofertas chegam assim que são publicadas, até 8 por dia, das 8h às 22h.",
+            "WhatsApp": "um resumo por dia com até 5 ofertas."}
+    items = "\n".join(f"<li>{ext(url, f'Canal no {name}')}: {desc[name]}</li>" for name, url in ch)
+    alert = (f'<p>Quer saber de um livro só? Peça um alerta de preço ao {ext(f"https://t.me/{bot}", "@" + e(bot))} '
+             'ou toque em “Me avise se baixar” na oferta.</p>' if bot else "")
+    mast = '<p class="brand"><a href="/">Ofertas Livros</a></p>\n<h1>Canais</h1>'
+    body = f"""<article class="doc">
+<p>Os canais repetem as ofertas do site, com preço conferido e o horário da verificação. São só de leitura e não pedem cadastro.</p>
+<ul>
+{items}
+</ul>
+{alert}
+<p>Os links dos canais são de afiliado: ganhamos com compras qualificadas, e o preço final é o da loja.</p>
+</article>"""
+    return shell("Canais: Ofertas Livros", "Siga as ofertas de livros no Telegram e no WhatsApp.", mast, body, ch)
 
 
 MAX_REDIRECTS = 2000  # limite de regras estáticas do _redirects na Cloudflare
@@ -424,12 +473,13 @@ def build(dev=False):
     if not dev:
         require_prod(doc)
     offers = load_offers(doc)
-    bot = tg_bot()
+    bot, ch = tg_bot(), channels()
     # tudo validado e renderizado antes de tocar no dist/
-    pages = {"index.html": page(offers, bot=bot)}
+    pages = {"index.html": page(offers, bot=bot, ch=ch), "privacidade/index.html": privacy(bot, ch)}
     for g in {o["genre"] for o in offers}:
-        pages[f"{g}/index.html"] = page(offers, g, bot)
-    pages["privacidade/index.html"] = privacy(bot)
+        pages[f"{g}/index.html"] = page(offers, g, bot, ch)
+    if ch:
+        pages["canais/index.html"] = canais(ch, bot)
     rules = redirects(offers)
     shutil.rmtree(DIST, ignore_errors=True)
     shutil.copytree(STATIC, DIST)
@@ -605,6 +655,31 @@ def selftest():
     except Invalid:
         pass
     assert len(redirects(load_offers({"offers": many[:666]})).splitlines()) == 1999
+    # canais: só com a env; validados; rel noopener noreferrer
+    saved = {k: os.environ.pop(k, None) for k in ("TELEGRAM_CHANNEL_ID", "WHATSAPP_CHANNEL_ID")}
+    assert channels() == [] and "/canais/" not in page(o)
+    os.environ.update(TELEGRAM_CHANNEL_ID="@ofertaslivros", WHATSAPP_CHANNEL_ID="0029VaAbCdEfGhIjKlMnOp12")
+    ch = channels()
+    assert ch == [("Telegram", "https://t.me/ofertaslivros"),
+                  ("WhatsApp", "https://whatsapp.com/channel/0029VaAbCdEfGhIjKlMnOp12")]
+    for html_ in (page(o, ch=ch), canais(ch, "OfertasLivrosBot")):
+        assert ('<a href="https://t.me/ofertaslivros" rel="noopener noreferrer" target="_blank">' in html_
+                and 'href="https://whatsapp.com/channel/0029VaAbCdEfGhIjKlMnOp12" rel="noopener noreferrer"' in html_)
+    assert '<a href="/canais/">' in page(o, ch=ch)
+    for k, bad in (("TELEGRAM_CHANNEL_ID", "-1001234567890"), ("TELEGRAM_CHANNEL_ID", "@a/b"),
+                   ("TELEGRAM_CHANNEL_ID", "abc"), ("WHATSAPP_CHANNEL_ID", "0029Va/../evil"),
+                   ("WHATSAPP_CHANNEL_ID", "https://evil.com")):
+        os.environ[k] = bad
+        try:
+            channels()
+            raise AssertionError(bad)
+        except Invalid:
+            pass
+        os.environ.update(TELEGRAM_CHANNEL_ID="@ofertaslivros", WHATSAPP_CHANNEL_ID="0029VaAbCdEfGhIjKlMnOp12")
+    for k, v in saved.items():
+        os.environ.pop(k, None)
+        if v is not None:
+            os.environ[k] = v
     assert brl(123456) == "R$ 1.234,56" and brl(5) == "R$ 0,05"
     # selo de 90 dias: só com history_start cobrindo 90 dias (checked_at 18/10 BRT)
     def stamp(**kw):
