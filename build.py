@@ -632,12 +632,21 @@ def internal(href, label, here):
     return f'<a href="{href}"{cur}>{label}</a>'
 
 
+# ponytail: o texto do logotipo usa fonte do sistema dentro do SVG (muda por aparelho);
+# converter em curvas na rodada de refinamento da marca (docs/marca/README.md).
+def brand(tag="p", src="/logo.svg"):
+    """Logo "Carimbo" (360x72). Na home é o h1; nas outras páginas, um <p> acima do h1."""
+    return (f'<{tag} class="brand"><a href="/"><img src="{src}" alt="Ofertas Livros" '
+            f'width="200" height="40"></a></{tag}>')
+
+
 def foot(ch, here=""):
     follow = ""
     if ch:
         links = " ou no ".join(ext(url, name) for name, url in ch)
         follow = f'\n  <p>Siga as ofertas no {links}. {internal("/canais/", "Sobre os canais", here)}</p>'
     return f"""<footer class="foot">
+  {brand(src="/logo-negativo.svg")}
   <p>Como associado da Amazon, ganhamos com compras qualificadas. Também participamos do programa de afiliados do Mercado Livre. Preços verificados no horário indicado; o preço final é o da loja.</p>{follow}
   <p>{internal("/privacidade/", "Privacidade", here)}</p>
 </footer>"""
@@ -654,6 +663,7 @@ def shell(title, desc, mast, body, ch=(), here=""):
 <meta name="description" content="{desc}">
 <meta name="theme-color" content="#e8ecf0">
 <meta name="color-scheme" content="light">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -675,8 +685,7 @@ def page(all_offers, genre=None, bot=None, ch=()):
     latest = max(o["checked_at"] for o in offers)
     cards = "\n".join(card(o, i, bot) for i, o in enumerate(offers))
     n = len(offers)
-    head = (f'<p class="brand"><a href="/">Ofertas Livros</a></p>\n<h1>{e(GENRES[genre])}</h1>' if genre
-            else '<h1><a href="/">Ofertas Livros</a></h1>')
+    head = (f'{brand()}\n<h1>{e(GENRES[genre])}</h1>' if genre else brand("h1"))
     mast = f"""{head}
 <p class="lede">Só entra aqui livro que baixou de preço de verdade. Conferimos cada um na loja e comparamos com o histórico de preço.</p>
 <p class="status">Atualizado em {when(latest)}, {n} {"oferta" if n == 1 else "ofertas"}.</p>
@@ -694,7 +703,7 @@ def page(all_offers, genre=None, bot=None, ch=()):
 def privacy(bot=None, ch=()):
     bot_name = (f'o bot <a href="https://t.me/{e(bot)}" rel="noopener noreferrer" target="_blank">@{e(bot)}</a>'
                 if bot else "o nosso bot")
-    mast = '<p class="brand"><a href="/">Ofertas Livros</a></p>\n<h1>Privacidade</h1>'
+    mast = f'{brand()}\n<h1>Privacidade</h1>'
     body = f"""<article class="doc">
 <h2>No site</h2>
 <p>O site não tem cadastro, cookies, scripts nem ferramentas de análise. Ele é hospedado na Cloudflare, que recebe os dados técnicos de cada acesso (como o endereço IP) para entregar as páginas.</p>
@@ -728,7 +737,7 @@ def canais(ch, bot=None):
     items = "\n".join(f"<li>{ext(url, f'Canal no {name}')}: {desc[name]}</li>" for name, url in ch)
     alert = (f'<p>Quer saber de um livro só? Peça um alerta de preço ao {ext(f"https://t.me/{bot}", "@" + e(bot))} '
              'ou toque em “Me avise se baixar” na oferta.</p>' if bot else "")
-    mast = '<p class="brand"><a href="/">Ofertas Livros</a></p>\n<h1>Canais</h1>'
+    mast = f'{brand()}\n<h1>Canais</h1>'
     body = f"""<article class="doc">
 <p>Os canais repetem as ofertas do site, com preço conferido e o horário da verificação. São só de leitura e não pedem cadastro.</p>
 <ul>
@@ -949,6 +958,14 @@ def selftest():
         raise AssertionError("id longo")
     except Invalid:
         pass
+    # marca: favicon SVG no <head>, logo no topo (h1 só na home) e negativo no rodapé, em todas as páginas
+    for h in (page(o), page(o, "manga"), privacy(), canais([("Telegram", "https://t.me/x")])):
+        head = h[:h.index("</head>")]
+        assert '<link rel="icon" type="image/svg+xml" href="/favicon.svg">' in head
+        assert h.count('alt="Ofertas Livros" width="200" height="40"') == 2 and 'src="/logo-negativo.svg"' in h
+    assert '<h1 class="brand"><a href="/"><img src="/logo.svg"' in page(o)
+    assert '<h1 class="brand">' not in page(o, "manga") and '<p class="brand"><a href="/"><img src="/logo.svg"' in privacy()
+    assert all((STATIC / f).is_file() for f in ("favicon.svg", "logo.svg", "logo-negativo.svg"))
     # privacidade: linkada no rodapé de todas as páginas
     assert '<a href="/privacidade/">Privacidade</a>' in page(o)
     assert '<a href="/privacidade/" aria-current="page">' in privacy()

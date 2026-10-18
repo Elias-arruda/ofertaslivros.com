@@ -37,14 +37,17 @@ a:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 
 /* Cabeçalho: discreto, alinhado à esquerda */
 .mast { max-width: 72rem; margin: 0 auto; padding: clamp(1.5rem, .9rem + 2.4vw, 3rem) var(--gutter) 1rem; }
-.brand { font: 700 1rem/1.2 var(--serif); }
-.brand a, .mast h1 a { text-decoration: none; }
+.brand a { display: inline-block; }
+/* Logo 360x72 com 10 unidades de respiro à esquerda: a margem negativa alinha o carimbo à borda do texto */
+.brand { --logo-w: clamp(15rem, 13rem + 5vw, 18rem); }
+.brand img { display: block; width: var(--logo-w); height: auto; margin-left: calc(var(--logo-w) * -10 / 360); }
 .mast h1 {
   font: 700 clamp(2.25rem, 1.75rem + 2vw, 3.25rem)/1.05 var(--serif);
   letter-spacing: -.01em;
   text-wrap: balance;
 }
-.brand + h1 { margin-top: .5rem; }
+.brand + h1 { margin-top: .75rem; }
+h1.brand + .lede { margin-top: .75rem; }
 .lede { margin-top: .6rem; max-width: 36rem; font-size: clamp(1.0625rem, 1rem + .25vw, 1.1875rem); text-wrap: pretty; }
 .status { margin-top: .5rem; font-size: .875rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 
@@ -309,17 +312,20 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
 .sec > .acts { padding-top: 1rem; }
 .alert--solid { color: var(--card); background: var(--ink); border-color: var(--ink); flex: 0 1 auto; }
 
-/* Rodapé */
+/* Rodapé: faixa escura com o logo negativo. Texto #e6ebf3 sobre a tinta: 11,6:1 */
 .foot {
-  max-width: 72rem;
-  margin: 2rem auto 0;
-  padding: 1.25rem var(--gutter) 2.5rem;
+  margin-top: clamp(2.25rem, 1.6rem + 2.4vw, 3.75rem);
+  padding: 1.5rem max(var(--gutter), (100% - 72rem) / 2 + var(--gutter)) 2.5rem;
   font-size: .875rem;
-  color: var(--muted);
+  color: #e6ebf3;
+  background: var(--ink);
 }
+.foot .brand { margin-bottom: .75rem; }
+.foot .brand { --logo-w: 11rem; }
 .foot p { max-width: 44rem; line-height: 1.8; } /* alvo de toque >= 24px nos links */
 .foot p + p { margin-top: .5rem; }
-.foot a { color: var(--ink); text-underline-offset: .15em; }
+.foot a { color: var(--card); text-underline-offset: .15em; }
+.foot a:focus-visible { outline-color: var(--card); }
 
 /* Páginas de texto (privacidade, canais) */
 .doc { max-width: 40rem; padding: clamp(1.25rem, .8rem + 1.8vw, 2rem); background: var(--card); border: 1px solid var(--rule); }
