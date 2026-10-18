@@ -106,6 +106,13 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
 .meta { font-size: .875rem; color: var(--muted); }
 .store { font-weight: 700; color: var(--ink); }
 
+/* Gráfico do histórico: linha em texto secundário, ponto vermelho no preço de hoje */
+.hist { display: flex; align-items: center; gap: .625rem; font-size: .8125rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.spark { flex: none; overflow: visible; }
+.spark-line { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+.spark-base { stroke: var(--rule); stroke-width: 1; }
+.spark-dot { fill: var(--red); }
+
 /* Selo: pílula vermelha cheia, colada ao preço (branco sobre #b3262f: 6,5:1) */
 .stamp {
   padding: .125rem .45rem;
@@ -342,7 +349,7 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
   .slide-title, .slide .author, .slide .deal { grid-column: 2; }
   .slide .author { margin-top: .2rem; }
   .slide .deal { padding-top: .5rem; }
-  .slide .meta, .slide .acts { grid-column: 1 / -1; margin-top: .625rem; }
+  .slide .meta, .slide .hist, .slide .acts { grid-column: 1 / -1; margin-top: .625rem; }
   /* Lista compacta: sem a capa decorativa, botão na largura toda */
   .minis { gap: .375rem; }
   .mini { grid-template-columns: 1fr; padding: .5rem .75rem .625rem; gap: .25rem; }

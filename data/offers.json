@@ -1,7 +1,7 @@
 {
   "version": 2,
   "_exemplo": true,
-  "_nota": "Dados de exemplo (contrato v2, docs/produto/comparacao-lojas.md). ASINs, MLB ids e links do ML são fictícios (só o formato é válido). Preços em centavos. Sem image_url: a foto do ML é testada no selftest. history_since recente de propósito: o exemplo não tem 90 dias de histórico. Casos: ML vence (habitos-atomicos, dom-casmurro), Amazon vence (torto-arado, a-psicologia-financeira), empate com o ML verificado depois (tudo-e-rio), ML fora do prazo de 2 h (1984-orwell) e livros com uma loja.",
+  "_nota": "Dados de exemplo (contrato v2, docs/produto/comparacao-lojas.md). ASINs, MLB ids e links do ML são fictícios (só o formato é válido). Preços em centavos. Sem image_url: a foto do ML é testada no selftest. history_since recente de propósito: o exemplo não tem 90 dias de histórico. Casos: ML vence (habitos-atomicos, dom-casmurro), Amazon vence (torto-arado, a-psicologia-financeira), empate com o ML verificado depois (tudo-e-rio), ML fora do prazo de 2 h (1984-orwell) e livros com uma loja. price_points (proposta ao contrato) só com dias depois do history_since, sem inventar 90 dias: gráfico em torto-arado, habitos-atomicos, rapido-e-devagar e one-piece-vol-1 (subiu depois de cair: sem \"caiu\"); dom-casmurro tem um ponto só (sem gráfico).",
   "offers": [
     {
       "id": "habitos-atomicos",
@@ -27,7 +27,21 @@
           "list_price_cents": 5990,
           "lowest_90d_cents": 3290,
           "history_since": "2026-10-11",
-          "checked_at": "2026-10-18T09:10:00-03:00"
+          "checked_at": "2026-10-18T09:10:00-03:00",
+          "price_points": [
+            {
+              "date": "2026-10-11",
+              "price_cents": 3990
+            },
+            {
+              "date": "2026-10-13",
+              "price_cents": 3790
+            },
+            {
+              "date": "2026-10-16",
+              "price_cents": 3490
+            }
+          ]
         }
       ]
     },
@@ -44,7 +58,29 @@
           "list_price_cents": 7490,
           "lowest_90d_cents": 4290,
           "history_since": "2026-10-04",
-          "checked_at": "2026-10-18T08:47:00-03:00"
+          "checked_at": "2026-10-18T08:47:00-03:00",
+          "price_points": [
+            {
+              "date": "2026-10-04",
+              "price_cents": 5490
+            },
+            {
+              "date": "2026-10-08",
+              "price_cents": 5290
+            },
+            {
+              "date": "2026-10-11",
+              "price_cents": 4990
+            },
+            {
+              "date": "2026-10-15",
+              "price_cents": 4590
+            },
+            {
+              "date": "2026-10-17",
+              "price_cents": 4590
+            }
+          ]
         },
         {
           "store": "mercadolivre",
@@ -72,7 +108,21 @@
           "list_price_cents": 7990,
           "lowest_90d_cents": 5490,
           "history_since": "2026-10-11",
-          "checked_at": "2026-10-18T08:31:00-03:00"
+          "checked_at": "2026-10-18T08:31:00-03:00",
+          "price_points": [
+            {
+              "date": "2026-10-11",
+              "price_cents": 6490
+            },
+            {
+              "date": "2026-10-14",
+              "price_cents": 5490
+            },
+            {
+              "date": "2026-10-16",
+              "price_cents": 5990
+            }
+          ]
         }
       ]
     },
@@ -89,7 +139,21 @@
           "list_price_cents": 8490,
           "lowest_90d_cents": 3990,
           "history_since": "2026-10-04",
-          "checked_at": "2026-10-18T08:15:00-03:00"
+          "checked_at": "2026-10-18T08:15:00-03:00",
+          "price_points": [
+            {
+              "date": "2026-10-04",
+              "price_cents": 4990
+            },
+            {
+              "date": "2026-10-09",
+              "price_cents": 4490
+            },
+            {
+              "date": "2026-10-14",
+              "price_cents": 3990
+            }
+          ]
         }
       ]
     },
@@ -223,7 +287,13 @@
           "list_price_cents": 2990,
           "lowest_90d_cents": 1490,
           "history_since": "2026-10-11",
-          "checked_at": "2026-10-18T07:50:00-03:00"
+          "checked_at": "2026-10-18T07:50:00-03:00",
+          "price_points": [
+            {
+              "date": "2026-10-11",
+              "price_cents": 1990
+            }
+          ]
         },
         {
           "store": "amazon",

@@ -50,7 +50,8 @@ ISBN_RE = re.compile(r"\d{9}[\dX]|\d{13}")
 IMG_HOST = "http2.mlstatic.com"  # único host de foto liberado no img-src da CSP
 
 BOOK_KEYS = {"id", "isbn", "genre", "title", "author", "image_url", "stores", "featured", "trending_rank"}
-STORE_COMMON = {"store", "price_cents", "list_price_cents", "lowest_90d_cents", "history_since", "checked_at"}
+STORE_COMMON = {"store", "price_cents", "list_price_cents", "lowest_90d_cents", "history_since", "checked_at",
+                "price_points"}  # price_points: opcional, proposto ao contrato (gráfico do histórico)
 # O link do ML é opaco (param ref cifrado), então vem do painel e é validado.
 STORE_KEYS = {"amazon": {"asin"}, "mercadolivre": {"ml_url", "ml_product_id"}}
 
@@ -240,7 +241,38 @@ def validate_store(s, tag, aff):
     out["checked_at"] = dt
     # Opcional: data (BRT) do 1º preço desta loja no histórico. Sem ela, nada de selo (CDC).
     out["history_since"] = _date(s.get("history_since"), "history_since", dt)
+    out["price_points"] = price_points(s.get("price_points"), out)
     out["url"] = affiliate_url(out, tag, aff)
+    return out
+
+
+MAX_POINTS = 90
+
+
+def price_points(v, s):
+    """Série opcional [{"date", "price_cents"}] -> [(date, cents)]. Estrita: até 90 pontos, datas
+    crescentes entre history_since e o dia do checked_at, e nada abaixo do lowest_90d_cents
+    dentro da janela (o gráfico não pode contradizer o selo)."""
+    if v is None:
+        return []
+    k = f"{s['store']}.price_points"
+    if not isinstance(v, list) or len(v) > MAX_POINTS:
+        raise Invalid(f"{k} precisa ser lista com até {MAX_POINTS} pontos")
+    if v and s["history_since"] is None:
+        raise Invalid(f"{k} sem history_since")
+    day, out = s["checked_at"].astimezone(BRT).date(), []
+    for pt in v:
+        if not isinstance(pt, dict) or set(pt) != {"date", "price_cents"}:
+            raise Invalid(f'{k}: cada ponto é {{"date", "price_cents"}}: {pt!r}')
+        d = _date(pt["date"], f"{k}.date", s["checked_at"])
+        if d is None or d < s["history_since"]:
+            raise Invalid(f"{k}: data antes do history_since ou vazia: {pt!r}")
+        if out and d <= out[-1][0]:
+            raise Invalid(f"{k}: datas precisam ser crescentes, sem repetir: {pt!r}")
+        c = _cents(pt, "price_cents")
+        if (day - d).days < 90 and c < s["lowest_90d_cents"]:
+            raise Invalid(f"{k}: ponto abaixo do lowest_90d_cents: {pt!r}")
+        out.append((d, c))
     return out
 
 
@@ -438,6 +470,44 @@ def deal(o, pad="      "):
     return f'<div class="deal">{stamp}\n{pad}  <p class="price">{price_html(o)}</p>\n{pad}</div>'
 
 
+def series(o):
+    """Pontos do gráfico da vencedora: os anteriores ao dia da verificação + o preço atual,
+    que vale para hoje. Sem price_points, ou com menos de 2, não há gráfico."""
+    if len(o["price_points"]) < 2:
+        return []
+    day = o["checked_at"].astimezone(BRT).date()
+    return [(d, c) for d, c in o["price_points"] if d < day] + [(day, o["price_cents"])]
+
+
+def chart_label(o, pts):
+    """"90 dias" só com o selo de 90 dias válido E pontos cobrindo os 90 dias; senão "desde DD/MM"."""
+    first, last = pts[0][0], pts[-1][0]
+    lo, hi = min(c for _, c in pts), max(c for _, c in pts)
+    when_ = "90 dias" if seal(o) == "90d" and (last - first).days >= 89 else f"desde {first:%d/%m}"
+    return f"{when_}: {brl(lo)}" + (f" a {brl(hi)}" if hi > lo else "")
+
+
+def chart(o, pad="  "):
+    """Sparkline em SVG inline (sem JS, sem style=): x pela data, y pelo preço, ponto vermelho no atual."""
+    pts = series(o)
+    if not pts:
+        return ""
+    W, H, M = 120, 32, 3
+    first, span = pts[0][0], max((pts[-1][0] - pts[0][0]).days, 1)
+    lo, hi = min(c for _, c in pts), max(c for _, c in pts)
+    xy = [(M + (d - first).days / span * (W - 2 * M),
+           M + ((hi - c) / (hi - lo) if hi > lo else .5) * (H - 2 * M)) for d, c in pts]
+    line = " ".join(f"{x:.1f},{y:.1f}" for x, y in xy)
+    label = chart_label(o, pts)
+    title = f"Preço {na(o['store'])} de {first:%d/%m} a {pts[-1][0]:%d/%m}: {label.split(': ', 1)[1]}"
+    return (f'\n{pad}<p class="hist"><svg class="spark" viewBox="0 0 {W} {H}" width="{W}" height="{H}" '
+            f'aria-hidden="true" focusable="false"><title>{e(title)}</title>'
+            f'<line class="spark-base" x1="0" y1="{H - .5}" x2="{W}" y2="{H - .5}"/>'
+            f'<polyline class="spark-line" points="{line}"/>'
+            f'<circle class="spark-dot" cx="{xy[-1][0]:.1f}" cy="{xy[-1][1]:.1f}" r="3"/></svg>'
+            f'<span>{e(label)}</span></p>')
+
+
 def checked(s):
     return f'verificado em <time datetime="{e(s["checked_at"].isoformat())}">{when(s["checked_at"])}</time>'
 
@@ -483,7 +553,7 @@ def card(o, i, bot=None, h=2):
       {deal(o)}
     </div>
   </div>
-  <p class="meta">{meta_html(o)}</p>
+  <p class="meta">{meta_html(o)}</p>{chart(o)}
   <div class="acts">{buy(o)}{alert}</div>
 </li>"""
 
@@ -495,7 +565,7 @@ def slide(o, i, k, n):
     <h3 class="slide-title">{e(o["title"])}</h3>
     <p class="author">{e(o["author"])}</p>
     {deal(o, "    ")}
-    <p class="meta">{meta_html(o)}</p>
+    <p class="meta">{meta_html(o)}</p>{chart(o, "    ")}
     <div class="acts">{buy(o)}</div>
   </div>
 </div>"""
@@ -1085,6 +1155,52 @@ def selftest():
     assert 'class="stamp' not in stamp(history_since="2026-07-20", lowest_90d_cents=1000)
     for bad in ("2026-10-19", "20260720", "2026-02-30", "2026-07-20T00:00", 20260720):
         assert rejects(A(history_since=bad)), bad
+    # price_points: opcional, estrito; gráfico da vencedora com 2+ pontos
+    def pp(*pts):
+        return [{"date": d, "price_cents": c} for d, c in pts]
+    ok_pp = pp(("2026-10-01", 2990), ("2026-10-10", 2490))
+    assert load(A(history_since="2026-10-01", price_points=[]))[0]["price_points"] == []
+    assert load(A(history_since="2026-10-01", price_points=ok_pp))[0]["price_points"] == [
+        (date(2026, 10, 1), 2990), (date(2026, 10, 10), 2490)]
+    def days(n):  # n pontos diários a partir de 01/07
+        return pp(*((str(date(2026, 7, 1) + timedelta(d)), 2990) for d in range(n)))
+    assert load(A(history_since="2026-07-01", price_points=days(MAX_POINTS)))
+    assert rejects(A(history_since="2026-07-01", price_points=days(MAX_POINTS + 1)))  # mais de 90
+    for bad in ("x", {}, ok_pp[0], [{**ok_pp[0], "x": 1}], [{"date": "2026-10-01"}], [{"price_cents": 2990}], ["2026-10-01"],
+                pp(("2026-10-19", 2990)),                         # depois do checked_at (18/10)
+                pp(("2026-09-30", 2990)),                         # antes do history_since
+                pp(("01/10/2026", 2990)), pp(("2026-02-30", 2990)), [{"date": None, "price_cents": 2990}],
+                pp(("2026-10-10", 2490), ("2026-10-01", 2990)),  # ordem errada
+                pp(("2026-10-01", 2990), ("2026-10-01", 2490)),  # data repetida
+                pp(("2026-10-01", 29.9)), pp(("2026-10-01", 0)), pp(("2026-10-01", True)),
+                pp(("2026-10-01", 1890))):                        # abaixo do lowest_90d_cents (1990)
+        assert rejects(A(history_since="2026-10-01", price_points=bad)), bad
+    assert rejects(A(price_points=ok_pp))                                 # sem history_since
+    assert load(A(history_since="2026-06-01", price_points=pp(("2026-06-10", 990))))  # fora da janela de 90 dias
+    h = stamp(history_since="2026-10-01", price_points=ok_pp)
+    assert h.count('<p class="hist"><svg class="spark"') == 1 and "<span>desde 01/10: R$ 19,90 a R$ 29,90</span>" in h
+    assert "<title>Preço na Amazon de 01/10 a 18/10: R$ 19,90 a R$ 29,90</title>" in h
+    assert 'class="spark-dot" cx="117.0" cy="29.0"' in h and 'points="3.0,3.0 63.4,16.0 117.0,29.0"' in h
+    assert "style=" not in h[h.index("<svg"):h.index("</svg>")]
+    assert 'class="hist"' not in stamp(history_since="2026-10-01", price_points=ok_pp[:1])  # 1 ponto: sem gráfico
+    assert 'class="hist"' not in stamp(history_since="2026-10-01")                          # sem série
+    # ponto de hoje: vale o preço atual verificado, não o do ponto
+    r = load(A(history_since="2026-10-01", price_points=pp(("2026-10-01", 2990), ("2026-10-18", 2500))))[0]
+    assert series(r) == [(date(2026, 10, 1), 2990), (date(2026, 10, 18), 1990)]
+    # rótulo: "90 dias" só com o selo de 90 dias e a série cobrindo os 90 dias
+    full = pp(("2026-07-20", 2990), ("2026-09-01", 2490))
+    assert "<span>90 dias: R$ 19,90 a R$ 29,90</span>" in stamp(history_since="2026-07-20", price_points=full)
+    assert "<span>desde 01/08: " in stamp(history_since="2026-07-20", price_points=pp(("2026-08-01", 2990), ("2026-09-01", 2490)))
+    assert "<span>desde 21/07: " in stamp(history_since="2026-07-21", price_points=pp(("2026-07-21", 2990), ("2026-09-01", 2490)))
+    assert "<span>desde 20/07: " in stamp(history_since="2026-07-20", lowest_90d_cents=1000,  # sem selo
+                                          price_points=pp(("2026-07-20", 2990), ("2026-09-01", 2490)))
+    assert "<span>desde 01/10: R$ 19,90</span>" in stamp(history_since="2026-10-01",       # preço parado
+                                                              price_points=pp(("2026-10-01", 1990), ("2026-10-10", 1990)))
+    # gráfico da vencedora (ML), não da outra loja
+    two_pp = load({**good, "stores": [{**amz, "history_since": "2026-10-01", "price_points": ok_pp},
+                                      {**mls, "price_cents": 1890, "history_since": "2026-10-05",
+                                       "price_points": pp(("2026-10-05", 2190), ("2026-10-12", 2090))}]})
+    assert "<span>desde 05/10: R$ 18,90 a R$ 21,90</span>" in page(two_pp) and "desde 01/10" not in page(two_pp)
     assert rejects({**good, "history_start": "2026-07-01"})  # campo da proposta antiga, substituído
     # campos novos: tipo errado quebra o build
     for bad in ("true", 1, 0, None, "sim"):
