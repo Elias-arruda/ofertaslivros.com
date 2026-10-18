@@ -299,6 +299,7 @@ def nav(offers, current):
 
 FOOT = """<footer class="foot">
   <p>Como associado da Amazon, ganhamos com compras qualificadas. Também participamos do programa de afiliados do Mercado Livre. Preços verificados no horário indicado; o preço final é o da loja.</p>
+  <p><a href="/privacidade/">Privacidade</a></p>
 </footer>"""
 
 
@@ -346,6 +347,37 @@ def page(all_offers, genre=None, bot=None):
     return shell(title, desc, mast, f'<ol class="grid">\n{cards}\n</ol>')
 
 
+def privacy(bot=None):
+    bot_name = (f'o bot <a href="https://t.me/{e(bot)}" rel="noopener noreferrer" target="_blank">@{e(bot)}</a>'
+                if bot else "o nosso bot")
+    mast = '<p class="brand"><a href="/">Ofertas Livros</a></p>\n<h1>Privacidade</h1>'
+    body = f"""<article class="doc">
+<h2>No site</h2>
+<p>O site não tem cadastro, cookies, scripts nem ferramentas de análise. Ele é hospedado na Cloudflare, que recebe os dados técnicos de cada acesso (como o endereço IP) para entregar as páginas.</p>
+<p>Ao clicar em uma oferta, você vai para a Amazon ou para o Mercado Livre. A partir daí valem as políticas de privacidade de cada loja.</p>
+<h2>No alerta de preço do Telegram</h2>
+<p>Quando você pede um alerta para {bot_name}, guardamos só o necessário para avisar você:</p>
+<ul>
+<li>o identificador da conversa com o bot no Telegram (chat_id);</li>
+<li>o livro e o preço-alvo do alerta;</li>
+<li>a data de criação e a data de expiração.</li>
+</ul>
+<p>Não guardamos seu nome, seu nome de usuário, seu telefone nem o texto das suas mensagens.</p>
+<h2>Onde fica</h2>
+<p>Num banco de dados Cloudflare D1, fora do código do site e sem acesso público. A Cloudflare opera esse banco para nós.</p>
+<h2>Por quanto tempo</h2>
+<p>Até o alerta disparar (ele é apagado quando a mensagem é enviada) ou por no máximo 90 dias, o que vier primeiro. Não guardamos histórico de alertas enviados.</p>
+<h2>Como apagar</h2>
+<ul>
+<li><code>/remover</code> seguido do livro apaga um alerta;</li>
+<li><code>/parar</code> apaga todos os seus dados;</li>
+<li>bloquear o bot também apaga todos os seus dados.</li>
+</ul>
+</article>"""
+    return shell("Privacidade: Ofertas Livros",
+                 "O que o Ofertas Livros guarda, onde, por quanto tempo e como apagar.", mast, body)
+
+
 HEADERS = """/*
   Content-Security-Policy: default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
@@ -375,6 +407,7 @@ def build(dev=False):
     pages = {"index.html": page(offers, bot=bot)}
     for g in {o["genre"] for o in offers}:
         pages[f"{g}/index.html"] = page(offers, g, bot)
+    pages["privacidade/index.html"] = privacy(bot)
     redirects = "".join(f"/r/{o['id']} {o['url']} 302\n" for o in offers)
     shutil.rmtree(DIST, ignore_errors=True)
     shutil.copytree(STATIC, DIST)
@@ -516,6 +549,11 @@ def selftest():
         raise AssertionError("id longo")
     except Invalid:
         pass
+    # privacidade: linkada no rodapé de todas as páginas
+    assert '<a href="/privacidade/">Privacidade</a>' in page(o) and '<a href="/privacidade/">' in privacy()
+    pv = privacy("OfertasLivrosBot")
+    assert all(w in pv for w in ("chat_id", "Cloudflare D1", "90 dias", "/parar", "bloquear o bot",
+                                 "https://t.me/OfertasLivrosBot"))
     assert brl(123456) == "R$ 1.234,56" and brl(5) == "R$ 0,05"
     # selo de 90 dias: só com history_start cobrindo 90 dias (checked_at 18/10 BRT)
     def stamp(**kw):
