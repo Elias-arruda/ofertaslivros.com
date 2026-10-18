@@ -220,20 +220,23 @@ def card(o, i):
            if off else "")
     disc = f'<span class="off">−{off}%</span>' if off else ""
     stamp = '<p class="stamp">Menor preço em 90 dias</p>' if low else ""
-    return f"""<li class="card{' card--low' if low else ''}">
-  <div class="cover cover--{i % 6}">
-    <img src="/capa.svg" alt="Capa ilustrativa de {t}" width="120" height="180" loading="lazy" decoding="async">
-    <span class="cover-t" aria-hidden="true">{t}</span>
-    <span class="cover-a" aria-hidden="true">{a}</span>
+    prep = "no" if o["store"] == "mercadolivre" else "na"
+    return f"""<li class="card">
+  <div class="top">
+    <div class="cover cover--{i % 6}">
+      <img src="/capa.svg" alt="Capa ilustrativa de {t}" width="120" height="180" loading="lazy" decoding="async">
+      <span class="cover-t" aria-hidden="true">{t}</span>
+      <span class="cover-a" aria-hidden="true">{a}</span>
+    </div>
+    <div class="head">
+      <h2 class="title">{t}</h2>
+      <p class="author">{a}</p>
+    </div>
   </div>
-  <div class="info">
-    {stamp}
-    <h2 class="title">{t}</h2>
-    <p class="author">{a}</p>
-    <p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong> {old} {disc}</p>
-    <p class="meta"><span class="store store--{o["store"]}">{store}</span> · verificado em <time datetime="{e(o["checked_at"].isoformat())}">{when(o["checked_at"])}</time></p>
-    <a class="go" href="/r/{e(o["id"])}" rel="sponsored noopener noreferrer" target="_blank">Ver {"no" if o["store"] == "mercadolivre" else "na"} {store}<span class="sr"> (abre em nova aba)</span></a>
-  </div>
+  {stamp}
+  <p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong> {old} {disc}</p>
+  <p class="meta"><span class="store">{store}</span>, verificado em <time datetime="{e(o["checked_at"].isoformat())}">{when(o["checked_at"])}</time></p>
+  <p class="acts"><a class="go" href="/r/{e(o["id"])}" rel="sponsored noopener noreferrer" target="_blank">Ver {prep} {store}<span class="sr">: {t} (abre em nova aba)</span></a></p>
 </li>"""
 
 
@@ -247,41 +250,53 @@ def nav(offers, current):
     return f'<nav class="nichos" aria-label="Nichos"><ul>{links}</ul></nav>'
 
 
-def page(all_offers, genre=None):
-    offers = [o for o in all_offers if genre is None or o["genre"] == genre]
-    latest = max(o["checked_at"] for o in offers)
-    cards = "\n".join(card(o, i) for i, o in enumerate(offers))
-    title = (f"{e(GENRES[genre])}: ofertas de livros" if genre
-             else "Ofertas Livros: descontos verificados com histórico de 90 dias")
-    section = f"{e(GENRES[genre])} · " if genre else ""
+FOOT = """<footer class="foot">
+  <p>Como associado da Amazon, ganhamos com compras qualificadas. Também participamos do programa de afiliados do Mercado Livre. Preços verificados no horário indicado; o preço final é o da loja.</p>
+</footer>"""
+
+
+def shell(title, desc, mast, body):
+    """Esqueleto comum. title/desc/mast/body já chegam escapados."""
     return f"""<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title}</title>
-<meta name="description" content="Ofertas de livros na Amazon e no Mercado Livre, conferidas uma a uma, com aviso de menor preço em 90 dias.">
-<meta name="theme-color" content="#f4eee2">
+<meta name="description" content="{desc}">
+<meta name="theme-color" content="#e8ecf0">
+<meta name="color-scheme" content="light">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+<a class="skip" href="#conteudo">Pular para o conteúdo</a>
 <header class="mast">
-  <p class="kicker">{section}Edição de {when(latest)} · {len(offers)} ofertas</p>
-  <h1><a href="/">Ofertas <em>Livros</em></a></h1>
-  <p class="lede">Só entra aqui preço que caiu de verdade. Cada livro é conferido na loja e comparado com os últimos 90 dias.</p>
-  {nav(all_offers, genre)}
+{mast}
 </header>
-<main>
-<ol class="grid">
-{cards}
-</ol>
+<main id="conteudo">
+{body}
 </main>
-<footer class="foot">
-  <p>Como associado da Amazon, ganhamos com compras qualificadas. Também participamos do programa de afiliados do Mercado Livre. Preços verificados no horário indicado; o preço final é o da loja.</p>
-</footer>
+{FOOT}
 </body>
 </html>
 """
+
+
+def page(all_offers, genre=None):
+    offers = [o for o in all_offers if genre is None or o["genre"] == genre]
+    latest = max(o["checked_at"] for o in offers)
+    cards = "\n".join(card(o, i) for i, o in enumerate(offers))
+    n = len(offers)
+    head = (f'<p class="brand"><a href="/">Ofertas Livros</a></p>\n<h1>{e(GENRES[genre])}</h1>' if genre
+            else '<h1><a href="/">Ofertas Livros</a></h1>')
+    mast = f"""{head}
+<p class="lede">Só entra aqui livro que baixou de preço de verdade. Conferimos cada um na loja e comparamos com o histórico de preço.</p>
+<p class="status">Atualizado em {when(latest)}, {n} {"oferta" if n == 1 else "ofertas"}.</p>
+{nav(all_offers, genre)}"""
+    title = (f"{e(GENRES[genre])}: ofertas de livros" if genre
+             else "Ofertas Livros: descontos verificados com histórico de 90 dias")
+    desc = "Ofertas de livros na Amazon e no Mercado Livre, conferidas uma a uma, com aviso de menor preço em 90 dias."
+    return shell(title, desc, mast, f'<ol class="grid">\n{cards}\n</ol>')
 
 
 HEADERS = """/*
