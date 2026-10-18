@@ -47,7 +47,7 @@ TAG_RE = re.compile(r"[A-Za-z0-9-]{1,64}")
 CTRL_RE = re.compile(r"[\x00-\x1f\x7f]")
 
 COMMON = {"id", "store", "genre", "title", "author", "price_cents", "list_price_cents",
-          "lowest_90d_cents", "checked_at", "history_start"}
+          "lowest_90d_cents", "checked_at", "history_start", "featured", "trending_rank"}
 STORE_KEY = {"amazon": "asin", "mercadolivre": "ml_item_id"}
 # O link do ML é opaco (param ref cifrado), então vem do painel e é validado.
 STORE_EXTRA = {"amazon": set(), "mercadolivre": {"ml_url"}}
@@ -234,6 +234,15 @@ def validate_offer(o):
         if hs > dt.astimezone(BRT).date():
             raise Invalid("history_start depois de checked_at")
     out["history_start"] = hs
+    # Opcionais propostos ao back: curadoria manual e ranking de popularidade real.
+    ft = o.get("featured", False)
+    if type(ft) is not bool:
+        raise Invalid(f"featured precisa ser true/false: {ft!r}")
+    out["featured"] = ft
+    tr = o.get("trending_rank")
+    if tr is not None and (type(tr) is not int or tr < 1):  # type() exclui bool e float
+        raise Invalid(f"trending_rank precisa ser inteiro >= 1: {tr!r}")
+    out["trending_rank"] = tr
     return out
 
 
@@ -736,6 +745,12 @@ def selftest():
     assert 'class="stamp' not in stamp(history_start="2026-07-20", lowest_90d_cents=1000)
     for bad in ("2026-10-19", "20260720", "2026-02-30", "2026-07-20T00:00", 20260720):
         assert rejects({**good, "history_start": bad}), bad
+    # campos novos: tipo errado quebra o build
+    for bad in ("true", 1, 0, None, "sim"):
+        assert rejects({**good, "featured": bad}), bad
+    for bad in (0, -1, True, 1.0, "1"):
+        assert rejects({**good, "trending_rank": bad}), bad
+    assert load_offers({"offers": [{**good, "featured": True, "trending_rank": 3}]})[0]["trending_rank"] == 3
     print("selftest ok")
 
 
