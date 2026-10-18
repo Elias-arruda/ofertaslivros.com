@@ -757,7 +757,7 @@ def redirects(offers):
 
 
 HEADERS = """/*
-  Content-Security-Policy: default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; style-src 'self'; img-src 'self' https://http2.mlstatic.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
@@ -1185,6 +1185,10 @@ def selftest():
     assert (f'<img src="{img}" alt="Capa de T" width="120" height="180" loading="lazy" decoding="async">' in h
             and "/capa.svg" not in h)
     assert 'src="/capa.svg" alt="Capa ilustrativa de T"' in page(load(good))
+    # CSP: só a foto do ML entra além do próprio site
+    csp = HEADERS.split("Content-Security-Policy: ")[1].splitlines()[0]
+    assert "img-src 'self' https://http2.mlstatic.com;" in csp and csp.count("https://") == 1
+    assert "script-src" not in csp and "default-src 'none'" in csp
     print("selftest ok")
 
 
