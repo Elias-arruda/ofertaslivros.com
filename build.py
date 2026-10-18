@@ -400,8 +400,12 @@ def post_text(o, url):
 
 
 def cover(o, i, text=True):
-    """Capa tipográfica. A cor vem do índice da oferta, igual em todas as seções."""
+    """Foto do ML, se houver; senão capa tipográfica. A cor vem do índice da oferta, igual em todas as seções."""
     t = e(o["title"])
+    if o["image_url"]:
+        return (f'<div class="cover cover--photo{"" if text else " cover--sm"}">\n'
+                f'      <img src="{e(o["image_url"])}" alt="Capa de {t}" width="120" height="180" '
+                f'loading="lazy" decoding="async">\n    </div>')
     spans = (f'\n      <span class="cover-t" aria-hidden="true">{t}</span>'
              f'\n      <span class="cover-a" aria-hidden="true">{e(o["author"])}</span>' if text else "")
     return (f'<div class="cover cover--{i % 6}{"" if text else " cover--sm"}">\n'
@@ -423,16 +427,36 @@ def stamp_html(o):
             if kind == "since" else "")
 
 
+def checked(s):
+    return f'verificado em <time datetime="{e(s["checked_at"].isoformat())}">{when(s["checked_at"])}</time>'
+
+
 def meta_html(o):
-    return (f'<span class="store">{STORES[o["store"]]}</span>, verificado em '
-            f'<time datetime="{e(o["checked_at"].isoformat())}">{when(o["checked_at"])}</time>')
+    return f'<span class="store">{STORES[o["store"]]}</span>, {checked(o)}'
 
 
-def go(o, cls="go"):
-    """Link de afiliado: sempre o nosso /r/<id>, nunca a URL da loja."""
-    prep = "no" if o["store"] == "mercadolivre" else "na"
-    return (f'<a class="{cls}" href="/r/{e(o["id"])}" rel="sponsored noopener noreferrer" target="_blank">'
-            f'Ver {prep} {STORES[o["store"]]}<span class="sr">: {e(o["title"])} (abre em nova aba)</span></a>')
+def na(store):
+    return f'{"no" if store == "mercadolivre" else "na"} {STORES[store]}'
+
+
+def go(o):
+    """Link de afiliado da vencedora: sempre o nosso /r/<id>, nunca a URL da loja."""
+    return (f'<a class="go" href="/r/{e(o["id"])}" rel="sponsored noopener noreferrer" target="_blank">'
+            f'Ver {na(o["store"])} por {brl(o["price_cents"])}'
+            f'<span class="sr">: {e(o["title"])} (abre em nova aba)</span></a>')
+
+
+def buy(o):
+    """Botão da vencedora + seta (<details> nativo) com a outra loja elegível, se houver."""
+    a = o["alt"]
+    if not a:
+        return f'<div class="buy">{go(o)}</div>'
+    other = (f'<details class="alt"><summary><span class="sr">Outra loja: {STORES[a["store"]]}</span></summary>\n'
+             f'      <p class="alt-box"><a href="/r/{e(o["id"])}/{a["store"]}" rel="sponsored noopener noreferrer" '
+             f'target="_blank">Também {na(a["store"])}: {brl(a["price_cents"])}'
+             f'<span class="sr">, {e(o["title"])} (abre em nova aba)</span></a>'
+             f'<span class="alt-when">{checked(a)}</span></p></details>')
+    return f'<div class="buy">{go(o)}\n    {other}</div>'
 
 
 def card(o, i, bot=None, h=2):
@@ -450,7 +474,7 @@ def card(o, i, bot=None, h=2):
   </div>{stamp}
   <p class="price">{price_html(o)}</p>
   <p class="meta">{meta_html(o)}</p>
-  <p class="acts">{go(o)}{alert}</p>
+  <div class="acts">{buy(o)}{alert}</div>
 </li>"""
 
 
@@ -463,7 +487,7 @@ def slide(o, i, k, n):
     <p class="author">{e(o["author"])}</p>
     <p class="price">{price_html(o)}</p>
     <p class="meta">{meta_html(o)}</p>
-    <p class="acts">{go(o)}</p>
+    <div class="acts">{buy(o)}</div>
   </div>
 </div>"""
 
@@ -499,7 +523,7 @@ def mini(o, i):
     <p class="price">{price_html(o)}</p>
     <p class="meta">{meta_html(o)}</p>
   </div>
-  {go(o)}
+  {buy(o)}
 </li>"""
 
 
@@ -1140,6 +1164,27 @@ def selftest():
     r = load({**good, "stores": [{**a8, "history_since": h90}, {**m8, "price_cents": 2490}]},
              now=datetime(2026, 10, 18, 11, 0, tzinfo=BRT))[0]
     assert r["seal"] == "90d" and len(r["stores"]) == 1
+    # card: botão com loja e preço da vencedora; seta só com a segunda loja elegível
+    one = page(load(good))
+    assert ">Ver na Amazon por R$\u00a019,90<" in one and "<details" not in one
+    two = load({**good, "stores": [amz, {**mls, "price_cents": 1890, "checked_at": "2026-10-18T08:30:00-03:00"}]})
+    home12 = page(load(*({**good, "id": f"x-{k}", "stores": [amz, {**mls, "price_cents": 1890}]} for k in range(12))))
+    assert 'class="mini"' in home12 and home12.count("<details") == home12.count('class="go"')  # listas compactas também
+    for h in (page(two), page(two, "manga"), home12):
+        assert ">Ver no Mercado Livre por R$\u00a018,90<" in h
+        assert ('<details class="alt"><summary><span class="sr">Outra loja: Amazon</span></summary>' in h)
+        assert ('<a href="/r/' in h and '/amazon" rel="sponsored noopener noreferrer" target="_blank">'
+                'Também na Amazon: R$\u00a019,90' in h)
+    h = page(two)
+    assert h.count("<details") == h.count('class="go"') and h.count("verificado em") == 4  # 2 seções x 2 lojas
+    assert '<time datetime="2026-10-18T08:30:00-03:00">18/10 às 08h30</time>' in h
+    assert '<time datetime="2026-10-18T08:00:00-03:00">18/10 às 08h00</time>' in h
+    assert "<details" not in page(load({**good, "stores": [amz, {**mls, "price_cents": 1890}]},
+                                       now=datetime(2026, 10, 18, 10, 31, tzinfo=BRT)))  # ML velho: sem seta
+    h = page(load({**good, "image_url": img}))
+    assert (f'<img src="{img}" alt="Capa de T" width="120" height="180" loading="lazy" decoding="async">' in h
+            and "/capa.svg" not in h)
+    assert 'src="/capa.svg" alt="Capa ilustrativa de T"' in page(load(good))
     print("selftest ok")
 
 

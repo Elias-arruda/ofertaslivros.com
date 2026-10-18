@@ -143,6 +143,9 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
 .cover--3 { background: #d9ad3c; color: #1c2b4a; }
 .cover--4 { background: #4a3a5c; }
 .cover--5 { background: #9c4a24; }
+/* Foto do ML: inteira, sem corte, sobre a ficha */
+.cover--photo { padding: 0; background: var(--card); }
+.cover--photo img { object-fit: contain; }
 
 /* Ações: o link da loja cobre a ficha toda para facilitar o toque.
    Lado a lado quando cabem; senão, empilham com a largura toda (sem botões em escada). */
@@ -158,6 +161,43 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
 }
 .go { color: var(--card); background: var(--ink); border: 1px solid transparent; } /* borda: contorno em forced-colors */
 .go::after { content: ""; position: absolute; inset: 0; }
+
+/* Botão da loja vencedora + seta com a outra loja (<details> nativo, sem JS) */
+.buy { flex: 1 1 auto; display: flex; gap: .375rem; }
+.buy .go { flex: 1 1 auto; padding: 0 .625rem; }
+.alt { position: relative; z-index: 2; flex: none; } /* acima do .go e do .alert */
+.alt summary {
+  list-style: none; cursor: pointer;
+  width: 2.75rem; height: 2.75rem;
+  display: grid; place-items: center;
+  color: var(--ink); background: var(--card);
+  border: 1px solid var(--ink);
+}
+.alt summary::-webkit-details-marker { display: none; }
+/* Chevron: aponta para onde a ficha abre e vira ao abrir */
+.alt summary::before {
+  content: ""; width: .5rem; height: .5rem;
+  border: solid currentColor; border-width: 0 2px 2px 0;
+  transform: translateY(-2px) rotate(45deg);
+}
+.alt[open] summary::before { transform: translateY(2px) rotate(225deg); }
+.alt[open] summary { color: var(--card); background: var(--ink); }
+.alt summary:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+/* A ficha da outra loja desce da seta e cobre só o botão de alerta: o preço da vencedora
+   continua à vista para comparar. No banner (overflow: hidden) ela sobe. */
+.alt-box {
+  position: absolute; right: 0; top: calc(100% + .375rem);
+  width: max-content; max-width: min(17rem, calc(100vw - 2 * var(--gutter) - 2rem));
+  padding: .25rem .75rem .6rem;
+  background: var(--card);
+  border: 1px solid var(--ink); border-top: 3px solid var(--red);
+  box-shadow: .25rem .25rem 0 var(--rule);
+}
+.alt-box a { display: flex; align-items: center; min-height: 2.75rem; font-weight: 700; text-underline-offset: .15em; font-variant-numeric: tabular-nums; }
+.alt-when { display: block; font-size: .8125rem; color: var(--muted); }
+.slide .alt-box { top: auto; bottom: calc(100% + .375rem); }
+.slide .alt summary::before { transform: translateY(2px) rotate(225deg); }
+.slide .alt[open] summary::before { transform: translateY(-2px) rotate(45deg); }
 .alert {
   position: relative; z-index: 1; /* acima da área de toque do .go */
   color: var(--ink);
@@ -169,11 +209,12 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
 /* Hover só onde existe ponteiro: no toque, o estado ficaria preso depois de voltar da loja */
 @media (hover: hover) {
   .card:hover .go, .go:hover { background: var(--red); }
+  .alt:not([open]) summary:hover,
   .alert:hover, .nichos a:not([aria-current]):hover { background: var(--desk); border-color: var(--ink); }
   .alert--solid:hover, .join-links a:hover { background: var(--red); border-color: var(--red); color: var(--card); }
 }
 /* Pressionado: resposta imediata ao toque */
-.go:active, .alert:active, .nichos a:active { transform: translateY(1px); }
+.go:active, .alert:active, .alt summary:active, .nichos a:active { transform: translateY(1px); }
 
 /* ---------- Home: seções ---------- */
 .sec { margin-top: clamp(2.25rem, 1.6rem + 2.4vw, 3.75rem); }
@@ -242,7 +283,7 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
 .mini .price { padding: .15rem 0 0; border: 0; }
 .mini .price strong { font-size: 1.25rem; }
 .mini .meta { padding: 0; border: 0; font-size: .8125rem; }
-.mini .go { justify-self: start; }
+.mini .buy { justify-self: start; }
 
 /* 5. Canais: o único bloco em negativo da página */
 .join {
@@ -290,6 +331,7 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
 
 @media (prefers-reduced-motion: no-preference) {
   .go, .alert, .nichos a, .join-links a { transition: background-color .15s, border-color .15s, transform .1s; }
+  .alt summary::before { transition: transform .15s; }
 
   /* Passagem automática do banner (WCAG 2.2.2): pausa com hover, foco ou "Pausar";
      tocar num indicador (:target) devolve o controle manual, com scroll-snap. */
