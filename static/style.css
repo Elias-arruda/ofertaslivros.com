@@ -162,7 +162,7 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 1rem; }
   font-size: .875rem;
   color: var(--muted);
 }
-.foot p { max-width: 44rem; }
+.foot p { max-width: 44rem; line-height: 1.8; } /* alvo de toque >= 24px nos links */
 .foot p + p { margin-top: .5rem; }
 .foot a { color: var(--ink); text-underline-offset: .15em; }
 

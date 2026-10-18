@@ -309,11 +309,11 @@ def card(o, i, bot=None):
            if off else "")
     disc = f'<span class="off">−{off}%</span>' if off else ""
     kind = seal(o)
-    stamp = ('<p class="stamp">Menor preço em 90 dias</p>' if kind == "90d" else
-             f'<p class="stamp stamp--since">Menor preço desde {o["history_start"]:%d/%m}</p>'
+    stamp = ('\n  <p class="stamp">Menor preço em 90 dias</p>' if kind == "90d" else
+             f'\n  <p class="stamp stamp--since">Menor preço desde {o["history_start"]:%d/%m}</p>'
              if kind == "since" else "")
     alert = (f' <a class="alert" href="{e(tg_alert_url(bot, o["id"]))}" rel="noopener noreferrer" target="_blank">'
-             f'Me avise se baixar (Telegram)<span class="sr">: alerta de preço de {t}</span></a>' if bot else "")
+             f'Me avise se baixar (Telegram)<span class="sr">: alerta de preço de {t} (abre o Telegram)</span></a>' if bot else "")
     prep = "no" if o["store"] == "mercadolivre" else "na"
     return f"""<li class="card">
   <div class="top">
@@ -326,8 +326,7 @@ def card(o, i, bot=None):
       <h2 class="title">{t}</h2>
       <p class="author">{a}</p>
     </div>
-  </div>
-  {stamp}
+  </div>{stamp}
   <p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong> {old} {disc}</p>
   <p class="meta"><span class="store">{store}</span>, verificado em <time datetime="{e(o["checked_at"].isoformat())}">{when(o["checked_at"])}</time></p>
   <p class="acts"><a class="go" href="/r/{e(o["id"])}" rel="sponsored noopener noreferrer" target="_blank">Ver {prep} {store}<span class="sr">: {t} (abre em nova aba)</span></a>{alert}</p>
@@ -345,21 +344,27 @@ def nav(offers, current):
 
 
 def ext(href, label):
-    return f'<a href="{e(href)}" rel="noopener noreferrer" target="_blank">{label}</a>'
+    return (f'<a href="{e(href)}" rel="noopener noreferrer" target="_blank">{label}'
+            '<span class="sr"> (abre em nova aba)</span></a>')
 
 
-def foot(ch):
+def internal(href, label, here):
+    cur = ' aria-current="page"' if href == here else ""
+    return f'<a href="{href}"{cur}>{label}</a>'
+
+
+def foot(ch, here=""):
     follow = ""
     if ch:
         links = " ou no ".join(ext(url, name) for name, url in ch)
-        follow = f'\n  <p>Siga as ofertas no {links}. <a href="/canais/">Sobre os canais</a></p>'
+        follow = f'\n  <p>Siga as ofertas no {links}. {internal("/canais/", "Sobre os canais", here)}</p>'
     return f"""<footer class="foot">
   <p>Como associado da Amazon, ganhamos com compras qualificadas. Também participamos do programa de afiliados do Mercado Livre. Preços verificados no horário indicado; o preço final é o da loja.</p>{follow}
-  <p><a href="/privacidade/">Privacidade</a></p>
+  <p>{internal("/privacidade/", "Privacidade", here)}</p>
 </footer>"""
 
 
-def shell(title, desc, mast, body, ch=()):
+def shell(title, desc, mast, body, ch=(), here=""):
     """Esqueleto comum. title/desc/mast/body já chegam escapados."""
     return f"""<!doctype html>
 <html lang="pt-BR">
@@ -380,7 +385,7 @@ def shell(title, desc, mast, body, ch=()):
 <main id="conteudo">
 {body}
 </main>
-{foot(ch)}
+{foot(ch, here)}
 </body>
 </html>
 """
@@ -399,7 +404,8 @@ def page(all_offers, genre=None, bot=None, ch=()):
 {nav(all_offers, genre)}"""
     title = (f"{e(GENRES[genre])}: ofertas de livros" if genre
              else "Ofertas Livros: descontos de livros conferidos na loja")
-    desc = "Ofertas de livros na Amazon e no Mercado Livre, conferidas uma a uma e comparadas com o histórico de preço."
+    desc = (f"{e(GENRES[genre])} em oferta" if genre else "Ofertas de livros") + (
+        " na Amazon e no Mercado Livre, conferidas uma a uma e comparadas com o histórico de preço.")
     return shell(title, desc, mast, f'<ol class="grid">\n{cards}\n</ol>', ch)
 
 
@@ -431,7 +437,7 @@ def privacy(bot=None, ch=()):
 </ul>
 </article>"""
     return shell("Privacidade: Ofertas Livros",
-                 "O que o Ofertas Livros guarda, onde, por quanto tempo e como apagar.", mast, body, ch)
+                 "O que o Ofertas Livros guarda, onde, por quanto tempo e como apagar.", mast, body, ch, "/privacidade/")
 
 
 def canais(ch, bot=None):
@@ -449,7 +455,7 @@ def canais(ch, bot=None):
 {alert}
 <p>Os links dos canais são de afiliado: ganhamos com compras qualificadas, e o preço final é o da loja.</p>
 </article>"""
-    return shell("Canais: Ofertas Livros", "Siga as ofertas de livros no Telegram e no WhatsApp.", mast, body, ch)
+    return shell("Canais: Ofertas Livros", "Siga as ofertas de livros no Telegram e no WhatsApp.", mast, body, ch, "/canais/")
 
 
 MAX_REDIRECTS = 2000  # limite de regras estáticas do _redirects na Cloudflare
@@ -639,7 +645,8 @@ def selftest():
     except Invalid:
         pass
     # privacidade: linkada no rodapé de todas as páginas
-    assert '<a href="/privacidade/">Privacidade</a>' in page(o) and '<a href="/privacidade/">' in privacy()
+    assert '<a href="/privacidade/">Privacidade</a>' in page(o)
+    assert '<a href="/privacidade/" aria-current="page">' in privacy()
     pv = privacy("OfertasLivrosBot")
     assert all(w in pv for w in ("chat_id", "Cloudflare D1", "90 dias", "/parar", "bloquear o bot",
                                  "https://t.me/OfertasLivrosBot"))
