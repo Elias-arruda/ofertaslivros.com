@@ -1,0 +1,723 @@
+#!/usr/bin/env python3
+"""Coletor de preços: etapa 1 de docs/produto/alerta-de-preco.md e contrato v2 de
+docs/produto/comparacao-lojas.md. Só stdlib.
+
+    python3 collector/collect.py run --history DIR   # manual da Amazon + ML + offers.json v2
+    python3 collector/collect.py export OUT.json     # valida o catálogo e exporta a parte pública
+    python3 collector/collect.py probe [MLB...]      # confere as rotas do ML (sem gravar nada)
+
+Amazon: NENHUMA request HTTP. Até a Creators API ser liberada, o preço entra só pelo
+CSV manual (source=manual). A fila (DIR/amazon_queue.csv) diz o que o humano confere.
+Foto da Amazon também não: image_url só vem do ML.
+
+Mercado Livre: o link do painel aponta para PRODUTO de catálogo (/p/MLB...). Por produto:
+  1. GET /products/{ml_product_id} -> buy_box_winner.item_id, pictures (image_url) e o
+     atributo GTIN (doc "Buscador de produtos", 29/12/2025). Produto inativo ou sem
+     vencedor (sem estoque) conta como "inativo". GTIN diferente do ISBN do catálogo:
+     o preço do ML daquele livro é descartado e vai para o log.
+  2. GET /items/{item_id}/sale_price?context=channel_marketplace -> amount/regular_amount,
+     o preço que o comprador vê (doc "Preços de produtos", 14/10/2026).
+Token de app via client_credentials (ML_CLIENT_ID/ML_CLIENT_SECRET), nunca logado.
+
+Saída em DIR (branch price-history):
+  price_history/AAAA-MM.csv  append-only, nunca reescreve linha
+  offers.json                contrato v2: um livro com stores[]; o build escolhe a vencedora
+  state.json                 history_since e image_url por livro (metadado, sobrescrito)
+  amazon_queue.csv           ordem de conferência manual
+"""
+import argparse
+import csv
+import io
+import json
+import os
+import re
+import sys
+import time
+from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
+from http.client import HTTPException
+from pathlib import Path
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
+# build.py só define constantes e funções (o build roda sob __main__): importar é seguro.
+from build import (ASIN_RE, GENRES, ID_RE, MLB_RE, Invalid, _text,  # noqa: E402
+                   check_url, ml_affiliate, ml_url)
+
+CATALOG = HERE / "catalog.json"
+MANUAL_CSV = HERE / "amazon_prices.csv"
+
+ID_MAX = 57  # deep link do Telegram aceita 64; folga para prefixo futuro
+STORES = ("amazon", "mercadolivre")
+BOOK_FIELDS = {"id", "isbn", "genre", "title", "author", "asin", "ml_product_id", "ml_url"}
+PUBLIC_FIELDS = ("id", "title", "author", "genre")  # export: sem ids de loja nem URL
+ISBN_RE = re.compile(r"97[89][0-9]{10}")
+# Só o CDN de imagem do ML (é o que a CSP libera em img-src); sem query, aspas ou espaço.
+IMG_RE = re.compile(r"https://http2\.mlstatic\.com/[A-Za-z0-9_./-]{1,400}")
+HISTORY_COLS = ["book_id", "store", "price_cents", "list_price_cents", "checked_at", "source"]
+MANUAL_COLS = ["asin", "price_cents", "list_price_cents", "checked_at"]
+CENTS_RE = re.compile(r"[1-9][0-9]{0,8}")  # inteiro positivo, sem sinal/ponto/expoente
+MAX_CENTS = 1_000_000  # R$ 10.000: acima disso é erro de digitação ou dado quebrado
+MANUAL_MAX_AGE = timedelta(days=7)
+WINDOW = timedelta(days=90)
+
+ML_HOST = "api.mercadolibre.com"  # único host que o coletor chama
+UA = "ofertaslivros-coletor/0.1 (+https://ofertaslivros.com)"
+TIMEOUT = 10
+RETRIES = 3
+MAX_BYTES = 5_000_000
+ML_DEADLINE_S = 40  # orçamento do ML inteiro (token incluso): job abaixo de 1 min
+_urlopen = urlopen  # ponto de mock dos testes
+
+
+class MLError(Exception):
+    pass
+
+
+class Deadline(MLError):
+    pass
+
+
+# ---------- catálogo (uma entrada por livro, ids das duas lojas) ----------
+
+def isbn_ok(s):
+    return (isinstance(s, str) and bool(ISBN_RE.fullmatch(s))
+            and sum(int(d) * (3 if i % 2 else 1) for i, d in enumerate(s)) % 10 == 0)
+
+
+def load_catalog(doc):
+    if not isinstance(doc, dict) or not isinstance(doc.get("books"), list) or not doc["books"]:
+        raise Invalid('catálogo precisa ser {"books": [...]} não vazio')
+    aff = ml_affiliate()
+    books, seen = [], set()
+    for i, b in enumerate(doc["books"]):
+        try:
+            if not isinstance(b, dict):
+                raise Invalid("livro precisa ser objeto")
+            extra = set(b) - BOOK_FIELDS
+            if extra:
+                raise Invalid(f"campos não permitidos: {sorted(extra)}")
+            bid = b.get("id")
+            if not isinstance(bid, str) or len(bid) > ID_MAX or not ID_RE.fullmatch(bid):
+                raise Invalid(f"id inválido (slug até {ID_MAX} chars): {bid!r}")
+            if b.get("genre") not in GENRES:
+                raise Invalid(f"genre inválido: {b.get('genre')!r} (use um de {sorted(GENRES)})")
+            out = {"id": bid, "genre": b["genre"],
+                   "title": _text(b, "title"), "author": _text(b, "author")}
+            if "isbn" in b:
+                if not isbn_ok(b["isbn"]):
+                    raise Invalid(f"isbn precisa ser ISBN-13 válido, só dígitos: {b['isbn']!r}")
+                out["isbn"] = b["isbn"]
+            if "asin" in b:
+                if not isinstance(b["asin"], str) or not ASIN_RE.fullmatch(b["asin"]):
+                    raise Invalid(f"asin inválido: {b['asin']!r}")
+                out["asin"] = b["asin"]
+            if ("ml_product_id" in b) != ("ml_url" in b):
+                raise Invalid("ml_product_id e ml_url andam juntos")
+            if "ml_product_id" in b:
+                pid = b["ml_product_id"]
+                if not isinstance(pid, str) or not MLB_RE.fullmatch(pid):
+                    raise Invalid(f"ml_product_id inválido: {pid!r}")
+                out["ml_product_id"] = pid
+                out["ml_url"] = ml_url(b["ml_url"], aff)
+            if "asin" not in out and "ml_product_id" not in out:
+                raise Invalid("livro precisa de asin e/ou ml_product_id")
+            if "asin" in out and "ml_product_id" in out and "isbn" not in out:
+                raise Invalid("livro nas duas lojas precisa de isbn (é o que casa as duas)")
+            for k in (bid, out.get("isbn"), out.get("asin"), out.get("ml_product_id")):
+                if k is None:
+                    continue
+                if k in seen:
+                    raise Invalid(f"duplicado: {k!r}")
+                seen.add(k)
+        except Invalid as e:
+            raise Invalid(f"books[{i}]: {e}") from None
+        books.append(out)
+    return books
+
+
+def read_catalog(path=None):
+    return load_catalog(json.loads((path or CATALOG).read_text(encoding="utf-8")))
+
+
+def _write_json(path, doc):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    tmp.replace(path)
+
+
+def export_catalog(books, out):
+    _write_json(out, {"books": [
+        {**{k: b[k] for k in PUBLIC_FIELDS},
+         "stores": [s for s in STORES if (s == "amazon" and "asin" in b)
+                    or (s == "mercadolivre" and "ml_product_id" in b)]}
+        for b in books]})
+
+
+# ---------- dinheiro e datas ----------
+
+def to_cents(amount):
+    """Decimal/int em reais -> centavos inteiros. float nunca entra (JSON lido com Decimal)."""
+    if type(amount) is int:
+        amount = Decimal(amount)
+    if not isinstance(amount, Decimal) or not amount.is_finite():
+        raise Invalid(f"valor inválido: {amount!r}")
+    c = amount * 100
+    if c != c.to_integral_value() or not 0 < c <= MAX_CENTS:
+        raise Invalid(f"valor precisa ser positivo, até R$ 10.000, com até 2 casas: {amount!r}")
+    return int(c)
+
+
+def utc_iso(dt):
+    return dt.astimezone(timezone.utc).isoformat(timespec="seconds")
+
+
+def row(book_id, store, price, list_price, checked_at, source):
+    return {"book_id": book_id, "store": store, "price_cents": price,
+            "list_price_cents": list_price, "checked_at": utc_iso(checked_at), "source": source}
+
+
+# ---------- price_history (append-only) ----------
+
+def shard(hist_dir, checked_at):
+    return Path(hist_dir) / "price_history" / f"{checked_at[:7]}.csv"  # AAAA-MM em UTC
+
+
+def append_history(hist_dir, rows):
+    by = {}
+    for r in rows:
+        by.setdefault(shard(hist_dir, r["checked_at"]), []).append(r)
+    for path, rs in sorted(by.items()):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        new = not path.exists()
+        with path.open("a", newline="", encoding="utf-8") as f:  # "a": nunca reescreve
+            w = csv.DictWriter(f, HISTORY_COLS, lineterminator="\n")
+            if new:
+                w.writeheader()
+            w.writerows(rs)
+
+
+def read_history(hist_dir, months):
+    for m in sorted(set(months)):
+        p = Path(hist_dir) / "price_history" / f"{m}.csv"
+        if p.exists():
+            with p.open(newline="", encoding="utf-8") as f:
+                yield from csv.DictReader(f)
+
+
+def recent_months(now, n=4):
+    """Meses (UTC) que cobrem a janela de 90 dias."""
+    out, d = [], now.astimezone(timezone.utc).replace(day=1)
+    for _ in range(n):
+        out.append(f"{d:%Y-%m}")
+        d = (d - timedelta(days=1)).replace(day=1)
+    return out
+
+
+# ---------- Amazon: entrada manual (sem nenhuma request) ----------
+
+def _cents_field(v):
+    if not isinstance(v, str) or not CENTS_RE.fullmatch(v.strip()):
+        raise Invalid(f"centavos precisam ser inteiro positivo (ex.: 3990): {v!r}")
+    c = int(v.strip())
+    if c > MAX_CENTS:
+        raise Invalid(f"acima de R$ 10.000: {v!r}")
+    return c
+
+
+def parse_manual(text, books, now):
+    """Tudo ou nada: qualquer linha inválida levanta Invalid e nada é gravado."""
+    if not text.strip():
+        return []
+    by_asin = {b["asin"]: b for b in books if "asin" in b}
+    reader = csv.DictReader(io.StringIO(text))
+    if reader.fieldnames != MANUAL_COLS:
+        raise Invalid(f"{MANUAL_CSV.name}: cabeçalho precisa ser {','.join(MANUAL_COLS)}")
+    rows = []
+    for n, r in enumerate(reader, start=2):
+        try:
+            if None in r or None in r.values():
+                raise Invalid("número de colunas errado")
+            asin = r["asin"].strip()
+            if not ASIN_RE.fullmatch(asin):
+                raise Invalid(f"ASIN inválido: {asin!r}")
+            if asin not in by_asin:
+                raise Invalid(f"ASIN fora do catálogo: {asin}")
+            price, lst = _cents_field(r["price_cents"]), _cents_field(r["list_price_cents"])
+            if lst < price:
+                raise Invalid("list_price_cents menor que price_cents")
+            raw = r["checked_at"].strip()
+            try:
+                dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            except ValueError:
+                raise Invalid(f"checked_at não é ISO 8601: {raw!r}") from None
+            if dt.tzinfo is None:
+                raise Invalid(f"checked_at precisa ter fuso (ex.: -03:00): {raw!r}")
+            if dt > now + timedelta(minutes=5):
+                raise Invalid(f"checked_at no futuro: {raw!r}")
+            if dt < now - MANUAL_MAX_AGE:
+                raise Invalid(f"checked_at com mais de 7 dias: {raw!r}")
+        except Invalid as e:
+            raise Invalid(f"{MANUAL_CSV.name} linha {n}: {e}") from None
+        rows.append(row(by_asin[asin]["id"], "amazon", price, lst, dt, "manual"))
+    return rows
+
+
+def only_new_manual(hist_dir, rows):
+    """O CSV é relido a cada run: só entra (livro, checked_at) que ainda não está no histórico."""
+    seen = {(h["book_id"], h["checked_at"])
+            for h in read_history(hist_dir, (r["checked_at"][:7] for r in rows))
+            if h["source"] == "manual"}
+    out = []
+    for r in rows:
+        k = (r["book_id"], r["checked_at"])
+        if k not in seen:
+            seen.add(k)
+            out.append(r)
+    return out
+
+
+def amazon_queue(books, last_checked):
+    """Ordem de conferência: nunca conferido primeiro, depois o mais antigo.
+    Etapa 2: ordenar por número de alertas ativos antes da data (só mudar esta chave)."""
+    am = [b for b in books if "asin" in b]
+    return sorted(am, key=lambda b: (last_checked.get(b["id"], ""), b["id"]))
+
+
+def write_queue(hist_dir, books, latest):
+    path = Path(hist_dir) / "amazon_queue.csv"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    last = {bid: r["checked_at"] for (bid, s), r in latest.items() if s == "amazon"}
+    with path.open("w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f, lineterminator="\n")
+        w.writerow(["id", "asin", "title", "last_checked_at", "conferir_em"])
+        for b in amazon_queue(books, last):
+            # link sem tag de propósito: clique do próprio associado não pode levar a tag
+            w.writerow([b["id"], b["asin"], b["title"], last.get(b["id"], ""),
+                        f"https://www.amazon.com.br/dp/{b['asin']}"])
+
+
+# ---------- Mercado Livre ----------
+
+def _headers(token):
+    h = {"User-Agent": UA, "Accept": "application/json"}
+    if token:
+        h["Authorization"] = f"Bearer {token}"
+    return h
+
+
+def ml_request(path, token=None, form=None, deadline=None, clock=time.monotonic,
+               sleep=None):
+    """GET/POST em api.mercadolibre.com com timeout e backoff exponencial em 429/5xx/rede.
+    deadline (clock() absoluto): não começa tentativa nem espera que passe dele.
+    Mensagens de erro levam só o caminho sem query: nunca token, corpo ou segredo."""
+    url = f"https://{ML_HOST}{path}"
+    where = path.split("?")[0]
+    data = urlencode(form).encode() if form else None
+    for attempt in range(RETRIES + 1):
+        left = None if deadline is None else deadline - clock()
+        if left is not None and left <= 0:
+            raise Deadline(f"sem tempo para {where}")
+        timeout = TIMEOUT if left is None else min(TIMEOUT, left)
+        try:
+            with _urlopen(Request(url, data=data, headers=_headers(token)), timeout=timeout) as r:
+                return json.loads(r.read(MAX_BYTES), parse_float=Decimal)
+        except HTTPError as e:
+            if (e.code != 429 and e.code < 500) or attempt == RETRIES:
+                raise MLError(f"HTTP {e.code} em {where}") from None
+            ra = (e.headers or {}).get("Retry-After", "") or ""
+            wait = int(ra) if ra.isascii() and ra.isdigit() else 2 ** attempt
+        except (URLError, HTTPException, OSError) as e:
+            if attempt == RETRIES:
+                raise MLError(f"rede em {where}: {type(e).__name__}") from None
+            wait = 2 ** attempt
+        except ValueError:
+            raise MLError(f"JSON inválido em {where}") from None
+        wait = min(wait, 30)
+        if deadline is not None and clock() + wait >= deadline:
+            raise Deadline(f"sem tempo para repetir {where}")
+        (sleep or time.sleep)(wait)
+
+
+def ml_token(deadline=None, clock=time.monotonic):
+    cid, secret = os.environ.get("ML_CLIENT_ID"), os.environ.get("ML_CLIENT_SECRET")
+    if not cid or not secret:
+        return None
+    r = ml_request("/oauth/token", form={"grant_type": "client_credentials",
+                                         "client_id": cid, "client_secret": secret},
+                   deadline=deadline, clock=clock)
+    tok = r.get("access_token") if isinstance(r, dict) else None
+    if not isinstance(tok, str) or not tok:
+        raise MLError("resposta do /oauth/token sem access_token")
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        print(f"::add-mask::{tok}")  # o log é público: mascara caso algo o imprima
+    return tok
+
+
+def winner(prod):
+    """buy_box_winner do produto, ou None se inativo/sem vencedor (sem estoque)."""
+    if not isinstance(prod, dict):
+        raise MLError("produto malformado")
+    if prod.get("status") != "active" or prod.get("buy_box_winner") is None:
+        return None
+    w = prod["buy_box_winner"]
+    if not isinstance(w, dict) or not isinstance(w.get("item_id"), str) \
+            or not MLB_RE.fullmatch(w["item_id"]):
+        raise MLError("buy_box_winner malformado")
+    return w
+
+
+def product_image(prod):
+    """Primeira foto do produto, só se for do CDN do ML. Qualquer coisa estranha: sem foto."""
+    pics = prod.get("pictures") if isinstance(prod, dict) else None
+    if not isinstance(pics, list) or not pics or not isinstance(pics[0], dict):
+        return None
+    u = pics[0].get("secure_url") or pics[0].get("url")
+    return u if isinstance(u, str) and IMG_RE.fullmatch(u) else None
+
+
+def product_gtins(prod):
+    """GTINs do atributo GTIN (pode vir vários, separados por vírgula)."""
+    out = set()
+    attrs = prod.get("attributes") if isinstance(prod, dict) else None
+    for a in attrs if isinstance(attrs, list) else []:
+        if isinstance(a, dict) and a.get("id") == "GTIN" and isinstance(a.get("value_name"), str):
+            out |= set(re.findall(r"\d{8,14}", a["value_name"]))
+    return out
+
+
+def sale_row(book_id, sp, now):
+    if not isinstance(sp, dict):
+        raise MLError("sale_price malformado")
+    if sp.get("currency_id") != "BRL":
+        raise Invalid(f"moeda não é BRL: {sp.get('currency_id')!r}")
+    price = to_cents(sp.get("amount"))
+    reg = sp.get("regular_amount")
+    lst = to_cents(reg) if reg is not None else price
+    return row(book_id, "mercadolivre", price, max(lst, price), now, "ml_api")
+
+
+def _sale_path(item_id):
+    return f"/items/{item_id}/sale_price?context=channel_marketplace"
+
+
+def collect_ml(books, token, now, deadline, start=0, clock=time.monotonic, sleep=None):
+    """-> (linhas do price_history, contagens, {book_id: image_url})."""
+    ml = [b for b in books if "ml_product_id" in b]
+    if ml:  # gira o início para nenhum item ficar "adiado" para sempre
+        k = start % len(ml)
+        ml = ml[k:] + ml[:k]
+    rows, images = [], {}
+    n = {"ok": 0, "inativo": 0, "gtin_divergente": 0, "erro": 0, "adiado": 0}
+    kw = {"deadline": deadline, "clock": clock, "sleep": sleep}
+    for i, b in enumerate(ml):
+        try:
+            prod = ml_request(f"/products/{b['ml_product_id']}", token, **kw)
+            w = winner(prod)
+            gtins = product_gtins(prod)
+            if "isbn" in b and gtins and b["isbn"] not in gtins:
+                # ponytail: só ISBN-13; GTIN em ISBN-10 contaria como divergente
+                print(f"::warning::ML: {b['id']}: GTIN do produto não bate com o isbn do "
+                      f"catálogo; preço do ML descartado")
+                n["gtin_divergente"] += 1
+                continue
+            img = product_image(prod)
+            if img:
+                images[b["id"]] = img
+            if w is None:
+                n["inativo"] += 1
+                continue
+            rows.append(sale_row(b["id"], ml_request(_sale_path(w["item_id"]), token, **kw), now))
+            n["ok"] += 1
+        except Deadline:
+            n["adiado"] += len(ml) - i
+            break
+        except (MLError, Invalid) as e:
+            print(f"ML: {b['id']}: {e}")
+            n["erro"] += 1
+    return rows, n, images
+
+
+def run_number():
+    v = os.environ.get("GITHUB_RUN_NUMBER", "")
+    return int(v) if v.isascii() and v.isdigit() else 0
+
+
+# ---------- offers.json v2 (o build escolhe a vencedora; aqui só fatos por loja) ----------
+
+def load_state(hist_dir):
+    p = Path(hist_dir) / "state.json"
+    try:
+        s = json.loads(p.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        s = {}
+    except ValueError:
+        print("::warning::state.json ilegível; recomeçando history_since/image_url")
+        s = {}
+    hs = s.get("history_since") if isinstance(s, dict) else None
+    im = s.get("image_url") if isinstance(s, dict) else None
+    return {"history_since": {k: v for k, v in (hs or {}).items()
+                              if isinstance(k, str) and isinstance(v, str)},
+            "image_url": {k: v for k, v in (im or {}).items()
+                          if isinstance(v, str) and IMG_RE.fullmatch(v)}}
+
+
+def summarize(hist_dir, now):
+    """Última linha, menor preço em 90 dias e primeira data vista por (livro, loja)."""
+    since = utc_iso(now - WINDOW)
+    latest, low, first = {}, {}, {}
+    for h in read_history(hist_dir, recent_months(now)):
+        k = (h["book_id"], h["store"])
+        p = int(h["price_cents"])
+        if k not in latest or h["checked_at"] >= latest[k]["checked_at"]:  # empate: a última gravada
+            latest[k] = h
+        if h["checked_at"] >= since:
+            low[k] = min(low.get(k, p), p)
+        first[k] = min(first.get(k, h["checked_at"]), h["checked_at"])
+    return latest, low, first
+
+
+def build_offers(books, latest, low, state):
+    hs = state["history_since"]
+    offers = []
+    for b in books:
+        stores = []
+        for store, ident in (("amazon", "asin"), ("mercadolivre", "ml_product_id")):
+            r = latest.get((b["id"], store))
+            if ident not in b or r is None:
+                continue
+            k = (b["id"], store)
+            s = {"store": store, ident: b[ident]}
+            if store == "mercadolivre":
+                s["ml_url"] = b["ml_url"]
+            price = int(r["price_cents"])
+            s.update(price_cents=price, list_price_cents=int(r["list_price_cents"]),
+                     lowest_90d_cents=min(low.get(k, price), price),
+                     history_since=hs[f"{b['id']}|{store}"],
+                     checked_at=r["checked_at"])
+            stores.append(s)
+        if stores:
+            o = {"id": b["id"]}
+            if "isbn" in b:
+                o["isbn"] = b["isbn"]
+            o.update(genre=b["genre"], title=b["title"], author=b["author"])
+            if b["id"] in state["image_url"]:
+                o["image_url"] = state["image_url"][b["id"]]
+            o["stores"] = stores
+            offers.append(o)
+    return {"version": 2, "offers": offers}
+
+
+def _dt(v, k):
+    try:
+        d = datetime.fromisoformat(v)
+    except (TypeError, ValueError):
+        raise Invalid(f"{k} não é ISO 8601: {v!r}") from None
+    if d.tzinfo is None:
+        raise Invalid(f"{k} sem fuso")
+    return d
+
+
+def _int_cents(s, k):
+    v = s.get(k)
+    if type(v) is not int or not 0 < v <= MAX_CENTS:
+        raise Invalid(f"{k} precisa ser inteiro em (0, {MAX_CENTS}]")
+    return v
+
+
+STORE_OUT = {"amazon": {"store", "asin"}, "mercadolivre": {"store", "ml_product_id", "ml_url"}}
+STORE_NUM = {"price_cents", "list_price_cents", "lowest_90d_cents", "history_since", "checked_at"}
+OFFER_KEYS = {"id", "isbn", "genre", "title", "author", "image_url", "stores"}
+
+
+def validate_offers(doc):
+    """Schema do contrato v2. Falhou: Invalid, e o offers.json não é gravado."""
+    if not isinstance(doc, dict) or set(doc) != {"version", "offers"} or doc["version"] != 2 \
+            or not isinstance(doc["offers"], list):
+        raise Invalid('offers.json precisa ser {"version": 2, "offers": [...]}')
+    aff, ids = ml_affiliate(), set()
+    for i, o in enumerate(doc["offers"]):
+        try:
+            if not isinstance(o, dict) or not set(o) <= OFFER_KEYS \
+                    or not {"id", "genre", "title", "author", "stores"} <= set(o):
+                raise Invalid("campos da oferta fora do contrato")
+            if not isinstance(o["id"], str) or len(o["id"]) > ID_MAX \
+                    or not ID_RE.fullmatch(o["id"]) or o["id"] in ids:
+                raise Invalid(f"id inválido ou duplicado: {o['id']!r}")
+            ids.add(o["id"])
+            if "isbn" in o and not isbn_ok(o["isbn"]):
+                raise Invalid("isbn inválido")
+            if o["genre"] not in GENRES:
+                raise Invalid("genre fora de GENRES")
+            _text(o, "title"), _text(o, "author")
+            if "image_url" in o and not (isinstance(o["image_url"], str)
+                                         and IMG_RE.fullmatch(o["image_url"])):
+                raise Invalid("image_url fora do CDN do ML")
+            st = o["stores"]
+            if not isinstance(st, list) or not 1 <= len(st) <= 2 \
+                    or len({s.get("store") for s in st if isinstance(s, dict)}) != len(st):
+                raise Invalid("stores precisa ter 1 ou 2 lojas distintas")
+            for s in st:
+                if not isinstance(s, dict) or s.get("store") not in STORE_OUT or set(s) != STORE_OUT[s["store"]] | STORE_NUM:
+                    raise Invalid(f"campos da loja fora do contrato: {sorted(s)}")
+                if s["store"] == "amazon":
+                    if not isinstance(s["asin"], str) or not ASIN_RE.fullmatch(s["asin"]):
+                        raise Invalid("asin inválido")
+                else:
+                    if not isinstance(s["ml_product_id"], str) \
+                            or not MLB_RE.fullmatch(s["ml_product_id"]):
+                        raise Invalid("ml_product_id inválido")
+                    check_url(ml_url(s["ml_url"], aff))
+                p, lst, lo = (_int_cents(s, k) for k in
+                              ("price_cents", "list_price_cents", "lowest_90d_cents"))
+                if lst < p or lo > p:
+                    raise Invalid("precisa list >= price >= lowest_90d")
+                ca = _dt(s["checked_at"], "checked_at")
+                try:
+                    since = date.fromisoformat(s["history_since"])
+                except (TypeError, ValueError):
+                    raise Invalid("history_since precisa ser AAAA-MM-DD") from None
+                if since > ca.astimezone(timezone.utc).date():
+                    raise Invalid("history_since depois do checked_at")
+        except Invalid as e:
+            raise Invalid(f"offers[{i}]: {e}") from None
+    return doc
+
+
+# ---------- probe (diagnóstico manual das rotas) ----------
+
+def _probe_get(path, token):
+    try:
+        with _urlopen(Request(f"https://{ML_HOST}{path}", headers=_headers(token)),
+                      timeout=TIMEOUT) as r:
+            return getattr(r, "status", 200), json.loads(r.read(MAX_BYTES), parse_float=Decimal)
+    except HTTPError as e:
+        return e.code, None
+    except (URLError, HTTPException, OSError, ValueError) as e:
+        return type(e).__name__, None
+
+
+def _keys(body):
+    return sorted(body) if isinstance(body, dict) else type(body).__name__
+
+
+def probe(ids):
+    """Só status HTTP, chaves de topo e o que foi interpretado. Nunca token nem secret."""
+    try:
+        token = ml_token()
+    except MLError as e:
+        print(f"token: falhou ({e})")
+        return 1
+    if token is None:
+        print("token: ML_CLIENT_ID/ML_CLIENT_SECRET ausentes no ambiente")
+        return 1
+    print("token: ok")
+    for pid in ids:
+        if not MLB_RE.fullmatch(pid):
+            print(f"{pid!r}: ignorado, fora do MLB_RE")
+            continue
+        st, prod = _probe_get(f"/products/{pid}", token)
+        print(f"{pid} /products -> {st} chaves={_keys(prod)}")
+        if not isinstance(prod, dict):
+            continue
+        w = prod.get("buy_box_winner")
+        print(f"  status={prod.get('status')!r} buy_box_winner="
+              + (f"item_id={w.get('item_id')!r} price={w.get('price')} "
+                 f"original_price={w.get('original_price')} currency={w.get('currency_id')!r}"
+                 if isinstance(w, dict) else repr(w)))
+        print(f"  gtin={sorted(product_gtins(prod))} image_url={product_image(prod)!r}")
+        try:
+            w = winner(prod)
+        except MLError as e:
+            print(f"  vencedor: {e}")
+            continue
+        if w is None:
+            print("  resultado: inativo (sem vencedor)")
+            continue
+        st, sp = _probe_get(_sale_path(w["item_id"]), token)
+        print(f"  {w['item_id']} /sale_price -> {st} chaves={_keys(sp)}")
+        if isinstance(sp, dict):
+            print(f"  amount={sp.get('amount')} regular_amount={sp.get('regular_amount')} "
+                  f"currency={sp.get('currency_id')!r}")
+            try:
+                r = sale_row("probe", sp, datetime.now(timezone.utc))
+                print(f"  resultado: price_cents={r['price_cents']} "
+                      f"list_price_cents={r['list_price_cents']}")
+            except (MLError, Invalid) as e:
+                print(f"  resultado: erro ({e})")
+    return 0
+
+
+# ---------- orquestração ----------
+
+def run(hist_dir, now=None, catalog=None, manual=None, clock=time.monotonic):
+    now = now or datetime.now(timezone.utc)
+    manual = manual or MANUAL_CSV
+    books = read_catalog(catalog)
+    # 1) valida a entrada manual inteira antes de qualquer request ou escrita
+    text = manual.read_text(encoding="utf-8-sig") if manual.exists() else ""  # BOM do Excel
+    manual_rows = only_new_manual(hist_dir, parse_manual(text, books, now))
+    # 2) ML: qualquer erro (ou ML sem coleta) deixa o job vermelho
+    has_ml = any("ml_product_id" in b for b in books)
+    status, ml_rows, images = 0, [], {}
+    deadline = clock() + ML_DEADLINE_S
+    try:
+        token = ml_token(deadline, clock)
+    except MLError as e:
+        print(f"::error::ML: token falhou ({e}); coleta do ML pulada")
+        token, status = None, 1
+    else:
+        if token is None and has_ml:
+            print("::error::ML_CLIENT_ID/ML_CLIENT_SECRET ausentes; coleta do ML pulada")
+            status = 1
+    if token and has_ml:
+        ml_rows, n, images = collect_ml(books, token, now, deadline, start=run_number(),
+                                        clock=clock)
+        print("ML: " + ", ".join(f"{v} {k}" for k, v in n.items()))
+        if n["erro"]:
+            status = 1
+    append_history(hist_dir, manual_rows + ml_rows)
+    # 3) offers.json v2: monta, valida e só então grava (dado quebrado não sai)
+    latest, low, first = summarize(hist_dir, now)
+    state = load_state(hist_dir)
+    for (bid, store), ts in first.items():
+        state["history_since"].setdefault(f"{bid}|{store}", ts[:10])  # fixa na 1ª vez vista
+    state["image_url"].update(images)
+    offers = validate_offers(build_offers(books, latest, low, state))
+    _write_json(Path(hist_dir) / "state.json", state)
+    _write_json(Path(hist_dir) / "offers.json", offers)
+    write_queue(hist_dir, books, latest)
+    print(f"ok: {len(manual_rows)} manuais novos, {len(ml_rows)} do ML gravados, "
+          f"{len(offers['offers'])} livros no offers.json")
+    return status
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser()
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    r = sub.add_parser("run")
+    r.add_argument("--history", type=Path, required=True)
+    x = sub.add_parser("export")
+    x.add_argument("out", type=Path)
+    p = sub.add_parser("probe")
+    p.add_argument("ids", nargs="*", help="ml_product_id; vazio = os do catálogo")
+    a = ap.parse_args(argv)
+    try:
+        if a.cmd == "run":
+            return run(a.history)
+        if a.cmd == "probe":
+            return probe(a.ids or [b["ml_product_id"] for b in read_catalog()
+                                   if "ml_product_id" in b])
+        export_catalog(read_catalog(), a.out)
+        print(f"ok: catálogo exportado -> {a.out}")
+        return 0
+    except Invalid as e:
+        sys.exit(f"coletor falhou: {e}")
+
+
+if __name__ == "__main__":
+    sys.exit(main())
