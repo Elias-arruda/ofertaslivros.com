@@ -95,9 +95,9 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
   font-variant-numeric: tabular-nums lining-nums;
 }
 .price > * { white-space: nowrap; } /* "R$" não se separa do valor */
-.price strong { font-size: 1.5rem; line-height: 1.1; }
+.price strong { font-size: clamp(1.625rem, 1.5rem + .4vw, 1.875rem); line-height: 1.1; }
 .old { color: var(--muted); }
-.off { font-weight: 700; color: var(--red); }
+.off { font-size: 1.125rem; font-weight: 700; color: var(--red); }
 .meta { font-size: .875rem; color: var(--muted); }
 .store { font-weight: 700; color: var(--ink); }
 
@@ -133,6 +133,8 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
 }
 .cover img { position: absolute; inset: 0; width: 100%; height: 100%; }
 .cover-t, .cover-a { position: relative; overflow-wrap: anywhere; }
+/* Título longo na capa: corta em 5 linhas para o autor continuar visível (decorativo, aria-hidden) */
+.cover-t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5; line-clamp: 5; overflow: hidden; }
 .cover-t { font: 700 clamp(.6875rem, .6rem + .3vw, .8125rem)/1.1 var(--serif); }
 .cover-a { font: 600 .5rem/1.2 var(--sans); }
 .cover--0 { background: #23395b; }
@@ -142,11 +144,14 @@ main { max-width: 72rem; margin: 0 auto; padding: 0 var(--gutter); }
 .cover--4 { background: #4a3a5c; }
 .cover--5 { background: #9c4a24; }
 
-/* Ações: o link da loja cobre a ficha toda para facilitar o toque */
+/* Ações: o link da loja cobre a ficha toda para facilitar o toque.
+   Lado a lado quando cabem; senão, empilham com a largura toda (sem botões em escada). */
 .acts { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: auto; padding-top: .9rem; }
 .go, .alert {
+  flex: 1 1 auto;
   min-height: 2.75rem;
-  display: inline-flex; align-items: center;
+  display: inline-flex; align-items: center; justify-content: center;
+  text-align: center;
   padding: 0 1rem;
   font: 700 .9375rem/1.2 var(--sans);
   text-decoration: none;
