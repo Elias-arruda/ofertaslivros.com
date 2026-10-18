@@ -717,10 +717,15 @@ MAX_REDIRECTS = 2000  # limite de regras estáticas do _redirects na Cloudflare
 
 
 def redirects(offers):
-    """/r/<id>, /r/<id>/tg e /r/<id>/wa por oferta; vencida cai na home pelo curinga."""
+    """Por livro: /r/<id> e /r/<id>/tg|wa (vencedora, com a tag do canal se for a Amazon) e
+    /r/<id>/<loja> para cada loja elegível. Vencido ou loja fora do prazo cai na home pelo curinga.
+    Até 5 regras por livro: cabem 399 livros com duas lojas (1.995 + curinga)."""
     tags, aff = channel_tags(), ml_affiliate()
-    lines = [f"/r/{o['id']}{suffix} {affiliate_url(o, tag, aff)} 302\n"  # ML: mesmo ml_url
-             for o in offers for suffix, tag in tags.items()]
+    lines = []
+    for o in offers:
+        lines.append(f"/r/{o['id']} {affiliate_url(o, tags[''], aff)} 302\n")
+        lines += [f"/r/{o['id']}/{s['store']} {affiliate_url(s, tags[''], aff)} 302\n" for s in o["stores"]]
+        lines += [f"/r/{o['id']}{sfx} {affiliate_url(o, tags[sfx], aff)} 302\n" for sfx in ("/tg", "/wa")]  # ML: mesmo ml_url
     lines.append("/r/* / 302\n")
     if len(lines) > MAX_REDIRECTS:
         raise Invalid(f"{len(lines)} regras no _redirects (máximo {MAX_REDIRECTS})")
@@ -923,17 +928,32 @@ def selftest():
     pv = privacy("OfertasLivrosBot")
     assert all(w in pv for w in ("chat_id", "Cloudflare D1", "90 dias", "/parar", "bloquear o bot",
                                  "https://t.me/OfertasLivrosBot"))
-    # _redirects: 3 linhas por oferta + curinga; tag da Amazon por canal
+    # _redirects: 4 linhas por livro de uma loja + curinga; tag da Amazon por canal
     saved = {k: os.environ.pop(k, None) for k in ("AMAZON_TAG_TG", "AMAZON_TAG_WA")}
     r = redirects(o).splitlines()
     t = partner_tag()
-    assert len(r) == 7 and r[-1] == "/r/* / 302"
+    assert len(r) == 9 and r[-1] == "/r/* / 302"
+    assert f"/r/livro-1/amazon https://www.amazon.com.br/dp/B0ABCDEFGH?tag={t} 302" in r
+    assert f"/r/livro-2/mercadolivre {ml_link} 302" in r
+    assert not any("/r/livro-1/mercadolivre" in x or "/r/livro-2/amazon" in x for x in r)
     assert f"/r/livro-1/tg https://www.amazon.com.br/dp/B0ABCDEFGH?tag={t} 302" in r
     assert f"/r/livro-2/wa {ml_link} 302" in r and f"/r/livro-2 {ml_link} 302" in r
     os.environ.update(AMAZON_TAG_TG="sitetg-20", AMAZON_TAG_WA="")
     r = redirects(o).splitlines()
     assert "/r/livro-1/tg https://www.amazon.com.br/dp/B0ABCDEFGH?tag=sitetg-20 302" in r
     assert f"/r/livro-1/wa https://www.amazon.com.br/dp/B0ABCDEFGH?tag={t} 302" in r
+    # duas lojas: vencedora no /r/<id>, /tg e /wa; uma rota por loja; tag do canal só na Amazon
+    two = {**good, "id": "duas", "stores": [{**amz, "price_cents": 1890}, mls]}
+    r = redirects(load(two)).splitlines()
+    amz_url = "https://www.amazon.com.br/dp/B0ABCDEFGH?tag="
+    assert r == [f"/r/duas {amz_url}{t} 302", f"/r/duas/amazon {amz_url}{t} 302",
+                 f"/r/duas/mercadolivre {ml_link} 302", f"/r/duas/tg {amz_url}sitetg-20 302",
+                 f"/r/duas/wa {amz_url}{t} 302", "/r/* / 302"]
+    r = redirects(load({**two, "stores": [amz, {**mls, "price_cents": 1890}]})).splitlines()
+    assert f"/r/duas {ml_link} 302" in r and f"/r/duas/tg {ml_link} 302" in r
+    assert f"/r/duas/amazon {amz_url}{t} 302" in r                        # loja da seta, tag do site
+    r = redirects(load(two, now=datetime(2026, 10, 18, 10, 31, tzinfo=BRT))).splitlines()
+    assert "/r/duas/mercadolivre" not in "\n".join(r) and len(r) == 5      # ML fora do prazo: sem rota
     for bad in ("x&tag=evil", "a b", "x\n/r/y https://evil.com 302"):
         os.environ["AMAZON_TAG_TG"] = bad
         try:
@@ -945,13 +965,13 @@ def selftest():
         os.environ.pop(k, None)
         if v is not None:
             os.environ[k] = v
-    many = [{**good, "id": f"l-{n}"} for n in range(667)]
+    many = [{**good, "id": f"l-{n}", "stores": [amz, mls]} for n in range(400)]
     try:
-        redirects(load(*many))
+        redirects(load(*many))  # 400 x 5 + curinga = 2.001
         raise AssertionError("limite do _redirects")
     except Invalid:
         pass
-    assert len(redirects(load(*many[:666])).splitlines()) == 1999
+    assert len(redirects(load(*many[:399])).splitlines()) == 1996
     # canais: só com a env; validados; rel noopener noreferrer
     saved = {k: os.environ.pop(k, None) for k in ("TELEGRAM_CHANNEL_ID", "WHATSAPP_CHANNEL_ID")}
     assert channels() == [] and "/canais/" not in page(o)
