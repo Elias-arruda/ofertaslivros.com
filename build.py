@@ -46,11 +46,13 @@ MLB_RE = re.compile(r"MLB\d{1,15}")
 TAG_RE = re.compile(r"[A-Za-z0-9-]{1,64}")
 CTRL_RE = re.compile(r"[\x00-\x1f\x7f]")
 
-COMMON = {"id", "store", "genre", "title", "author", "price_cents", "list_price_cents",
-          "lowest_90d_cents", "checked_at", "history_start", "featured", "trending_rank"}
-STORE_KEY = {"amazon": "asin", "mercadolivre": "ml_item_id"}
+ISBN_RE = re.compile(r"\d{9}[\dX]|\d{13}")
+IMG_HOST = "http2.mlstatic.com"  # único host de foto liberado no img-src da CSP
+
+BOOK_KEYS = {"id", "isbn", "genre", "title", "author", "image_url", "stores", "featured", "trending_rank"}
+STORE_COMMON = {"store", "price_cents", "list_price_cents", "lowest_90d_cents", "history_since", "checked_at"}
 # O link do ML é opaco (param ref cifrado), então vem do painel e é validado.
-STORE_EXTRA = {"amazon": set(), "mercadolivre": {"ml_url"}}
+STORE_KEYS = {"amazon": {"asin"}, "mercadolivre": {"ml_url", "ml_product_id"}}
 
 # ponytail: fuso fixo -03:00 (Brasil sem horário de verão desde 2019);
 # trocar por zoneinfo("America/Sao_Paulo") se o horário de verão voltar.
@@ -188,33 +190,47 @@ def _cents(o, k):
     return v
 
 
-def validate_offer(o):
-    if not isinstance(o, dict):
-        raise Invalid("oferta precisa ser objeto")
-    store = o.get("store")
-    if store not in STORE_KEY:
+def _date(v, k, dt):
+    """Data AAAA-MM-DD opcional, não posterior ao dia (BRT) de dt."""
+    if v is None:
+        return None
+    if not isinstance(v, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", v):
+        raise Invalid(f"{k} precisa ser data AAAA-MM-DD: {v!r}")
+    try:
+        d = date.fromisoformat(v)
+    except ValueError:
+        raise Invalid(f"{k} inválida: {v!r}") from None
+    if d > dt.astimezone(BRT).date():
+        raise Invalid(f"{k} depois de checked_at")
+    return d
+
+
+def validate_store(s, tag, aff):
+    if not isinstance(s, dict):
+        raise Invalid("loja precisa ser objeto")
+    store = s.get("store")
+    if store not in STORE_KEYS:
         raise Invalid(f"store inválida: {store!r}")
-    extra = set(o) - COMMON - {STORE_KEY[store]} - STORE_EXTRA[store]
+    extra = set(s) - STORE_COMMON - STORE_KEYS[store]
     if extra:  # rejeita "url", "href", o id da outra loja etc.
-        raise Invalid(f"campos não permitidos: {sorted(extra)}")
-    if o.get("genre") not in GENRES:
-        raise Invalid(f"genre inválido: {o.get('genre')!r} (use um de {sorted(GENRES)})")
-    oid = o.get("id")
-    if not isinstance(oid, str) or len(oid) > 80 or not ID_RE.fullmatch(oid):
-        raise Invalid(f"id inválido: {oid!r}")
-    ident = o.get(STORE_KEY[store])
-    rx = ASIN_RE if store == "amazon" else MLB_RE
-    if not isinstance(ident, str) or not rx.fullmatch(ident):
-        raise Invalid(f"{STORE_KEY[store]} inválido: {ident!r}")
-    out = {"id": oid, "store": store, STORE_KEY[store]: ident, "genre": o["genre"],
-           "title": _text(o, "title"), "author": _text(o, "author")}
-    if store == "mercadolivre":
-        out["ml_url"] = o.get("ml_url")  # validado em affiliate_url
+        raise Invalid(f"{store}: campos não permitidos: {sorted(extra)}")
+    out = {"store": store}
+    if store == "amazon":
+        asin = s.get("asin")
+        if not isinstance(asin, str) or not ASIN_RE.fullmatch(asin):
+            raise Invalid(f"asin inválido: {asin!r}")
+        out["asin"] = asin
+    else:
+        pid = s.get("ml_product_id")  # opcional: o link vem do ml_url
+        if pid is not None and (not isinstance(pid, str) or not MLB_RE.fullmatch(pid)):
+            raise Invalid(f"ml_product_id inválido: {pid!r}")
+        out["ml_product_id"] = pid
+        out["ml_url"] = s.get("ml_url")  # validado em affiliate_url
     for k in ("price_cents", "list_price_cents", "lowest_90d_cents"):
-        out[k] = _cents(o, k)
+        out[k] = _cents(s, k)
     if out["list_price_cents"] < out["price_cents"]:
-        raise Invalid("list_price_cents menor que price_cents")
-    ca = o.get("checked_at")
+        raise Invalid(f"{store}: list_price_cents menor que price_cents")
+    ca = s.get("checked_at")
     try:
         dt = datetime.fromisoformat(ca.replace("Z", "+00:00"))
     except (AttributeError, ValueError):
@@ -222,18 +238,51 @@ def validate_offer(o):
     if dt.tzinfo is None:
         raise Invalid("checked_at precisa ter fuso")
     out["checked_at"] = dt
-    # Opcional: data (BRT) do 1º preço no histórico do item. Sem ela, nada de selo (CDC).
-    hs = o.get("history_start")
-    if hs is not None:
-        if not isinstance(hs, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", hs):
-            raise Invalid(f"history_start precisa ser data AAAA-MM-DD: {hs!r}")
-        try:
-            hs = date.fromisoformat(hs)
-        except ValueError:
-            raise Invalid(f"history_start inválida: {hs!r}") from None
-        if hs > dt.astimezone(BRT).date():
-            raise Invalid("history_start depois de checked_at")
-    out["history_start"] = hs
+    # Opcional: data (BRT) do 1º preço desta loja no histórico. Sem ela, nada de selo (CDC).
+    out["history_since"] = _date(s.get("history_since"), "history_since", dt)
+    out["url"] = affiliate_url(out, tag, aff)
+    return out
+
+
+def image_url(v, oid):
+    """Foto opcional. Fora de https://http2.mlstatic.com, descarta com aviso (o card usa /capa.svg)."""
+    if v is None:
+        return None
+    try:
+        # Caracteres de URL do RFC 3986, sem aspas: vai num atributo src.
+        ok = isinstance(v, str) and len(v) <= 1000 and re.fullmatch(r"[A-Za-z0-9\-._~:/?#\[\]@!$&()*+,;=%]+", v)
+        p = urlsplit(v) if ok else None
+    except ValueError:  # ex.: "https://[x"
+        p = None
+    if p and p.scheme == "https" and p.netloc == IMG_HOST and not p.fragment:
+        return v
+    print(f"aviso: {oid}: image_url descartada (só https://{IMG_HOST}): {v!r}", file=sys.stderr)
+    return None
+
+
+def validate_offer(o, tag, aff):
+    """Um livro com 1 ou 2 lojas (contrato v2, docs/produto/comparacao-lojas.md)."""
+    if not isinstance(o, dict):
+        raise Invalid("oferta precisa ser objeto")
+    extra = set(o) - BOOK_KEYS
+    if extra:
+        raise Invalid(f"campos não permitidos: {sorted(extra)}")
+    if o.get("genre") not in GENRES:
+        raise Invalid(f"genre inválido: {o.get('genre')!r} (use um de {sorted(GENRES)})")
+    oid = o.get("id")
+    if not isinstance(oid, str) or len(oid) > 80 or not ID_RE.fullmatch(oid):
+        raise Invalid(f"id inválido: {oid!r}")
+    isbn = o.get("isbn")
+    if isbn is not None and (not isinstance(isbn, str) or not ISBN_RE.fullmatch(isbn)):
+        raise Invalid(f"isbn precisa ter 10 ou 13 dígitos (X final no ISBN-10): {isbn!r}")
+    stores = o.get("stores")
+    if not isinstance(stores, list) or not 1 <= len(stores) <= 2:
+        raise Invalid("stores precisa ter 1 ou 2 lojas")
+    stores = [validate_store(s, tag, aff) for s in stores]
+    if len({s["store"] for s in stores}) != len(stores):
+        raise Invalid("stores com loja repetida")
+    out = {"id": oid, "isbn": isbn, "genre": o["genre"], "title": _text(o, "title"),
+           "author": _text(o, "author"), "image_url": image_url(o.get("image_url"), oid), "stores": stores}
     # Opcionais propostos ao back: curadoria manual e ranking de popularidade real.
     ft = o.get("featured", False)
     if type(ft) is not bool:
@@ -246,25 +295,39 @@ def validate_offer(o):
     return out
 
 
-def load_offers(doc):
+def load_books(doc):
     """Valida o documento inteiro; levanta Invalid na primeira falha."""
-    if not isinstance(doc, dict) or not isinstance(doc.get("offers"), list):
-        raise Invalid('JSON precisa ser {"offers": [...]}')
+    if not isinstance(doc, dict) or type(doc.get("version")) is not int or doc["version"] != 2:
+        raise Invalid('offers.json precisa ter "version": 2 (docs/produto/comparacao-lojas.md)')
+    if not isinstance(doc.get("offers"), list):
+        raise Invalid('JSON precisa ser {"version": 2, "offers": [...]}')
     tag, aff = partner_tag(), ml_affiliate()
-    offers, seen = [], set()
+    books, seen = [], set()
     for i, raw in enumerate(doc["offers"]):
         try:
-            o = validate_offer(raw)
-            if o["id"] in seen:
-                raise Invalid(f"id duplicado: {o['id']!r}")
-            seen.add(o["id"])
-            o["url"] = affiliate_url(o, tag, aff)
+            b = validate_offer(raw, tag, aff)
+            if b["id"] in seen:
+                raise Invalid(f"id duplicado: {b['id']!r}")
+            seen.add(b["id"])
         except Invalid as e:
             raise Invalid(f"offers[{i}]: {e}") from None
-        offers.append(o)
-    if not offers:
+        books.append(b)
+    if not books:
         raise Invalid("nenhuma oferta")
-    return offers
+    return books
+
+
+def resolve(books, now):
+    """Livro -> oferta exibida: campos do livro + os da loja vencedora."""
+    out = []
+    for b in books:
+        win = min(b["stores"], key=lambda s: s["price_cents"])
+        out.append({**b, **win})
+    return out
+
+
+def load_offers(doc, now):
+    return resolve(load_books(doc), now)
 
 
 # ---------- render ----------
@@ -287,7 +350,7 @@ def discount(o):
 
 def seal(o):
     """"90d" só com 90 dias reais de histórico (CDC); "since" com histórico curto; senão None."""
-    hs = o["history_start"]
+    hs = o["history_since"]
     if hs is None or o["price_cents"] > o["lowest_90d_cents"]:
         return None
     return "90d" if (o["checked_at"].astimezone(BRT).date() - hs).days >= 90 else "since"
@@ -330,7 +393,7 @@ def price_html(o):
 def stamp_html(o):
     kind = seal(o)
     return ('<p class="stamp">Menor preço em 90 dias</p>' if kind == "90d" else
-            f'<p class="stamp stamp--since">Menor preço desde {o["history_start"]:%d/%m}</p>'
+            f'<p class="stamp stamp--since">Menor preço desde {o["history_since"]:%d/%m}</p>'
             if kind == "since" else "")
 
 
@@ -661,7 +724,7 @@ def build(dev=False):
     doc = json.loads(DATA.read_text(encoding="utf-8"))
     if not dev:
         require_prod(doc)
-    offers = load_offers(doc)
+    offers = load_offers(doc, datetime.now(timezone.utc))
     bot, ch = tg_bot(), channels()
     # tudo validado e renderizado antes de tocar no dist/
     pages = {"index.html": page(offers, bot=bot, ch=ch), "privacidade/index.html": privacy(bot, ch)}
@@ -684,21 +747,31 @@ def selftest():
     aff = ml_affiliate()
     ml_link = (f"https://www.mercadolivre.com.br/social/{aff}?matt_word={aff}"
                "&matt_tool=123&forceInApp=true&ref=AbC%2Fd%3D%3D")
-    good = {"id": "livro-1", "store": "amazon", "asin": "B0ABCDEFGH", "genre": "manga",
-            "title": "T", "author": "A", "price_cents": 1990, "list_price_cents": 3990,
-            "lowest_90d_cents": 1990, "checked_at": "2026-10-18T08:00:00-03:00"}
-    ml = {**good, "store": "mercadolivre", "id": "livro-2", "ml_item_id": "MLB123",
-          "genre": "ficcao", "ml_url": ml_link}
-    del ml["asin"]
+    NOW = datetime(2026, 10, 18, 9, 0, tzinfo=BRT)  # relógio fixo
+    amz = {"store": "amazon", "asin": "B0ABCDEFGH", "price_cents": 1990, "list_price_cents": 3990,
+           "lowest_90d_cents": 1990, "checked_at": "2026-10-18T08:00:00-03:00"}
+    mls = {**amz, "store": "mercadolivre", "ml_product_id": "MLB123", "ml_url": ml_link}
+    del mls["asin"]
+    good = {"id": "livro-1", "genre": "manga", "title": "T", "author": "A", "stores": [amz]}
+    ml = {**good, "id": "livro-2", "genre": "ficcao", "stores": [mls]}
 
-    def rejects(*offers):
+    def A(**kw):  # livro-1 só na Amazon, loja alterada
+        return {**good, "stores": [{**amz, **kw}]}
+
+    def M(**kw):  # livro-2 só no ML, loja alterada
+        return {**ml, "stores": [{**mls, **kw}]}
+
+    def load(*books, now=NOW):
+        return load_offers({"version": 2, "offers": list(books)}, now)
+
+    def rejects(*books, doc=None):
         try:
-            load_offers({"offers": list(offers)})
+            load_books(doc if doc is not None else {"version": 2, "offers": list(books)})
         except Invalid:
             return True
         return False
 
-    o = load_offers({"offers": [good, ml]})
+    o = load(good, ml)
     assert o[0]["url"] == "https://www.amazon.com.br/dp/B0ABCDEFGH?tag=" + partner_tag()
     assert o[1]["url"] == ml_link
     # link do ML: só o completo do painel, preso ao nosso matt_word
@@ -717,8 +790,8 @@ def selftest():
                 ml_link.replace("matt_tool=123", "matt_tool=123&matt_tool=9"),
                 "\x00" + ml_link, ml_link + "&ref=\x00", ml_link + "&ref=á",
                 ml_link + "&&"):
-        assert rejects({**ml, "ml_url": bad}), bad
-    assert rejects({k: v for k, v in ml.items() if k != "ml_url"})
+        assert rejects(M(ml_url=bad)), bad
+    assert rejects({**ml, "stores": [{k: v for k, v in mls.items() if k != "ml_url"}]})
     # fail-closed fora do --dev
     saved = {k: os.environ.pop(k, None) for k in ("AMAZON_PARTNER_TAG", "ML_AFFILIATE_ID")}
     for env, doc in (({}, {}), ({"AMAZON_PARTNER_TAG": "minha-20", "ML_AFFILIATE_ID": "exemplo"}, {}),
@@ -734,7 +807,7 @@ def selftest():
         os.environ.pop(k, None)
         if v is not None:
             os.environ[k] = v
-    assert rejects({**good, "ml_url": ml_link})  # ml_url em oferta da Amazon
+    assert rejects(A(ml_url=ml_link))  # ml_url na loja Amazon
     # nicho: conjunto fechado (vira diretório)
     for bad in ("../evil", "Manga", "", None):
         assert rejects({**good, "genre": bad}), bad
@@ -745,22 +818,24 @@ def selftest():
     # ASIN inválido / com URL injetada
     for bad in ("B0ABC", "b0abcdefgh", "B0ABCDEFGH\n", "B0ABCDEFGH?tag=evil-20",
                 "../../evil", "x@evil.com/"):
-        assert rejects({**good, "asin": bad}), bad
-    assert rejects({**ml, "ml_item_id": "MLB1.evil.com"})
+        assert rejects(A(asin=bad)), bad
+    for bad in ("MLB1.evil.com", "mlb1", "MLB", 123, ""):
+        assert rejects(M(ml_product_id=bad)), bad
+    assert load({**ml, "stores": [{k: v for k, v in mls.items() if k != "ml_product_id"}]})  # opcional
     # id usado no _redirects: injeção de linha / path
     for bad in ("x\n/r/y https://evil.com 302", "A", "a/b", "a b", "", "-a"):
         assert rejects({**good, "id": bad}), bad
     # campos extras (URL no JSON) e id da outra loja
-    assert rejects({**good, "url": "https://evil.com"})
-    assert rejects({**good, "ml_item_id": "MLB1"})
+    assert rejects({**good, "url": "https://evil.com"}) and rejects(A(url="https://evil.com"))
+    assert rejects(A(ml_product_id="MLB1")) and rejects(A(ml_item_id="MLB1"))
     # duplicado, dinheiro em float/bool, data, store
     assert rejects(good, good)
-    assert rejects({**good, "price_cents": 19.9})
-    assert rejects({**good, "price_cents": True})
-    assert rejects({**good, "list_price_cents": 100})
-    assert rejects({**good, "checked_at": "ontem"})
-    assert rejects({**good, "checked_at": "2026-10-18T08:00:00"})
-    assert rejects({**good, "store": "evil"})
+    assert rejects(A(price_cents=19.9))
+    assert rejects(A(price_cents=True))
+    assert rejects(A(list_price_cents=100))
+    assert rejects(A(checked_at="ontem"))
+    assert rejects(A(checked_at="2026-10-18T08:00:00"))
+    assert rejects(A(store="evil"))
     assert rejects({**good, "title": "<b>\x00</b>"})
     # allowlist de host
     for bad in ("https://evil.com/dp/X", "https://amazon.com.br.evil.com/",
@@ -779,7 +854,7 @@ def selftest():
     if saved is not None:
         os.environ["AMAZON_PARTNER_TAG"] = saved
     # escape no HTML
-    xss = load_offers({"offers": [{**good, "title": '<script>alert(1)</script>"'}]})
+    xss = load({**good, "title": '<script>alert(1)</script>"'})
     assert "<script>" not in page(xss) and "&lt;script&gt;" in page(xss)
     # botão de alerta: só com TELEGRAM_BOT_USERNAME válido
     assert "t.me" not in page(o) and 'class="alert"' not in page(o)
@@ -840,11 +915,11 @@ def selftest():
             os.environ[k] = v
     many = [{**good, "id": f"l-{n}"} for n in range(667)]
     try:
-        redirects(load_offers({"offers": many}))
+        redirects(load(*many))
         raise AssertionError("limite do _redirects")
     except Invalid:
         pass
-    assert len(redirects(load_offers({"offers": many[:666]})).splitlines()) == 1999
+    assert len(redirects(load(*many[:666])).splitlines()) == 1999
     # canais: só com a env; validados; rel noopener noreferrer
     saved = {k: os.environ.pop(k, None) for k in ("TELEGRAM_CHANNEL_ID", "WHATSAPP_CHANNEL_ID")}
     assert channels() == [] and "/canais/" not in page(o)
@@ -871,19 +946,18 @@ def selftest():
         if v is not None:
             os.environ[k] = v
     # texto do post: mesmo brl/when/desconto/selo do card
-    torto = load_offers({"offers": [{**good, "title": "Torto Arado", "author": "Itamar Vieira Junior",
-                                     "price_cents": 4290, "list_price_cents": 7490, "lowest_90d_cents": 4590,
-                                     "checked_at": "2026-10-18T08:47:00-03:00",
-                                     "history_start": "2026-06-01"}]})[0]
+    torto = load({**good, "title": "Torto Arado", "author": "Itamar Vieira Junior",
+                  "stores": [{**amz, "price_cents": 4290, "list_price_cents": 7490, "lowest_90d_cents": 4590,
+                              "checked_at": "2026-10-18T08:47:00-03:00", "history_since": "2026-06-01"}]})[0]
     nb = "\u00a0"
     assert post_text(torto, "https://ofertaslivros.com/r/livro-1/tg") == (
         "Menor preço em 90 dias\nTorto Arado, de Itamar Vieira Junior\n"
         f"R${nb}42,90 (de R${nb}74,90, -42%)\n"
         "Amazon · preço verificado em 18/10 às 08h47. O preço final é o da loja.\n"
         "Link de afiliado: https://ofertaslivros.com/r/livro-1/tg")
-    plain = post_text({**torto, "history_start": None, "list_price_cents": 4290}, "https://x.com/r/livro-1")
+    plain = post_text({**torto, "history_since": None, "list_price_cents": 4290}, "https://x.com/r/livro-1")
     assert plain.splitlines()[:2] == ["Torto Arado, de Itamar Vieira Junior", f"R${nb}42,90"]
-    assert "Menor preço" not in post_text({**torto, "history_start": date(2026, 7, 21)}, "https://x.com/r/livro-1")
+    assert "Menor preço" not in post_text({**torto, "history_since": date(2026, 7, 21)}, "https://x.com/r/livro-1")
     for bad in ("https://www.amazon.com.br/r/livro-1", "http://x.com/r/livro-1", "https://x.com/r/outro",
                 "https://x.com/r/livro-1?u=https://evil.com", "https://x.com/r/livro-1/tg\nhttps://evil.com"):
         try:
@@ -892,27 +966,28 @@ def selftest():
         except Invalid:
             pass
     assert brl(123456) == "R$ 1.234,56" and brl(5) == "R$ 0,05"
-    # selo de 90 dias: só com history_start cobrindo 90 dias (checked_at 18/10 BRT)
+    # selo de 90 dias: só com history_since cobrindo 90 dias (checked_at 18/10 BRT)
     def stamp(**kw):
-        return page(load_offers({"offers": [{**good, **kw}]}))
+        return page(load(A(**kw)))
     assert 'class="stamp' not in stamp()                                   # sem histórico
-    assert "Menor preço desde 21/07" in stamp(history_start="2026-07-21")  # 89 dias
-    assert "Menor preço em 90 dias" not in stamp(history_start="2026-07-21")
-    assert "Menor preço em 90 dias" in stamp(history_start="2026-07-20")   # 90 dias
-    assert 'class="stamp' not in stamp(history_start="2026-07-20", lowest_90d_cents=1000)
+    assert "Menor preço desde 21/07" in stamp(history_since="2026-07-21")  # 89 dias
+    assert "Menor preço em 90 dias" not in stamp(history_since="2026-07-21")
+    assert "Menor preço em 90 dias" in stamp(history_since="2026-07-20")   # 90 dias
+    assert 'class="stamp' not in stamp(history_since="2026-07-20", lowest_90d_cents=1000)
     for bad in ("2026-10-19", "20260720", "2026-02-30", "2026-07-20T00:00", 20260720):
-        assert rejects({**good, "history_start": bad}), bad
+        assert rejects(A(history_since=bad)), bad
+    assert rejects({**good, "history_start": "2026-07-01"})  # campo da proposta antiga, substituído
     # campos novos: tipo errado quebra o build
     for bad in ("true", 1, 0, None, "sim"):
         assert rejects({**good, "featured": bad}), bad
     for bad in (0, -1, True, 1.0, "1"):
         assert rejects({**good, "trending_rank": bad}), bad
-    assert load_offers({"offers": [{**good, "featured": True, "trending_rank": 3}]})[0]["trending_rank"] == 3
+    assert load({**good, "featured": True, "trending_rank": 3})[0]["trending_rank"] == 3
     # home: seções, carrossel sem JS, fallbacks honestos
-    def offers_n(n, extra=None):
-        return load_offers({"offers": [{**good, "id": f"l-{k}", "title": f"Livro {k}",
-                                        "price_cents": 4000 - 100 * k, "list_price_cents": 4000,
-                                        **(extra or {}).get(k, {})} for k in range(n)]})
+    def offers_n(n, extra=None, store=None):
+        return load(*({**good, "id": f"l-{k}", "title": f"Livro {k}", **(extra or {}).get(k, {}),
+                       "stores": [{**amz, "price_cents": 4000 - 100 * k, "list_price_cents": 4000,
+                                   **(store or {}).get(k, {})}]} for k in range(n)))
     saved = {k: os.environ.pop(k, None) for k in ("TELEGRAM_CHANNEL_ID", "WHATSAPP_CHANNEL_ID")}
     h = page(offers_n(14))
     assert "<script" not in h and h.count('aria-roledescription="slide"') == 5
@@ -923,7 +998,7 @@ def selftest():
     assert 'class="join"' not in h and "Crie um alerta" not in h         # sem canais nem bot
     assert max(h.count(f'href="/r/l-{k}"') for k in range(14)) <= 2      # no máximo 2 seções
     # fallback do destaque: selo válido antes do maior desconto (l-13 tem o maior)
-    h = page(offers_n(10, {2: {"history_start": "2026-06-01", "lowest_90d_cents": 3800}}))
+    h = page(offers_n(10, store={2: {"history_since": "2026-06-01", "lowest_90d_cents": 3800}}))
     assert h.index('id="d-l-2"') < h.index('id="d-l-9"')
     assert "Mais livros" not in h                                        # sobram 6 para a grade
     h = page(offers_n(10, {7: {"featured": True}, 0: {"trending_rank": 2}, 1: {"trending_rank": 1}}))
@@ -941,6 +1016,32 @@ def selftest():
     for k, v in saved.items():
         if v is not None:
             os.environ[k] = v
+    # contrato v2: version, stores, isbn, image_url
+    for d in ({"offers": [good]}, {"version": 1, "offers": [good]}, {"version": "2", "offers": [good]},
+              {"version": 2.0, "offers": [good]}, {"version": True, "offers": [good]}, {"version": 2}, []):
+        assert rejects(doc=d), d
+    for bad in ([], [amz, mls, {**amz, "asin": "B0ABCDEFGJ"}], [amz, {**amz, "asin": "B0ABCDEFGJ"}],
+                [mls, mls], [{**amz, "store": "americanas"}], [{**amz, "store": None}], None, amz, ["amazon"]):
+        assert rejects({**good, "stores": bad}), bad
+    assert len(load({**good, "stores": [amz, mls]})[0]["stores"]) == 2
+    for ok in ("9788550807560", "8535902775", "853590277X"):
+        assert load({**good, "isbn": ok})[0]["isbn"] == ok
+    for bad in ("978855080756", "97885508075600", "853590277x", "X535902775", "978-8550807560",
+                9788550807560, "9788550807560\n", ""):
+        assert rejects({**good, "isbn": bad}), bad
+    img = "https://http2.mlstatic.com/D_NQ_NP_123-MLA456-O.webp"
+    assert load({**good, "image_url": img})[0]["image_url"] == img
+    import contextlib
+    import io
+    for bad in ("http://http2.mlstatic.com/a.jpg", "https://evil.mlstatic.com/a.jpg",
+                "https://http2.mlstatic.com.evil.com/a.jpg", "https://x@http2.mlstatic.com/a.jpg",
+                "https://http2.mlstatic.com:8443/a.jpg", "https://HTTP2.mlstatic.com/a.jpg",
+                "https://http2.mlstatic.com/a b.jpg", 'https://http2.mlstatic.com/a"onerror=x',
+                "javascript:alert(1)", "https://[x", "//http2.mlstatic.com/a.jpg", 123, ""):
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            assert load({**good, "image_url": bad})[0]["image_url"] is None, bad  # descarta, não quebra
+        assert "image_url descartada" in err.getvalue(), bad
     print("selftest ok")
 
 
