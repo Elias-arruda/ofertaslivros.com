@@ -68,6 +68,25 @@ def _env_id(name, default):
     return v
 
 
+# Username de bot do Telegram: 5 a 32 chars, começa com letra, termina em "bot".
+TG_BOT_RE = re.compile(r"[a-z][a-z0-9_]{1,28}bot", re.I)
+TG_START_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")  # limite do ?start= do deep link
+
+
+def tg_bot():
+    """Opcional: sem TELEGRAM_BOT_USERNAME o site sai sem o botão de alerta."""
+    v = os.environ.get("TELEGRAM_BOT_USERNAME", "").removeprefix("@")
+    if v and not TG_BOT_RE.fullmatch(v):
+        raise Invalid("TELEGRAM_BOT_USERNAME com formato inválido")
+    return v or None
+
+
+def tg_alert_url(bot, oid):
+    if not TG_START_RE.fullmatch(oid):  # id até 80 no offers.json; o start aceita 64
+        raise Invalid(f"id não cabe no deep link do Telegram: {oid!r}")
+    return f"https://t.me/{bot}?start={oid}"
+
+
 def partner_tag():
     return _env_id("AMAZON_PARTNER_TAG", "exemplo-20")
 
@@ -235,7 +254,7 @@ def seal(o):
     return "90d" if (o["checked_at"].astimezone(BRT).date() - hs).days >= 90 else "since"
 
 
-def card(o, i):
+def card(o, i, bot=None):
     off = discount(o)
     store = STORES[o["store"]]
     t, a = e(o["title"]), e(o["author"])
@@ -246,6 +265,8 @@ def card(o, i):
     stamp = ('<p class="stamp">Menor preço em 90 dias</p>' if kind == "90d" else
              f'<p class="stamp stamp--since">Menor preço desde {o["history_start"]:%d/%m}</p>'
              if kind == "since" else "")
+    alert = (f' <a class="alert" href="{e(tg_alert_url(bot, o["id"]))}" rel="noopener noreferrer" target="_blank">'
+             f'Me avise se baixar (Telegram)<span class="sr">: alerta de preço de {t}</span></a>' if bot else "")
     prep = "no" if o["store"] == "mercadolivre" else "na"
     return f"""<li class="card">
   <div class="top">
@@ -262,7 +283,7 @@ def card(o, i):
   {stamp}
   <p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong> {old} {disc}</p>
   <p class="meta"><span class="store">{store}</span>, verificado em <time datetime="{e(o["checked_at"].isoformat())}">{when(o["checked_at"])}</time></p>
-  <p class="acts"><a class="go" href="/r/{e(o["id"])}" rel="sponsored noopener noreferrer" target="_blank">Ver {prep} {store}<span class="sr">: {t} (abre em nova aba)</span></a></p>
+  <p class="acts"><a class="go" href="/r/{e(o["id"])}" rel="sponsored noopener noreferrer" target="_blank">Ver {prep} {store}<span class="sr">: {t} (abre em nova aba)</span></a>{alert}</p>
 </li>"""
 
 
@@ -308,10 +329,10 @@ def shell(title, desc, mast, body):
 """
 
 
-def page(all_offers, genre=None):
+def page(all_offers, genre=None, bot=None):
     offers = [o for o in all_offers if genre is None or o["genre"] == genre]
     latest = max(o["checked_at"] for o in offers)
-    cards = "\n".join(card(o, i) for i, o in enumerate(offers))
+    cards = "\n".join(card(o, i, bot) for i, o in enumerate(offers))
     n = len(offers)
     head = (f'<p class="brand"><a href="/">Ofertas Livros</a></p>\n<h1>{e(GENRES[genre])}</h1>' if genre
             else '<h1><a href="/">Ofertas Livros</a></h1>')
@@ -349,10 +370,11 @@ def build(dev=False):
     if not dev:
         require_prod(doc)
     offers = load_offers(doc)
+    bot = tg_bot()
     # tudo validado e renderizado antes de tocar no dist/
-    pages = {"index.html": page(offers)}
+    pages = {"index.html": page(offers, bot=bot)}
     for g in {o["genre"] for o in offers}:
-        pages[f"{g}/index.html"] = page(offers, g)
+        pages[f"{g}/index.html"] = page(offers, g, bot)
     redirects = "".join(f"/r/{o['id']} {o['url']} 302\n" for o in offers)
     shutil.rmtree(DIST, ignore_errors=True)
     shutil.copytree(STATIC, DIST)
@@ -465,6 +487,35 @@ def selftest():
     # escape no HTML
     xss = load_offers({"offers": [{**good, "title": '<script>alert(1)</script>"'}]})
     assert "<script>" not in page(xss) and "&lt;script&gt;" in page(xss)
+    # botão de alerta: só com TELEGRAM_BOT_USERNAME válido
+    assert "t.me" not in page(o) and 'class="alert"' not in page(o)
+    pb = page(o, bot="OfertasLivrosBot")
+    assert ('<a class="alert" href="https://t.me/OfertasLivrosBot?start=livro-1" '
+            'rel="noopener noreferrer" target="_blank">Me avise se baixar') in pb
+    assert pb.count('class="alert"') == 2
+    pb = page(xss, bot="OfertasLivrosBot")
+    assert "<script>" not in pb and "alerta de preço de &lt;script&gt;" in pb
+    saved = os.environ.pop("TELEGRAM_BOT_USERNAME", None)
+    assert tg_bot() is None
+    for ok in ("OfertasLivrosBot", "@abc_bot", "x1BOT"):
+        os.environ["TELEGRAM_BOT_USERNAME"] = ok
+        assert tg_bot() == ok.removeprefix("@")
+    for bad in ("Ofertas", "bot", "1abcbot", "a" * 30 + "bot", "ab-cbot", "x.bot\n",
+                'a"onbot', "abcbot?x=1"):
+        os.environ["TELEGRAM_BOT_USERNAME"] = bad
+        try:
+            tg_bot()
+            raise AssertionError(bad)
+        except Invalid:
+            pass
+    os.environ.pop("TELEGRAM_BOT_USERNAME")
+    if saved is not None:
+        os.environ["TELEGRAM_BOT_USERNAME"] = saved
+    try:
+        tg_alert_url("OfertasLivrosBot", "a" * 65)
+        raise AssertionError("id longo")
+    except Invalid:
+        pass
     assert brl(123456) == "R$ 1.234,56" and brl(5) == "R$ 0,05"
     # selo de 90 dias: só com history_start cobrindo 90 dias (checked_at 18/10 BRT)
     def stamp(**kw):
