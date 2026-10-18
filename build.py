@@ -317,12 +317,41 @@ def load_books(doc):
     return books
 
 
+# Prazo de frescor do preço (distribuicao-canais.md): loja mais velha sai da comparação.
+FRESH = {"mercadolivre": timedelta(hours=2), "amazon": timedelta(hours=12)}
+SKEW = timedelta(minutes=5)  # checked_at um pouco no futuro: relógio do coletor adiantado
+
+
+def fresh(s, now):
+    return -SKEW <= now - s["checked_at"] <= FRESH[s["store"]]
+
+
+def seal_of(win, el):
+    """("90d" | "since" | None, data do "desde"). Leitura estrita do contrato: o preço da
+    vencedora precisa ser <= o mínimo de 90 dias de TODAS as lojas elegíveis, e todas
+    precisam de 90 dias de histórico; sem isso não sabemos o mínimo da outra loja."""
+    hs = [s["history_since"] for s in el]
+    if None in hs or any(win["price_cents"] > s["lowest_90d_cents"] for s in el):
+        return None, None
+    if all((s["checked_at"].astimezone(BRT).date() - s["history_since"]).days >= 90 for s in el):
+        return "90d", None
+    return "since", max(hs)
+
+
 def resolve(books, now):
-    """Livro -> oferta exibida: campos do livro + os da loja vencedora."""
+    """Livro -> oferta exibida: campos do livro + os da loja vencedora, só com lojas no prazo.
+    Vencedora: menor price_cents; no empate, a verificada mais recentemente."""
     out = []
     for b in books:
-        win = min(b["stores"], key=lambda s: s["price_cents"])
-        out.append({**b, **win})
+        el = [s for s in b["stores"] if fresh(s, now)]
+        if not el:
+            continue  # nenhuma loja no prazo: o livro sai da lista
+        win = min(el, key=lambda s: (s["price_cents"], -s["checked_at"].timestamp()))
+        seal, since = seal_of(win, el)
+        out.append({**b, **win, "stores": el, "alt": next((s for s in el if s is not win), None),
+                    "seal": seal, "since": since})
+    if not out:
+        raise Invalid("nenhuma oferta com preço dentro do prazo de frescor")
     return out
 
 
@@ -350,10 +379,7 @@ def discount(o):
 
 def seal(o):
     """"90d" só com 90 dias reais de histórico (CDC); "since" com histórico curto; senão None."""
-    hs = o["history_since"]
-    if hs is None or o["price_cents"] > o["lowest_90d_cents"]:
-        return None
-    return "90d" if (o["checked_at"].astimezone(BRT).date() - hs).days >= 90 else "since"
+    return o["seal"]
 
 
 def post_text(o, url):
@@ -393,7 +419,7 @@ def price_html(o):
 def stamp_html(o):
     kind = seal(o)
     return ('<p class="stamp">Menor preço em 90 dias</p>' if kind == "90d" else
-            f'<p class="stamp stamp--since">Menor preço desde {o["history_since"]:%d/%m}</p>'
+            f'<p class="stamp stamp--since">Menor preço desde {o["since"]:%d/%m}</p>'
             if kind == "since" else "")
 
 
@@ -724,7 +750,12 @@ def build(dev=False):
     doc = json.loads(DATA.read_text(encoding="utf-8"))
     if not dev:
         require_prod(doc)
-    offers = load_offers(doc, datetime.now(timezone.utc))
+    books = load_books(doc)
+    # ponytail: no --dev, "agora" é o checked_at mais recente do arquivo, para a demo não
+    # esvaziar com dado parado; o deploy usa o relógio real.
+    now = (max(s["checked_at"] for b in books for s in b["stores"]) if dev
+           else datetime.now(timezone.utc))
+    offers = resolve(books, now)
     bot, ch = tg_bot(), channels()
     # tudo validado e renderizado antes de tocar no dist/
     pages = {"index.html": page(offers, bot=bot, ch=ch), "privacidade/index.html": privacy(bot, ch)}
@@ -740,7 +771,8 @@ def build(dev=False):
         (DIST / path).write_text(body, encoding="utf-8")
     (DIST / "_redirects").write_text(rules, encoding="utf-8")
     (DIST / "_headers").write_text(HEADERS, encoding="utf-8")
-    print(f"ok: {len(offers)} ofertas, {len(pages)} páginas -> {DIST}")
+    print(f"ok: {len(offers)} ofertas ({len(books) - len(offers)} fora do prazo), "
+          f"{len(pages)} páginas -> {DIST}")
 
 
 def selftest():
@@ -955,9 +987,9 @@ def selftest():
         f"R${nb}42,90 (de R${nb}74,90, -42%)\n"
         "Amazon · preço verificado em 18/10 às 08h47. O preço final é o da loja.\n"
         "Link de afiliado: https://ofertaslivros.com/r/livro-1/tg")
-    plain = post_text({**torto, "history_since": None, "list_price_cents": 4290}, "https://x.com/r/livro-1")
+    plain = post_text({**torto, "seal": None, "list_price_cents": 4290}, "https://x.com/r/livro-1")
     assert plain.splitlines()[:2] == ["Torto Arado, de Itamar Vieira Junior", f"R${nb}42,90"]
-    assert "Menor preço" not in post_text({**torto, "history_since": date(2026, 7, 21)}, "https://x.com/r/livro-1")
+    assert "Menor preço" not in post_text({**torto, "seal": "since"}, "https://x.com/r/livro-1")
     for bad in ("https://www.amazon.com.br/r/livro-1", "http://x.com/r/livro-1", "https://x.com/r/outro",
                 "https://x.com/r/livro-1?u=https://evil.com", "https://x.com/r/livro-1/tg\nhttps://evil.com"):
         try:
@@ -1042,6 +1074,52 @@ def selftest():
         with contextlib.redirect_stderr(err):
             assert load({**good, "image_url": bad})[0]["image_url"] is None, bad  # descarta, não quebra
         assert "image_url descartada" in err.getvalue(), bad
+    # vencedora: menor preço; empate -> verificada mais recentemente
+    a8, m8 = {**amz, "checked_at": "2026-10-18T08:00:00-03:00"}, {**mls, "checked_at": "2026-10-18T08:30:00-03:00"}
+    def win(*stores, now=NOW):
+        r = load({**good, "stores": list(stores)}, now=now)
+        return r and r[0]["store"]
+    assert win({**a8, "price_cents": 1890}, m8) == "amazon"
+    assert win(a8, {**m8, "price_cents": 1890}) == "mercadolivre"
+    assert win(a8, m8) == "mercadolivre"                                  # empate: ML verificado 08:30
+    assert win({**a8, "checked_at": "2026-10-18T08:45:00-03:00"}, m8) == "amazon"
+    r = load({**good, "stores": [a8, {**m8, "price_cents": 2190, "list_price_cents": 2490}]})[0]
+    assert r["alt"]["store"] == "mercadolivre" and discount(r) == 50      # desconto da vencedora (1990/3990)
+    r = load({**good, "stores": [{**a8, "price_cents": 2490}, {**m8, "list_price_cents": 2490}]})[0]
+    assert r["store"] == "mercadolivre" and discount(r) == 20             # 1990 sobre 2490
+    # frescor por loja, com o relógio injetado: ML até 2 h, Amazon até 12 h
+    ml_cheap = {**m8, "price_cents": 990}
+    assert win(a8, ml_cheap, now=datetime(2026, 10, 18, 10, 30, tzinfo=BRT)) == "mercadolivre"  # 2 h
+    r = load({**good, "stores": [a8, ml_cheap]}, now=datetime(2026, 10, 18, 10, 31, tzinfo=BRT))[0]
+    assert r["store"] == "amazon" and r["alt"] is None and len(r["stores"]) == 1  # ML velho saiu
+    assert win(a8, now=datetime(2026, 10, 18, 20, 0, tzinfo=BRT)) == "amazon"     # 12 h
+    late = datetime(2026, 10, 18, 20, 1, tzinfo=BRT)
+    assert [x["id"] for x in load(good, M(checked_at="2026-10-18T19:00:00-03:00"), now=late)] == ["livro-2"]
+    try:
+        load(good, now=late)  # nenhum livro elegível
+        raise AssertionError("lista vazia")
+    except Invalid:
+        pass
+    assert load(A(checked_at="2026-10-18T09:04:00-03:00"))                 # 4 min no futuro: tolerado
+    try:
+        load(A(checked_at="2026-10-18T09:06:00-03:00"))
+        raise AssertionError("futuro")
+    except Invalid:
+        pass
+    # selo estrito: 90 dias em TODAS as lojas elegíveis e preço <= o mínimo de todas
+    def seal_two(a, m):
+        r = load({**good, "stores": [{**a8, **a}, {**m8, "price_cents": 2490, **m}]})[0]
+        return r["seal"], r["since"]
+    h90, h89 = "2026-07-20", "2026-07-21"
+    assert seal_two({"history_since": h90}, {"history_since": h90}) == ("90d", None)
+    assert seal_two({"history_since": h90}, {"history_since": h89}) == ("since", date(2026, 7, 21))
+    assert seal_two({"history_since": h90}, {"history_since": "2026-10-10"}) == ("since", date(2026, 10, 10))
+    assert seal_two({"history_since": h90}, {}) == (None, None)            # outra loja sem histórico
+    assert seal_two({"history_since": h90}, {"history_since": h90, "lowest_90d_cents": 1890}) == (None, None)
+    # loja velha não conta no selo
+    r = load({**good, "stores": [{**a8, "history_since": h90}, {**m8, "price_cents": 2490}]},
+             now=datetime(2026, 10, 18, 11, 0, tzinfo=BRT))[0]
+    assert r["seal"] == "90d" and len(r["stores"]) == 1
     print("selftest ok")
 
 
