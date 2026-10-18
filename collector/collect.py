@@ -15,10 +15,13 @@ Mercado Livre: o link do painel aponta para PRODUTO de catálogo (/p/MLB...). Po
      atributo GTIN (doc "Buscador de produtos", 29/12/2025). A doc mostra produto
      status=active com buy_box_winner null: sem vencedor não quer dizer sem anúncio.
      GTIN diferente do ISBN do catálogo: o preço do ML daquele livro é descartado.
-  1b. Sem buy_box_winner: GET /products/{id}/items (anúncios que competem no produto),
-     item de menor preço em BRL. Sem nenhum item (results vazio ou 404) = "inativo".
-  2. GET /items/{item_id}/sale_price?context=channel_marketplace -> amount/regular_amount,
-     o preço que o comprador vê (doc "Preços de produtos", 14/10/2026).
+  1b. Sem buy_box_winner: GET /products/{id}/items (anúncios que competem no produto).
+     Elegível: condition=new, BRL, status ausente/active, item_id válido. O de menor
+     price vale, com price/original_price do próprio resultado (sale_price dá 403 com
+     token de app, run 39178554200). Nenhum elegível (ou 404) = "inativo".
+  2. Só no buy_box: GET /items/{item_id}/sale_price?context=channel_marketplace ->
+     amount/regular_amount (doc "Preços de produtos", 14/10/2026). 403: cai para
+     price/original_price do buy_box_winner.
 Token de app via client_credentials (ML_CLIENT_ID/ML_CLIENT_SECRET), nunca logado.
 
 Saída em DIR (branch price-history):
@@ -377,17 +380,18 @@ def winner(prod):
     return w
 
 
-def cheapest_item(body):
-    """De /products/{id}/items: item_id do anúncio ativo mais barato em BRL, ou None.
-    Item sem status conta como ativo (o recurso lista quem compete); outra moeda, preço
-    inválido ou item_id fora do MLB_RE: descartado. O preço final vem do sale_price."""
+def best_listing(body):
+    """De /products/{id}/items -> (anúncio elegível de menor price ou None, nº de elegíveis).
+    Elegível: condition == "new" (ausente = descarta: livro usado não entra), BRL, status
+    ausente ou "active", item_id no MLB_RE, price válido."""
     res = body.get("results") if isinstance(body, dict) else None
     if not isinstance(res, list):
         raise MLError("/items malformado")
-    best = None
+    best, n = None, 0
     # ponytail: só a 1ª página (paging); paginar se um livro tiver muitos anúncios
     for it in res:
-        if not isinstance(it, dict) or it.get("currency_id") != "BRL" \
+        if not isinstance(it, dict) or it.get("condition") != "new" \
+                or it.get("currency_id") != "BRL" \
                 or it.get("status", "active") != "active" \
                 or not isinstance(it.get("item_id"), str) or not MLB_RE.fullmatch(it["item_id"]):
             continue
@@ -395,9 +399,25 @@ def cheapest_item(body):
             c = to_cents(it.get("price"))
         except Invalid:
             continue
+        n += 1
         if best is None or c < best[0]:
-            best = (c, it["item_id"])
-    return best and best[1]
+            best = (c, it)
+    return (best and best[1]), n
+
+
+def listing_row(book_id, it, now):
+    """price/original_price de um anúncio (/items ou buy_box_winner). original_price só
+    vale como "de" se for numérico e maior que o price; senão list = price."""
+    if not isinstance(it, dict):
+        raise MLError("anúncio malformado")
+    if it.get("currency_id") != "BRL":
+        raise Invalid(f"moeda não é BRL: {it.get('currency_id')!r}")
+    price = to_cents(it.get("price"))
+    try:
+        lst = to_cents(it.get("original_price"))
+    except Invalid:
+        lst = price
+    return row(book_id, "mercadolivre", price, max(lst, price), now, "ml_api")
 
 
 def product_items(pid, token, **kw):
@@ -457,7 +477,7 @@ def collect_ml(books, token, now, deadline, start=0, clock=time.monotonic, sleep
     kw = {"deadline": deadline, "clock": clock, "sleep": sleep}
     for i, b in enumerate(ml):
         # diagnóstico (log público): só id do livro, status HTTP, contagens e caminho
-        d = {"http": "-", "buy_box": "não", "items": "-", "caminho": "erro"}
+        d = {"http": "-", "buy_box": "não", "items": "-", "novos_brl": "-", "caminho": "erro"}
         try:
             try:
                 prod = ml_request(f"/products/{b['ml_product_id']}", token, **kw)
@@ -479,16 +499,24 @@ def collect_ml(books, token, now, deadline, start=0, clock=time.monotonic, sleep
             if img:
                 images[b["id"]] = img
             if w:
-                item_id, d["caminho"] = w["item_id"], "buy_box"
+                d["caminho"] = "buy_box"
+                try:
+                    r = sale_row(b["id"], ml_request(_sale_path(w["item_id"]), token, **kw), now)
+                except MLError as e:
+                    if e.code != 403:
+                        raise
+                    d["caminho"] = "buy_box_preco_winner"
+                    r = listing_row(b["id"], w, now)  # sem price: Invalid, conta como erro
             else:
                 body, d["items"] = product_items(b["ml_product_id"], token, **kw)
-                item_id = cheapest_item(body)
-                if item_id is None:
+                it, d["novos_brl"] = best_listing(body)
+                if it is None:
                     n["inativo"] += 1
                     d["caminho"] = "inativo"
                     continue
                 d["caminho"] = "items"
-            rows.append(sale_row(b["id"], ml_request(_sale_path(item_id), token, **kw), now))
+                r = listing_row(b["id"], it, now)
+            rows.append(r)
             n["ok"] += 1
         except Deadline:
             n["adiado"] += len(ml) - i
@@ -499,7 +527,7 @@ def collect_ml(books, token, now, deadline, start=0, clock=time.monotonic, sleep
             n["erro"] += 1
         finally:
             print(f"ML diag: {b['id']} /products={d['http']} buy_box={d['buy_box']} "
-                  f"/items={d['items']} caminho={d['caminho']}")
+                  f"/items={d['items']} novos_brl={d['novos_brl']} caminho={d['caminho']}")
     return rows, n, images
 
 
@@ -696,20 +724,24 @@ def probe(ids):
         except MLError as e:
             print(f"  vencedor: {e}")
             continue
-        item_id = w and w["item_id"]
         if w is None:
             st, body = _probe_get(f"/products/{pid}/items", token)
             res = body.get("results") if isinstance(body, dict) else None
             print(f"  sem buy_box_winner; /items -> {st} itens="
                   f"{len(res) if isinstance(res, list) else '-'}")
             try:
-                item_id = cheapest_item(body) if st != 404 else None
-            except MLError as e:
+                it, ne = best_listing(body) if st != 404 else (None, 0)
+                print(f"  novos_brl={ne}")
+                if it is None:
+                    print("  resultado: inativo (nenhum anúncio novo em BRL)")
+                    continue
+                r = listing_row("probe", it, datetime.now(timezone.utc))
+                print(f"  resultado: price_cents={r['price_cents']} "
+                      f"list_price_cents={r['list_price_cents']}")
+            except (MLError, Invalid) as e:
                 print(f"  /items: {e}")
-                continue
-            if item_id is None:
-                print("  resultado: inativo (nenhum item ativo em BRL)")
-                continue
+            continue
+        item_id = w["item_id"]
         st, sp = _probe_get(_sale_path(item_id), token)
         print(f"  {item_id} /sale_price -> {st} chaves={_keys(sp)}")
         if isinstance(sp, dict):
