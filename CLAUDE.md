@@ -52,6 +52,7 @@ Domínio comprado na HostGator. A HostGator é usada SÓ para o domínio (DNS).
   | Curadoria e links de afiliado | catalog-curator | owasp-security |
   | Aplicar links do painel do ML colados pelo Elias (PR e merge) | affiliate-linker | — |
   | Alertas/Telegram | alerts-engineer | owasp-security |
+  | Infra e operação: DNS, Cloudflare, GitHub Actions, deploy, segredos e rulesets | infra-engineer | owasp-security |
   | Segurança | security-auditor | owasp-security |
   | Revisão | code-reviewer | web-design-guidelines (quando o diff toca UI) |
 - Antes de qualquer deploy: rodar `/security-review` e o subagent `security-auditor`.
