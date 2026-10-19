@@ -754,7 +754,8 @@ def banner_bot(bot, at):
 
 
 def ranking(offers, bot, at, skip=()):
-    """"Em alta agora": só ofertas com trending_rank vindo do back (popularidade real), sem as do hero."""
+    """"Em alta agora": só ofertas com trending_rank vindo do back (popularidade real), sem as que já
+    apareceram no hero e nos destaques (nenhum livro em mais de 2 lugares)."""
     hot = sorted((o for o in offers if o["oferta"] and o["trending_rank"] and o["id"] not in skip),
                  key=lambda o: o["trending_rank"])[:10]
     if not hot:
@@ -926,7 +927,7 @@ def home_sections(offers, bot=None, ch=()):
                          '<ol class="grid grid--feat">\n' + "\n".join(card(o, bot) for o in feat) + "\n</ol>",
                          len(feat), "" if curated else "Primeiro o menor preço do histórico, depois o maior desconto."),
         nav(offers, None, filtro=True),
-        feed(order, bot, ch, skip=in_hero),
+        feed(order, bot, ch, skip=shown),
         news(offers, bot),
         bot_block(bot),
         channels_block(ch),
@@ -1724,7 +1725,7 @@ def selftest():
     # home: seções, carrossel sem JS, fallbacks honestos
     def offers_n(n, extra=None, store=None):
         return load(*({**good, "id": f"l-{k}", "title": f"Livro {k}", **(extra or {}).get(k, {}),
-                       "stores": [{**amz, "price_cents": 4000 - 100 * k, "list_price_cents": 4000,
+                       "stores": [{**amz, "price_cents": 4000 - 100 * k, "list_price_cents": 6000,  # >= 33%: ofertas
                                    **(store or {}).get(k, {})}]} for k in range(n)))
     saved = {k: os.environ.pop(k, None) for k in ("TELEGRAM_CHANNEL_ID", "WHATSAPP_CHANNEL_ID")}
     h = vis(page(offers_n(14)))
@@ -1740,9 +1741,9 @@ def selftest():
     assert len(hero_ids) == 5 and feat.count('class="card"') == 9 and not any(f'data-id="{i}"' in feat for i in hero_ids)
     assert h[h.index('id="h-ativas"'):].count('class="card"') == 14       # o feed tem todas (busca/filtro do JS)
     assert re.search(r'id="h-ativas">Ofertas ativas</h2><span class="sec-n">14 no momento</span>', h)
-    assert '<a class="btn btn--ghost" href="/ofertas/">' not in h          # até 24, sem "ver todas"
+    assert '<p class="mais mais--m"><a class="btn btn--ghost" href="/ofertas/">' in h  # 14: "ver todas" só no celular (corta em 4)
     big = vis(page(offers_n(30)))
-    assert '<a class="btn btn--ghost" href="/ofertas/">' in big and "Ver todas as 30 ofertas" in big
+    assert '<p class="mais"><a class="btn btn--ghost" href="/ofertas/">' in big and "Ver todas as 30 ofertas" in big  # > 24
     # fallback do destaque: selo válido antes do maior desconto
     h = page(offers_n(10, store={2: {"history_since": "2026-06-01", "lowest_90d_cents": 3800}}))
     assert h.index('id="d-l-2"') < h.index('id="d-l-9"')
@@ -1764,6 +1765,64 @@ def selftest():
     for k, v in saved.items():
         if v is not None:
             os.environ[k] = v
+    # oferta x novidade (OFERTA_MIN_DESCONTO = 10%): o limiar, o selo e o "desde" contam como oferta
+    def tipo(**kw):
+        return load(A(**kw))[0]["oferta"]
+    assert OFERTA_MIN_DESCONTO == 10
+    assert tipo(price_cents=9100, list_price_cents=10000, lowest_90d_cents=9000) is False      # 9%: novidade
+    assert tipo(price_cents=9000, list_price_cents=10000, lowest_90d_cents=8000) is True       # 10%: oferta
+    assert tipo(price_cents=9900, list_price_cents=9900, lowest_90d_cents=9900, history_since="2026-07-20") is True  # selo 90d
+    assert tipo(price_cents=9900, list_price_cents=9900, lowest_90d_cents=9900, history_since="2026-10-10") is True  # "desde"
+    assert tipo(price_cents=9900, list_price_cents=9900, lowest_90d_cents=9000, history_since="2026-07-20") is False  # acima do mínimo
+    def nov(i, hs=None, title=None, **kw):
+        st = {**amz, "price_cents": 5000, "list_price_cents": 5000, "lowest_90d_cents": 4500, **kw}
+        if hs:
+            st["history_since"] = hs
+        return {**good, "id": f"nov-{i}", "title": title or f"Novo {i}", "genre": "manga", "stores": [st]}
+    mix = load(*[{**good, "id": f"l-{k}", "title": f"Livro {k}", "stores": [{**amz, "price_cents": 4000 - 100 * k,
+                                                                             "list_price_cents": 6000}]} for k in range(5)],
+               nov(1, "2026-10-01", "Zeta"), nov(2, "2026-10-17", "Beta"), nov(3, "2026-10-17", "Alfa"), nov(4))
+    h = vis(page(mix, bot="ofertaslivros_bot"))
+    hero_ = h[:h.index('id="h-filtro"')]
+    ativas = h[h.index('id="h-ativas"'):h.index('id="h-novidades"')]
+    novs = h[h.index('id="h-novidades"'):]
+    assert "nov-" not in hero_ and "nov-" not in ativas and "Em alta agora" not in novs
+    assert re.findall(r'data-id="(nov-\d)"', novs) == ["nov-3", "nov-2", "nov-1", "nov-4"]  # history_since desc, título
+    assert '<b class="tnum">5</b><span class="sr"> ofertas ativas</span>' in h                # a contagem ignora novidades
+    assert re.search(r'id="h-ativas">Ofertas ativas</h2><span class="sec-n">5 no momento</span>', h)
+    assert re.search(r'id="h-novidades">Novidades</h2><span class="sec-n">4 no momento</span><p class="sec-note">Livros que entraram', h)
+    assert '<span class="cur-c">5 ofertas</span>' in h                                      # "Todos" conta ofertas
+    card_n = novs[novs.index('data-id="nov-2"'):]
+    card_n = card_n[:card_n.index("</li>")]
+    assert ('class="sticker"' not in card_n and "<s " not in card_n and "desconto" not in card_n
+            and not re.search(r"(?i)\bofertas?\b", card_n) and 'data-tipo="novidade"' in card_n)
+    assert ('class="buy-c"' in card_n and 'class="bell"' in card_n and "visto hoje às" in card_n
+            and 'class="badge badge--novo">Novo<' in card_n)                                # loja, horário, compra, sino, Novo
+    assert '<p class="mais mais--m"><a class="btn btn--ghost" href="/novidades/">' not in h   # 4 novidades: cabem no celular
+    pg = render_pages(mix)
+    assert "nov-" not in pg["ofertas/index.html"].split('id="ofertas"')[0].split("<main")[1]  # /ofertas/ sem novidade
+    assert pg["novidades/index.html"].count('data-tipo="novidade"') == 4 and "livro/nov-1/index.html" in pg
+    assert "Novidade: ainda sem desconto" in pg["livro/nov-1/index.html"] and "oferta conferida" not in pg["livro/nov-1/index.html"]
+    gm = vis(page(mix, "manga"))
+    assert gm.index('id="h-ativas"') < gm.index('id="h-novidades"')                       # nicho: Ofertas, depois Novidades
+    blob = json.loads(re.search(r'id="ofertas">(.*?)</script>', page(mix)).group(1))
+    assert all(d["off"] == 0 and d["de"] is None and d["nov"] for d in blob if d["id"].startswith("nov-"))
+    try:
+        post_text(next(o for o in mix if o["id"] == "nov-1"), "https://ofertaslivros.com/r/nov-1/tg")
+        raise AssertionError("post_text aceitou novidade")
+    except Invalid:
+        pass
+    assert post_text(mix[0], "https://ofertaslivros.com/r/l-0/tg")                         # oferta passa
+    # sem nenhuma oferta: só novidades, sem carrossel nem "0 ofertas"
+    only = load(nov(1, "2026-10-01"), nov(2, "2026-10-17"))
+    h = vis(page(only))
+    assert "carrossel" not in h and "Destaques" not in h and 'class="tnum"' not in h and "0 oferta" not in h
+    assert "Nenhuma oferta conferida agora. Veja as <a href=\"#h-novidades\">novidades</a>" in h and 'id="h-novidades"' in h
+    assert '<span class="cur-c">2 novidades</span>' in h
+    assert "Nenhuma oferta conferida agora" in render_pages(only)["ofertas/index.html"]
+    # nenhum livro em mais de 2 seções da home (hero ou destaques + ofertas ativas)
+    h = vis(page(offers_n(14, {k: {"trending_rank": k + 1} for k in range(14)})))
+    assert max(h.count(f'href="/livro/l-{k}/"') for k in range(14)) <= 2
     # contrato v2: version, stores, isbn, image_url
     for d in ({"offers": [good]}, {"version": 1, "offers": [good]}, {"version": "2", "offers": [good]},
               {"version": 2.0, "offers": [good]}, {"version": True, "offers": [good]}, {"version": 2}, []):
