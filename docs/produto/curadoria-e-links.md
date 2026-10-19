@@ -1,7 +1,7 @@
 # Curadoria de livros de todas as áreas e link de afiliado do ML
 
 Status: pesquisa (entrega 1 do `catalog-curator`), 2026-10-19. Nada foi implementado.
-Este doc **complementa** `curadoria-automatica.md` §10, não o substitui: gêneros, pontuação, gates, modo sombra e o fluxo de links em lote continuam lá. Aqui ficam as fontes com o que os termos de cada uma permitem, os critérios de entrada e saída, os 100 candidatos iniciais e a pesquisa do link do ML.
+Este doc **complementa** `curadoria-automatica.md` §10, não o substitui: gêneros, pontuação, gates, modo sombra e o fluxo de links em lote continuam lá. **Em caso de conflito, prevalece `curadoria-automatica.md` §10** (com a precedência §10.7 > §10.6 > §10.5). Aqui ficam as fontes com o que os termos de cada uma permitem, os critérios de entrada e saída, os 100 candidatos iniciais e a pesquisa do link do ML.
 
 Convenção (a mesma de §10): **Fato** tem fonte e data. **Inferência** é dedução minha, a confirmar. **Não confirmado** é o que tentei e não consegui verificar. Todas as fontes foram acessadas em **2026-10-19**.
 
