@@ -47,6 +47,7 @@ Domínio comprado na HostGator. A HostGator é usada SÓ para o domínio (DNS).
   | Produto | product-manager | — |
   | Front/UI | frontend-developer | frontend-design, web-design-guidelines |
   | Dados/coletor | collector-engineer | owasp-security |
+  | Curadoria e links de afiliado | catalog-curator | owasp-security |
   | Alertas/Telegram | alerts-engineer | owasp-security |
   | Segurança | security-auditor | owasp-security |
   | Revisão | code-reviewer | web-design-guidelines (quando o diff toca UI) |
