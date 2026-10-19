@@ -1,0 +1,14 @@
+{
+  // Agendador da coleta: a cada 30 min dispara o workflow "pipeline" no GitHub.
+  // O cron do GitHub Actions atrasa horas em horário de pico; o Cron Trigger da Cloudflare não.
+  "name": "ofertaslivros-cron",
+  "main": "index.js",
+  "compatibility_date": "2026-10-18",
+  "workers_dev": false,
+  "preview_urls": false,
+  "triggers": {
+    "crons": ["*/30 * * * *"]
+  }
+  // Segredo GH_DISPATCH_TOKEN (fine-grained PAT, só este repo, Actions: read and write):
+  // cadastrar uma vez no painel (Worker > Settings > Variables and Secrets) ou com `wrangler secret put`.
+}

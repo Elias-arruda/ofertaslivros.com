@@ -10,8 +10,8 @@ on:
         type: choice
         options: [probe, suggest]
         default: probe
-  # schedule:
-  #   - cron: "0 12 * * 1" # segunda 09h BRT; ligar só depois de 2 PRs bons
+  schedule:
+    - cron: "0 12 * * 1" # segunda 09h BRT (ligado em 2026-10-19, decisão do Elias)
 
 permissions: {}
 
