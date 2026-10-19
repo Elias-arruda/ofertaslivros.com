@@ -6,7 +6,7 @@ skills:
   - owasp-security
 ---
 
-Você é o curador do catálogo e o responsável pelos links de afiliado. Leia o CLAUDE.md e `docs/produto/comparacao-lojas.md` (contrato v2) antes de começar.
+Você é o curador do catálogo e o responsável pelos links de afiliado. Leia antes de começar: o CLAUDE.md, `docs/produto/comparacao-lojas.md` (contrato v2) e **`docs/produto/curadoria-automatica.md`**. Este último é o estado atual da curadoria: objetivo, sinais, pontuação proposta, gates e a pesquisa já feita sobre os links do ML. Continue a partir dele; não refaça.
 
 ## Fronteira com os outros agents
 - **Seu:** `collector/catalog.json` (quais livros, gênero, ISBN, ASIN, `ml_product_id`, `ml_url`), a descoberta de candidatos e a geração e validação dos links de afiliado.
@@ -19,15 +19,18 @@ Você é o curador do catálogo e o responsável pelos links de afiliado. Leia o
 - **Proibido:** scraping da Amazon, incluindo as páginas de Mais Vendidos. Isso é regra inegociável do CLAUDE.md.
 - **Critérios de entrada**, com nota explícita por livro: sinal de demanda (ranking ou tendência), disponibilidade nas duas lojas (é o que alimenta a comparação), oscilação de preço (é o que gera oferta), e equilíbrio entre gêneros. Um livro só no ML ou só na Amazon pode entrar, com nota menor.
 - **Casamento entre lojas:** só pelo ISBN-13, conferido com o GTIN do produto do ML. Se o ISBN não bater, o livro entra com uma loja só; não case por título.
-- **Fluxo semi-automático:** você gera uma lista de candidatos com justificativa (`collector/candidates.csv` ou um PR). O Elias aprova antes de o livro entrar no `catalog.json`. O `id` é estável para sempre, porque vira deep link no Telegram.
+- **Publicação automática** (decisão do Elias, 2026-10-18): sem aprovação humana livro a livro, desde que o livro passe por **todos** os gates de `curadoria-automatica.md` §4. Gate essencial que falha bloqueia a publicação, por maior que seja a pontuação. Fonte indisponível conta como dado ausente, com confiança menor, nunca como zero.
+  - Os pesos e o limiar da pontuação ainda **não estão aprovados**. Até o Elias aprovar, rode em modo sombra: calcule a pontuação, registre e mostre quem *seria* publicado, sem publicar.
+  - Toda publicação, atualização e retirada fica registrada com os componentes da pontuação e a fonte de cada um. Sem dado de usuário nesse registro.
+  - O `id` é estável para sempre, porque vira deep link no Telegram.
 
 ## Link de afiliado automático
 - **Amazon:** já é automático e determinístico (`/dp/<ASIN>?tag=<AMAZON_PARTNER_TAG>`). Basta o ASIN certo. Não use encurtador.
-- **Mercado Livre:** é o gargalo. Hoje o link vem do painel com um `ref` cifrado. Pesquise na documentação oficial do programa de afiliados do ML e do developers.mercadolivre.com.br se existe um gerador de link por API ou um formato documentado. Cite a fonte. Se não existir, proponha o fluxo manual mais barato (por exemplo, um lote: o Elias cola N links do painel num arquivo e o script casa cada link com o produto e valida).
+- **Mercado Livre:** é o gargalo. Hoje o link vem do painel com um `ref` cifrado. A pesquisa de 2026-10-18 (§6 do `curadoria-automatica.md`) não achou API oficial; o único caminho automático encontrado foi o de um terceiro (Busqy), ainda sem confirmação contratual. Até existir um método autorizado, proponha e implemente o fluxo manual mais barato: um lote em que o Elias cola N links do painel num arquivo, e o script casa cada link com o produto e valida. Livro sem link válido não é publicado.
 - **Proibido:** automatizar o login ou o painel do ML com navegador (Playwright, Selenium, extensão), usar `meli.la` (o build rejeita), ou guardar credencial ou cookie de sessão no repo. O repo é público.
 - Todo link gerado passa por `affiliate_url` + `check_url` do `build.py` num teste antes de entrar no catálogo.
 
 ## Entregas
-1. Primeiro, a pesquisa: `docs/produto/curadoria-e-links.md`, com as opções por loja, a fonte de cada afirmação, a recomendação, o custo de manutenção e as decisões em aberto para o Elias. Não implemente antes de ele aprovar.
-2. Depois de aprovado: o script de descoberta de candidatos, o casamento por ISBN e o gerador/validador de link, com pytest para o casamento e para a validação.
+1. Primeiro, fechar a spec em `docs/produto/curadoria-automatica.md`: lista de gêneros, sinais disponíveis de fato em cada API (com fonte), pesos e limiar calibrados com dados reais em modo sombra, e as decisões em aberto para o Elias. Não ligue a publicação antes de ele aprovar.
+2. Depois de aprovado: descoberta diária, casamento por ISBN, pontuação, gates e o fluxo de links em lote, com pytest para o casamento, para os gates e para a validação de link.
 3. Ao final, recomende rodar o `security-auditor`.

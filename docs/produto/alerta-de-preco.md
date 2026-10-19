@@ -217,4 +217,5 @@ Site:
 4. **Cron:** a cada 30 min.
 5. **`/monitorados/`:** entra no MVP, sem preço.
 6. **Catálogo inicial e curadoria:** 20 livros na Amazon (~10 min/dia) e 40 itens no ML, em 2–3 nichos. Nas primeiras 4 semanas, a curadoria é do Elias. Depois da etapa 1 entra o `curator`: um script semanal no Actions que abre um PR com sugestões (busca do ML + Google Books/Open Library). Ele não descobre livros na Amazon até a Creators API ser liberada, e o link do ML e a aprovação continuam manuais.
+   - **Em revisão com Elias (2026-10-18):** a direção desejada passou a ser curadoria diária com publicação automática, pontuada por promoção/histórico, compras recentes ajustadas à idade do livro, avaliações e Google Trends. Proposta e pendências de links afiliados estão em [`curadoria-automatica.md`](curadoria-automatica.md); até os pesos e o método autorizado de link serem definidos, a decisão anterior continua sendo a regra implementável.
 7. **Limites:** confirmados: 10 alertas por chat e 90 dias de validade.
