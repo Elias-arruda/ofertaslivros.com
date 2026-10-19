@@ -110,7 +110,7 @@ Existe outra versão desta spec no branch `worktree-agent-a26264a6033900af8` (co
 
 **Fato:** o gênero vem como atributo. `GET /categories/MLB437616/attributes` traz `BOOK_GENRE`, uma lista fechada de 25 valores, e `BOOK_SUBGENRES`, com 208 valores, `hidden` e multivalorado. Traz também `PUBLICATION_YEAR` e `GTIN` (rótulo "ISBN").
 
-**Proposta: 11 nichos.** Os 5 slugs atuais continuam iguais, porque já são URLs públicas. Entram mais 6. "Técnicos" e "didáticos" ficam separados porque são públicos diferentes: o profissional e o estudante ou concurseiro.
+**Decidido: 10 nichos** (decisão 2, revista em 2026-10-19). Os 5 slugs atuais continuam iguais, porque já são URLs públicas. Entram mais 5. Técnicos e didáticos ficam juntos em `estudo`; a lista de 11 com `didaticos` e `tecnicos` separados foi descartada. A tag `lgbtqia` (§10.1.1) vale por cima dos 10.
 
 | Slug | Rótulo | URL do nicho | Valores `BOOK_GENRE` do ML (id) |
 |---|---|---|---|
@@ -122,11 +122,12 @@ Existe outra versão desta spec no branch `worktree-agent-a26264a6033900af8` (co
 | `autoajuda` **novo** | Autoajuda | `/autoajuda/` | Autoajuda (7538148) |
 | `infantojuvenil` **novo** | Infantil e juvenil | `/infantojuvenil/` | Infantil (7538151), Juvenil (13061823) |
 | `religiao` **novo** | Religião e espiritualidade | `/religiao/` | Religião (19912211), Esoterismo (7538147) |
-| `didaticos` **novo** | Didáticos e concursos | `/didaticos/` | Escola e educação (23663384), Dicionários, enciclopédias e consulta (7538149) |
-| `tecnicos` **novo** | Técnicos e acadêmicos | `/tecnicos/` | Acadêmico (13061813), Tecnologia (14885398) |
+| `estudo` **novo** | Estudo e técnicos | `/estudo/` | Escola e educação (23663384), Acadêmico (13061813), Dicionários, enciclopédias e consulta (7538149), Tecnologia (14885398) |
 | `estilo-de-vida` **novo** | Saúde, hobbies e estilo de vida | `/estilo-de-vida/` | Saúde (13061828), Esportes (16188909), Gastronomia (13061821), Artesanato (13061814), Pets (76624758), Viagem (14973077), Arte e design (7538158), Música (13485350) |
 
-Os 25 valores estão cobertos, e cada um vai para um slug só. Os mapeamentos de Humor em `ficcao`, Esoterismo em `religiao`, Tecnologia em `tecnicos` e Saúde em `estilo-de-vida` foram aprovados como estão (decisão 3). LGBTQ+ deixou de ser só `ficcao` e virou tag (§10.1.1). Produto sem `BOOK_GENRE` não é publicado, porque o build exige `genre` (gate 6 em §10.3). Ele fica no log da sombra como "sem gênero".
+Os 25 valores estão cobertos, e cada um vai para um slug só. Os mapeamentos de Humor em `ficcao`, Esoterismo em `religiao`, Tecnologia em `estudo` e Saúde em `estilo-de-vida` foram aprovados (decisão 3). LGBTQ+ vai para `ficcao` como gênero padrão e sempre recebe a tag `lgbtqia` (§10.1.1).
+
+**Diferença em relação à lista de 11:** só mudam 4 valores, que iam para `didaticos` ou `tecnicos` e agora vão todos para `estudo`: Escola e educação (23663384) e Dicionários (7538149), que estavam em `didaticos`, e Acadêmico (13061813) e Tecnologia (14885398), que estavam em `tecnicos`. Os outros 21 ficam onde estavam. Pela decisão B5 de `curadoria-e-links.md`, Bíblia, Vade Mecum e apostila de concurso não entram pelo automático, mesmo que o `BOOK_GENRE` caia em `religiao` ou `estudo`. Os rótulos alternativos de `curadoria-e-links.md` A.4 ("Estudo, técnicos e concursos"; "Saúde, culinária e hobbies") ficam para o `product-manager` escolher; aqui seguem os da spec anterior.
 
 **Mudança aprovada no `build.py`** (decisão 2), a aplicar pelo `product-manager`/`frontend-developer`. Não editei o arquivo. O `collect.py` importa `GENRES` do `build.py`, então a mudança vale para os dois. O diff das tags está em §10.1.1.
 
@@ -140,8 +141,7 @@ Os 25 valores estão cobertos, e cada um vai para um slug só. Os mapeamentos de
 +    "autoajuda": "Autoajuda",
 +    "infantojuvenil": "Infantil e juvenil",
 +    "religiao": "Religião e espiritualidade",
-+    "didaticos": "Didáticos e concursos",
-+    "tecnicos": "Técnicos e acadêmicos",
++    "estudo": "Estudo e técnicos",
 +    "estilo-de-vida": "Saúde, hobbies e estilo de vida",
  }
 ```
@@ -177,7 +177,7 @@ Diff proposto, **não aplicado**:
 
 ```diff
  GENRES = {
-     ... (os 11 de §10.1)
+     ... (os 10 de §10.1)
  }
 +# Segundo conjunto fechado: subcategorias transversais. Também viram diretório em dist/.
 +TAGS = {
@@ -268,7 +268,7 @@ Consequência: "compras recentes ajustadas à idade" (§2) **não é calculável
 | ML | Total, média, distribuição e `buying_date`: `GET /reviews/item/{item_id}?catalog_product_id={MLB}` | **Fato (doc):** [Opiniões de Produtos](https://developers.mercadolivre.com.br/pt-br/opinioes-sobre-um-produto), atualizada em 18/08/2026. Traz `paging.total`, `rating_average` e `rating_levels`. O item precisa estar ativo. Use o `item_id` da buy box, que o coletor já tem |
 | ML | Avaliação habilitada para livros? | **Fato:** `GET /categories/MLB437616` devolve `settings.items_reviews_allowed: false`. **Inferência:** livros podem não ter avaliação no ML, e o sinal ficaria sempre ausente. O passo 0 confere com um livro popular |
 | Amazon (Creators API) | Avaliações | **Fato: não existe.** A lista oficial de recursos ([Resources](https://affiliate-program.amazon.com/creatorsapi/docs/en-us/api-reference/resources)) tem `BrowseNodeInfo`, `BrowseNodes`, `Images`, `ItemInfo`, `OffersV2`, `ParentASIN`, `SearchRefinements` e `VariationSummary`, e nenhum `CustomerReviews`. Um cliente de terceiros cita `customerReviews.count`; isso é **não confirmado** na doc oficial. **Proibido:** tirar as estrelas da página |
-| Google Books | `averageRating`/`ratingsCount`: `GET https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}` | **Não confirmado:** a chamada anônima deu "Quota exceeded" (cota compartilhada). Precisa de chave própria (decisão 9, **pendente**). A amostra brasileira tende a ser pequena (**inferência**). Busca por título para descobrir o ISBN **não vale como casamento** (regra "não case por título") |
+| Google Books | `averageRating`/`ratingsCount`: `GET https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}` | **Não confirmado:** a chamada anônima deu "Quota exceeded" (cota compartilhada). Precisa de chave própria: `GOOGLE_BOOKS_API_KEY` (decisão 9; criar a chave é pendência). A amostra brasileira tende a ser pequena (**inferência**). Busca por título para descobrir o ISBN **não vale como casamento** (regra "não case por título") |
 
 **Sinal 4. Interesse de busca (Google Trends)**
 
@@ -289,7 +289,7 @@ Consequência: "compras recentes ajustadas à idade" (§2) **não é calculável
 |---|---:|---|
 | Preço `s_p` | 35 | Com 30 dias ou mais de histórico nosso: `d = 1 − preço / mediana_90d`; `s_p = clamp(d / 0,30) + 0,2·[preço ≤ mínimo_90d]`, com teto em 1 e `confidence = 1`. Ou seja, 30% abaixo da mediana já dá nota cheia. Com menos de 30 dias: `s_p = min(0,3; clamp(desconto_rótulo / 0,30))`, em que `desconto_rótulo` vem de `original_price` (ML) ou `savings.percentage` com `savingBasisType ∈ {LIST_PRICE, WAS_PRICE}` (Amazon), e `confidence = 0,5`. Livro nas duas lojas: vale a loja de menor preço, como no build |
 | Demanda `s_d` | 25 | ML: `s_ml = (21 − posição_highlights) / 20`, com `confidence = 0,6`. Amazon (quando liberar): `s_amz = clamp(1 − log10(websiteSalesRank) / 5)`, ou seja, rank 1 → 1 e rank ≥ 100.000 → 0, com `confidence = 0,7`. `s_d = max(s_ml, s_amz)`, e a confiança é a da fonte que deu o máximo. Bônus de +0,1 (teto 1) se título ou autor aparecer no `/trends` do ML. Desempate por idade: lançamento (≤ 1 ano pelo `PUBLICATION_YEAR`) ganha +0,05. Sem nenhuma fonte, o componente fica ausente |
-| Avaliações `s_r` | 15 × `min(1; v / 50)` | `R̄ = (v·R + 20·4,0) / (v + 20)` (média bayesiana com prior de 4,0 e peso 20); `s_r = clamp((R̄ − 3,5) / 1,5)`. Com `v < 10`, ausente. Fonte: ML reviews ou Google Books (decisão 9, pendente). `confidence = 1`. **Correção de 2026-10-19:** antes o `min(1; v/50)` multiplicava o `s_r`, e um livro com 5 avaliações perdia até 13 pontos para um sem nenhuma. Agora ele reduz o peso: pouca avaliação pesa pouco, em vez de puxar a nota para baixo |
+| Avaliações `s_r` | 15 × `min(1; v / 50)` | `R̄ = (v·R + 20·4,0) / (v + 20)` (média bayesiana com prior de 4,0 e peso 20); `s_r = clamp((R̄ − 3,5) / 1,5)`. Com `v < 10`, ausente. Fonte: ML reviews ou Google Books (decisão 9: chave `GOOGLE_BOOKS_API_KEY`). `confidence = 1`. **Correção de 2026-10-19:** antes o `min(1; v/50)` multiplicava o `s_r`, e um livro com 5 avaliações perdia até 13 pontos para um sem nenhuma. Agora ele reduz o peso: pouca avaliação pesa pouco, em vez de puxar a nota para baixo |
 | Tendência `s_t` | 25 | Com acesso à Trends API: `s_t = clamp(média_4_semanas / média_12_semanas_anteriores − 1)`, em que +100% dá nota cheia. Termo: título + autor, região BR. `confidence = 0,8`. Sem acesso: ausente |
 
 **Agregação.** Componente ausente não entra no cálculo e não conta como zero. `P` é o conjunto dos presentes:
@@ -302,8 +302,17 @@ Exemplo de hoje: só preço curto (0,5) e `/highlights` (0,6) presentes dão con
 
 **Gates (complemento de §4).** Gate que falha bloqueia, seja qual for a pontuação:
 - (6) gênero mapeado em §10.1;
-- (7) preço conferido dentro do frescor da loja (ML 2 h, Amazon manual 12 h). Para livro com as **duas** lojas, o ISBN-13 do catálogo tem de ser confirmado pela API do ML: `/products/search?product_identifier=<ISBN>` precisa devolver o mesmo `ml_product_id`. É o substituto do "GTIN igual ao ISBN", já que a ficha não traz GTIN (probe 39259800320). Sem essa confirmação, o livro fica com uma loja só. Livro só no ML tem identidade pelo `ml_product_id` (`curator.md` §3.2). Nunca casamento por título;
-- (8) no máximo **5** novos livros por dia e **2** por gênero (decisão 12). Tag não conta para o teto de gênero;
+- (7) **preço e identidade, por loja, sem que uma bloqueie a outra** (rodada 3, §10.6):
+  - preço conferido dentro do frescor da própria loja (ML 2 h, Amazon manual 12 h);
+  - **ML:** a identidade é o `ml_product_id`. O livro só no ML não precisa de ISBN;
+  - **Amazon:** a identidade é o `asin` mais o `isbn_confirmado` que o Elias preenche na linha do §10.5 ao gerar o link no SiteStripe;
+  - **casamento entre as lojas:** pelo ISBN-13 quando os dois lados têm ISBN. Se a ficha do ML tem ISBN e ele difere do `isbn_confirmado`, são edições diferentes: a linha da Amazon é recusada e o livro segue só com o ML. Se a ficha do ML não tem ISBN (o caso comum, probe 39259800320), o livro vai para a fila da Amazon com link de busca por título e autor, e o Elias confirma a edição. Esse `isbn_confirmado` vira o ISBN do livro;
+  - nenhuma request à Amazon e nenhuma confirmação pelo `/products/search` do ML. O casamento por título é só a busca que o humano faz no navegador; o código nunca casa por título;
+  - **risco real:** sem ISBN no ML, o Elias pode escolher outra edição (capa dura × brochura, box, edição de colecionador), e a comparação de preço fica errada. **Mitigação mais simples:** a fila mostra a editora e a edição da ficha do ML (`BOOK_PUBLISHER`, `BOOK_EDITION`, que o probe confirmou que vêm), para ele bater o olho; o log grava `amazon_match: "manual"`; e, se um ISBN aparecer depois no ML (ou via `GetItems` da Creators API) e não bater, a Amazon sai do livro automaticamente e o caso fica registrado;
+- (8) **meta de pelo menos 50 livros novos por dia, com teto de 10 por gênero**, configurável (decisão 12, revista na rodada 3). É meta, não obrigação: se menos de 50 passarem nos gates e no limiar, entram menos, e o limiar não baixa para completar. Tag não conta para o teto de gênero. Riscos do volume, que não bloqueiam a decisão mas precisam de dono:
+  - **fonte:** o `/highlights` dá 20 itens e muda devagar; o `/trends` dá até 50 termos por semana. Se isso rende 50 livros novos por dia depois da primeira semana é **não confirmado**; a sombra mede;
+  - **`_redirects`:** cada livro gera de 4 a 5 regras (`/r/<id>`, uma por loja, `/tg` e `/wa`), e o build falha acima de `MAX_REDIRECTS` (2.000). Isso dá cerca de 400 livros ativos, ou uns 8 dias a 50 por dia sem retiradas. Proposta: teto de vitrine ativa em 380; acima dele, o novo só entra no lugar do de menor score (→ `product-manager`);
+  - **custo manual:** são cerca de 50 links do ML por dia e, se todos forem para a fila da Amazon, mais 50 linhas de SiteStripe e uma conferência diária de preço por livro com Amazon, que cresce com o catálogo. Proposta: a fila da Amazon recebe só os N de maior score por dia, com N configurável (→ Elias);
 - (9) `id` novo, que não colide com nenhum `id` já usado, mesmo de livro retirado, porque vira deep link;
 - (10) pelo menos uma loja com link de afiliado válido (§10.4 e §10.5). A regra é simétrica (decisão 13): sem link do ML, publica só com a Amazon; sem ASIN confirmado da Amazon, publica só com o ML; sem nenhum dos dois, não publica.
 
@@ -314,7 +323,7 @@ Exemplo de hoje: só preço curto (0,5) e `/highlights` (0,6) presentes dão con
 4. **Métricas contra a curadoria humana.** São duas réguas:
    - **Rótulo cego:** o Elias marca "publicaria ou não" numa amostra estratificada, sem ver o score: metade acima do corte, metade na faixa de 50 a 70. Com isso medimos a **precisão** (dos que o sistema publicaria, quantos ele aprovou) e o **recall** (dos que ele aprovou, quantos o sistema publicaria).
    - **Recall sobre o catálogo manual:** os livros já curados à mão (`data/offers.json`) que aparecem como candidatos e passam nos gates devem ter `would_publish = true`. Quem não tem, é investigado: ou o peso está errado, ou o livro só entrou por gosto pessoal.
-   - Também medimos: volume por dia e por gênero, cobertura (quantos dos 11 gêneros têm ao menos 1 aprovado), estabilidade (quantos entrariam e sairiam em menos de 7 dias) e a taxa de "dado ausente" por componente.
+   - Também medimos: volume por dia e por gênero, cobertura (quantos dos 10 gêneros têm ao menos 1 aprovado), estabilidade (quantos entrariam e sairiam em menos de 7 dias) e a taxa de "dado ausente" por componente.
 5. **Duração:** no mínimo 30 dias corridos, que é o necessário para ter histórico de preço, e no mínimo 60 rótulos (30 acima e 30 abaixo do corte), com o passo 0 resolvido.
 6. **Critério de saída**, todos juntos:
    - precisão ≥ 0,90 nos rótulos, ou seja, no máximo 3 erros em 30 "publicaria";
@@ -358,8 +367,8 @@ irmao-do-jorel	MLB19446507	Irmão do Jorel (capa dura)	https://www.mercadolivre.
    A linha válida grava o `ml_url` no `catalog.json` e sai do arquivo. A linha inválida é listada com o motivo, não grava nada e fica no arquivo para correção. A linha vazia continua pendente. Depois, o `build.py` valida de novo todo `ml_url` em cada build: é a segunda barreira. O pytest cobre: link válido, `meli.la`, `matt_word` de outra conta, chave fora da allowlist, `ref` duplicado, produto desconhecido e `book_id` que não bate com o `ml_product_id`.
 4. **Item sem link:** fica na fila e não publica pelo ML (gate 10). Se o livro também tem a Amazon com ASIN confirmado e preço fresco, publica só com a Amazon (decisão 13). Um candidato pendente há mais de 14 dias sai da fila e volta se ainda for candidato na próxima descoberta. Isso evita fila infinita de livro que já não está em promoção.
 5. **Limite conhecido.** Nenhuma validação prova que o `ref` aponta para aquele produto. Isso depende do Elias colar na linha certa. A mitigação barata: a `product_url` e o `title` ficam ao lado do link, e o resumo do `links-apply` mostra título ↔ produto para ele bater o olho. O Elias aceitou esse limite (decisão 12).
-   - **Conflito com o agent `affiliate-linker`** (`.claude/agents/affiliate-linker.md`, commit c4e6d54): ele faz GET em cada link do painel e casa pelo `og:title`. Isso é acessar o site do ML (item 7.6), conta clique e casa por título. O fluxo aprovado aqui é o par por linha, sem request. Quem decide o ajuste do agent é o Elias; não editei o agent.
-6. **Volume:** como a Amazon também é semi-automática hoje, **nenhum livro novo sai sem esse passo**. Com o teto do gate 8 (5 por dia), são no máximo 5 links do ML e 5 da Amazon por dia.
+   - **Decidido (rodada 3):** o Elias aceita que o agent `affiliate-linker` (`.claude/agents/affiliate-linker.md`) faça GET em cada link do ML para conferir o livro, lendo o `og:title`. Riscos anotados: (1) o item 7.6 dos [Termos do Programa de Desenvolvedores](https://developers.mercadolivre.com.br/pt_br/termos-e-condicoes) proíbe robôs e scraping do site; (2) cada GET num link de afiliado pode ser registrado como clique da nossa conta; (3) o casamento passa a usar título, que a regra do catálogo evita. O agent já limita o estrago (intervalo de 1 s, lê só o `og:title`, não aplica sem casamento inequívoco), e o par por linha do `links-apply` continua sendo a chave. O agent não foi editado.
+6. **Volume:** como a Amazon também é semi-automática hoje, **nenhum livro novo sai sem esse passo**. Com a meta do gate 8 (pelo menos 50 por dia), são cerca de 50 links do painel por dia. Se isso pesar, é o gatilho para reabrir o Busqy (§6), que hoje está descartado.
 
 ### 10.5 Amazon em fluxo manual até a Creators API (decisão 14)
 
@@ -372,31 +381,31 @@ Espelha o §10.4. Vale até a Creators API ser liberada (10 vendas qualificadas 
 **Arquivo:** `collector/amazon_links.tsv`, local, fora do git (entra no `.gitignore`). Formato: UTF-8, TAB, cabeçalho fixo, uma linha por livro.
 
 ```
-book_id	isbn	ml_product_id	title	asin_provavel	product_url	isbn_confirmado	amazon_url
-verity	9788584391509	MLB...	Verity	8584391509	https://www.amazon.com.br/dp/8584391509		
+book_id	isbn	ml_product_id	title	editora_edicao	asin_provavel	product_url	isbn_confirmado	amazon_url
+verity	9788584391509	MLB...	Verity	Galera / 1ª	8584391509	https://www.amazon.com.br/dp/8584391509		
 ```
 
-(Linha ilustrativa: o ISBN e o ASIN do exemplo não foram conferidos.)
+(Linha ilustrativa: o ISBN, o ASIN e a editora do exemplo não foram conferidos.) A coluna `editora_edicao` vem de `BOOK_PUBLISHER` e `BOOK_EDITION` da ficha do ML e é a mitigação do gate 7 contra edição errada.
 
 1. **Fila.** `curator amazon-todo` escreve uma linha por candidato que passou nos gates (menos o do link) e ainda não tem `asin`, até o teto do gate 8.
    - `asin_provavel`: ISBN-10 calculado do ISBN-13 (só prefixo 978; é o `asin_provavel()` que já existe no `curator.py`). Sem ISBN ou com prefixo 979, fica `-`.
-   - `product_url`: `https://www.amazon.com.br/dp/<asin_provavel>`. Sem ASIN provável, é `https://www.amazon.com.br/s?k=<ISBN-13>`; sem ISBN, `https://www.amazon.com.br/s?k=<título autor>`, com URL-encoding. Todas são montadas pelo código e **nunca chamadas**.
+   - `product_url`: `https://www.amazon.com.br/dp/<asin_provavel>`. Sem ASIN provável, é `https://www.amazon.com.br/s?k=<ISBN-13>`; sem ISBN (o caso comum, porque a ficha do ML não traz GTIN), `https://www.amazon.com.br/s?k=<título autor>`, com URL-encoding. Os candidatos sem ISBN entram na fila normalmente. Todas são montadas pelo código e **nunca chamadas**.
 2. **Navegador (manual).** O Elias abre a `product_url` e confere se é a mesma edição física (capa dura × brochura, box, idioma; Kindle não). Ele preenche:
    - `isbn_confirmado`: o ISBN-13 que a página mostra;
    - `amazon_url`: o link de **texto completo** do SiteStripe (`https://www.amazon.com.br/.../dp/<ASIN>?...&tag=<tag>...`). **Nunca** `amzn.to`: o encurtador só se confere seguindo o redirect, que é request à Amazon.
 
    Na mesma conferência ele lança o primeiro preço no `collector/amazon_prices.csv`, que é o fluxo de preço que já existe (abaixo).
 3. **Aplicação.** `curator amazon-apply collector/amazon_links.tsv` confere cada linha, sem rede:
-   - cabeçalho exato e 8 colunas; `book_id` existe e confere com o `ml_product_id`;
+   - cabeçalho exato e 9 colunas; `book_id` existe e confere com o `ml_product_id`;
    - `amazon_url`: só ASCII imprimível, até 1000 caracteres, `https`, host `www.amazon.com.br` ou `amazon.com.br` (a allowlist do `check_url`), sem usuário, porta ou fragmento;
    - ASIN extraído do caminho, que tem de ser `/dp/<ASIN>`, `/<slug>/dp/<ASIN>` ou `/gp/product/<ASIN>`, e o ASIN passa no `ASIN_RE`;
    - `tag` aparece **uma vez** na query e é igual a `AMAZON_PARTNER_TAG`. Tag de outra conta, tag de canal ou tag ausente: linha recusada. Isso garante que o Elias gerou o link logado na nossa conta;
-   - `isbn_confirmado` é ISBN-13 válido (`isbn_ok`) e igual ao `isbn` do catálogo, quando o catálogo já tem ISBN. Quando não tem, ele vira o ISBN do livro, desde que `/products/search?product_identifier=<isbn>` (API do ML, a única request do passo) devolva o mesmo `ml_product_id`. Senão, o livro fica só com o ML (gate 7);
+   - `isbn_confirmado` é obrigatório e é ISBN-13 válido (`isbn_ok`, prefixo 978/979 e checksum). Se o catálogo já tem ISBN (vindo do ML) e ele difere, a linha é recusada como "edição diferente" e o livro segue só com o ML. Se o catálogo não tem ISBN, o `isbn_confirmado` vira o ISBN do livro, e o log grava `amazon_match: "manual"`. Nenhuma request, nem ao ML (gate 7);
    - ASIN igual ao `asin_provavel` → `amazon_match: "isbn10"`. ASIN diferente (por exemplo, começando com `B0`, comum em Kindle) → só com `--confirm-asin <book_id>`, e o log grava `amazon_match: "manual"`. A conferência ISBN × ASIN fica para o `GetItems` da Creators API;
    - ASIN que ainda não está no catálogo;
    - por fim, o link que o build vai gerar, `affiliate_url({"store": "amazon", "asin": asin}, partner_tag(), ml_affiliate())`, passa no `check_url`. É o teste exigido para todo link antes de entrar no catálogo.
 
-   Linha válida grava `asin` (e `isbn`, se faltava) no `catalog.json` e sai do arquivo. Linha inválida fica no arquivo com o motivo. O pytest cobre: link válido; `amzn.to`; tag de outra conta; tag repetida; host fora da allowlist; caminho sem `/dp/`; ASIN divergente sem `--confirm-asin`; ISBN que não bate; e o fato de nenhuma URL chamada ter host da Amazon (o `urlopen` é trocado no teste, como no critério 1 de `curator.md` §11).
+   Linha válida grava `asin` (e `isbn`, se faltava) no `catalog.json` e sai do arquivo. Linha inválida fica no arquivo com o motivo. O pytest cobre: link válido; `amzn.to`; tag de outra conta; tag repetida; host fora da allowlist; caminho sem `/dp/`; ASIN divergente sem `--confirm-asin`; ISBN do ML diferente do `isbn_confirmado`; livro sem ISBN no ML que recebe o `isbn_confirmado`; ISBN ML que aparece depois e não bate (a Amazon sai do livro); e o fato de nenhuma URL chamada ter host da Amazon (o `urlopen` é trocado no teste, como no critério 1 de `curator.md` §11).
 4. **Sem link:** o livro publica só com o ML, se o ML tiver link (decisão 13). Pendente há mais de 14 dias sai da fila, como no §10.4.
 
 **Preço da Amazon neste período: só entrada manual.** É o fluxo que já existe no `collect.py`:
@@ -416,7 +425,7 @@ Não há outra fonte. Sem linha nova, não há preço.
 Respostas do Elias às 14 decisões, registradas no fim do dia. **Substituem** o registro anterior do mesmo dia (antigo §10.6, commit 5056577) onde houver diferença; as diferenças estão listadas no fim.
 
 1. **Publicação automática com gates**, com o modo sombra como período de prova. A versão "PR com aprovação humana" do branch `worktree-agent-a26264a6033900af8` foi descartada.
-2. **Os 11 gêneros** de §10.1, como propostos (com `didaticos` e `tecnicos` separados).
+2. **10 gêneros, com `estudo`** (revisto na rodada 3; a lista de 11 foi descartada). Tabela e diff em §10.1.
 3. **LGBTQIA+ vira nicho próprio, como tag.** O livro passa a ter `genre` (um, de `GENRES`) e `tags` (lista, de `TAGS`), e cada tag gera página. Modelo e diff em §10.1.1. Os outros mapeamentos ambíguos ficam como na tabela de §10.1.
 4. **Livros já publicados mantêm o gênero manual.** Recebem `tags: []` e, onde couber, a tag à mão (nenhum caso identificado hoje).
 5. **Pesos 35/25/15/25, `score ≥ 70`, `confiança ≥ 0,5`**, retirada abaixo de 60 por 2 execuções. Aceito que nada publica antes de 30 dias de histórico.
@@ -425,29 +434,38 @@ Respostas do Elias às 14 decisões, registradas no fim do dia. **Substituem** o
    - **Risco, registrado de forma explícita:** a Licença das [Políticas do Programa de Associados](https://associados.amazon.com.br/help/operating/policies), cláusula 2(h), só permite guardar o conteúdo dos produtos "por até 24 horas", com a exceção explícita do ASIN. A série de 90 dias que dá o `lowest_90d_cents` e o selo "menor preço em 90 dias" pode ser lida como violação. A consequência possível é o encerramento da conta de associado, com perda de comissões. **Não conferi** a cláusula exata de encerramento do Contrato Operacional; trate isso como possível, não como confirmado. Isso valeria também para a futura Creators API, que depende da mesma conta.
    - Hoje o preço da Amazon é digitado à mão pelo Elias (§10.5). Se isso conta como "Conteúdo de Anúncio de Produtos" é **não confirmado**; o risco vale do mesmo jeito.
    - **Mitigações:** guardar só `asin`, `price_cents`, `list_price_cents` e `checked_at` (nada de título, imagem ou texto da Amazon); manter a série separada por loja, para poder apagar só a da Amazon com um comando se a resposta for negativa.
-   - **Ação paralela:** perguntar por escrito ao suporte dos Associados se guardar a série de preços para exibir "menor preço em 90 dias" é permitido. Registrar a resposta aqui. Se for negativa, apagar a série da Amazon e o selo passa a usar só o ML.
+   - **Risco confirmado pelo Elias** (rodada 3).
+   - **Ação paralela:** perguntar por escrito ao suporte dos Associados (1) se guardar a série de preços para exibir "menor preço em 90 dias" é permitido e (2) se o preço digitado à mão a partir da página conta como "Conteúdo de Anúncio de Produtos" para a cláusula 2(h). Registrar a resposta aqui. Se for negativa, apagar a série da Amazon, e o selo passa a usar só o ML.
 8. **Pedir acesso à Google Trends API (alpha).** Enquanto não sai, o componente Tendência fica ausente e a agregação o ignora. Nunca `pytrends` nem revendedores.
-9. **PENDENTE: Google Books.** Para que serve: é a única fonte provável do sinal de Avaliações, já que livro no ML vem com `items_reviews_allowed: false` e a Creators API não tem reviews. Também completa categoria e metadados **a partir de um ISBN já conhecido**. Completar o ISBN buscando por título não vale como casamento (regra "não case por título"). As duas opções:
-   - **(a) Chave própria em GitHub Secrets** (cota gratuita; sem chave, a cota anônima é 0). O componente Avaliações entra com peso `15·min(1; v/50)`. Quando há pelo menos 10 avaliações, o score muda em `Δ = w_r/(W + w_r) × (100·s_r − S₀)`, em que `S₀` é o score sem avaliações e `W` a soma dos outros pesos presentes. Hoje (preço + demanda, sem Trends), `W = 60`. Com `v ≥ 50` (`w_r = 15`), o fator é 0,2. Exemplos com `S₀ = 75`: média 4,0 com 50 avaliações (`R̄ = 4,0`, `s_r = 0,33`) cai para **67** e deixa de publicar; média 4,7 com 50 (`R̄ = 4,5`, `s_r = 0,67`) fica em **73**; média 4,9 com 200 (`R̄ = 4,82`, `s_r = 0,88`) sobe para **78**. Como a média bayesiana encolhe para 4,0, as avaliações tendem a puxar para baixo livros de score alto e só ajudam com nota muito boa e muitas avaliações. Com `v = 20` (`w_r = 6`), o fator é 0,09, e o efeito fica em ±4 pontos. A confiança sobe até +0,15: com 30 dias de histórico e top 20, vai de 0,50 para até 0,65.
-   - **(b) Tirar Avaliações da fórmula** e redistribuir os 15 pontos em proporção: 35/25/25 vira **41,2/29,4/29,4**. O **score não muda** em relação a hoje, porque a agregação já ignora o componente ausente, e hoje ele está sempre ausente. O que muda é a **confiança**, que com os mesmos dados sobe: preço curto + top 20 vai de 0,325 para 0,38, e 30 dias + top 20 vai de 0,50 para 0,59. Na prática, isso afrouxa o limiar de 0,5. Se escolher (b), recomendo subir a confiança mínima para 0,59, para manter o mesmo rigor.
-   - Sem decisão, vale (b) sem redistribuir: Avaliações ausente, pesos e limiar como no item 5.
+9. **Google Books: opção (a), chave própria** (rodada 3). A chave fica em GitHub Secrets como `GOOGLE_BOOKS_API_KEY`, nunca no repo nem no log. Usos: o sinal de Avaliações (o ML não tem avaliação de livro e a Creators API não tem reviews) e metadados a partir de um ISBN já conhecido. Busca por título para descobrir ISBN não vale como casamento.
+   - **Fórmula, com a correção de §10.3:** `R̄ = (v·R + 20·4,0)/(v + 20)`, `s_r = clamp((R̄ − 3,5)/1,5)`, peso `w_r = 15·min(1; v/50)`, ausente com `v < 10`, `confidence = 1`.
+   - **Efeito no score:** `Δ = w_r/(W + w_r)·(100·s_r − S₀)`. Hoje `W = 60` (preço + demanda), então o fator é 0,2 com `v ≥ 50`. Partindo de `S₀ = 75`: média 4,0 com 50 avaliações → 67; média 4,7 com 50 → 73; média 4,9 com 200 → 78. Com `v = 20`, o efeito fica em ±4. A confiança sobe até +0,15 (de 0,50 para 0,65 com 30 dias de histórico e top 20).
+   - **Pendência:** o Elias cria a chave no Google Cloud (restrita à Books API) e cadastra o secret `GOOGLE_BOOKS_API_KEY`. Até lá, o componente fica ausente.
 10. **Passo 0** (`probe` só leitura com o token de app, por `workflow_dispatch` com os Secrets e nada ecoado no log) é a primeira tarefa da entrega 2. Parte dele já rodou (§10.2); falta o resto da lista de §10.2.
 11. **Log da sombra e da auditoria** em `curation/AAAA-MM.jsonl` no branch `price-history`, com retenção de **24 meses**.
-12. **Fluxo de links por linha** de §10.4 aceito, com no máximo **5 livros novos por dia** e **2 por gênero** (gate 8).
+12. **Fluxo de links por linha** de §10.4 aceito. Volume revisto na rodada 3: **pelo menos 50 livros novos por dia, até 10 por gênero** (gate 8), substituindo os 5 por dia e 2 por gênero.
 13. **Regra simétrica:** livro sem link do ML publica só com a Amazon; livro sem ASIN confirmado da Amazon publica só com o ML (gate 10).
 14. **Não usar o Busqy por enquanto.** A Amazon fica em fluxo **manual** até a Creators API (§10.5): o curador traz os candidatos com o link do produto na Amazon (ASIN provável e ISBN), o Elias confere, gera o link no SiteStripe e devolve, e a curadoria segue. O preço da Amazon nesse período é só o digitado em `amazon_prices.csv`. Frescor do ML: 2 h. Frescor da Amazon manual: 12 h. Retirada após 2 execuções com `score < 60` ou 6 h sem nenhuma loja fresca.
 
-**O que mudou em relação ao registro anterior (antigo §10.6, commit 5056577):**
-- gêneros: de 10 (com `estudo`) para 11 (`didaticos` e `tecnicos`), mais a tag `lgbtqia`. Antes, LGBTQ+ ia para `ficcao`;
-- volume: de "pelo menos 50 livros por dia, até 10 por gênero" para **no máximo 5 por dia e 2 por gênero**;
-- Google Books: de "criar a chave" para **pendente**;
-- retenção do log: de 12 para **24 meses**;
-- Amazon: antes, o Elias achava o livro na Amazon por conta própria e o livro dele dispensava o score. Agora o curador traz os candidatos, o Elias devolve o link do SiteStripe, e o score vale para todos;
-- histórico da Amazon: antes não estava decidido; agora **risco aceito**, com a pergunta por escrito em paralelo.
+**Rodada 3 (2026-10-19, respostas do Elias aos conflitos):**
+- **Volume:** pelo menos 50 por dia, até 10 por gênero (item 12, gate 8).
+- **Gêneros:** 10, com `estudo` (item 2). A tag `lgbtqia` continua valendo.
+- **`affiliate-linker`:** o GET nos links do ML para conferir o livro está aceito, com os riscos anotados no §10.4.
+- **Gate 7:** a confirmação do ISBN pelo `/products/search` do ML foi rejeitada. A identidade é por loja, e o casamento é pelo ISBN quando houver, ou pela confirmação do Elias na fila da Amazon (§10.3).
+- **Google Books:** opção (a), `GOOGLE_BOOKS_API_KEY` (item 9).
+- **Risco da decisão 7:** confirmado, e a pergunta aos Associados foi ampliada (item 7).
 
-**Pendências novas, para o Elias ou para o agent indicado:**
-- decisão 9 (Google Books);
+**Consolidado em relação ao registro anterior (antigo §10.6, commit 5056577):** os gêneros (10, com `estudo`) e o volume (50 por dia, 10 por gênero) voltam a ser os dele, e o Google Books volta a ser "criar a chave". Mudaram de lá para cá:
+- a tag `lgbtqia`, em cima dos gêneros;
+- a retenção do log, de 12 para **24 meses**;
+- a Amazon: antes, o Elias achava o livro por conta própria e o livro dispensava o score. Agora o curador traz os candidatos, o Elias devolve o link do SiteStripe com o `isbn_confirmado`, e o score vale para todos;
+- o histórico da Amazon: **risco aceito e confirmado**, com a pergunta por escrito em paralelo.
+
+**Pendências que restam:**
+- criar a chave do Google Books e cadastrar o secret `GOOGLE_BOOKS_API_KEY` → Elias;
+- mandar a pergunta por escrito aos Associados (item 7) e registrar a resposta aqui → Elias;
+- pedir o acesso à Google Trends API alpha (item 8) → Elias;
+- conciliar `docs/produto/curator.md` e `collector/curator.py` com estas decisões. Estão desatualizados: `WEEK_MAX=10` e `GENRE_MAX=4` (10 por semana, 4 por nicho) contra 50 por dia e 10 por gênero; um `GENRE_MAP` com 5 gêneros e sem `autoajuda` contra os 10 com `estudo`; sem `tags` → `product-manager` (spec) e quem implementar a entrega 2 (código);
+- campo `tags` no contrato v2 (`comparacao-lojas.md`) e no `load_catalog` → `product-manager` e `collector-engineer`; diff do `GENRES`/`TAGS` no `build.py` → `frontend-developer`;
 - regra de cobertura de 80% para o selo de 90 dias da Amazon (§10.5) → `product-manager` e `collector-engineer`;
-- campo `tags` no contrato v2 e no `load_catalog` → `product-manager` e `collector-engineer`; diff do `build.py` → `frontend-developer`;
-- gate 7 reescrito, porque a ficha do ML não traz GTIN (§10.3) → confirmar com o Elias;
-- conciliar `docs/produto/curator.md` (aprovada: 10 por semana, 4 por nicho, sem `autoajuda`, só 5 gêneros) e o agent `affiliate-linker` (GET + `og:title`) com as decisões acima → `product-manager`.
+- teto de vitrine ativa por causa do limite de 2.000 regras do `_redirects`, e teto diário da fila da Amazon (gate 8) → `product-manager` e Elias.
