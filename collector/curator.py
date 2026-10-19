@@ -124,8 +124,9 @@ def genre_of(prod):
 
 
 def isbn_of(prod):
-    """-> (ISBN-13, None) ou (None, motivo). Fail-closed: só passa com exatamente um
-    ISBN-13 válido (978/979, checksum) entre os códigos GTIN/EAN/ISBN da ficha."""
+    """-> (ISBN-13 ou None, motivo ou None). ISBN é opcional (probe 39259800320: a ficha
+    com token de app não traz GTIN). Sem código: (None, None). Com código, fail-closed:
+    exatamente um ISBN-13 válido (978/979, checksum) ou descarte."""
     codes = c.product_gtins(prod)
     isbns = {g for g in codes if c.isbn_ok(g)}
     if len(isbns) == 1:
@@ -134,8 +135,13 @@ def isbn_of(prod):
         return None, "isbn_multiplo"
     if codes:
         return None, "isbn_invalido"  # há código, mas nenhum vira ISBN-13 válido
-    kids = prod.get("children_ids")
-    return None, "isbn_ausente_pai" if isinstance(kids, list) and kids else "isbn_ausente"
+    return None, None
+
+
+def _name(prod, aid):
+    """1º texto não vazio do atributo (value_name ou values[].name); "" se não houver."""
+    return next((v.strip() for v in _values(_attr(prod, aid), "value_name", "name")
+                 if isinstance(v, str) and v.strip()), "")
 
 
 def portugues(prod):
@@ -159,14 +165,18 @@ def price_of(prod, pid, token, **kw):
 
 def candidate(pid, pos, token, known_isbns, **kw):
     """-> (candidato, None) ou (None, motivo do descarte). Os itens das listas não trazem
-    a ficha: o ISBN, o gênero e o idioma vêm sempre do /products/{id} completo."""
+    a ficha: título, autor, ISBN, gênero e idioma vêm sempre do /products/{id} completo.
+    Prova de que é livro: BOOK_TITLE e AUTHOR não vazios (papelaria vem com BRAND etc.)."""
     prod = c.ml_request(f"/products/{pid}", token, **kw)
     if not isinstance(prod, dict) or prod.get("status") != "active":
         return None, "inativo"
+    title, author = _name(prod, "BOOK_TITLE"), _name(prod, "AUTHOR")
+    if not title or not author:
+        return None, "nao_livro"
     isbn, why = isbn_of(prod)
-    if isbn is None:
+    if why:
         return None, why
-    if isbn in known_isbns:
+    if isbn and isbn in known_isbns:
         return None, "duplicado"
     if not portugues(prod):
         return None, "idioma"
@@ -174,9 +184,7 @@ def candidate(pid, pos, token, known_isbns, **kw):
     if genre is None:
         return None, "nicho"
     try:
-        title = c._text({"t": _attr(prod, "BOOK_TITLE").get("value_name") or prod.get("name")},
-                        "t")
-        author = c._text({"t": _attr(prod, "AUTHOR").get("value_name")}, "t")
+        title, author = c._text({"t": title}, "t"), c._text({"t": author}, "t")
     except c.Invalid:
         return None, "texto"
     try:
@@ -219,7 +227,7 @@ def slug(title, taken):
 def asin_provavel(isbn):
     """ISBN-10 do ISBN-13 (só 978): costuma ser o ASIN do livro físico. Aritmética pura;
     o Elias confere no navegador antes de pôr asin no catálogo."""
-    if not isbn.startswith("978"):
+    if not isbn or not isbn.startswith("978"):
         return "-"
     d = isbn[3:12]
     ck = (11 - sum((10 - i) * int(x) for i, x in enumerate(d)) % 11) % 11
@@ -234,8 +242,9 @@ def summary(picked, today):
     lines = [f"## Curadoria {today.isoformat()}: {len(picked)} candidatos",
              "",
              f"Fonte: `/highlights` da categoria `{CATEGORY}` e termos do `/trends` "
-             f"(posição acima de {TREND_POS}), via API do ML, filtrada por ISBN, "
-             "novo, BRL, R$ 15 a R$ 400, português e nicho. As entradas entram no "
+             f"(posição acima de {TREND_POS}), via API do ML, filtrada por ficha de livro "
+             "(`BOOK_TITLE` e `AUTHOR`), ISBN válido quando houver, novo, BRL, "
+             "R$ 15 a R$ 400, português e nicho. As entradas entram no "
              "`catalog.json` com `\"pendente\": true` e **não vão ao ar** até ganharem o "
              "`ml_url` do painel.",
              "",
@@ -244,7 +253,7 @@ def summary(picked, today):
              "|---|---|---|---|---|---|---|---|---|---|"]
     for i, x in enumerate(picked, 1):
         lines.append(f"| {i} | {md(x['title'])} | {md(x['author'])} | {x['genre']} | "
-                     f"{brl(x['price'])} | {x['off']}% | {x['pos']} | {x['isbn']} | "
+                     f"{brl(x['price'])} | {x['off']}% | {x['pos']} | {x['isbn'] or '-'} | "
                      f"{asin_provavel(x['isbn'])} | {PRODUCT_URL.format(x['ml_product_id'])} |")
     lines += ["", "### URLs para o Gerador de links do painel", "", "```text",
               *(PRODUCT_URL.format(x["ml_product_id"]) for x in picked), "```", "",
@@ -255,7 +264,9 @@ def summary(picked, today):
               "- [ ] Ajustei o `genre` onde precisava (ex.: `literatura-brasileira`)",
               "- [ ] Apaguei as entradas que não quero (ficam no `curator_seen.json` e não "
               f"voltam por {SEEN_DAYS} dias)",
-              "- [ ] `asin` só depois de conferir o ASIN provável no navegador", ""]
+              "- [ ] `asin` só depois de conferir o ASIN provável no navegador; sem ISBN "
+              "(`-`), preencha o `isbn` à mão antes, porque livro nas duas lojas exige isbn",
+              ""]
     text = "\n".join(lines)
     if len(text) > SUMMARY_MAX:
         raise c.Invalid("resumo do PR acima de 60 mil caracteres")
@@ -355,7 +366,8 @@ def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
         if x is None:
             why[reason] += 1
             continue
-        isbns.add(x["isbn"])  # dois produtos com o mesmo ISBN: fica o primeiro
+        if x["isbn"]:
+            isbns.add(x["isbn"])  # dois produtos com o mesmo ISBN: fica o primeiro
         cands.append(x)
     picked = select(cands, len(books))
     print(f"curator: {len(ranks)} produtos novos nas listas, {len(cands)} passaram nos "
@@ -365,9 +377,9 @@ def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
         return 1 if why["erro"] and not cands else 0
 
     taken = {b["id"] for b in books}
-    new = [{"id": slug(x["title"], taken), "isbn": x["isbn"], "genre": x["genre"],
-            "title": x["title"], "author": x["author"], "ml_product_id": x["ml_product_id"],
-            "pendente": True} for x in picked]
+    new = [{"id": slug(x["title"], taken), **({"isbn": x["isbn"]} if x["isbn"] else {}),
+            "genre": x["genre"], "title": x["title"], "author": x["author"],
+            "ml_product_id": x["ml_product_id"], "pendente": True} for x in picked]
     doc = {**doc, "books": doc["books"] + new}
     c.load_catalog(doc, include_pending=True)  # valida antes de gravar
     text = summary(picked, today)
@@ -426,8 +438,9 @@ def _probe_product(pid, item, token):
         print(f"    {aid}: value_name {_fmt(a.get('value_name'))}; values={len(vals)}"
               + "".join(f"; values[{i}].name {_fmt(v.get('name'))}"
                         for i, v in enumerate(vals[:3]) if isinstance(v, dict)))
-    _, why = isbn_of(prod)
-    print(f"    isbn: {'ok' if why is None else why}")
+    isbn, why = isbn_of(prod)
+    print(f"    isbn: {why or ('ok' if isbn else 'ausente')} "
+          f"livro: {'sim' if _name(prod, 'BOOK_TITLE') and _name(prod, 'AUTHOR') else 'nao'}")
 
 
 def probe(isbn=PROBE_ISBN):
