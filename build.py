@@ -886,8 +886,13 @@ HEADERS = """/*
 
 
 def require_prod(doc):
-    """Fail-closed: sem --dev, nada de tag de exemplo nem dado de exemplo no ar."""
-    for name in ("AMAZON_PARTNER_TAG", "ML_AFFILIATE_ID"):
+    """Fail-closed: sem --dev, nada de tag de exemplo nem dado de exemplo no ar.
+    Cada loja presente no offers.json exige o seu ID de afiliado real."""
+    stores = {s.get("store") for o in doc.get("offers") or [] if isinstance(o, dict)
+              for s in o.get("stores") or [] if isinstance(s, dict)}
+    for store, name in (("amazon", "AMAZON_PARTNER_TAG"), ("mercadolivre", "ML_AFFILIATE_ID")):
+        if store not in stores:
+            continue
         v = os.environ.get(name, "")
         if not v or "exemplo" in v:
             raise Invalid(f"{name} ausente ou de exemplo (build local: python3 build.py --dev)")
@@ -975,15 +980,26 @@ def selftest():
     assert rejects({**ml, "stores": [{k: v for k, v in mls.items() if k != "ml_url"}]})
     # fail-closed fora do --dev
     saved = {k: os.environ.pop(k, None) for k in ("AMAZON_PARTNER_TAG", "ML_AFFILIATE_ID")}
-    for env, doc in (({}, {}), ({"AMAZON_PARTNER_TAG": "minha-20", "ML_AFFILIATE_ID": "exemplo"}, {}),
-                     ({"AMAZON_PARTNER_TAG": "minha-20", "ML_AFFILIATE_ID": "eu"}, {"_exemplo": True})):
+    both = {"offers": [{"stores": [{"store": "amazon"}, {"store": "mercadolivre"}]}]}
+    only_ml = {"offers": [{"stores": [{"store": "mercadolivre"}]}]}
+    for env, doc in (({}, both), ({}, only_ml),
+                     ({"AMAZON_PARTNER_TAG": "minha-20", "ML_AFFILIATE_ID": "exemplo"}, both),
+                     ({"AMAZON_PARTNER_TAG": "minha-20", "ML_AFFILIATE_ID": "eu"},
+                      {**both, "_exemplo": True})):
         os.environ.update(env)
         try:
             require_prod(doc)
             raise AssertionError((env, doc))
         except Invalid:
             pass
-    require_prod({})  # env real e dado real: passa
+    require_prod(both)  # env real e dado real: passa
+    os.environ.pop("AMAZON_PARTNER_TAG")
+    require_prod(only_ml)  # só ML: a tag da Amazon não é exigida
+    try:
+        require_prod(both)
+        raise AssertionError("Amazon sem tag passou")
+    except Invalid:
+        pass
     for k, v in saved.items():
         os.environ.pop(k, None)
         if v is not None:
