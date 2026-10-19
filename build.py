@@ -463,13 +463,6 @@ def stamp_html(o):
             if kind == "since" else "")
 
 
-def deal(o, pad="      "):
-    """Selo colado ao preço: os dois num bloco só, na mesma ordem em todo lugar."""
-    stamp = stamp_html(o)
-    stamp = f"\n{pad}  {stamp}" if stamp else ""
-    return f'<div class="deal">{stamp}\n{pad}  <p class="price">{price_html(o)}</p>\n{pad}</div>'
-
-
 def series(o):
     """Pontos do gráfico da vencedora: os anteriores ao dia da verificação + o preço atual,
     que vale para hoje. Sem price_points, ou com menos de 2, não há gráfico."""
@@ -1257,6 +1250,19 @@ def require_prod(doc):
         raise Invalid("offers.json marcado como _exemplo (build local: python3 build.py --dev)")
 
 
+def render_pages(offers, bot=None, ch=()):
+    """{caminho em dist/: HTML}. Uma página por nicho presente, por livro e a lista completa."""
+    pages = {"index.html": page(offers, bot=bot, ch=ch), "privacidade/index.html": privacy(offers, bot, ch),
+             "ofertas/index.html": all_page(offers, bot, ch)}
+    for g in {o["genre"] for o in offers}:
+        pages[f"{g}/index.html"] = page(offers, g, bot, ch)
+    if ch:
+        pages["canais/index.html"] = canais(offers, ch, bot)
+    for o in offers:  # id validado por ID_RE: seguro como diretório
+        pages[f"livro/{o['id']}/index.html"] = book_page(o, offers, bot, ch)
+    return pages
+
+
 def build(dev=False):
     doc = json.loads(DATA.read_text(encoding="utf-8"))
     if not dev:
@@ -1268,15 +1274,7 @@ def build(dev=False):
            else datetime.now(timezone.utc))
     offers = resolve(books, now)
     bot, ch = tg_bot(), channels()
-    # tudo validado e renderizado antes de tocar no dist/
-    pages = {"index.html": page(offers, bot=bot, ch=ch), "privacidade/index.html": privacy(offers, bot, ch)}
-    for g in {o["genre"] for o in offers}:
-        pages[f"{g}/index.html"] = page(offers, g, bot, ch)
-    if ch:
-        pages["canais/index.html"] = canais(offers, ch, bot)
-    pages["ofertas/index.html"] = all_page(offers, bot, ch)
-    for o in offers:  # id validado por ID_RE: seguro como diretório
-        pages[f"livro/{o['id']}/index.html"] = book_page(o, offers, bot, ch)
+    pages = render_pages(offers, bot, ch)  # tudo validado e renderizado antes de tocar no dist/
     rules = redirects(offers)
     shutil.rmtree(DIST, ignore_errors=True)
     shutil.copytree(STATIC, DIST)
@@ -1316,6 +1314,9 @@ def selftest():
         except Invalid:
             return True
         return False
+
+    def vis(h):  # o HTML visível: sem o esqueleto do modal e sem o JSON (testados à parte)
+        return re.sub(r'<script type="application/json".*?</script>', "", h.replace(MODAL, ""), flags=re.S)
 
     o = load(good, ml)
     assert o[0]["url"] == "https://www.amazon.com.br/dp/B0ABCDEFGH?tag=" + partner_tag()
@@ -1374,7 +1375,7 @@ def selftest():
     assert rejects({k: v for k, v in good.items() if k != "genre"})
     p = page(o, "manga")
     assert "B0ABCDEFGH" not in p and 'href="/r/livro-1"' in p and 'href="/r/livro-2"' not in p
-    assert 'href="/manga/" aria-current="page"' in p
+    assert re.search(r'href="/manga/"[^>]*aria-current="page"', p)
     # ASIN inválido / com URL injetada
     for bad in ("B0ABC", "b0abcdefgh", "B0ABCDEFGH\n", "B0ABCDEFGH?tag=evil-20",
                 "../../evil", "x@evil.com/"):
@@ -1419,9 +1420,9 @@ def selftest():
     # botão de alerta: só com TELEGRAM_BOT_USERNAME válido
     assert "t.me" not in page(o) and 'class="alert"' not in page(o)
     pb = page(o, bot="ofertaslivros_bot")
-    assert ('<a class="alert" href="https://t.me/ofertaslivros_bot?start=livro-1" '
-            'rel="noopener noreferrer" target="_blank">Me avise se baixar') in pb
-    assert pb.count("?start=") == 2  # um botão por card; o bloco de alerta usa t.me/<bot> sem start
+    assert '<a class="bell" href="https://t.me/ofertaslivros_bot?start=livro-1" rel="noopener noreferrer" target="_blank">' in pb
+    assert pb.count('class="bell"') == 2 and pb.count('"alerta":"https://t.me/ofertaslivros_bot?start=') == 2  # sino por card + modal
+    assert ">Me avise se baixar (Telegram)<" not in pb  # no card é só o sino; o texto fica em sr-only
     pb = page(xss, bot="ofertaslivros_bot")
     assert "<script>" not in pb and "alerta de preço de &lt;script&gt;" in pb
     saved = os.environ.pop("TELEGRAM_BOT_USERNAME", None)
@@ -1446,17 +1447,30 @@ def selftest():
     except Invalid:
         pass
     # marca: favicon SVG no <head>, logo no topo (h1 só na home) e negativo no rodapé, em todas as páginas
-    for h in (page(o), page(o, "manga"), privacy(), canais([("Telegram", "https://t.me/x")])):
+    every = (page(o), page(o, "manga"), privacy(o), canais(o, [("Telegram", "https://t.me/x")]),
+             book_page(o[0], o), all_page(o))
+    for h in every:  # marca, fontes locais e o app.js em todas as páginas
         head = h[:h.index("</head>")]
         assert '<link rel="icon" type="image/svg+xml" href="/favicon.svg">' in head
-        assert h.count('alt="Ofertas Livros" width="200" height="40"') == 2 and 'src="/logo-negativo.svg"' in h
-    assert '<h1 class="brand"><a href="/"><img src="/logo.svg"' in page(o)
-    assert '<h1 class="brand">' not in page(o, "manga") and '<p class="brand"><a href="/"><img src="/logo.svg"' in privacy()
-    assert all((STATIC / f).is_file() for f in ("favicon.svg", "logo.svg", "logo-negativo.svg"))
+        assert '<script src="/app.js" defer></script>' in head and h.count("<script") == h.count("</script>")
+        assert ('<link rel="preload" href="/fonts/fraunces-latin-full-normal.woff2" as="font" type="font/woff2" crossorigin>'
+                in head and head.count('rel="preload"') == 1)
+        assert h.count('src="/logo.svg" alt="Ofertas Livros"') == 2 and h.count('src="/logo-negativo.svg" alt="Ofertas Livros"') == 2
+        assert not re.search(r"https?://[^\"]*(fonts\.|googleapis|gstatic|jsdelivr|unpkg|cdn)", h)  # nenhuma fonte/script externo
+        assert h.count("<h1") == 1
+    assert all((STATIC / f).is_file() for f in ("favicon.svg", "logo.svg", "logo-negativo.svg", "app.js", "grao.svg",
+                                                "fonts/fraunces-latin-full-normal.woff2", "fonts/fraunces-latin-full-italic.woff2",
+                                                "fonts/outfit-latin-wght-normal.woff2", "fonts/SOURCES.md"))
+    assert "<rect" not in (STATIC / "logo-negativo.svg").read_text()  # sem caixa no tema escuro
+    css = (STATIC / "style.css").read_text(encoding="utf-8")
+    assert "http" not in css and "@import" not in css  # CSS sem nada externo
+    assert set(re.findall(r"url\(([^)]*)\)", css)) <= {"/fonts/fraunces-latin-full-normal.woff2", "/fonts/fraunces-latin-full-italic.woff2",
+                                                      "/fonts/outfit-latin-wght-normal.woff2", "/grao.svg", "/chevron.svg"}
+    assert all(f"--g-{g}:" in css and f'[data-g="{g}"]' in css for g in GENRES)  # um acento por nicho
     # privacidade: linkada no rodapé de todas as páginas
     assert '<a href="/privacidade/">Privacidade</a>' in page(o)
-    assert '<a href="/privacidade/" aria-current="page">' in privacy()
-    pv = privacy("ofertaslivros_bot")
+    assert '<a href="/privacidade/" aria-current="page">' in privacy(o)
+    pv = privacy(o, "ofertaslivros_bot")
     assert all(w in pv for w in ("chat_id", "Cloudflare D1", "90 dias", "/parar", "bloquear o bot",
                                  "https://t.me/ofertaslivros_bot"))
     # _redirects: 4 linhas por livro de uma loja + curinga; tag da Amazon por canal
@@ -1510,8 +1524,8 @@ def selftest():
     ch = channels()
     assert ch == [("Telegram", "https://t.me/ofertaslivros"),
                   ("WhatsApp", "https://whatsapp.com/channel/0029VaAbCdEfGhIjKlMnOp12")]
-    for html_ in (page(o, ch=ch), canais(ch, "ofertaslivros_bot")):
-        assert ('<a href="https://t.me/ofertaslivros" rel="noopener noreferrer" target="_blank">' in html_
+    for html_ in (page(o, ch=ch), canais(o, ch, "ofertaslivros_bot")):
+        assert ('href="https://t.me/ofertaslivros" rel="noopener noreferrer" target="_blank">' in html_
                 and 'href="https://whatsapp.com/channel/0029VaAbCdEfGhIjKlMnOp12" rel="noopener noreferrer"' in html_)
     assert '<a href="/canais/">' in page(o, ch=ch)
     for k, bad in (("TELEGRAM_CHANNEL_ID", "-1001234567890"), ("TELEGRAM_CHANNEL_ID", "@a/b"),
@@ -1551,18 +1565,18 @@ def selftest():
     assert brl(123456) == "R$ 1.234,56" and brl(5) == "R$ 0,05"
     # selo de 90 dias: só com history_since cobrindo 90 dias (checked_at 18/10 BRT)
     def stamp(**kw):
-        return page(load(A(**kw)))
+        return vis(page(load(A(**kw))))
     assert 'class="stamp' not in stamp()                                   # sem histórico
     assert "Menor preço desde 21/07" in stamp(history_since="2026-07-21")  # 89 dias
     assert "Menor preço em 90 dias" not in stamp(history_since="2026-07-21")
     assert "Menor preço em 90 dias" in stamp(history_since="2026-07-20")   # 90 dias
-    # selo colado ao preço: pílula (90 dias) ou contorno (desde), logo antes do <p class="price">
-    assert re.search(r'<div class="deal">\s*<p class="stamp">Menor preço em 90 dias</p>\s*<p class="price">',
+    # selo colado ao preço: pílula (90 dias) ou contorno (desde), logo antes do preço do card
+    assert re.search(r'<p class="stamp">Menor preço em 90 dias</p>\s*<div class="card-foot"><p class="price">',
                      stamp(history_since="2026-07-20"))
-    assert re.search(r'<p class="stamp stamp--since">Menor preço desde 21/07</p>\s*<p class="price">',
+    assert re.search(r'<p class="stamp stamp--since">Menor preço desde 21/07</p>\s*<div class="card-foot"><p class="price">',
                      stamp(history_since="2026-07-21"))
     assert stamp().count('<p class="price">') == stamp(history_since="2026-07-20").count('<p class="price">')
-    assert stamp(history_since="2026-07-20").count("−50%") == 2  # uma vez por ficha (destaque + lista compacta)
+    assert stamp(history_since="2026-07-20").count("−50%") == 1  # o desconto aparece uma vez (sticker)
     assert 'class="stamp' not in stamp(history_since="2026-07-20", lowest_90d_cents=1000)
     for bad in ("2026-10-19", "20260720", "2026-02-30", "2026-07-20T00:00", 20260720):
         assert rejects(A(history_since=bad)), bad
@@ -1588,30 +1602,33 @@ def selftest():
         assert rejects(A(history_since="2026-10-01", price_points=bad)), bad
     assert rejects(A(price_points=ok_pp))                                 # sem history_since
     assert load(A(history_since="2026-06-01", price_points=pp(("2026-06-10", 990))))  # fora da janela de 90 dias
-    h = stamp(history_since="2026-10-01", price_points=ok_pp)
+    def livro(**kw):  # o gráfico do histórico fica na página do livro
+        r = load(A(**kw))
+        return vis(book_page(r[0], r))
+    h = livro(history_since="2026-10-01", price_points=ok_pp)
     assert h.count('<p class="hist"><svg class="spark"') == 1 and "<span>desde 01/10: R$ 19,90 a R$ 29,90</span>" in h
     assert "<title>Preço na Amazon de 01/10 a 18/10: R$ 19,90 a R$ 29,90</title>" in h
     assert 'class="spark-dot" cx="117.0" cy="29.0"' in h and 'points="3.0,3.0 63.4,16.0 117.0,29.0"' in h
     assert "style=" not in h[h.index("<svg"):h.index("</svg>")]
-    assert 'class="hist"' not in stamp(history_since="2026-10-01", price_points=ok_pp[:1])  # 1 ponto: sem gráfico
-    assert 'class="hist"' not in stamp(history_since="2026-10-01")                          # sem série
+    assert 'class="hist"' not in livro(history_since="2026-10-01", price_points=ok_pp[:1])  # 1 ponto: sem gráfico
+    assert 'class="hist"' not in livro(history_since="2026-10-01")                          # sem série
     # ponto de hoje: vale o preço atual verificado, não o do ponto
     r = load(A(history_since="2026-10-01", price_points=pp(("2026-10-01", 2990), ("2026-10-18", 2500))))[0]
     assert series(r) == [(date(2026, 10, 1), 2990), (date(2026, 10, 18), 1990)]
     # rótulo: "90 dias" só com o selo de 90 dias e a série cobrindo os 90 dias
     full = pp(("2026-07-20", 2990), ("2026-09-01", 2490))
-    assert "<span>90 dias: R$ 19,90 a R$ 29,90</span>" in stamp(history_since="2026-07-20", price_points=full)
-    assert "<span>desde 01/08: " in stamp(history_since="2026-07-20", price_points=pp(("2026-08-01", 2990), ("2026-09-01", 2490)))
-    assert "<span>desde 21/07: " in stamp(history_since="2026-07-21", price_points=pp(("2026-07-21", 2990), ("2026-09-01", 2490)))
-    assert "<span>desde 20/07: " in stamp(history_since="2026-07-20", lowest_90d_cents=1000,  # sem selo
+    assert "<span>90 dias: R$ 19,90 a R$ 29,90</span>" in livro(history_since="2026-07-20", price_points=full)
+    assert "<span>desde 01/08: " in livro(history_since="2026-07-20", price_points=pp(("2026-08-01", 2990), ("2026-09-01", 2490)))
+    assert "<span>desde 21/07: " in livro(history_since="2026-07-21", price_points=pp(("2026-07-21", 2990), ("2026-09-01", 2490)))
+    assert "<span>desde 20/07: " in livro(history_since="2026-07-20", lowest_90d_cents=1000,  # sem selo
                                           price_points=pp(("2026-07-20", 2990), ("2026-09-01", 2490)))
-    assert "<span>desde 01/10: R$ 19,90</span>" in stamp(history_since="2026-10-01",       # preço parado
+    assert "<span>desde 01/10: R$ 19,90</span>" in livro(history_since="2026-10-01",       # preço parado
                                                               price_points=pp(("2026-10-01", 1990), ("2026-10-10", 1990)))
     # gráfico da vencedora (ML), não da outra loja
     two_pp = load({**good, "stores": [{**amz, "history_since": "2026-10-01", "price_points": ok_pp},
                                       {**mls, "price_cents": 1890, "history_since": "2026-10-05",
                                        "price_points": pp(("2026-10-05", 2190), ("2026-10-12", 2090))}]})
-    assert "<span>desde 05/10: R$ 18,90 a R$ 21,90</span>" in page(two_pp) and "desde 01/10" not in page(two_pp)
+    assert "<span>desde 05/10: R$ 18,90 a R$ 21,90</span>" in vis(book_page(two_pp[0], two_pp)) and "desde 01/10" not in vis(book_page(two_pp[0], two_pp))
     assert rejects({**good, "history_start": "2026-07-01"})  # campo da proposta antiga, substituído
     # campos novos: tipo errado quebra o build
     for bad in ("true", 1, 0, None, "sim"):
@@ -1631,30 +1648,40 @@ def selftest():
                        "stores": [{**amz, "price_cents": 4000 - 100 * k, "list_price_cents": 4000,
                                    **(store or {}).get(k, {})}]} for k in range(n)))
     saved = {k: os.environ.pop(k, None) for k in ("TELEGRAM_CHANNEL_ID", "WHATSAPP_CHANNEL_ID")}
-    h = page(offers_n(14))
-    assert "<script" not in h and h.count('aria-roledescription="slide"') == 5
-    assert '<input type="checkbox" id="pausar"><label for="pausar">Pausar passagem</label>' in h
+    h = vis(page(offers_n(14)))
+    assert h.count('aria-roledescription="slide"') == 5
+    assert '<input type="checkbox" id="pausar"><label for="pausar">Pausar</label>' in h  # pausa sem JS (WCAG 2.2.2)
     assert "Destaques de hoje" in h and "Destaques da curadoria" not in h
-    assert "Outros descontos" in h and "Em alta" not in h        # sem trending_rank
-    assert "Mais livros em oferta" in h and 'href="/manga/"' in h
-    assert 'class="join"' not in h and "Crie um alerta" not in h         # sem canais nem bot
-    assert max(h.count(f'href="/r/l-{k}"') for k in range(14)) <= 2      # no máximo 2 seções
-    # fallback do destaque: selo válido antes do maior desconto (l-13 tem o maior)
+    assert "Em alta" not in h and 'class="badge' not in h and 'class="chip chip--' not in h.replace("chip--g", "")
+    assert 'href="/manga/"' in h and "data-filtro" in h
+    for cls in ('blk--bot', 'blk--canais', 'class="bot"', 'class="canais"', 'class="fab"', "t.me"):
+        assert cls not in h, cls                                           # sem bot nem canais: nada disso
+    hero_ids = re.findall(r'<div class="slide" id="d-([a-z0-9-]+)"', h)
+    feat = h[h.index('id="h-curadoria"'):h.index('id="h-filtro"')]
+    assert len(hero_ids) == 5 and feat.count('class="card"') == 9 and not any(f'data-id="{i}"' in feat for i in hero_ids)
+    assert h[h.index('id="h-ativas"'):].count('class="card"') == 14       # o feed tem todas (busca/filtro do JS)
+    assert re.search(r'id="h-ativas">Ofertas ativas</h2><span class="sec-n">14 no momento</span>', h)
+    assert '<a class="btn btn--ghost" href="/ofertas/">' not in h          # até 24, sem "ver todas"
+    big = vis(page(offers_n(30)))
+    assert '<a class="btn btn--ghost" href="/ofertas/">' in big and "Ver todas as 30 ofertas" in big
+    # fallback do destaque: selo válido antes do maior desconto
     h = page(offers_n(10, store={2: {"history_since": "2026-06-01", "lowest_90d_cents": 3800}}))
     assert h.index('id="d-l-2"') < h.index('id="d-l-9"')
-    assert "Mais livros" not in h                                        # sobram 6 para a grade
-    h = page(offers_n(10, {7: {"featured": True}, 0: {"trending_rank": 2}, 1: {"trending_rank": 1}}))
-    assert "Destaques da curadoria" in h and h.index('id="d-l-7"') < h.index('id="d-l-9"')
-    sec = h[h.index('id="h-curadoria"'):h.index('id="h-nichos"')]
-    assert sec.count('class="card"') == 1                               # só o curado
-    alta = h[h.index("Em alta"):]
-    assert alta.index('href="/r/l-1"') < alta.index('href="/r/l-0"')    # ordem do trending_rank
-    h = page(offers_n(2), bot="ofertaslivros_bot", ch=[("Telegram", "https://t.me/ofertaslivros")])
-    assert "carrossel" not in h                                          # menos de 3: sem banner
-    assert 'class="join"' in h and "Receba as próximas ofertas" in h
-    assert 'href="https://t.me/ofertaslivros_bot" rel="noopener noreferrer"' in h  # bloco de alerta, sem start
-    g = page(offers_n(4), "manga")
-    assert "carrossel" not in g and 'href="/manga/" aria-current="page"' in g
+    h = vis(page(offers_n(10, {**{k: {"featured": True} for k in range(7)}, 8: {"trending_rank": 2}, 9: {"trending_rank": 1}})))
+    feat = h[h.index('id="h-curadoria"'):h.index('id="h-filtro"')]
+    assert "Destaques da curadoria" in h and feat.count('class="card"') == 2 and 'data-id="l-0"' in feat and 'data-id="l-1"' in feat  # só curados, fora do hero
+    alta = h[h.index("Em alta agora"):]
+    assert alta.index('href="/r/l-9"') < alta.index('href="/r/l-8"')    # ordem do trending_rank
+    assert h.count('class="badge badge--alta">Em alta</span>') == 2      # os 2 do ranking, uma vez cada (só no feed)
+    h = vis(page(offers_n(2), bot="ofertaslivros_bot", ch=[("Telegram", "https://t.me/ofertaslivros")]))
+    assert "carrossel" not in h and "Destaques" not in h                 # menos de 3: sem banner nem destaques
+    for cls in ('blk--bot', 'blk--canais', 'class="bot"', 'class="canais"', 'class="fab"'):
+        assert cls in h, cls
+    assert 'href="https://t.me/ofertaslivros_bot" rel="noopener noreferrer"' in h  # bloco do alerta, sem start
+    assert "Pedir um livro" in h and "<form" not in h and "<input" in h  # pedir = bot; só o input da busca
+    g = vis(page(offers_n(4), "manga"))
+    assert "carrossel" not in g and re.search(r'href="/manga/"[^>]*aria-current="page"', g)
+    assert '<html lang="pt-BR" data-style="manga">' in page(offers_n(4), "manga")
     for k, v in saved.items():
         if v is not None:
             os.environ[k] = v
@@ -1730,28 +1757,35 @@ def selftest():
     r = load({**good, "stores": [{**a8, "history_since": h90}, {**m8, "price_cents": 2490}]},
              now=datetime(2026, 10, 18, 11, 0, tzinfo=BRT))[0]
     assert r["seal"] == "90d" and len(r["stores"]) == 1
-    # card: botão com loja e preço da vencedora; seta só com a segunda loja elegível
-    one = page(load(good))
-    assert ">Ver na Amazon por R$\u00a019,90<" in one and "<details" not in one
+    # card: compra em círculo (loja e preço no nome acessível); seta só com a segunda loja elegível
+    one = vis(page(load(good)))
+    assert ('<a class="buy-c" href="/r/livro-1" rel="sponsored noopener noreferrer" target="_blank">' in one
+            and "<span class=\"sr\">Ver na Amazon por R$\u00a019,90: T (abre em nova aba)</span>" in one and '<details class="alt"' not in one)
     two = load({**good, "stores": [amz, {**mls, "price_cents": 1890, "checked_at": "2026-10-18T08:30:00-03:00"}]})
-    home12 = page(load(*({**good, "id": f"x-{k}", "stores": [amz, {**mls, "price_cents": 1890}]} for k in range(12))))
-    assert 'class="mini"' in home12 and home12.count("<details") == home12.count('class="go"')  # listas compactas também
-    for h in (page(two), page(two, "manga"), home12):
-        assert ">Ver no Mercado Livre por R$\u00a018,90<" in h
-        assert ('<details class="alt"><summary><span class="sr">Outra loja: Amazon</span></summary>' in h)
-        assert ('<a href="/r/' in h and '/amazon" rel="sponsored noopener noreferrer" target="_blank">'
-                'Também na Amazon: R$\u00a019,90' in h)
-    h = page(two)
-    assert h.count("<details") == h.count('class="go"') and h.count("visto hoje às") == 4  # 2 seções x 2 lojas
-    assert 'no Mercado Livre</span>, visto hoje às <time datetime="2026-10-18T08:30:00-03:00">08h30</time>' in h
+    home12 = vis(page(load(*({**good, "id": f"x-{k}", "stores": [amz, {**mls, "price_cents": 1890}]} for k in range(12)))))
+    assert home12.count('class="buy-c"') == home12.count('class="card"') == 12 + 7  # feed + destaques (12 - 5 do hero)
+    assert home12.count('<details class="alt"') == home12.count('class="card"') + 5            # seta em cada card e em cada slide
+    for h in (vis(page(two)), vis(page(two, "manga")), home12):
+        assert "Ver no Mercado Livre por R$\u00a018,90" in h
+        assert '<span class="sr">Outra loja: Amazon</span></summary>' in h
+        assert '/amazon" rel="sponsored noopener noreferrer" target="_blank">Também na Amazon: R$\u00a019,90' in h
+    h = vis(page(two))
+    assert h.count("visto hoje às") == 2                                    # vencedora no card + a outra na seta
+    assert ('<span class="store">Mercado Livre</span> <span>visto hoje às <time datetime="2026-10-18T08:30:00-03:00">08h30</time>'
+            in h)
     assert '<span class="alt-when">visto hoje às <time datetime="2026-10-18T08:00:00-03:00">08h00</time>' in h
+    bp = vis(book_page(two[0], two, "ofertaslivros_bot"))                   # página: as duas lojas por extenso
+    assert ">Ver no Mercado Livre por R$\u00a018,90<svg" in bp and '<p class="other"><a class="btn btn--ghost" href="/r/livro-1/amazon"' in bp
+    assert 'no Mercado Livre</span>, visto hoje às <time datetime="2026-10-18T08:30:00-03:00">08h30</time>' in bp
+    assert ">Me avise se baixar (Telegram)<span" in bp                       # texto completo na página
     # urgência honesta: "visto em DD/MM" quando não é hoje (relógio do build); nada de contador
-    h = page(load(A(checked_at="2026-10-17T22:00:00-03:00")))
+    h = vis(page(load(A(checked_at="2026-10-17T22:00:00-03:00"))))
     assert 'visto em 17/10 às <time datetime="2026-10-17T22:00:00-03:00">22h00</time>' in h and "visto hoje" not in h
-    assert page(load(A(checked_at="2026-10-18T01:30:00Z"))).count("visto em 17/10 às") == 2  # 22h30 BRT do dia 17
-    # "caiu R$ X desde DD/MM": último preço diferente do atual na série, se era maior
+    assert vis(page(load(A(checked_at="2026-10-18T01:30:00Z")))).count("visto em 17/10 às") == 1  # 22h30 BRT do dia 17
+    assert "Conferido em 17/10 às" in h                                     # a pílula do topo também
+    # "caiu R$ X desde DD/MM": último preço diferente do atual na série, se era maior (hero e página)
     def fell(price=1990, **kw):
-        return page(load(A(history_since="2026-10-01", price_cents=price, **kw)))
+        return livro(history_since="2026-10-01", price_cents=price, **kw)
     assert "Caiu R$\u00a05,00 desde 10/10</span>" in fell(price_points=ok_pp)
     assert "Caiu R$\u00a010,00 desde 01/10" in fell(price_points=pp(("2026-10-01", 2990), ("2026-10-12", 1990)))
     assert "Caiu R$\u00a010,00 desde 01/10" in fell(price_points=pp(("2026-10-01", 2990), ("2026-10-18", 2500)))  # hoje não conta
@@ -1760,32 +1794,77 @@ def selftest():
     h = fell(price_points=pp(("2026-10-01", 2990)))
     assert "Caiu R$\u00a010,00 desde 01/10" in h and 'class="hist"' not in h        # 1 ponto: queda sim, gráfico não
     assert not re.search(r"acaba|restam|minutos|últimas", page(o))
-    assert "<details" not in page(load({**good, "stores": [amz, {**mls, "price_cents": 1890}]},
+    assert '<details class="alt"' not in page(load({**good, "stores": [amz, {**mls, "price_cents": 1890}]},
                                        now=datetime(2026, 10, 18, 10, 31, tzinfo=BRT)))  # ML velho: sem seta
-    # capa real (só mlstatic) x placeholder sóbrio; alt, dimensões, lazy e eager só no 1º slide
-    h = page(load({**good, "image_url": img}))
-    assert (f'<div class="cover cover--photo">\n      <img src="{img}" alt="Capa de T, de A" width="120" height="180" '
-            'loading="lazy" decoding="async">' in h and "/capa.svg" not in h)
-    h = page(load(good))
-    assert ('<div class="cover cover--none">\n      <img src="/capa.svg" alt="" width="120" height="180" '
-            'loading="lazy" decoding="async">\n      <span class="cover-t" aria-hidden="true">T</span>' in h)
-    assert '<div class="cover cover--sm cover--none">\n      <img src="/capa.svg" alt="" width="120" height="180"' in h
-    assert not re.search(r"cover--\d", h) and "Capa ilustrativa" not in h        # sem capa falsa colorida
-    h = page(load({**good, "image_url": img, "title": 'O "x" <b>', "author": "A & B"}))
+    # capa real (só mlstatic) x placeholder do nicho (gradiente + inicial, decorativo); alt, dimensões, lazy
+    h = vis(page(load({**good, "image_url": img})))
+    assert (f'<div class="cover"><img src="{img}" alt="Capa de T, de A" width="120" height="180" '
+            'loading="lazy" decoding="async"></div>' in h and "/capa.svg" not in h)
+    h = vis(page(load(good)))
+    assert '<div class="cover cover--none" aria-hidden="true"><span class="ini">T</span></div>' in h
+    assert '<span class="pages" aria-hidden="true"></span>' in h            # o miolo do livro atrás da capa
+    h = vis(page(load({**good, "image_url": img, "title": 'O "x" <b>', "author": "A & B"})))
     assert 'alt="Capa de O &quot;x&quot; &lt;b&gt;, de A &amp; B"' in h and '"x" <b>' not in h
-    h = page(offers_n(5, {k: {"image_url": img} for k in range(5)}))
-    hero_ = h[:h.index('id="h-curadoria"')]
+    h = vis(page(offers_n(5, {k: {"image_url": img} for k in range(5)})))
+    hero_ = h[:h.index('id="h-filtro"')]
     assert hero_.count('loading="eager" fetchpriority="high"') == 1 and h.count('loading="eager"') == 1
     assert hero_.index('loading="eager"') < hero_.index('loading="lazy"')
-    assert h.count("<img ") == h.count('width="120" height="180"') + 2                # + logo do topo e do rodapé
-    h = page(offers_n(5, {0: {"blurb": '<i>"Duas" & irmãs</i>'}}))
+    assert h.count("<img ") == h.count('width="120" height="180"') + 4       # + logo claro e escuro no topo e no rodapé
+    r = load({**good, "image_url": img})
+    assert vis(book_page(r[0], r)).count('loading="eager" fetchpriority="high"') == 1  # na página do livro a capa é a LCP
+    h = vis(page(offers_n(5, {0: {"blurb": '<i>"Duas" & irmãs</i>'}})))
     assert h.count('class="blurb"') == 1 and '<i>"Duas"' not in h
-    assert re.search(r'<p class="blurb">&lt;i&gt;&quot;Duas&quot; &amp; irmãs&lt;/i&gt;</p>\s*<div class="deal">', h)
-    assert 'class="blurb"' not in page(offers_n(5))
+    assert re.search(r'<p class="blurb">&lt;i&gt;&quot;Duas&quot; &amp; irmãs&lt;/i&gt;</p>\s*<div class="hero-deal">', h)
+    assert 'class="blurb"' not in vis(page(offers_n(5)))
     # CSP: só a foto do ML entra além do próprio site
     csp = HEADERS.split("Content-Security-Policy: ")[1].splitlines()[0]
-    assert "img-src 'self' https://http2.mlstatic.com;" in csp and csp.count("https://") == 1
-    assert "script-src" not in csp and "default-src 'none'" in csp
+    assert csp == ("default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://http2.mlstatic.com; "
+                   "font-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+    # JS: só o nosso arquivo, sem script inline executável; o JSON embutido não fecha o <script> antes da hora
+    evil = '</script><script>alert(1)</script><!--'
+    h = page(load({**good, "title": evil, "author": "</SCRIPT>"}), bot="ofertaslivros_bot")
+    blob = re.search(r'<script type="application/json" id="ofertas">(.*?)</script>', h, re.S).group(1)
+    assert "<" not in blob and json.loads(blob)[0]["t"] == evil and json.loads(blob)[0]["a"] == "</SCRIPT>"
+    assert h.count("<script") == h.count("</script>") == 2                      # app.js + JSON, nada mais
+    assert re.findall(r"<script(?: [^>]*)?>", h) == ['<script src="/app.js" defer>', '<script type="application/json" id="ofertas">']
+    assert "<script>" not in vis(h) and "&lt;/script&gt;&lt;script&gt;" in vis(h)
+    d0 = json.loads(blob)[0]
+    assert d0["lojas"][0]["href"] == "/r/livro-1" and d0["pag"] == "/livro/livro-1/" and d0["alerta"].startswith("https://t.me/")
+    assert '<dialog class="modal" id="detalhe"' in h and h.count('id="ofertas"') == 1
+    assert '<dialog' not in privacy(o) and 'id="ofertas"' not in book_page(o[0], o)  # modal só onde há cards
+    js = (STATIC / "app.js").read_text(encoding="utf-8")
+    assert not re.search(r"innerHTML|outerHTML|insertAdjacentHTML|\beval\s*\(|new\s+Function|document\.write|"
+                         r"set(?:Timeout|Interval)\s*\(\s*['\"`]|https?://(?!http2\.mlstatic\.com|t\.me)", js)
+    assert len(js.encode()) < 15_000                                          # meta: menos de 15 KB
+    if shutil.which("node"):                                                    # sintaxe, se houver node
+        import subprocess
+        subprocess.run(["node", "--check", str(STATIC / "app.js")], check=True)
+    # contraste dos tokens (docs/marca/contraste.py lê o style.css; sai com erro se algum par falhar)
+    import subprocess
+    subprocess.run([sys.executable, "-I", str(ROOT / "docs" / "marca" / "contraste.py")], check=True, stdout=subprocess.DEVNULL)
+    # badges só com dado real: "Novo" = history_since nos últimos 3 dias; "Em alta" = trending_rank
+    def badges(*stores, **kw):
+        return re.findall(r'class="badge badge--(\w+)">', vis(page(load({**good, **kw, "stores": list(stores)}))))
+    assert badges(amz) == []                                                    # sem histórico: não sabemos se é novo
+    assert badges({**amz, "history_since": "2026-10-16"}) == ["novo"]          # 2 dias
+    assert badges({**amz, "history_since": "2026-10-18"}) == ["novo"]
+    assert badges({**amz, "history_since": "2026-10-15"}) == []                # 3 dias: já não é novo
+    assert badges({**amz, "history_since": "2026-10-17"}, {**mls, "price_cents": 2990}) == []  # outra loja sem histórico
+    assert badges({**amz, "history_since": "2026-10-17"}, trending_rank=4) == ["alta"]
+    assert badges(amz, trending_rank=1) == ["alta"]
+    assert not re.search(r"(?i)estoque|ao vivo|restam|últimas unidades", vis(page(offers_n(14))))
+    # páginas geradas: home, nichos, /ofertas/, /livro/<id>/ e privacidade; /canais/ só com canal
+    pg = render_pages(load(good, ml))
+    assert set(pg) == {"index.html", "privacidade/index.html", "ofertas/index.html", "manga/index.html",
+                       "ficcao/index.html", "livro/livro-1/index.html", "livro/livro-2/index.html"}
+    assert "canais/index.html" in render_pages(load(good), ch=[("Telegram", "https://t.me/ofertaslivros")])
+    lv = pg["livro/livro-1/index.html"]
+    assert "<h1 class=\"livro-h1\">T</h1>" in lv and '<html lang="pt-BR" data-style="manga">' in lv
+    assert 'href="/r/livro-1" rel="sponsored noopener noreferrer" target="_blank"' in lv
+    assert 'href="/livro/livro-1/" data-modal="livro-1"' in pg["index.html"]  # o modal é atalho para a página real
+    assert pg["ofertas/index.html"].count('class="card"') == 2 and "feed--full" in pg["ofertas/index.html"]
+    for path, h in pg.items():                                                 # rodapé obrigatório em todas
+        assert "ganhamos com compras qualificadas" in h and "o preço final é o da loja" in h, path
     # post: linha "também" só com a outra loja elegível até 10% mais cara, sem URL de loja
     def post(ml_price, now=NOW):
         r = load({**good, "title": "Torto Arado", "author": "Itamar Vieira Junior",

@@ -35,7 +35,7 @@ Uma oferta passa a ser um **livro**, não um anúncio de uma loja.
 ```
 
 - `stores` tem 1 ou 2 itens, no máximo um por loja. Livro com uma loja só aparece com o botão e sem a seta.
-- `image_url` é opcional. Por enquanto só vem do Mercado Livre (campo `pictures` da API de itens/produtos). A foto da Amazon só entra quando a Creators API for liberada: nada de tirar a foto da página da Amazon. Sem foto, o card usa `static/capa.svg`.
+- `image_url` é opcional. Por enquanto só vem do Mercado Livre (campo `pictures` da API de itens/produtos). A foto da Amazon só entra quando a Creators API for liberada: nada de tirar a foto da página da Amazon. Sem foto, o card usa um placeholder do nicho (gradiente e a inicial do título), sem fingir ser capa.
 - O mesmo livro nas duas lojas é casado **pelo ISBN** no `collector/catalog.json`, que também passa a ter uma entrada por livro com os ids das duas lojas. Quando a API do ML devolver o GTIN, o coletor confere se bate com o ISBN; se não bater, descarta o preço do ML daquele livro e registra no log.
 
 ## Regras (o build aplica; o back não decide quem ganha)
