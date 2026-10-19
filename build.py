@@ -380,6 +380,10 @@ def seal_of(win, el):
 
 
 NEW_DAYS = 3  # badge "Novo": o livro entrou no histórico (history_since) nos últimos 3 dias
+# Decisão do Elias (2026-10-19): só é OFERTA quem tem desconto >= 10% sobre o list_price da vencedora,
+# ou o selo de 90 dias, ou o "menor preço desde". O resto é NOVIDADE: fica no site, nunca rotulado
+# como oferta (fora do hero, dos destaques, das ofertas ativas, do ranking, da contagem e dos canais).
+OFERTA_MIN_DESCONTO = 10
 
 
 def resolve(books, now):
@@ -394,7 +398,9 @@ def resolve(books, now):
         seal, since = seal_of(win, el)
         hs = [s["history_since"] for s in b["stores"]]
         novo = None not in hs and (now.astimezone(BRT).date() - min(hs)).days < NEW_DAYS
-        out.append({**b, **win, "novo": novo, "stores": el, "alt": next((s for s in el if s is not win), None),
+        oferta = seal is not None or discount(win) >= OFERTA_MIN_DESCONTO
+        out.append({**b, **win, "novo": novo, "oferta": oferta, "stores": el,
+                    "alt": next((s for s in el if s is not win), None),
                     "seal": seal, "since": since, "now": now})  # now: relógio do build, para o "visto hoje"
     if not out:
         raise Invalid("nenhuma oferta com preço dentro do prazo de frescor")
@@ -419,6 +425,23 @@ def when(dt):
     return f"{d:%d/%m} às {d:%H}h{d:%M}"
 
 
+def ofertas(items):
+    return [o for o in items if o["oferta"]]
+
+
+def novidades(items):
+    """Sem oferta: entrada mais recente no histórico primeiro, depois o título."""
+    def key(o):
+        hs = [s["history_since"] for s in o["stores"] if s["history_since"]]
+        return (-(min(hs).toordinal() if hs else 0), fold(o["title"]))
+    return sorted((o for o in items if not o["oferta"]), key=key)
+
+
+def off(o):
+    """Desconto que pode aparecer na tela: só em oferta (novidade não mostra riscado nem %)."""
+    return discount(o) if o["oferta"] else 0
+
+
 def discount(o):
     return (o["list_price_cents"] - o["price_cents"]) * 100 // o["list_price_cents"]  # piso: não exagera
 
@@ -435,6 +458,8 @@ def post_text(o, url):
             or p.path not in {f"/r/{o['id']}", f"/r/{o['id']}/tg", f"/r/{o['id']}/wa"}
             or p.query or p.fragment):
         raise Invalid(f"post_text só aceita o /r/ do nosso domínio: {url!r}")
+    if not o.get("oferta"):
+        raise Invalid(f"post_text só publica oferta; {o['id']!r} é novidade")
     _ascii(url)
     off = discount(o)
     price = brl(o["price_cents"]) + (f" (de {brl(o['list_price_cents'])}, -{off}%)" if off else "")
@@ -572,15 +597,15 @@ def fold(text):
 def card(o, bot=None, h=3):
     """Card da vitrine. O título (link para /livro/<id>/, que o JS abre no modal) cobre o card;
     a compra, a seta e o sino ficam por cima."""
-    g, t, oid, off = o["genre"], e(o["title"]), e(o["id"]), discount(o)
+    g, t, oid, off_ = o["genre"], e(o["title"]), e(o["id"]), off(o)
     b = badge(o)
     bdg = f'<span class="badge badge--{b[0]}">{b[1]}</span>' if b else ""
-    stk = f'<span class="sticker" aria-hidden="true">−{off}%</span>' if off else ""
+    stk = f'<span class="sticker" aria-hidden="true">−{off_}%</span>' if off_ else ""
     old = (f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>'
-           f'<span class="sr">, {off}% de desconto</span>' if off else "")
+           f'<span class="sr">, {off_}% de desconto</span>' if off_ else "")
     hs = [s["history_since"] for s in o["stores"] if s["history_since"]]
     rec = f'{min(hs) if hs else "0000-00-00"}|{o["checked_at"].astimezone(timezone.utc):%Y-%m-%dT%H:%M}'
-    return f"""<li class="card" data-g="{g}" data-id="{oid}" data-q="{e(fold(o["title"] + " " + o["author"]))}" data-preco="{o["price_cents"]}" data-off="{off}" data-rec="{rec}">
+    return f"""<li class="card" data-g="{g}" data-id="{oid}" data-q="{e(fold(o["title"] + " " + o["author"]))}" data-preco="{o["price_cents"]}" data-off="{off_}" data-rec="{rec}" data-tipo="{"oferta" if o["oferta"] else "novidade"}">
   <div class="sleeve">{obj(o)}{bdg}{stk}{alert_link(o, bot, full=False)}</div>
   <div class="card-body">
     <p class="card-meta">{avatar(g, "av av--sm")}<span><span class="store">{STORES[o["store"]]}</span> <span>{checked(o, o["now"])}</span></span></p>
@@ -633,7 +658,7 @@ def slide(o, k, n, bot=None):
     b = badge(o)
     if b:
         chips.append(f'<span class="chip chip--{b[0]}">{b[1]}</span>')
-    off = discount(o)
+    off = discount(o)  # o hero só recebe ofertas
     old = f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>' if off else ""
     pill = f'<span class="off-pill">−{off}%</span>' if off else ""
     blurb = f'\n    <p class="blurb">{e(o["blurb"])}</p>' if o["blurb"] else ""
@@ -728,9 +753,10 @@ def banner_bot(bot, at):
 </li>"""
 
 
-def ranking(offers, bot, at):
-    """"Em alta agora": só com trending_rank vindo do back (popularidade real)."""
-    hot = sorted((o for o in offers if o["trending_rank"]), key=lambda o: o["trending_rank"])[:10]
+def ranking(offers, bot, at, skip=()):
+    """"Em alta agora": só ofertas com trending_rank vindo do back (popularidade real), sem as do hero."""
+    hot = sorted((o for o in offers if o["oferta"] and o["trending_rank"] and o["id"] not in skip),
+                 key=lambda o: o["trending_rank"])[:10]
     if not hot:
         return ""
     items = "".join(
@@ -745,28 +771,62 @@ def ranking(offers, bot, at):
 
 
 FEAT_MAX = 10
-FEED_NOJS = 24  # sem JS, a home mostra 24 e leva a /ofertas/; com JS, 12 e "Carregar mais"
+# Quantos cards a home mostra antes do "Ver todas" (celular, desktop). O CSS corta; a busca e o
+# filtro do JS (classe .filtrando) mostram tudo. As páginas completas usam o "carregar mais" do JS.
+CAP = {"ofertas": (6, 24), "novidades": (4, 12)}
 
 
-def feed(offers, bot=None, ch=(), full=False):
-    """Ofertas ativas: ordenação (JS), grid com blocos intercalados e "carregar mais".
-    Os blocos guardam a posição (data-at) para o JS recolocá-los depois de ordenar ou filtrar."""
-    n = len(offers)
-    cards = [card(o, bot) for o in offers]
-    blocks = [(4, banner_bot(bot, 4)), (8, strip_canais(ch, 8)), (12, ranking(offers, bot, 12))]
+def ver_todas(kind, n, home):
+    if not home or n <= CAP[kind][0]:
+        return ""
+    href, label = ("/ofertas/", f"Ver todas as {n} ofertas") if kind == "ofertas" else (
+        "/novidades/", f"Ver todas as {n} novidades")
+    m = " mais--m" if n <= CAP[kind][1] else ""  # só no celular quando o desktop já mostra todas
+    return f'<p class="mais{m}"><a class="btn btn--ghost" href="{href}">{icon("livro", "i i-livro")}{label}</a></p>'
+
+
+def feed(offers, bot=None, ch=(), full=False, skip=()):
+    """Ofertas ativas: ordenação (JS), grid com blocos intercalados e "Ver todas" / "carregar mais".
+    Os blocos guardam a posição (data-at) para o JS recolocá-los depois de ordenar ou filtrar.
+    Sem nenhuma oferta, um estado vazio que aponta para as novidades e o alerta."""
+    items = ofertas(offers)
+    n = len(items)
+    if not n:
+        return ('<section class="sec" aria-labelledby="h-ativas">\n<div class="sec-head"><h2 id="h-ativas">Ofertas ativas</h2></div>\n'
+                '<p class="vazio vazio--fixo">Nenhuma oferta conferida agora. Veja as <a href="#h-novidades">novidades</a> '
+                'ou ative um alerta no sino de um livro.</p>\n</section>')
+    cards = [card(o, bot) for o in items]
+    blocks = [(4, banner_bot(bot, 4)), (8, strip_canais(ch, 8)), (12, ranking(items, bot, 12, skip))]
     for at, html_ in sorted(blocks, reverse=True):
         if html_:
             cards.insert(min(at, len(cards)), html_)
     tools = ('<div class="feed-tools" hidden><label for="ordem">Ordenar por</label><select id="ordem">'
              '<option value="">Em destaque</option><option value="preco">Menor preço</option>'
              '<option value="off">Maior desconto</option><option value="rec">Mais recentes</option></select></div>')
-    more = ("" if full or n <= FEED_NOJS else
-            f'<p class="mais"><a class="btn btn--ghost" href="/ofertas/">{icon("livro", "i i-livro")}Ver todas as {n} ofertas</a></p>')
-    more += f'<p class="mais"><button class="btn btn--ghost js-mais" type="button" hidden>{icon("livro", "i i-livro")}Carregar mais ofertas</button></p>'
-    body = (f'{tools}\n<p class="vazio" hidden role="status">Nenhum livro com esse título ou autor. '
-            f'Tente outro nome ou volte para Todos.</p>\n<ol class="grid feed{" feed--full" if full else ""}">\n'
+    more = ver_todas("ofertas", n, not full) + (
+        f'<p class="mais"><button class="btn btn--ghost js-mais" type="button" hidden>{icon("livro", "i i-livro")}'
+        'Carregar mais ofertas</button></p>' if full else "")
+    body = (f'{tools}\n<p class="vazio" hidden role="status">Nenhuma oferta com esse título ou autor. '
+            f'Tente outro nome ou volte para Todos.</p>\n<ol class="grid feed{" feed--full" if full else " feed--home"}">\n'
             + "\n".join(cards) + f"\n</ol>\n{more}")
     return section("h-ativas", "Ofertas ativas", body, n, "Conferidas na loja. A que vence sai da lista.")
+
+
+NOV_NOTE = "Livros que entraram na nossa vigilância. Ainda sem desconto que valha anunciar; ative o alerta."
+
+
+def news(offers, bot=None, full=False):
+    """Novidades: mesmos cards, sem sticker nem riscado. Sem novidade, a seção não sai."""
+    items = novidades(offers)
+    n = len(items)
+    if not n:
+        return ""
+    more = ver_todas("novidades", n, not full) + (
+        f'<p class="mais"><button class="btn btn--ghost js-mais" type="button" hidden>{icon("livro", "i i-livro")}'
+        'Carregar mais novidades</button></p>' if full else "")
+    body = (f'<ol class="grid feed feed--nov{" feed--full" if full else " feed--home"}">\n'
+            + "\n".join(card(o, bot) for o in items) + f"\n</ol>\n{more}")
+    return section("h-novidades", "Novidades", body, n, NOV_NOTE)
 
 
 def ranked(offers):
@@ -850,20 +910,24 @@ def fab(bot):
 
 
 def home_sections(offers, bot=None, ch=()):
-    """Hero (5), destaques (até 10, sem repetir o hero), filtro e o feed completo
-    (a busca, o filtro e a ordenação do JS trabalham sobre ele)."""
-    top = ranked(offers)
+    """Hero (5), destaques (até 10, sem repetir o hero), filtro, ofertas ativas e novidades.
+    Só ofertas no hero, nos destaques e nas ativas. Nas ativas, os livros que já apareceram
+    acima vão para o fim: no celular, os 6 primeiros são livros novos para quem rola."""
+    top = ranked(ofertas(offers))
     slides = top[:5] if len(top) >= 3 else []
-    curated = any(o["featured"] for o in offers)
+    curated = any(o["featured"] for o in top)
     in_hero = {o["id"] for o in slides}
     feat = [o for o in top if o["id"] not in in_hero and (o["featured"] or not curated)][:FEAT_MAX] if slides else []
+    shown = in_hero | {o["id"] for o in feat}
+    order = [o for o in offers if o["id"] not in shown] + [o for o in offers if o["id"] in shown]
     parts = [
         hero(slides, bot),
         feat and section("h-curadoria", "Destaques da curadoria" if curated else "Destaques de hoje",
                          '<ol class="grid grid--feat">\n' + "\n".join(card(o, bot) for o in feat) + "\n</ol>",
                          len(feat), "" if curated else "Primeiro o menor preço do histórico, depois o maior desconto."),
         nav(offers, None, filtro=True),
-        feed(offers, bot, ch),
+        feed(order, bot, ch, skip=in_hero),
+        news(offers, bot),
         bot_block(bot),
         channels_block(ch),
         faq(bot, ch),
@@ -886,12 +950,13 @@ def nav(offers, current, filtro=False):
     """Filtro por nicho: círculos com o ícone de cada nicho (o lugar do curador ilustrado).
     São links para /<nicho>/; com filtro=True (home e /ofertas/), o app.js filtra sem recarregar."""
     present = [g for g in GENRES if any(o["genre"] == g for o in offers)]
-    def n(k):
-        return f'{k} {"oferta" if k == 1 else "ofertas"}'
+    def n(items):  # conta ofertas; nicho só com novidades diz isso, sem "0 ofertas"
+        k, m = len(ofertas(items)), len(items) - len(ofertas(items))
+        return (f'{k} {"oferta" if k == 1 else "ofertas"}' if k else f'{m} {"novidade" if m == 1 else "novidades"}')
     spines = "".join(f'<i data-g="{g}"></i>' for g in present)
-    items = [("/", "", "Todos", "Tudo o que está em oferta", len(offers),
+    items = [("/", "", "Todos", "Ofertas e novidades", offers,
               f'<span class="spines">{spines}</span>', current is None)]
-    items += [(f"/{g}/", g, GENRES[g], GENRE_DESC[g], sum(o["genre"] == g for o in offers),
+    items += [(f"/{g}/", g, GENRES[g], GENRE_DESC[g], [o for o in offers if o["genre"] == g],
                avatar(g, "av av--lg"), g == current) for g in present]
     lis = "".join(
         f'<li><a class="cur" href="{href}" data-f="{g}"{f" data-g={chr(34)}{g}{chr(34)}" if g else ""}'
@@ -959,12 +1024,13 @@ def icon(name, cls="i"):
 def live(offers):
     """Pílula do topo: horário real da coleta mais recente e o número de ofertas no ar.
     Nada de "ao vivo": o site é gerado pelo cron, então o rótulo diz quando conferimos."""
-    latest, now, n = max(o["checked_at"] for o in offers), offers[0]["now"], len(offers)
+    latest, now, n = max(o["checked_at"] for o in offers), offers[0]["now"], len(ofertas(offers))
     d = latest.astimezone(BRT)
     day = "" if d.date() == now.astimezone(BRT).date() else f" em {d:%d/%m}"
     return (f'<p class="live"><span class="dot" aria-hidden="true"></span>Conferido{day} às '
-            f'<time datetime="{e(latest.isoformat())}">{d:%H}h{d:%M}</time> <b class="tnum">{n}</b>'
-            f'<span class="sr"> {"oferta ativa" if n == 1 else "ofertas ativas"}</span></p>')
+            f'<time datetime="{e(latest.isoformat())}">{d:%H}h{d:%M}</time>'
+            + (f' <b class="tnum">{n}</b><span class="sr"> {"oferta ativa" if n == 1 else "ofertas ativas"}</span>' if n else "")
+            + '</p>')
 
 
 def header(offers, ch):
@@ -1002,6 +1068,7 @@ def foot(offers, bot=None, ch=(), here=""):
     """Rodapé: marca, colunas de links (só o que existe) e o aviso de associado na linha final."""
     present = [g for g in GENRES if any(o["genre"] == g for o in offers)]
     cols = [("Ofertas", [internal("/ofertas/", "Todas as ofertas", here)]
+             + ([internal("/novidades/", "Novidades", here)] if novidades(offers) else [])
              + [internal(f"/{g}/", e(GENRES[g]), here) for g in present])]
     receber = ([internal("/canais/", "Canais", here)] if ch else []) + (
         [ext(f"https://t.me/{bot}", "Alerta no Telegram")] if bot else [])
@@ -1025,7 +1092,7 @@ def foot(offers, bot=None, ch=(), here=""):
 def offer_json(o, bot):
     """Dados do modal de uma oferta, em texto puro (o app.js escreve com textContent).
     Os links são só os nossos (/r/..., /livro/..., t.me): o JS confere o formato de novo."""
-    off, a, dr = discount(o), o["alt"], drop(o)
+    off_, a, dr = off(o), o["alt"], drop(o)
     pts = series(o)
     lojas = [{"txt": f"Ver {na(o['store'])} por {brl(o['price_cents'])}", "href": f"/r/{o['id']}", "main": True}]
     if a:
@@ -1033,8 +1100,8 @@ def offer_json(o, bot):
                       "w": checked_txt(a, o["now"]), "main": False})
     kind = seal(o)
     return {"id": o["id"], "t": o["title"], "a": o["author"], "g": o["genre"], "gl": GENRES[o["genre"]],
-            "img": o["image_url"], "p": brl(o["price_cents"]), "de": brl(o["list_price_cents"]) if off else None,
-            "off": off, "blurb": o["blurb"],
+            "img": o["image_url"], "p": brl(o["price_cents"]), "de": brl(o["list_price_cents"]) if off_ else None,
+            "off": off_, "nov": not o["oferta"], "blurb": o["blurb"],
             "selo": ("Menor preço em 90 dias" if kind == "90d" else
                      f"Menor preço desde {o['since']:%d/%m}" if kind == "since" else None), "desde": kind == "since",
             "meta": f"{STORES[o['store']]}, {checked_txt(o, o['now'])}"
@@ -1093,8 +1160,8 @@ def shell(offers, title, desc, body, ch=(), here="", style=None, bot=None, modal
 """
 
 
-LEDE = ("Só entra aqui livro que baixou de preço de verdade. Conferimos cada um na loja "
-        "e comparamos com o histórico de preço.")
+LEDE = ("Oferta aqui é livro que baixou de preço de verdade: conferimos cada um na loja e comparamos "
+        "com o histórico. Os que ainda não baixaram ficam nas novidades, com alerta.")
 
 
 def page(all_offers, genre=None, bot=None, ch=()):
@@ -1106,7 +1173,8 @@ def page(all_offers, genre=None, bot=None, ch=()):
     if genre is None:
         body = intro("Livros que baixaram de verdade", LEDE) + "\n" + home_sections(offers, bot, ch)
     else:
-        body = intro(e(GENRES[genre]), LEDE) + f"\n{nav(all_offers, genre)}\n{feed(offers, bot, ch, full=True)}"
+        body = (intro(e(GENRES[genre]), LEDE) + f"\n{nav(all_offers, genre)}\n{feed(offers, bot, ch, full=True)}"
+                + f"\n{news(offers, bot, full=True)}")
     return shell(all_offers, title, desc, body, ch, style=genre, bot=bot, modal=True)
 
 
@@ -1124,15 +1192,16 @@ def store_list(o):
 def book_page(o, offers, bot=None, ch=()):
     """/livro/<id>/: a página real dos detalhes (o modal do JS é só um atalho para ela)."""
     g, t = o["genre"], e(o["title"])
-    off = discount(o)
-    old = f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>' if off else ""
-    pill = f'<span class="off-pill">−{off}%</span>' if off else ""
+    off_ = off(o)
+    old = f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>' if off_ else ""
+    pill = f'<span class="off-pill">−{off_}%</span>' if off_ else ""
+    nov = "" if o["oferta"] else '\n    <p class="nov-nota">Novidade: ainda sem desconto que valha anunciar. Ative o alerta e avisamos quando cair.</p>'
     b = badge(o)
     chips = f'<span class="chip chip--g">{icon("g-" + g)}{e(GENRES[g])}</span>' + (
         f'<span class="chip chip--{b[0]}">{b[1]}</span>' if b else "")
     note = (f'<blockquote class="nota"><p>{e(o["blurb"])}</p><footer>{avatar(g)}Curadoria de {e(GENRES[g])}</footer></blockquote>'
             if o["blurb"] else "")
-    body = f"""<p class="crumbs"><a href="/">Ofertas</a> / <a href="/{g}/">{e(GENRES[g])}</a></p>
+    body = f"""<p class="crumbs"><a href="/">Início</a> / <a href="/{g}/">{e(GENRES[g])}</a></p>
 <article class="livro" data-g="{g}">
   {obj(o, "obj hero-obj livro-obj", eager=True)}
   <div class="livro-text">
@@ -1141,21 +1210,29 @@ def book_page(o, offers, bot=None, ch=()):
     <p class="hero-sub">{e(o["author"])}</p>
     {note}
     <div class="hero-deal">{stamp_html(o)}<p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong>{old}</p>{pill}</div>
-    <p class="meta">{meta_html(o)}</p>{chart(o, "    ")}
+    <p class="meta">{meta_html(o)}</p>{chart(o, "    ")}{nov}
     <div class="hero-acts">{go(o)}{alert_link(o, bot)}</div>
     {store_list(o)}
   </div>
 </article>"""
-    return shell(offers, f"{t}, de {e(o['author'])}: oferta conferida | Ofertas Livros",
+    return shell(offers, f"{t}, de {e(o['author'])}: {'oferta' if o['oferta'] else 'preço'} conferid{'a' if o['oferta'] else 'o'} | Ofertas Livros",
                  f"{t}, de {e(o['author'])}, por {brl(o['price_cents'])} {na(o['store'])}. Preço conferido na loja.",
                  body, ch, style=g, bot=bot)
 
 
 def all_page(offers, bot=None, ch=()):
-    """/ofertas/: a lista completa (sem JS, é para onde o "Ver todas" leva)."""
+    """/ofertas/: a lista completa das ofertas (sem JS, é para onde o "Ver todas" leva)."""
     body = (intro("Todas as ofertas", LEDE) + f"\n{nav(offers, None, filtro=True)}\n{feed(offers, bot, ch, full=True)}")
     return shell(offers, "Todas as ofertas de livros | Ofertas Livros",
                  "Todas as ofertas de livros ativas, conferidas na loja.", body, ch, "/ofertas/", bot=bot, modal=True)
+
+
+def news_page(offers, bot=None, ch=()):
+    """/novidades/: todos os livros acompanhados que ainda não são oferta."""
+    body = intro("Novidades", NOV_NOTE) + f"\n{news(offers, bot, full=True)}"
+    return shell(offers, "Novidades: livros acompanhados | Ofertas Livros",
+                 "Livros que entraram na nossa vigilância de preço, ainda sem desconto que valha anunciar.",
+                 body, ch, "/novidades/", bot=bot, modal=True)
 
 
 def privacy(offers, bot=None, ch=()):
@@ -1254,6 +1331,8 @@ def render_pages(offers, bot=None, ch=()):
     """{caminho em dist/: HTML}. Uma página por nicho presente, por livro e a lista completa."""
     pages = {"index.html": page(offers, bot=bot, ch=ch), "privacidade/index.html": privacy(offers, bot, ch),
              "ofertas/index.html": all_page(offers, bot, ch)}
+    if novidades(offers):
+        pages["novidades/index.html"] = news_page(offers, bot, ch)
     for g in {o["genre"] for o in offers}:
         pages[f"{g}/index.html"] = page(offers, g, bot, ch)
     if ch:
@@ -1283,7 +1362,7 @@ def build(dev=False):
         (DIST / path).write_text(body, encoding="utf-8")
     (DIST / "_redirects").write_text(rules, encoding="utf-8")
     (DIST / "_headers").write_text(HEADERS, encoding="utf-8")
-    print(f"ok: {len(offers)} ofertas ({len(books) - len(offers)} fora do prazo), "
+    print(f"ok: {len(ofertas(offers))} ofertas, {len(novidades(offers))} novidades ({len(books) - len(offers)} fora do prazo), "
           f"{len(pages)} páginas -> {DIST}")
 
 
