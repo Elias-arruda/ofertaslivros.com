@@ -62,7 +62,7 @@
       if (f.mais) f.mais.hidden = !f.full || hits.length <= f.limit;
       if (f.vazio) f.vazio.hidden = hits.length > 0;
       else f.sec.hidden = filtrando && !hits.length; // novidades sem resultado: a seção some
-      if (f.count) f.count.textContent = hits.length + ' no momento';
+      if (f.count) f.count.textContent = hits.length + ' ' + (hits.length === 1 ? f.count.dataset.s : f.count.dataset.p);
     });
     if (sel) sel.addEventListener('change', () => { st.order = sel.value; render(); });
     feeds.forEach(f => f.mais && f.mais.addEventListener('click', () => {

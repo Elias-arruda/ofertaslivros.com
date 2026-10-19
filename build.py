@@ -706,9 +706,11 @@ def hero(items, bot=None):
 </section>"""
 
 
-def section(sid, title, body, count=None, note=""):
-    """Cabeçalho de seção: H2, contador colado e uma frase curta."""
-    n = f'<span class="sec-n">{count} no momento</span>' if count is not None else ""
+def section(sid, title, body, count=None, note="", unit=("oferta", "ofertas")):
+    """Cabeçalho de seção: H2, contador com rótulo por extenso ("10 ofertas no momento") e uma frase curta.
+    data-s/data-p: o app.js reescreve a contagem depois de buscar ou filtrar, no singular ou plural."""
+    n = (f'<span class="sec-n" data-s="{unit[0]} no momento" data-p="{unit[1]} no momento">'
+         f'{count} {unit[0] if count == 1 else unit[1]} no momento</span>' if count is not None else "")
     note = f'<p class="sec-note">{note}</p>' if note else ""
     return (f'<section class="sec" aria-labelledby="{sid}">\n<div class="sec-head"><h2 id="{sid}">{title}</h2>{n}{note}</div>'
             f'\n{body}\n</section>')
@@ -828,7 +830,7 @@ def news(offers, bot=None, full=False):
         'Carregar mais novidades</button></p>' if full else "")
     body = (f'<ol class="grid feed feed--nov{" feed--full" if full else " feed--home"}">\n'
             + "\n".join(card(o, bot) for o in items) + f"\n</ol>\n{more}")
-    return section("h-novidades", "Novidades", body, n, NOV_NOTE)
+    return section("h-novidades", "Novidades", body, n, NOV_NOTE, ("novidade", "novidades"))
 
 
 def ranked(offers):
@@ -1023,16 +1025,14 @@ def icon(name, cls="i"):
     return f'<svg class="{cls}" aria-hidden="true" focusable="false"><use href="#i-{name}"/></svg>'
 
 
-def live(offers):
-    """Pílula do topo: horário real da coleta mais recente e o número de ofertas no ar.
-    Nada de "ao vivo": o site é gerado pelo cron, então o rótulo diz quando conferimos."""
-    latest, now, n = max(o["checked_at"] for o in offers), offers[0]["now"], len(ofertas(offers))
+def carimbo(offers, cls):
+    """Carimbo "conferido DD/MM às HHhMM" com o horário da coleta mais recente (estilo do v1: girado,
+    vermelho, só CSS). Não é link nem botão. Sai duas vezes: na barra (desktop) e no topo do conteúdo
+    (celular, onde a barra não tem largura); o CSS mostra uma só, então o leitor de tela lê uma só."""
+    latest = max(o["checked_at"] for o in offers)
     d = latest.astimezone(BRT)
-    day = "" if d.date() == now.astimezone(BRT).date() else f" em {d:%d/%m}"
-    return (f'<p class="live"><span class="dot" aria-hidden="true"></span>Conferido{day} às '
-            f'<time datetime="{e(latest.isoformat())}">{d:%H}h{d:%M}</time>'
-            + (f' <b class="tnum">{n}</b><span class="sr"> {"oferta ativa" if n == 1 else "ofertas ativas"}</span>' if n else "")
-            + '</p>')
+    return (f'<p class="carimbo {cls}"><span>conferido</span> <time datetime="{e(latest.isoformat())}">'
+            f'<b>{d:%d/%m}</b> às {d:%H}h{d:%M}</time></p>')
 
 
 def header(offers, ch):
@@ -1050,8 +1050,9 @@ def header(offers, ch):
                    f'{icon("wa")}<span class="pill-t">Canal no WhatsApp</span><span class="sr"> (abre em nova aba)</span></a>')
     return f"""<header class="top">
 <div class="top-bar">
+<span class="menu-slot" aria-hidden="true"></span>
 {brand()}
-{live(offers)}
+{carimbo(offers, "carimbo--bar")}
 <nav class="acoes" aria-label="Atalhos">{"".join(nav)}</nav>
 </div>
 <div class="busca" id="busca" hidden><label class="sr" for="q">Buscar por título ou autor</label><input id="q" name="busca" type="search" placeholder="Título ou autor…" autocomplete="off" spellcheck="false" enterkeyhint="search"></div>
@@ -1154,6 +1155,7 @@ def shell(offers, title, desc, body, ch=(), here="", style=None, bot=None, modal
 <a class="skip" href="#conteudo">Pular para o conteúdo</a>
 {header(offers, ch)}
 <main id="conteudo">
+{carimbo(offers, "carimbo--m")}
 {body}
 </main>
 {foot(offers, bot, ch, here)}{(chr(10) + MODAL + chr(10) + data_script(offers, bot)) if modal else ""}
@@ -1539,6 +1541,12 @@ def selftest():
         assert h.count('src="/logo.svg" alt="Ofertas Livros"') == 2 and h.count('src="/logo-negativo.svg" alt="Ofertas Livros"') == 2
         assert not re.search(r"https?://[^\"]*(fonts\.|googleapis|gstatic|jsdelivr|unpkg|cdn)", h)  # nenhuma fonte/script externo
         assert h.count("<h1") == 1
+    for h in every:  # header: espaço do menu (vazio e escondido), carimbo na barra e no conteúdo, sem número solto
+        top = h[h.index('<header class="top">'):h.index("</header>")]
+        assert '<span class="menu-slot" aria-hidden="true"></span>' in top and "<button" not in top.split("menu-slot")[0]
+        assert top.count('class="carimbo carimbo--bar"') == 1 and h.count('class="carimbo carimbo--m"') == 1
+        assert "tnum" not in top and 'class="live"' not in top
+        assert top.index("menu-slot") < top.index('class="brand"') < top.index("carimbo--bar") < top.index("js-busca")
     assert all((STATIC / f).is_file() for f in ("favicon.svg", "logo.svg", "logo-negativo.svg", "app.js", "grao.svg",
                                                 "fonts/fraunces-latin-full-normal.woff2", "fonts/fraunces-latin-full-italic.woff2",
                                                 "fonts/outfit-latin-wght-normal.woff2", "fonts/SOURCES.md"))
@@ -1741,7 +1749,7 @@ def selftest():
     feat = h[h.index('id="h-curadoria"'):h.index('id="h-filtro"')]
     assert len(hero_ids) == 5 and feat.count('class="card"') == 9 and not any(f'data-id="{i}"' in feat for i in hero_ids)
     assert h[h.index('id="h-ativas"'):].count('class="card"') == 14       # o feed tem todas (busca/filtro do JS)
-    assert re.search(r'id="h-ativas">Ofertas ativas</h2><span class="sec-n">14 no momento</span>', h)
+    assert re.search(r'id="h-ativas">Ofertas ativas</h2><span class="sec-n"[^>]*>14 ofertas no momento</span>', h)
     assert '<p class="mais mais--m"><a class="btn btn--ghost" href="/ofertas/">' in h  # 14: "ver todas" só no celular (corta em 4)
     big = vis(page(offers_n(30)))
     assert '<p class="mais"><a class="btn btn--ghost" href="/ofertas/">' in big and "Ver todas as 30 ofertas" in big  # > 24
@@ -1793,10 +1801,10 @@ def selftest():
     novs = h[h.index('id="h-novidades"'):]
     assert "nov-" not in hero_ and "nov-" not in ativas and "Em alta agora" not in novs
     assert re.findall(r'data-id="(nov-\d)"', novs) == ["nov-3", "nov-2", "nov-1", "nov-4"]  # history_since desc, título
-    assert '<b class="tnum">5</b><span class="sr"> ofertas ativas</span>' in h                # a contagem ignora novidades
-    assert re.search(r'id="h-ativas">Ofertas ativas</h2><span class="sec-n">5 no momento</span>', h)
-    assert re.search(r'id="h-novidades">Novidades</h2><span class="sec-n">4 no momento</span><p class="sec-note">Livros que entraram', h)
+    assert re.search(r'id="h-ativas">Ofertas ativas</h2><span class="sec-n"[^>]*>5 ofertas no momento</span>', h)  # sem novidades
+    assert re.search(r'id="h-novidades">Novidades</h2><span class="sec-n"[^>]*>4 novidades no momento</span><p class="sec-note">Livros que entraram', h)
     assert '<span class="cur-c">5 ofertas</span>' in h                                      # "Todos" conta ofertas
+    assert re.search(r'<span class="sec-n"[^>]*>1 oferta no momento</span>', vis(page(load(good))))  # singular
     card_n = novs[novs.index('data-id="nov-2"'):]
     card_n = card_n[:card_n.index("</li>")]
     assert ('class="sticker"' not in card_n and "<s " not in card_n and "desconto" not in card_n
@@ -1925,7 +1933,8 @@ def selftest():
     h = vis(page(load(A(checked_at="2026-10-17T22:00:00-03:00"))))
     assert 'visto em 17/10 às <time datetime="2026-10-17T22:00:00-03:00">22h00</time>' in h and "visto hoje" not in h
     assert vis(page(load(A(checked_at="2026-10-18T01:30:00Z")))).count("visto em 17/10 às") == 1  # 22h30 BRT do dia 17
-    assert "Conferido em 17/10 às" in h                                     # a pílula do topo também
+    assert ('<p class="carimbo carimbo--bar"><span>conferido</span> <time datetime="2026-10-17T22:00:00-03:00">'
+            '<b>17/10</b> às 22h00</time></p>') in h                          # o carimbo do topo também
     # "caiu R$ X desde DD/MM": último preço diferente do atual na série, se era maior (hero e página)
     def fell(price=1990, **kw):
         return livro(history_since="2026-10-01", price_cents=price, **kw)

@@ -132,10 +132,11 @@ em { font-style: italic; font-family: var(--serif); font-variation-settings: "SO
 @media (max-width: 640px) { body { font-size: 15px; } }
 
 /* ---------- 2. Logo B ---------- */
-/* Wordmark 8,5:1. A 72 px de altura ele tem 610 px de largura: cabe no desktop, não no celular.
-   Até 640 px a largura manda (desvio da spec, que pede 56/46 px de altura). */
+/* Wordmark 8,5:1, alinhado à esquerda logo depois do espaço do menu. Altura: 44 px no desktop
+   (o carimbo-"o" com ~28 px), 36 px até 1100 px e, até 640 px, pela largura que sobra (mín. ~15 px
+   de altura, o "o" com ~10 px). */
 .brand { display: inline-flex; align-items: center; min-height: 44px; flex: none; }
-.brand img { height: 72px; width: auto; }
+.brand img { height: 44px; width: auto; }
 .logo-escuro { display: none; }
 :root[data-theme="dark"] .logo-claro { display: none; }
 :root[data-theme="dark"] .logo-escuro { display: block; }
@@ -143,9 +144,8 @@ em { font-style: italic; font-family: var(--serif); font-variation-settings: "SO
   :root:not([data-theme="light"]) .logo-claro { display: none; }
   :root:not([data-theme="light"]) .logo-escuro { display: block; }
 }
-@media (max-width: 1100px) { .brand img { height: 56px; } }
-@media (max-width: 900px) { .brand img { height: 40px; } }
-@media (max-width: 640px) { .brand img { height: auto; width: min(46vw, 220px); } }
+@media (max-width: 1100px) { .brand img { height: 36px; } }
+@media (max-width: 640px) { .brand img { height: auto; width: clamp(120px, 100vw - 246px, 200px); } }
 
 /* ---------- 3. Fundo e textura (spec 2.8) ---------- */
 /* Três manchas desfocadas no acento atual: trocar de nicho muda o clima da página inteira */
@@ -177,23 +177,44 @@ body::after {
   border-bottom: 1px solid var(--line);
 }
 .top-bar { max-width: 1440px; margin: 0 auto; display: flex; align-items: center; gap: 16px; padding: 6px var(--pad); }
-.pill, .live {
+.pill {
   display: inline-flex; align-items: center; gap: 8px; border-radius: 999px;
   background: var(--surface2); white-space: nowrap;
 }
-/* Conferido às HHhMM: a bolinha pulsa, o número é o de ofertas no ar */
-.live { padding: 6px 12px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
-.live b { padding: 1px 8px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); letter-spacing: 0; transition: background-color .3s var(--ease); }
-.dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: #3ef08a; }
-.dot::after { content: ""; position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 0 #3ef08a; animation: pulse 1.8s ease-out infinite; }
-@keyframes pulse { to { box-shadow: 0 0 0 9px #3ef08a00; } }
+/* Lugar reservado do futuro menu (44x44): vazio, fora do foco e do leitor de tela */
+.menu-slot { flex: none; width: 44px; height: 44px; }
+/* Carimbo "conferido": girado, no vermelho do carimbo (5,7:1 no claro; #ff8a8f, 7,9:1 no escuro), não clicável */
+.carimbo {
+  flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 72px; aspect-ratio: 1; margin: 0; border-radius: 50%;
+  font: 600 10.5px/1.15 var(--sans); text-align: center; color: var(--coral);
+  border: 2px solid var(--coral); box-shadow: inset 0 0 0 2px var(--bg), inset 0 0 0 3px var(--coral);
+  transform: rotate(-10deg); font-variant-numeric: tabular-nums lining-nums;
+  pointer-events: none; user-select: none;
+}
+.carimbo time { display: block; }
+.carimbo b { display: block; font: 700 17px/1.05 var(--serif); font-variation-settings: "SOFT" 100, "WONK" 1; }
+.carimbo--bar { margin-left: auto; }
+.carimbo--bar ~ .acoes { margin-left: 0; }
+.carimbo--m { display: none; }
+@media (max-width: 640px) {
+  .carimbo--bar { display: none; }
+  .carimbo--bar ~ .acoes { margin-left: auto; }
+  /* No celular a barra não tem largura: o carimbo fica no topo do conteúdo, sob o Buscar, e rola junto */
+  .carimbo--m { display: flex; position: absolute; top: 10px; right: var(--pad); width: 62px; font-size: 9.5px; }
+  .carimbo--m b { font-size: 15px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes carimbar { from { opacity: 0; transform: rotate(-10deg) scale(1.35); } }
+  .carimbo { animation: carimbar .35s cubic-bezier(.2, .7, .3, 1.2) .2s backwards; }
+}
 .acoes { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .pill {
-  height: 42px; padding: 0 14px; border: 1px solid var(--line);
+  height: 44px; padding: 0 14px; border: 1px solid var(--line);  /* 44: alvo de toque (a spec diz 42) */
   font: 600 14px/1 var(--sans); text-decoration: none;
   transition: transform .2s var(--ease), background-color .3s var(--ease), filter .2s;
 }
-.pill--ico { width: 42px; padding: 0; justify-content: center; }
+.pill--ico { width: 44px; padding: 0; justify-content: center; }
 .pill:hover { transform: translateY(-2px); }
 .pill:active { transform: scale(.97); }
 .pill--tg .i { color: #229ed9; }
@@ -221,17 +242,15 @@ body::after {
 .page-h1 { margin: 26px 4px 18px; }
 .intro p { flex: 1 1 340px; max-width: 62ch; color: var(--muted); }
 main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
-@media (max-width: 1100px) { .live { letter-spacing: .03em; } }
-@media (max-width: 900px) { .pill--tg { width: 42px; padding: 0; justify-content: center; } .pill--tg .pill-t { display: none; } }
+@media (max-width: 900px) { .pill--tg { width: 44px; padding: 0; justify-content: center; } .pill--tg .pill-t { display: none; } }
 @media (max-width: 640px) {
-  .live { display: none; }
   .top-bar { gap: 8px; }
-  .js-busca { width: 42px; padding: 0; justify-content: center; }
+  .js-busca { width: 44px; padding: 0; justify-content: center; }
   .js-busca .pill-t, .pill--wa .pill-t { display: none; }
   /* O logo B é largo: o Telegram sai do topo no celular (fica no bloco de canais e no rodapé)
      e o WhatsApp vira círculo antes dos 350 px da spec */
   .pill--tg { display: none; }
-  .pill--wa { width: 42px; padding: 0; justify-content: center; }
+  .pill--wa { width: 44px; padding: 0; justify-content: center; }
 }
 
 /* ---------- 5. Peças comuns e hero (spec 5) ---------- */
@@ -907,4 +926,22 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
   .filtros { margin-top: 18px; }
   .grid { margin-top: 10px; }
   .sec-note { font-size: 13px; }
+}
+
+/* ---------- 15. Header em telas muito estreitas ---------- */
+/* Em 320 px não cabem o menu, o logo legível e três botões: o WhatsApp sai da barra
+   (o canal segue no bloco de canais e no rodapé). */
+@media (max-width: 360px) {
+  .top-bar { gap: 6px; }
+  .pill--wa { display: none; }
+  .card .stamp { white-space: normal; }  /* o selo não cabe numa linha no card de 140 px */
+}
+@media (max-width: 640px) {
+  main { position: relative; }
+  /* O carimbo fica no canto do topo do conteúdo; só o título abre espaço para ele */
+  main > .carimbo--m + * h1, main > .carimbo--m + h1, main > .carimbo--m + .crumbs { padding-right: 84px; }
+  .intro h1 { font-size: 26px; margin-bottom: 8px; }
+  .sec-n { font-size: 13px; margin-left: -6px; }
+  .slide { padding-bottom: 10px; }
+  .hero-nav { padding-bottom: 8px; }
 }
