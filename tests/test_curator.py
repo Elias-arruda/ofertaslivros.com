@@ -52,14 +52,15 @@ class Resp(io.BytesIO):
 class FakeML:
     def __init__(self):
         self.urls = []
-        self.hl = {None: []}       # BOOK_GENRE (ou None = geral) -> content
+        self.hl = []               # content do /highlights geral
+        self.trends = []           # keywords do /trends
+        self.search = {}           # q -> [ml_product_id]
         self.products = {}
         self.items = {}
         self.ctype = "application/json;charset=UTF-8"
 
-    def rank(self, *pids, genre=None):
-        self.hl[genre] = [{"id": p, "position": i, "type": "PRODUCT"}
-                          for i, p in enumerate(pids, 1)]
+    def rank(self, *pids):
+        self.hl = [{"id": p, "position": i, "type": "PRODUCT"} for i, p in enumerate(pids, 1)]
 
     def __call__(self, req, timeout=None):
         assert timeout and timeout > 0
@@ -70,19 +71,25 @@ class FakeML:
         if u.path == "/oauth/token":
             return Resp({"access_token": "APP_USR-sentinela"})
         if u.path == f"/highlights/MLB/category/{cur.CATEGORY}":
-            g = q.get("attributeValue", [None])[0]
-            if g not in self.hl:
-                raise HTTPError(req.full_url, 404, "x", {}, None)
-            return Resp({"query_data": {}, "content": self.hl[g]}, self.ctype)
+            if "attributeValue" in q:  # como na produção (probe 39258219518)
+                raise HTTPError(req.full_url, 400, "x", {}, None)
+            return Resp({"query_data": {}, "content": self.hl}, self.ctype)
         if u.path.endswith("/items"):
             pid = u.path.split("/")[2]
             if pid not in self.items:
                 raise HTTPError(req.full_url, 404, "x", {}, None)
             return Resp(self.items[pid])
-        if u.path.startswith("/products/search"):
-            return Resp({"paging": {"total": 1}, "results": [{"id": "MLB1", "name": "x"}]})
-        if u.path.startswith("/trends/"):
-            return Resp([{"keyword": "x", "url": "https://lista.mercadolivre.com.br/x"}])
+        if u.path == "/products/search":
+            if "q" in q:
+                assert q["domain_id"] == ["MLB-BOOKS"] and q["site_id"] == ["MLB"]
+                ids = self.search.get(q["q"][0], [])
+            else:
+                ids = ["MLB1"]
+            return Resp({"paging": {"total": len(ids)},
+                         "results": [{"id": i, "name": "x"} for i in ids]})
+        if u.path == f"/trends/MLB/{cur.CATEGORY}":
+            return Resp([{"keyword": k, "url": "https://lista.mercadolivre.com.br/x"}
+                         for k in self.trends], self.ctype)
         if u.path.startswith("/products/"):
             return Resp(self.products[u.path.rsplit("/", 1)[1]])
         raise AssertionError(f"rota inesperada {u.path}")
@@ -113,10 +120,10 @@ def env(tmp_path, monkeypatch):
     def books():
         return json.loads(cat.read_text())["books"]
 
-    def add(*prods, genre=None):
+    def add(*prods):
         for p in prods:
             fake.products[p["id"]] = p
-        fake.rank(*(p["id"] for p in prods), genre=genre)
+        fake.rank(*(p["id"] for p in prods))
     return {"fake": fake, "cat": cat, "seen": seen, "md": md, "suggest": suggest,
             "books": books, "add": add}
 
@@ -156,12 +163,6 @@ def test_faixa_de_preco_inclusiva(env):
     assert new_ids(env) == ["MLB1", "MLB2"]
 
 
-def test_sem_genero_na_ficha_usa_o_da_lista(env):
-    env["add"](prod(1, genre=None), genre=NEG)
-    env["suggest"]()
-    assert env["books"]()[-1]["genre"] == "negocios"
-
-
 def test_vencedor_usado_cai_para_o_menor_anuncio_novo(env):
     p = prod(1, cond="used")
     env["add"](p)
@@ -184,7 +185,7 @@ def test_sem_duplicado(env):
 
 def test_so_product_entra(env):
     env["fake"].products["MLB1"] = prod(1)
-    env["fake"].hl[None] = [{"id": "MLB1", "position": 1, "type": "PRODUCT"},
+    env["fake"].hl = [{"id": "MLB1", "position": 1, "type": "PRODUCT"},
                             {"id": "MLBU123", "position": 2, "type": "USER_PRODUCT"},
                             {"id": "MLB5", "position": 3, "type": "ITEM"},
                             {"id": "MLB6/../x", "position": 4, "type": "PRODUCT"}]
@@ -203,13 +204,15 @@ def test_limite_por_nicho(env):
 
 def test_limite_semanal_e_ordem(env):
     gens = [MANGA, NEG, LIT, BIO]
-    ps = [prod(n, genre=gens[n % 4], orig=40 + n) for n in range(1, 21)]
-    env["add"](*ps)
-    env["fake"].rank(*(p["id"] for p in reversed(ps)), genre=MANGA)  # 20 na posição 1
+    env["add"](*(prod(n, genre=gens[n % 4]) for n in range(1, 21)))
     env["suggest"]()
-    got = new_ids(env)
-    assert len(got) == 10
-    assert got[0] == "MLB20"  # posição 1 nas duas listas, maior desconto no empate
+    assert new_ids(env) == [f"MLB{n}" for n in range(1, 11)]
+
+
+def test_empate_de_posicao_maior_desconto():
+    x = {"genre": "manga", "ml_product_id": "MLB1", "pos": 1}
+    got = cur.select([{**x, "off": 10}, {**x, "ml_product_id": "MLB2", "off": 30}], 0)
+    assert [g["ml_product_id"] for g in got] == ["MLB2", "MLB1"]
 
 
 def test_teto_do_catalogo(env):
@@ -299,7 +302,7 @@ def test_probe_status_e_contagens_sem_conteudo(env, capsys):
     out = capsys.readouterr().out
     assert "highlights geral: /highlights/MLB/category/MLB437616 -> 200" in out
     assert "content=2 tipos=PRODUCT:2" in out
-    assert f"highlights BOOK_GENRE={MANGA}: " in out and "-> 404" in out
+    assert "BOOK_GENRE=" not in out
     assert "products/search isbn: /products/search -> 200" in out and "total=1" in out
     assert "trends: /trends/MLB/MLB437616 -> 200" in out
     assert "Livro" not in out and "lista.mercadolivre" not in out and "MLB1" not in out
@@ -319,3 +322,135 @@ def test_sem_credenciais_falha_sem_rede(env, monkeypatch):
     monkeypatch.delenv("ML_CLIENT_SECRET")
     assert env["suggest"]() == 1 and cur.probe() == 1
     assert env["fake"].urls == []
+
+
+# ---- extração de ISBN (execução 39258304023: 16 de 16 descartados por "isbn") ----
+
+def isbn10(n):
+    """ISBN-10 equivalente ao isbn(n) (mesmos 9 dígitos depois do 978)."""
+    d = isbn(n)[3:12]
+    ck = (11 - sum((10 - i) * int(x) for i, x in enumerate(d)) % 11) % 11
+    return d + ("X" if ck == 10 else str(ck))
+
+
+def hyphen(s):
+    return f"{s[:3]}-{s[3:5]}-{s[5:9]}-{s[9:12]}-{s[12]}"
+
+
+def test_isbn10_vira_isbn13_com_digito_certo():
+    assert c.isbn10_to_13("8535914846") == "9788535914849"
+    assert c.isbn10_to_13("080442957X") == "9780804429573"  # X no verificador
+    assert c.isbn10_to_13("8535914847") is None             # checksum do ISBN-10 errado
+    assert c.isbn10_to_13("853591484X") is None
+    for n in (1, 7, 123, 4567):
+        assert c.isbn10_to_13(isbn10(n)) == isbn(n) and c.isbn_ok(isbn(n))
+
+
+@pytest.mark.parametrize("attr", [
+    {"id": "GTIN", "value_name": isbn10(1)},                          # ISBN-10
+    {"id": "GTIN", "value_name": hyphen(isbn(1))},                    # hífen
+    {"id": "GTIN", "value_name": "978 85 0000001 " + isbn(1)[-1]},    # espaço
+    {"id": "GTIN", "value_name": f"ISBN-13: {hyphen(isbn(1))}"},
+    {"id": "GTIN", "value_name": f"{isbn(1)}, {isbn10(1)}"},          # múltiplo, mesmo livro
+    {"id": "GTIN", "value_name": f"7891234567895; {hyphen(isbn(1))}"},  # EAN + ISBN
+    {"id": "ISBN", "value_name": isbn(1)},                            # outro id de atributo
+    {"id": "GTIN", "value_name": None, "values": [{"id": None, "name": isbn(1)}]},
+])
+def test_formatos_de_isbn_aceitos(env, attr):
+    p = prod(1)
+    p["attributes"] = [attr] + [a for a in p["attributes"] if a["id"] != "GTIN"]
+    env["add"](p)
+    assert env["suggest"]() == 0
+    assert env["books"]()[-1]["isbn"] == isbn(1)
+
+
+@pytest.mark.parametrize("gtin,why", [
+    ("", "isbn_ausente"),
+    (isbn(1)[:-1] + str((int(isbn(1)[-1]) + 1) % 10), "isbn_invalido"),  # checksum ISBN-13
+    (isbn10(1)[:-1] + ("0" if isbn10(1)[-1] != "0" else "1"), "isbn_invalido"),  # ISBN-10
+    ("7891234567895", "isbn_invalido"),         # EAN que não é livro
+    (f"{isbn(1)},{hyphen(isbn(2))}", "isbn_multiplo"),
+])
+def test_isbn_invalido_descarta_com_motivo(env, capsys, gtin, why):
+    env["add"](prod(1, gtin=gtin))
+    assert env["suggest"]() == 0
+    assert new_ids(env) == []
+    assert f"descartes: 1 {why}" in capsys.readouterr().out
+
+
+def test_pai_sem_isbn_tem_motivo_proprio(env, capsys):
+    p = prod(1, gtin="")
+    p["children_ids"] = ["MLB77"]
+    env["add"](p)
+    env["suggest"]()
+    assert "descartes: 1 isbn_ausente_pai" in capsys.readouterr().out
+
+
+def test_isbn_vem_do_products_quando_o_highlights_nao_traz_atributos(env):
+    env["add"](prod(1, gtin=hyphen(isbn(1))))
+    assert all("attributes" not in it for it in env["fake"].hl)
+    env["suggest"]()
+    assert "https://api.mercadolibre.com/products/MLB1" in env["fake"].urls
+    assert new_ids(env) == ["MLB1"]
+
+
+def test_gtin_isbn10_nao_conta_como_divergente_no_coletor():
+    assert c.product_gtins({"attributes": [{"id": "GTIN", "value_name": "8535914846"}]}) \
+        == {"9788535914849"}
+
+
+# ---- fontes: highlights geral + trends, nicho só pela ficha ----
+
+def test_trends_como_segunda_fonte(env, capsys):
+    env["add"](prod(1))
+    env["fake"].products["MLB2"] = prod(2, genre=NEG)
+    env["fake"].trends = ["termo a", "termo b"]
+    env["fake"].search = {"termo a": ["MLB1", "MLB2"], "termo b": ["MLB2"]}
+    env["suggest"]()
+    assert new_ids(env) == ["MLB1", "MLB2"]
+    assert f"| {cur.TREND_POS + 2} |" in env["md"].read_text()  # MLB2: 2º do 1º termo
+    assert not any("attributeValue" in u or "lista.mercadolivre" in u
+                   for u in env["fake"].urls)
+    out = capsys.readouterr().out
+    assert "/highlights: 1 produtos, 1 novos" in out and "/trends: 3 produtos, 2 novos" in out
+    assert "termo" not in out
+
+
+def test_highlights_fora_trends_basta(env):
+    env["fake"].products["MLB2"] = prod(2)
+    env["fake"].ctype = "text/html"  # /highlights e /trends quebram juntos no fake
+    assert env["suggest"]() == 1
+    env["fake"].ctype = "application/json"
+    env["fake"].trends, env["fake"].search = ["t"], {"t": ["MLB2"]}
+    assert env["suggest"]() == 0 and new_ids(env) == ["MLB2"]
+
+
+def test_nicho_so_pela_ficha(env, capsys):
+    env["add"](prod(1, genre=None), prod(2, genre=LIT))
+    env["suggest"]()
+    assert [b["genre"] for b in env["books"]()[1:]] == ["ficcao"]
+    assert "1 nicho" in capsys.readouterr().out
+
+
+def test_orcamento_de_fichas(env, monkeypatch, capsys):
+    monkeypatch.setattr(cur, "LOOKUP_MAX", 3)
+    env["add"](*(prod(n, genre=[MANGA, NEG][n % 2]) for n in range(1, 6)))
+    env["suggest"]()
+    assert sum("/products/MLB" in u and "/items" not in u for u in env["fake"].urls) == 3
+    assert "2 adiado" in capsys.readouterr().out
+
+
+def test_probe_formato_dos_atributos_sem_valor(env, capsys):
+    p = prod(1, gtin=f"{hyphen(isbn(1))}, {isbn10(1)}", title="Titulo Secreto",
+             author="Autora Secreta")
+    env["add"](p, prod(2), prod(3), prod(4))
+    env["fake"].trends = ["termo secreto"]
+    assert cur.probe() == 0
+    out = capsys.readouterr().out
+    assert "GTIN: value_name len=" in out and "hifen=sim" in out and "valores=2" in out
+    assert "atributos=AUTHOR,BOOK_GENRE,BOOK_TITLE,GTIN,LANGUAGE" in out
+    assert "isbn: ok" in out
+    assert out.count("/products -> 200") == 3  # só os 3 primeiros PRODUCT
+    assert "products/search q (1º termo do trends): /products/search -> 200" in out
+    for leak in ("Secret", "secreto", isbn(1), isbn(1)[3:8], isbn10(1), "MLB91", "sentinela"):
+        assert leak not in out

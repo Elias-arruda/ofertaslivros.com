@@ -4,6 +4,10 @@
     python3 collector/curator.py probe [--isbn ISBN]     # passo 0: as rotas de descoberta respondem?
     python3 collector/curator.py suggest [--summary MD]  # até 10 candidatos pendentes no catalog.json
 
+Fontes: /highlights geral da categoria e, em segundo, os termos do /trends resolvidos pelo
+/products/search?q=. O /highlights filtrado por BOOK_GENRE dá 400 (probe 39258219518):
+o nicho sai só do BOOK_GENRE da ficha do produto.
+
 Só fala com api.mercadolibre.com, pelo cliente do collect.py (token de app, timeout,
 backoff, User-Agent). Nenhuma request para a Amazon: sem a Creators API não há descoberta
 lá. Nada de HTML: resposta que não é application/json aborta (collect.ml_request).
@@ -44,6 +48,10 @@ SEEN_DAYS = 180    # recusado não volta antes disso
 DEADLINE_S = 300   # orçamento de rede do suggest (job tem 10 min)
 SUMMARY_MAX = 60_000
 PROBE_ISBN = "9788535914849"  # só para o probe do /products/search
+TRENDS_MAX = 5      # termos do /trends usados por execução (1 busca cada)
+SEARCH_LIMIT = 10   # produtos por termo
+TREND_POS = 100     # produto vindo do /trends ranqueia depois de todo o /highlights
+LOOKUP_MAX = 60     # fichas lidas por execução (1 a 3 requests cada); o resto fica adiado
 SEEN = HERE / "curator_seen.json"
 PRODUCT_URL = "https://www.mercadolivre.com.br/p/{}"  # só texto no PR; nunca é chamado
 # Dentro de code span nada vira link nem menção; estes trocam por equivalentes de largura
@@ -51,15 +59,19 @@ PRODUCT_URL = "https://www.mercadolivre.com.br/p/{}"  # só texto no PR; nunca �
 MD_SAFE = str.maketrans("[]()<>|`@\\", "［］（）＜＞｜｀＠＼")
 
 
-def _highlights_path(genre_id=None):
-    p = f"/highlights/MLB/category/{CATEGORY}"
-    return p + "?" + urlencode({"attribute": "BOOK_GENRE", "attributeValue": genre_id}) \
-        if genre_id else p
+HIGHLIGHTS = f"/highlights/MLB/category/{CATEGORY}"
+TRENDS = f"/trends/MLB/{CATEGORY}"
 
 
-def highlights(token, genre_id=None, **kw):
+def _search_path(q):
+    return "/products/search?" + urlencode({"site_id": "MLB", "status": "active",
+                                            "domain_id": "MLB-BOOKS", "q": q,
+                                            "limit": SEARCH_LIMIT})
+
+
+def highlights(token, **kw):
     """-> [(ml_product_id, posição)], só type=PRODUCT (o coletor só lê /products)."""
-    body = c.ml_request(_highlights_path(genre_id), token, **kw)
+    body = c.ml_request(HIGHLIGHTS, token, **kw)
     content = body.get("content") if isinstance(body, dict) else None
     if not isinstance(content, list):
         raise c.MLError("/highlights malformado")
@@ -67,6 +79,27 @@ def highlights(token, genre_id=None, **kw):
             if isinstance(it, dict) and it.get("type") == "PRODUCT"
             and isinstance(it.get("id"), str) and c.MLB_RE.fullmatch(it["id"])
             and type(it.get("position")) is int and it["position"] > 0]
+
+
+def trends(token, **kw):
+    """-> [(ml_product_id, posição)] dos primeiros TRENDS_MAX termos do /trends, cada um
+    resolvido pelo /products/search?q= (API; a URL de lista.mercadolivre do termo é HTML e
+    nunca é seguida). Posição = TREND_POS + ordem do termo e do resultado."""
+    body = c.ml_request(TRENDS, token, **kw)
+    if not isinstance(body, list):
+        raise c.MLError("/trends malformado")
+    kws = [t["keyword"].strip()[:100] for t in body if isinstance(t, dict)
+           and isinstance(t.get("keyword"), str) and t["keyword"].strip()][:TRENDS_MAX]
+    out = []
+    for i, q in enumerate(kws):
+        res = c.ml_request(_search_path(q), token, **kw)
+        res = res.get("results") if isinstance(res, dict) else None
+        if not isinstance(res, list):
+            raise c.MLError("/products/search malformado")
+        ids = [r["id"] for r in res if isinstance(r, dict) and isinstance(r.get("id"), str)
+               and c.MLB_RE.fullmatch(r["id"])][:SEARCH_LIMIT]
+        out += [(pid, TREND_POS + i * SEARCH_LIMIT + j) for j, pid in enumerate(ids, 1)]
+    return out
 
 
 def _attr(prod, aid):
@@ -82,14 +115,27 @@ def _values(a, key_one, key_list):
         if isinstance(vals, list) else [a.get(key_one)]
 
 
-def genre_of(prod, fallback):
-    """BOOK_GENRE da ficha mapeado. Gênero presente e fora do mapa: descarta.
-    Ficha sem gênero: vale o nicho da lista em que o produto apareceu (se houver)."""
-    ids = [str(v) for v in _values(_attr(prod, "BOOK_GENRE"), "value_id", "id") if v]
-    for i in ids:
+def genre_of(prod):
+    """BOOK_GENRE da ficha mapeado. Sem gênero ou fora do mapa: None (descarta)."""
+    for i in (str(v) for v in _values(_attr(prod, "BOOK_GENRE"), "value_id", "id") if v):
         if i in GENRE_MAP:
             return GENRE_MAP[i]
-    return None if ids else fallback
+    return None
+
+
+def isbn_of(prod):
+    """-> (ISBN-13, None) ou (None, motivo). Fail-closed: só passa com exatamente um
+    ISBN-13 válido (978/979, checksum) entre os códigos GTIN/EAN/ISBN da ficha."""
+    codes = c.product_gtins(prod)
+    isbns = {g for g in codes if c.isbn_ok(g)}
+    if len(isbns) == 1:
+        return isbns.pop(), None
+    if isbns:
+        return None, "isbn_multiplo"
+    if codes:
+        return None, "isbn_invalido"  # há código, mas nenhum vira ISBN-13 válido
+    kids = prod.get("children_ids")
+    return None, "isbn_ausente_pai" if isinstance(kids, list) and kids else "isbn_ausente"
 
 
 def portugues(prod):
@@ -111,20 +157,20 @@ def price_of(prod, pid, token, **kw):
     return r["price_cents"], r["list_price_cents"]
 
 
-def candidate(pid, pos, src_genre, token, known_isbns, **kw):
-    """-> (candidato, None) ou (None, motivo do descarte)."""
+def candidate(pid, pos, token, known_isbns, **kw):
+    """-> (candidato, None) ou (None, motivo do descarte). Os itens das listas não trazem
+    a ficha: o ISBN, o gênero e o idioma vêm sempre do /products/{id} completo."""
     prod = c.ml_request(f"/products/{pid}", token, **kw)
     if not isinstance(prod, dict) or prod.get("status") != "active":
         return None, "inativo"
-    isbns = {g for g in c.product_gtins(prod) if c.isbn_ok(g)}
-    if len(isbns) != 1:  # sem ISBN-13 válido ou ficha com mais de um: não arrisca
-        return None, "isbn"
-    isbn = isbns.pop()
+    isbn, why = isbn_of(prod)
+    if isbn is None:
+        return None, why
     if isbn in known_isbns:
         return None, "duplicado"
     if not portugues(prod):
         return None, "idioma"
-    genre = genre_of(prod, src_genre)
+    genre = genre_of(prod)
     if genre is None:
         return None, "nicho"
     try:
@@ -187,7 +233,8 @@ def md(s):
 def summary(picked, today):
     lines = [f"## Curadoria {today.isoformat()}: {len(picked)} candidatos",
              "",
-             f"Fonte: `/highlights` da categoria `{CATEGORY}` (API do ML), filtrada por ISBN, "
+             f"Fonte: `/highlights` da categoria `{CATEGORY}` e termos do `/trends` "
+             f"(posição acima de {TREND_POS}), via API do ML, filtrada por ISBN, "
              "novo, BRL, R$ 15 a R$ 400, português e nicho. As entradas entram no "
              "`catalog.json` com `\"pendente\": true` e **não vão ao ar** até ganharem o "
              "`ml_url` do painel.",
@@ -273,29 +320,31 @@ def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
         print("::error::curator: ML_CLIENT_ID/ML_CLIENT_SECRET ausentes no ambiente")
         return 1
 
-    ranks, ok = {}, 0  # pid -> [melhor posição, nicho da lista]
-    for gid in (None, *GENRE_MAP):
+    ranks, ok = {}, 0  # pid -> melhor posição
+    for name, src in (("highlights", highlights), ("trends", trends)):
         try:
-            found = highlights(token, gid, **kw)
+            found = src(token, **kw)
         except c.MLError as e:
-            print(f"curator: /highlights {gid or 'geral'}: {e}")
+            print(f"curator: /{name}: {e}")
             continue
         ok += 1
+        new = {pid for pid, _ in found if pid not in known_pids}
+        print(f"curator: /{name}: {len(found)} produtos, {len(new)} novos")
         for pid, pos in found:
-            if pid in known_pids:
-                continue
-            r = ranks.setdefault(pid, [pos, None])
-            r[0] = min(r[0], pos)
-            r[1] = r[1] or GENRE_MAP.get(gid)
+            if pid in new:
+                ranks[pid] = min(ranks.get(pid, pos), pos)
     if not ok:
-        print("::error::curator: nenhuma lista do /highlights respondeu (ver o probe)")
+        print("::error::curator: nem /highlights nem /trends responderam (ver o probe)")
         return 1
 
     why, cands, isbns = Counter(), [], set(known_isbns)
-    order = sorted(ranks.items(), key=lambda kv: (kv[1][0], kv[0]))
-    for n, (pid, (pos, g)) in enumerate(order):
+    order = sorted(ranks.items(), key=lambda kv: (kv[1], kv[0]))
+    if len(order) > LOOKUP_MAX:
+        why["adiado"] += len(order) - LOOKUP_MAX
+        order = order[:LOOKUP_MAX]
+    for n, (pid, pos) in enumerate(order):
         try:
-            x, reason = candidate(pid, pos, g, token, isbns, **kw)
+            x, reason = candidate(pid, pos, token, isbns, **kw)
         except c.Deadline:
             why["adiado"] += len(order) - n
             break
@@ -348,8 +397,43 @@ def _count(body):
     return "itens=-"
 
 
+def _fmt(v):
+    """Formato de um valor de atributo sem o valor: comprimento, hífen, espaço, nº de partes."""
+    if not isinstance(v, str):
+        return type(v).__name__
+    return (f"len={len(v)} hifen={'sim' if '-' in v else 'nao'} "
+            f"espaco={'sim' if ' ' in v.strip() else 'nao'} "
+            f"valores={len([x for x in re.split(r'[,;/|]', v) if x.strip()])}")
+
+
+def _probe_product(pid, item, token):
+    """Ficha de um PRODUCT do highlights: só ids de atributo e o formato dos de GTIN/ISBN."""
+    st, prod = c._probe_get(f"/products/{pid}", token)
+    print(f"  produto #{item.get('position')}: chaves do item={c._keys(item)} "
+          f"/products -> {st}")
+    if not isinstance(prod, dict):
+        return
+    attrs = [a for a in prod.get("attributes") or [] if isinstance(a, dict)]
+    kids = prod.get("children_ids")
+    print(f"    status={prod.get('status')!r} children_ids="
+          f"{len(kids) if isinstance(kids, list) else '-'} atributos="
+          + ",".join(sorted(str(a.get("id")) for a in attrs)))
+    for a in attrs:
+        aid = str(a.get("id"))
+        if "GTIN" not in aid and "ISBN" not in aid:
+            continue
+        vals = a.get("values") if isinstance(a.get("values"), list) else []
+        print(f"    {aid}: value_name {_fmt(a.get('value_name'))}; values={len(vals)}"
+              + "".join(f"; values[{i}].name {_fmt(v.get('name'))}"
+                        for i, v in enumerate(vals[:3]) if isinstance(v, dict)))
+    _, why = isbn_of(prod)
+    print(f"    isbn: {'ok' if why is None else why}")
+
+
 def probe(isbn=PROBE_ISBN):
-    """Passo 0: status HTTP, chaves de topo e contagens de cada rota de descoberta."""
+    """Passo 0: status HTTP, chaves de topo e contagens de cada rota de descoberta e, para
+    os 3 primeiros PRODUCT do highlights, o formato dos atributos (nunca título, vendedor,
+    preço nem token)."""
     try:
         token = c.ml_token()
     except c.MLError as e:
@@ -362,14 +446,23 @@ def probe(isbn=PROBE_ISBN):
     if not c.isbn_ok(isbn):
         print(f"isbn {isbn!r} inválido; usando {PROBE_ISBN}")
         isbn = PROBE_ISBN
-    gid = next(iter(GENRE_MAP))
-    routes = [
-        ("highlights geral", _highlights_path()),
-        (f"highlights BOOK_GENRE={gid}", _highlights_path(gid)),
-        ("trends", f"/trends/MLB/{CATEGORY}"),
-        ("products/search isbn", "/products/search?" + urlencode(
-            {"site_id": "MLB", "status": "active", "product_identifier": isbn})),
-    ]
+    st, body = c._probe_get(HIGHLIGHTS, token)
+    print(f"highlights geral: {HIGHLIGHTS} -> {st} chaves={c._keys(body)} {_count(body)}")
+    content = body.get("content") if isinstance(body, dict) else None
+    prods = [it for it in content if isinstance(it, dict) and it.get("type") == "PRODUCT"
+             and isinstance(it.get("id"), str) and c.MLB_RE.fullmatch(it["id"])] \
+        if isinstance(content, list) else []
+    for it in prods[:3]:
+        _probe_product(it["id"], it, token)
+    st, body = c._probe_get(TRENDS, token)
+    print(f"trends: {TRENDS} -> {st} chaves={c._keys(body)} {_count(body)}")
+    kw = next((t["keyword"].strip()[:100] for t in body if isinstance(t, dict)
+               and isinstance(t.get("keyword"), str) and t["keyword"].strip()), None) \
+        if isinstance(body, list) else None
+    routes = [("products/search isbn", "/products/search?" + urlencode(
+        {"site_id": "MLB", "status": "active", "product_identifier": isbn}))]
+    if kw:
+        routes.append(("products/search q (1º termo do trends)", _search_path(kw)))
     for name, path in routes:
         st, body = c._probe_get(path, token)
         print(f"{name}: {path.split('?')[0]} -> {st} chaves={c._keys(body)} {_count(body)}")

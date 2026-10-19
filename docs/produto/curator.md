@@ -58,6 +58,13 @@ Categoria: `MLB1196` ("Livros, Revistas e Comics") **não é folha**. A folha de
 | `GET /items/{id}/sale_price` | Preço promocional | — | — | **403** (produção, run 39178554200) |
 | `GET /categories/MLB437616/attributes` | Ids do `BOOK_GENRE`, `LANGUAGE` etc. | — | **200** | — |
 
+**Passo 0, resultado (2026-10-19, token de app):** probe 39258219518.
+- `/highlights` geral: 200, 20 itens (16 `PRODUCT`, 4 `USER_PRODUCT`).
+- `/highlights?attribute=BOOK_GENRE`: **400**. Não é usado; o nicho sai só do `BOOK_GENRE` da ficha (`/products/{id}`).
+- `/trends`: 200, 50 termos. Vira segunda fonte: os 5 primeiros termos são resolvidos por `/products/search?q=&domain_id=MLB-BOOKS` (até 10 produtos cada), com posição a partir de 101, depois de todo o `/highlights`.
+- `/products/search?product_identifier=`: 200.
+- suggest 39258304023: 16 de 16 descartados por ISBN. O `product_gtins` só lia `value_name` do atributo `GTIN` com `\d{8,14}`: hífen, ISBN-10, `values[].name` e ids `ISBN`/`EAN` ficavam de fora. Corrigido (normaliza, converte ISBN-10 para 13, valida checksum), e o log separa `isbn_ausente`, `isbn_ausente_pai`, `isbn_invalido` e `isbn_multiplo`.
+
 Ids do `BOOK_GENRE` relevantes (de `/categories/MLB437616/attributes`, 2026-10-19):
 - `13061816` Mangas e HQs
 - `13061825` Negócios
@@ -163,9 +170,9 @@ As regras são determinísticas e ficam em constantes no topo do `curator.py`, c
 
 | Regra | Valor inicial | Por quê |
 |---|---|---|
-| Fonte | `/highlights` de `MLB437616`: geral e por `BOOK_GENRE` mapeado | A popularidade vem da própria API |
+| Fonte | `/highlights` geral de `MLB437616` e, em segundo, os termos do `/trends` via `/products/search?q=` (o filtro por `BOOK_GENRE` dá 400) | A popularidade vem da própria API |
 | Tipo | Só `PRODUCT`, com `status=active` | Compatível com o coletor (`ml_product_id`) |
-| ISBN | GTIN presente, `isbn_ok`, prefixo 978/979, e um só ISBN por produto | Casa com a Amazon no futuro e evita ficha errada |
+| ISBN | Atributo `GTIN`/`EAN`/`ISBN` da ficha, hífen e espaço removidos, ISBN-10 convertido para 13, `isbn_ok` (978/979 e checksum), e um só ISBN por produto | Casa com a Amazon no futuro e evita ficha errada |
 | Condição e moeda | Novo, BRL (`winner`/`best_listing`) | Os afiliados do ML só geram link para produto novo (terceiros: grupozap). É também a regra do coletor |
 | Preço | R$ 15 a R$ 400 | Abaixo disso a comissão não paga o esforço; acima, é box raro (decisão 3) |
 | Idioma | `LANGUAGE` = Português | Público do site (decisão 3) |

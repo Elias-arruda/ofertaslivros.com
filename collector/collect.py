@@ -496,13 +496,47 @@ def product_image(prod):
     return u if isinstance(u, str) and IMG_RE.fullmatch(u) else None
 
 
+# Ids de atributo que podem trazer o ISBN na ficha do produto (o ML usa GTIN; os outros
+# são variações plausíveis, aceitas para não descartar livro por nome de atributo).
+CODE_ATTR_RE = re.compile(r"(GTIN|EAN|ISBN)(_?1[03])?")
+CODE_RE = re.compile(r"[0-9]{8,14}|[0-9]{9}[0-9X]")
+
+
+def isbn10_to_13(s):
+    """ISBN-10 com dígito verificador válido -> ISBN-13 (978). Senão None."""
+    if not re.fullmatch(r"[0-9]{9}[0-9X]", s):
+        return None
+    if sum((10 - i) * (10 if d == "X" else int(d)) for i, d in enumerate(s)) % 11:
+        return None
+    core = "978" + s[:9]
+    return core + str((10 - sum(int(d) * (3 if i % 2 else 1)
+                                for i, d in enumerate(core)) % 10) % 10)
+
+
+def _codes(text):
+    """"978-85-359-1484-9, 85 359 1484 6" -> códigos só com dígitos (e X do ISBN-10).
+    Vírgula, ponto e vírgula, barra e | separam valores; hífen e espaço dentro de um valor
+    são formatação. Se o valor sem eles não fecha um código, tenta cada pedaço por espaço."""
+    for part in re.split(r"[,;/|]", text.upper()):
+        part = re.sub(r"ISBN(-?1[03])?:?", " ", part)
+        whole = re.sub(r"[\s.-]", "", part)
+        yield from [whole] if CODE_RE.fullmatch(whole) else \
+            [t for t in (re.sub(r"[.-]", "", x) for x in part.split()) if CODE_RE.fullmatch(t)]
+
+
 def product_gtins(prod):
-    """GTINs do atributo GTIN (pode vir vários, separados por vírgula)."""
+    """Códigos dos atributos GTIN/EAN/ISBN da ficha (value_name e values[].name; pode vir
+    vários). ISBN-10 válido volta como ISBN-13; o resto volta como veio, só dígitos."""
     out = set()
     attrs = prod.get("attributes") if isinstance(prod, dict) else None
     for a in attrs if isinstance(attrs, list) else []:
-        if isinstance(a, dict) and a.get("id") == "GTIN" and isinstance(a.get("value_name"), str):
-            out |= set(re.findall(r"\d{8,14}", a["value_name"]))
+        if not isinstance(a, dict) or not isinstance(a.get("id"), str) \
+                or not CODE_ATTR_RE.fullmatch(a["id"]):
+            continue
+        vals = a.get("values") if isinstance(a.get("values"), list) else []
+        for v in [a.get("value_name")] + [v.get("name") for v in vals if isinstance(v, dict)]:
+            if isinstance(v, str):
+                out |= {isbn10_to_13(x) or x for x in _codes(v)}
     return out
 
 
@@ -544,7 +578,6 @@ def collect_ml(books, token, now, deadline, start=0, clock=time.monotonic, sleep
             d["buy_box"] = "sim" if w else "não"
             gtins = product_gtins(prod)
             if "isbn" in b and gtins and b["isbn"] not in gtins:
-                # ponytail: só ISBN-13; GTIN em ISBN-10 contaria como divergente
                 print(f"::warning::ML: {b['id']}: GTIN do produto não bate com o isbn do "
                       f"catálogo; preço do ML descartado")
                 n["gtin_divergente"] += 1
