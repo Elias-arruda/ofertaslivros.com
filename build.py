@@ -1072,6 +1072,54 @@ def page(all_offers, genre=None, bot=None, ch=()):
     return shell(all_offers, title, desc, body, ch, style=genre, bot=bot)
 
 
+def store_list(o):
+    """Na página e no modal a outra loja aparece inteira (no card ela é só a seta)."""
+    a = o["alt"]
+    if not a:
+        return ""
+    return (f'<p class="other"><a class="btn btn--ghost" href="/r/{e(o["id"])}/{a["store"]}" rel="sponsored noopener noreferrer" '
+            f'target="_blank">Também {na(a["store"])}: {brl(a["price_cents"])}{icon("seta")}'
+            f'<span class="sr">, {e(o["title"])} (abre em nova aba)</span></a>'
+            f'<span class="alt-when">{checked(a, o["now"])}</span></p>')
+
+
+def book_page(o, offers, bot=None, ch=()):
+    """/livro/<id>/: a página real dos detalhes (o modal do JS é só um atalho para ela)."""
+    g, t = o["genre"], e(o["title"])
+    off = discount(o)
+    old = f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>' if off else ""
+    pill = f'<span class="off-pill">−{off}%</span>' if off else ""
+    b = badge(o)
+    chips = f'<span class="chip chip--g">{icon("g-" + g)}{e(GENRES[g])}</span>' + (
+        f'<span class="chip chip--{b[0]}">{b[1]}</span>' if b else "")
+    note = (f'<blockquote class="nota"><p>{e(o["blurb"])}</p><footer>{avatar(g)}Curadoria de {e(GENRES[g])}</footer></blockquote>'
+            if o["blurb"] else "")
+    body = f"""<p class="crumbs"><a href="/">Ofertas</a> / <a href="/{g}/">{e(GENRES[g])}</a></p>
+<article class="livro" data-g="{g}">
+  {obj(o, "obj hero-obj livro-obj", eager=True)}
+  <div class="livro-text">
+    <p class="chips">{chips}</p>
+    <h1 class="livro-h1">{t}</h1>
+    <p class="hero-sub">{e(o["author"])}</p>
+    {note}
+    <div class="hero-deal">{stamp_html(o)}<p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong>{old}</p>{pill}</div>
+    <p class="meta">{meta_html(o)}</p>{chart(o, "    ")}
+    <div class="hero-acts">{go(o)}{alert_link(o, bot)}</div>
+    {store_list(o)}
+  </div>
+</article>"""
+    return shell(offers, f"{t}, de {e(o['author'])}: oferta conferida | Ofertas Livros",
+                 f"{t}, de {e(o['author'])}, por {brl(o['price_cents'])} {na(o['store'])}. Preço conferido na loja.",
+                 body, ch, style=g, bot=bot)
+
+
+def all_page(offers, bot=None, ch=()):
+    """/ofertas/: a lista completa (sem JS, é para onde o "Ver todas" leva)."""
+    body = (intro("Todas as ofertas", LEDE) + f"\n{nav(offers, None, filtro=True)}\n{feed(offers, bot, ch, full=True)}")
+    return shell(offers, "Todas as ofertas de livros | Ofertas Livros",
+                 "Todas as ofertas de livros ativas, conferidas na loja.", body, ch, "/ofertas/", bot=bot)
+
+
 def privacy(offers, bot=None, ch=()):
     bot_name = (f'o bot <a href="https://t.me/{e(bot)}" rel="noopener noreferrer" target="_blank">@{e(bot)}</a>'
                 if bot else "o nosso bot")
@@ -1181,11 +1229,14 @@ def build(dev=False):
         pages[f"{g}/index.html"] = page(offers, g, bot, ch)
     if ch:
         pages["canais/index.html"] = canais(offers, ch, bot)
+    pages["ofertas/index.html"] = all_page(offers, bot, ch)
+    for o in offers:  # id validado por ID_RE: seguro como diretório
+        pages[f"livro/{o['id']}/index.html"] = book_page(o, offers, bot, ch)
     rules = redirects(offers)
     shutil.rmtree(DIST, ignore_errors=True)
     shutil.copytree(STATIC, DIST)
     for path, body in pages.items():
-        (DIST / path).parent.mkdir(exist_ok=True)
+        (DIST / path).parent.mkdir(parents=True, exist_ok=True)
         (DIST / path).write_text(body, encoding="utf-8")
     (DIST / "_redirects").write_text(rules, encoding="utf-8")
     (DIST / "_headers").write_text(HEADERS, encoding="utf-8")
