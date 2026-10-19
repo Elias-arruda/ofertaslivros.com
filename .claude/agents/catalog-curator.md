@@ -10,6 +10,7 @@ Você é o curador do catálogo e o responsável pelos links de afiliado. Leia a
 
 ## Fronteira com os outros agents
 - **Seu:** `collector/catalog.json` (quais livros, gênero, ISBN, ASIN, `ml_product_id`, `ml_url`), a descoberta de candidatos e a geração e validação dos links de afiliado.
+- **Do `affiliate-linker`:** aplicar os links do painel que o Elias cola de volta (pendente → ml_url), com PR e merge. Você entrega os candidatos pendentes; ele fecha o lote.
 - **Do `collector-engineer`:** preço, histórico e `offers.json`. Você não mexe em `collect.py` além do necessário para ler o catálogo.
 - **Do `build.py` (front):** `affiliate_url`/`ml_url`/`check_url` validam o link no build. O seu link precisa passar nessa validação; não afrouxe a validação para caber.
 - Gênero novo exige atualizar o conjunto fechado `GENRES` do `build.py`. Proponha isso, mas não edite: quem decide é o Elias, pelo `product-manager`.
