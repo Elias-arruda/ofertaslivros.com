@@ -758,3 +758,48 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 .spark-dot { fill: var(--coral); }
 @media (max-width: 900px) { .livro { grid-template-columns: 1fr; } .livro-obj { max-width: 300px; justify-self: center; } }
 @media (max-width: 640px) { .livro { border-radius: 26px; padding: 18px; } .livro-obj { max-width: 200px; } }
+
+/* ---------- 12. Com JS (app.js põe .js no <html> e no hero) ---------- */
+.hero.js .hero-view { touch-action: pan-y; cursor: grab; }
+.hero.js .hero-track { transform: translateX(calc(var(--i, 0) * -100% + var(--dx, 0px))); transition: transform .7s var(--ease); }
+.hero.drag .hero-track { transition: none; }
+.hero.js .segs li.seen i::after { transform: scaleX(1); }
+.hero.js .segs li.on i::after { animation: fill 6s linear forwards; }
+.hero.js.paused .segs li.on i::after { animation-play-state: paused; }
+@keyframes fill { to { transform: scaleX(1); } }
+/* Modal de detalhes: caixa --bg2 de raio 30; no celular vira bottom sheet */
+.modal {
+  width: min(980px, calc(100% - 32px)); max-height: calc(100dvh - 32px); padding: 0; overflow: auto;
+  border: 1px solid var(--line); border-radius: 30px; background: var(--bg2); color: var(--text); box-shadow: var(--shadow);
+}
+.modal::backdrop { background: #0f1729b8; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.m-top { display: flex; align-items: center; gap: 8px; padding: 14px 16px 0; }
+.m-n { font-size: 14px; font-weight: 700; }
+.m-x { margin-left: auto; }
+.m-grid { display: grid; grid-template-columns: .9fr 1.1fr; gap: 28px; align-items: center; padding: 8px clamp(18px, 4vw, 40px) 24px; }
+.m-obj { max-width: 380px; }
+.m-obj .cover { transform: rotate(-3deg); }
+.m-obj .pages::after { animation: folhear-lento 4.5s var(--ease) infinite; }
+.m-t { font-size: clamp(30px, 4vw, 52px); font-weight: 800; overflow-wrap: anywhere; }
+.m-a { font-size: 22px; }
+.m-selo { margin-top: 16px; }
+.m-meta, .m-hist { margin-top: 10px; }
+.m-foot {
+  position: sticky; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px;
+  padding: 16px clamp(18px, 4vw, 40px); border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg2));
+}
+.m-foot .price strong { font-size: 40px; letter-spacing: -.03em; }
+.m-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+@media (max-width: 900px) { .m-grid { grid-template-columns: 1fr; } .m-obj { max-width: 220px; justify-self: center; } }
+@media (max-width: 640px) {
+  .modal { width: 100%; max-width: none; margin: auto 0 0; max-height: 92dvh; border-radius: 26px 26px 0 0; }
+  .m-foot .price strong { font-size: 30px; }
+}
+
+/* ---------- 13. Movimento reduzido: tudo parado (spec 10.3) ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+  /* sem a barra animada não há animationend: o carrossel não avança sozinho */
+  .hero.js .segs li.on i::after { animation: none !important; transform: scaleX(1); }
+}

@@ -508,6 +508,11 @@ def chart(o, pad="  "):
             f'<span>{e(label)}</span></p>')
 
 
+def checked_txt(s, now):
+    d = s["checked_at"].astimezone(BRT)
+    return f'visto {"hoje" if d.date() == now.astimezone(BRT).date() else f"em {d:%d/%m}"} às {d:%H}h{d:%M}'
+
+
 def checked(s, now):
     """"visto hoje às 08h47" ou "visto em 17/10 às 08h47", relativo ao relógio do build (BRT).
     ponytail: o "hoje" congela no build; vale porque o cron refaz o site bem antes de virar o dia."""
@@ -1024,7 +1029,46 @@ def foot(offers, bot=None, ch=(), here=""):
 </footer>"""
 
 
-def shell(offers, title, desc, body, ch=(), here="", style=None, bot=None):
+def offer_json(o, bot):
+    """Dados do modal de uma oferta, em texto puro (o app.js escreve com textContent).
+    Os links são só os nossos (/r/..., /livro/..., t.me): o JS confere o formato de novo."""
+    off, a, dr = discount(o), o["alt"], drop(o)
+    pts = series(o)
+    lojas = [{"txt": f"Ver {na(o['store'])} por {brl(o['price_cents'])}", "href": f"/r/{o['id']}", "main": True}]
+    if a:
+        lojas.append({"txt": f"Também {na(a['store'])}: {brl(a['price_cents'])}", "href": f"/r/{o['id']}/{a['store']}",
+                      "w": checked_txt(a, o["now"]), "main": False})
+    kind = seal(o)
+    return {"id": o["id"], "t": o["title"], "a": o["author"], "g": o["genre"], "gl": GENRES[o["genre"]],
+            "img": o["image_url"], "p": brl(o["price_cents"]), "de": brl(o["list_price_cents"]) if off else None,
+            "off": off, "blurb": o["blurb"],
+            "selo": ("Menor preço em 90 dias" if kind == "90d" else
+                     f"Menor preço desde {o['since']:%d/%m}" if kind == "since" else None), "desde": kind == "since",
+            "meta": f"{STORES[o['store']]}, {checked_txt(o, o['now'])}"
+                    + (f". Caiu {brl(dr[0])} desde {dr[1]:%d/%m}" if dr else ""),
+            "hist": chart_label(o, pts) if pts else None, "lojas": lojas,
+            "alerta": tg_alert_url(bot, o["id"]) if bot else None, "pag": f"/livro/{o['id']}/"}
+
+
+def data_script(offers, bot):
+    """<script type="application/json"> com os dados do modal. json.dumps e todo "<" vira \\u003c:
+    nenhum </script> ou <!-- pode sair do bloco, venha o que vier no título."""
+    raw = json.dumps([offer_json(o, bot) for o in offers], ensure_ascii=False, separators=(",", ":"))
+    raw = raw.replace("<", "\\u003c")
+    return f'<script type="application/json" id="ofertas">{raw}</script>'
+
+
+MODAL = f"""<dialog class="modal" id="detalhe" aria-labelledby="m-t">
+<div class="m-top"><button class="arrow js-mprev" type="button">{icon("esq")}<span class="sr">Livro anterior</span></button><span class="m-n tnum"></span><button class="arrow js-mnext" type="button">{icon("dir")}<span class="sr">Próximo livro</span></button><button class="arrow m-x js-mx" type="button">{icon("x")}<span class="sr">Fechar</span></button></div>
+<div class="m-grid">
+<div class="obj hero-obj m-obj"><span class="pages" aria-hidden="true"></span><div class="cover"><img class="m-img" alt="" width="120" height="180" decoding="async"><span class="ini m-ini" aria-hidden="true"></span></div></div>
+<div class="m-body"><p class="chips"><span class="chip chip--g"><svg class="i" aria-hidden="true" focusable="false"><use class="m-gi" href="#i-carimbo"/></svg><span class="m-g"></span></span></p><h2 class="m-t" id="m-t"></h2><p class="hero-sub m-a"></p><blockquote class="nota m-nota"><p class="m-blurb"></p></blockquote><p class="m-selo"><span class="stamp"></span></p><p class="meta m-meta"></p><p class="hist m-hist"></p></div>
+</div>
+<div class="m-foot"><p class="price"><strong class="m-p"></strong> <s class="old m-de"></s> <span class="off-pill m-off"></span></p><div class="m-acts"></div></div>
+</dialog>"""
+
+
+def shell(offers, title, desc, body, ch=(), here="", style=None, bot=None, modal=False):
     """Esqueleto comum. title/desc/body já chegam escapados. style: nicho da página (acento global)."""
     ds = f' data-style="{style}"' if style in GENRES else ""
     return f"""<!doctype html>
@@ -1040,6 +1084,7 @@ def shell(offers, title, desc, body, ch=(), here="", style=None, bot=None):
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="preload" href="/fonts/fraunces-latin-full-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/style.css">
+<script src="/app.js" defer></script>
 </head>
 <body>
 {SPRITE}
@@ -1049,7 +1094,7 @@ def shell(offers, title, desc, body, ch=(), here="", style=None, bot=None):
 <main id="conteudo">
 {body}
 </main>
-{foot(offers, bot, ch, here)}
+{foot(offers, bot, ch, here)}{(chr(10) + MODAL + chr(10) + data_script(offers, bot)) if modal else ""}
 </body>
 </html>
 """
@@ -1069,7 +1114,7 @@ def page(all_offers, genre=None, bot=None, ch=()):
         body = intro("Livros que baixaram de verdade", LEDE) + "\n" + home_sections(offers, bot, ch)
     else:
         body = intro(e(GENRES[genre]), LEDE) + f"\n{nav(all_offers, genre)}\n{feed(offers, bot, ch, full=True)}"
-    return shell(all_offers, title, desc, body, ch, style=genre, bot=bot)
+    return shell(all_offers, title, desc, body, ch, style=genre, bot=bot, modal=True)
 
 
 def store_list(o):
@@ -1117,7 +1162,7 @@ def all_page(offers, bot=None, ch=()):
     """/ofertas/: a lista completa (sem JS, é para onde o "Ver todas" leva)."""
     body = (intro("Todas as ofertas", LEDE) + f"\n{nav(offers, None, filtro=True)}\n{feed(offers, bot, ch, full=True)}")
     return shell(offers, "Todas as ofertas de livros | Ofertas Livros",
-                 "Todas as ofertas de livros ativas, conferidas na loja.", body, ch, "/ofertas/", bot=bot)
+                 "Todas as ofertas de livros ativas, conferidas na loja.", body, ch, "/ofertas/", bot=bot, modal=True)
 
 
 def privacy(offers, bot=None, ch=()):
@@ -1126,7 +1171,7 @@ def privacy(offers, bot=None, ch=()):
     body = f"""<h1 class="page-h1">Privacidade</h1>
 <article class="doc">
 <h2>No site</h2>
-<p>O site não tem cadastro, cookies, scripts nem ferramentas de análise. Ele é hospedado na Cloudflare, que recebe os dados técnicos de cada acesso (como o endereço IP) para entregar as páginas.</p>
+<p>O site não tem cadastro, cookies nem ferramentas de análise. Ele tem um script próprio, servido pelo próprio site, para a busca, os filtros e o tema; a única coisa que ele guarda é a sua escolha de tema claro ou escuro, no seu navegador (localStorage), e nada disso sai do aparelho. O site é hospedado na Cloudflare, que recebe os dados técnicos de cada acesso (como o endereço IP) para entregar as páginas.</p>
 <p>Ao clicar em uma oferta, você vai para a Amazon ou para o Mercado Livre. A partir daí valem as políticas de privacidade de cada loja.</p>
 <h2>No alerta de preço do Telegram</h2>
 <p>Quando você pede um alerta para {bot_name}, guardamos só o necessário para avisar você:</p>
@@ -1189,7 +1234,7 @@ def redirects(offers):
 
 
 HEADERS = """/*
-  Content-Security-Policy: default-src 'none'; style-src 'self'; img-src 'self' https://http2.mlstatic.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://http2.mlstatic.com; font-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
