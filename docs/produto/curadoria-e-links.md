@@ -41,8 +41,8 @@ Catálogo é a lista monitorada (`collector/catalog.json`). Vitrine são as ofer
 
 | Critério | Regra | Tipo |
 |---|---|---|
-| ISBN válido | ISBN-13 com dígito verificador correto e prefixo 978 ou 979. O ISBN-10 é convertido. Sem ISBN, o livro não entra | Bloqueia |
-| Mesma edição nas duas lojas | O casamento é só pelo ISBN-13 igual ao GTIN do produto do ML. Se não bater, o livro entra só com a loja que confere. **Nunca casar por título.** Capa dura, brochura, box, edição de colecionador e HQ adaptada têm ISBNs diferentes. Nesta pesquisa, por exemplo, o "1984" que a Open Library devolveu primeiro era a versão em quadrinhos (`9788535932522`), e não o romance (`9788535914849`) | Bloqueia |
+| ISBN válido | ISBN-13 com dígito verificador correto e prefixo 978 ou 979. O ISBN-10 é convertido. ~~Sem ISBN, o livro não entra~~ *Substituído pelo gate 7 reescrito (`curadoria-automatica.md` §10.3): o ISBN é opcional para livro só do ML, porque o `/products/{id}` não traz GTIN (probe 39259800320); presente, tem de ser válido* | Bloqueia se presente e inválido |
+| Mesma edição nas duas lojas | O casamento é só pelo ISBN-13, resolvido por `/products/search?product_identifier=<isbn>` (gate 7 reescrito; a ficha não traz GTIN). Se não bater, o livro entra só com a loja que confere. **Nunca casar por título.** Capa dura, brochura, box, edição de colecionador e HQ adaptada têm ISBNs diferentes. Nesta pesquisa, por exemplo, o "1984" que a Open Library devolveu primeiro era a versão em quadrinhos (`9788535932522`), e não o romance (`9788535914849`) | Bloqueia |
 | Formato | Livro físico: categoria `MLB437616` no ML e ASIN de livro físico na Amazon, não Kindle | Bloqueia |
 | Idioma | Edição brasileira (prefixos `97885`/`97865`) como padrão. Importado, só por entrada manual | Bloqueia no automático |
 | Disponibilidade | Item ativo na buy box ou em `/products/{id}/items`, condição **novo** e preço conferido dentro do frescor (2 h no ML, 12 h na Amazon) | Bloqueia |

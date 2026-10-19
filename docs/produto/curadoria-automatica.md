@@ -1,7 +1,7 @@
 # Spec em rascunho: curadoria automática de livros
 
-Status: spec fechada para revisão do Elias. §1–9 são o handoff do Codex (2026-10-18); §10 fecha a spec (catalog-curator, 2026-10-19) e substitui §3, §7 e §8 onde houver conflito.
-Implementação bloqueada até o Elias responder às decisões de §10.5. Até lá, nada publica: no máximo modo sombra (§10.3).
+Status: **fonte da verdade da curadoria** (política, gates, pontuação, sombra, volume e lote de links). §1–9 são o handoff do Codex (2026-10-18); §10 fecha a spec (catalog-curator, 2026-10-19) e substitui §3, §7 e §8 onde houver conflito. Ordem de precedência: §10.7 > §10.6 > §10.5 > o resto.
+Implementação liberada pela §10.7: publicação pelos gates de validade desde o dia 1, com o score em modo sombra (só nota). `curator.md` continua como spec técnica do `collector/curator.py` (fontes, filtros e resultados dos probes, §3.2 e §8), parcialmente substituída por esta.
 
 ## 1. Objetivo confirmado
 
@@ -98,7 +98,7 @@ Fontes consultadas:
 
 ## 10. Fechamento da spec (catalog-curator, 2026-10-19)
 
-Convenção: **Fato** tem fonte com data; **Inferência** é dedução minha, a confirmar; **Não confirmado** é o que tentei e não consegui verificar. Consultas feitas em 2026-10-18 e 2026-10-19. As rotas `/categories` do ML responderam sem token. Todas as outras rotas do ML citadas abaixo deram 401 ou 403 sem token. Não havia `ML_CLIENT_ID` nesta sessão, então **nenhuma delas foi testada com o token de app**. O passo 0 de §10.2 resolve isso.
+Convenção: **Fato** tem fonte com data; **Inferência** é dedução minha, a confirmar; **Não confirmado** é o que tentei e não consegui verificar. Consultas feitas em 2026-10-18 e 2026-10-19. As rotas `/categories` do ML responderam sem token. Todas as outras rotas do ML citadas abaixo deram 401 ou 403 sem token. Não havia `ML_CLIENT_ID` nesta sessão, então **nenhuma delas foi testada com o token de app** aqui. **Atualização:** o passo 0 já rodou em Actions (probes 39258219518 e 39259800320); os resultados estão em `curator.md` §3.2 e valem sobre os "não testado" abaixo.
 
 Existe outra versão desta spec no branch `worktree-agent-a26264a6033900af8` (commit `22548f4`, product-manager). Ela chega aos mesmos fatos sobre a API, mas propõe "PR com aprovação humana" em vez de publicação automática. Esta seção segue a decisão do Elias de 2026-10-18 (publicação automática com gates). Qual versão vale está na decisão 1 de §10.5.
 
@@ -110,7 +110,7 @@ Existe outra versão desta spec no branch `worktree-agent-a26264a6033900af8` (co
 
 **Fato:** o gênero vem como atributo. `GET /categories/MLB437616/attributes` traz `BOOK_GENRE`, uma lista fechada de 25 valores, e `BOOK_SUBGENRES`, com 208 valores, `hidden` e multivalorado. Traz também `PUBLICATION_YEAR` e `GTIN` (rótulo "ISBN").
 
-**Proposta: 11 nichos.** Os 5 slugs atuais continuam iguais, porque já são URLs públicas. Entram mais 6. "Técnicos" e "didáticos" ficam separados porque são públicos diferentes: o profissional e o estudante ou concurseiro.
+**Aprovado (§10.7, decisão 6): 10 nichos.** Os 5 slugs atuais continuam iguais, porque já são URLs públicas. Entram mais 5. Didáticos e técnicos viram um só, `estudo`. Todo mapeamento sai de valores reais do `BOOK_GENRE` (lista de `/categories/MLB437616/attributes`); nenhum slug é inventado.
 
 | Slug | Rótulo | URL do nicho | Valores `BOOK_GENRE` do ML (id) |
 |---|---|---|---|
@@ -122,11 +122,10 @@ Existe outra versão desta spec no branch `worktree-agent-a26264a6033900af8` (co
 | `autoajuda` **novo** | Autoajuda | `/autoajuda/` | Autoajuda (7538148) |
 | `infantojuvenil` **novo** | Infantil e juvenil | `/infantojuvenil/` | Infantil (7538151), Juvenil (13061823) |
 | `religiao` **novo** | Religião e espiritualidade | `/religiao/` | Religião (19912211), Esoterismo (7538147) |
-| `didaticos` **novo** | Didáticos e concursos | `/didaticos/` | Escola e educação (23663384), Dicionários, enciclopédias e consulta (7538149) |
-| `tecnicos` **novo** | Técnicos e acadêmicos | `/tecnicos/` | Acadêmico (13061813), Tecnologia (14885398) |
+| `estudo` **novo** | Estudo, técnicos e concursos | `/estudo/` | Escola e educação (23663384), Dicionários, enciclopédias e consulta (7538149), Acadêmico (13061813), Tecnologia (14885398) |
 | `estilo-de-vida` **novo** | Saúde, hobbies e estilo de vida | `/estilo-de-vida/` | Saúde (13061828), Esportes (16188909), Gastronomia (13061821), Artesanato (13061814), Pets (76624758), Viagem (14973077), Arte e design (7538158), Música (13485350) |
 
-Os 25 valores estão cobertos, e cada um vai para um slug só. Cinco mapeamentos são **inferência** e estão na decisão 3: Humor e LGBTQ+ em `ficcao`, Esoterismo em `religiao`, Tecnologia em `tecnicos` e Saúde em `estilo-de-vida`. Produto sem `BOOK_GENRE` não é publicado, porque o build exige `genre` (gate 6 em §10.3). Ele fica no log da sombra como "sem gênero".
+Os 25 valores estão cobertos, e cada um vai para um slug só. Os mapeamentos ambíguos foram decididos pelo Elias (§10.6 e §10.7): Humor e LGBTQ+ em `ficcao`, Esoterismo em `religiao`, Tecnologia em `estudo`, Saúde em `estilo-de-vida` e Autoajuda em `autoajuda`. Produto sem `BOOK_GENRE` não é publicado, porque o build exige `genre` (gate 6 em §10.3). Ele fica no log da sombra como "sem gênero".
 
 **Mudança proposta no `build.py`.** Não editei o arquivo: a decisão é do Elias, pelo `product-manager`. O `collect.py` importa `GENRES` do `build.py`, então a mudança vale para os dois.
 
@@ -140,15 +139,14 @@ Os 25 valores estão cobertos, e cada um vai para um slug só. Cinco mapeamentos
 +    "autoajuda": "Autoajuda",
 +    "infantojuvenil": "Infantil e juvenil",
 +    "religiao": "Religião e espiritualidade",
-+    "didaticos": "Didáticos e concursos",
-+    "tecnicos": "Técnicos e acadêmicos",
++    "estudo": "Estudo, técnicos e concursos",
 +    "estilo-de-vida": "Saúde, hobbies e estilo de vida",
  }
 ```
 
 A ordem do dict é a ordem do menu (`nav`), e o menu só mostra gênero com oferta. Gênero vazio não gera link quebrado no menu, mas cada slug vira diretório em `dist/`. Os slugs passam no `ID_RE`. O mapa `BOOK_GENRE id → slug` fica no curador, não no `build.py`.
 
-**Migração do que já existe.** Nenhum slug muda de nome e nenhum `id` muda, então `/r/<id>` e os deep links do Telegram continuam valendo. Hoje existem 2 livros em `collector/catalog.json` (os dois em `ficcao`) e 10 em `data/offers.json` (`ficcao` 2, `literatura-brasileira` 4, `manga` 2, `nao-ficcao` 1, `negocios` 2). A regra proposta é esta:
+**Migração do que já existe.** Nenhum slug muda de nome e nenhum `id` muda, então `/r/<id>` e os deep links do Telegram continuam valendo. Em 2026-10-18 havia 2 livros em `collector/catalog.json`; em 2026-10-19 são 10 (`ficcao` 6, `negocios` 1, `manga` 1, `nao-ficcao` 2), 8 deles trazidos pelo curator. Em `data/offers.json` havia 10 (`ficcao` 2, `literatura-brasileira` 4, `manga` 2, `nao-ficcao` 1, `negocios` 2). A regra proposta é esta:
 - O curador **não reclassifica** livro já publicado. O gênero manual prevalece.
 - Na primeira execução da sombra, ele compara o gênero manual com o mapeado pelo `BOOK_GENRE` e registra as divergências. Candidatas prováveis (**inferência**): "Irmão do Jorel" (`ficcao`, mas talvez `infantojuvenil` no ML) e "Hábitos Atômicos" (`negocios`, mas talvez `autoajuda`). O Elias decide caso a caso (decisão 4). Mudar o gênero só move o livro de página de nicho; o link continua o mesmo.
 
@@ -159,7 +157,7 @@ A ordem do dict é a ordem do menu (`nav`), e o menu só mostra gênero com ofer
 
 ### 10.2 O que cada API oficial entrega de fato hoje
 
-Passo 0, que bloqueia a calibração: rodar um `probe`, só leitura, com o token de app (`client_credentials`, o mesmo do `collect.py`). Ele chama cada rota marcada "não testado" abaixo e registra o status HTTP e as chaves da resposta nesta seção. Não grava nada.
+Passo 0: rodar um `probe`, só leitura, com o token de app (`client_credentials`, o mesmo do `collect.py`). **Já rodou** (probes 39258219518 e 39259800320; resultado em `curator.md` §3.2, sem cópia aqui). Em resumo, o que muda nas tabelas abaixo: `/highlights` geral dá 200 (20 itens, 16 `PRODUCT`); `/highlights?attribute=BOOK_GENRE` dá **400** e não é usado; `/trends` dá 200 (50 termos); `/products/search?product_identifier=<ISBN>` dá 200; e o `/products/{id}` **não traz** atributo `GTIN`, `ISBN` nem `EAN`. Reputação do vendedor e `/reviews` continuam não testados.
 
 Legenda de risco: **Proibido** viola termo ou regra do CLAUDE.md. **Arriscado** é permitido só com ressalva, ou o termo é ambíguo.
 
@@ -228,23 +226,26 @@ Consequência: "compras recentes ajustadas à idade" (§2) **não é calculável
 
 Exemplo de hoje: só preço curto (0,5) e `/highlights` (0,6) presentes dão confiança = (35·0,5 + 25·0,6)/100 = 0,325. Com 30 dias de histórico e `/highlights`: (35·1 + 25·0,6)/100 = 0,50.
 
-**Limiar inicial, a aprovar:** publicar com `score ≥ 70` e `confiança ≥ 0,5`. Retirar com `score < 60` por 2 execuções seguidas. A histerese evita que o livro entre e saia todo dia. Na prática, isso quer dizer que **nada publica antes de 30 dias de histórico no ML e sem estar no top 20**, que é exatamente o "sem histórico suficiente, não afirmar que é promoção" de §3. A decisão 5 diz se isso é aceitável.
+*(Até a calibração, o limiar abaixo não bloqueia a publicação: §10.7, decisão 2.)* **Limiar inicial:** publicar com `score ≥ 70` e `confiança ≥ 0,5`. Retirar com `score < 60` por 2 execuções seguidas. A histerese evita que o livro entre e saia todo dia. Na prática, isso quer dizer que **nada publica antes de 30 dias de histórico no ML e sem estar no top 20**, que é exatamente o "sem histórico suficiente, não afirmar que é promoção" de §3. A decisão 5 diz se isso é aceitável.
 
 **Gates (complemento de §4).** Gate que falha bloqueia, seja qual for a pontuação:
 - (6) gênero mapeado em §10.1;
-- (7) preço do ML conferido dentro do frescor (2 h) e GTIN do produto igual ao ISBN-13 do catálogo. Sem casamento por título;
-- (8) no máximo N novos livros por dia e M por gênero (sugestão: 5 e 2);
+- (7) preço conferido dentro do frescor (2 h no ML, 12 h na Amazon) e identidade casada. **Reescrito em 2026-10-19:** o `/products/{id}` não traz GTIN (probe 39259800320), então "GTIN do produto igual ao ISBN" não é verificável. Regra:
+  - livro só do ML: a identidade é o `ml_product_id` (`PRODUCT` ativo, com `BOOK_TITLE` e `AUTHOR`). O ISBN é opcional; presente, precisa ser ISBN-13 válido e único (`curator.md` §3.2, opção 1);
+  - livro só da Amazon: a identidade é o `asin` colado pelo Elias, com o `isbn` quando houver. Se o ISBN começa com 978 e o ASIN não começa com `B0`, o ASIN precisa ser o ISBN-10 desse ISBN;
+  - livro nas duas lojas: o ISBN-13 vem do lote da Amazon e é resolvido pela API em `/products/search?product_identifier=<isbn>`. Exatamente um `PRODUCT` ativo de `MLB-BOOKS` casa as lojas; zero ou mais de um deixa o livro com uma loja só. **Nunca por título.** O casamento por GTIN é feito do lado do ML (**inferência**: o `product_identifier` busca pelo GTIN da ficha);
+- (8) no máximo N novos livros por dia e M por gênero: **N = 50, M = 10**, configuráveis (§10.7, decisão 1);
 - (9) `id` novo, que não colide com nenhum `id` já usado, mesmo de livro retirado, porque vira deep link;
 - (10) pelo menos uma loja com link de afiliado válido (§10.4). Loja sem link sai do `stores`; se não sobrar loja, o livro não publica.
 
-**Modo sombra.** O score é calculado e logado, mas **não muda nada no site**: não escreve no `catalog.json` nem no `offers.json`.
+**Modo sombra.** O score é calculado e logado, mas **não muda nada no site**. **Substituído em parte pela §10.7, decisão 2:** a publicação acontece desde o dia 1 pelos gates de validade; o que fica em sombra é só o score, que não bloqueia nem ordena até o critério de saída do item 6. Os itens abaixo continuam valendo para o score.
 1. A execução diária grava uma linha JSON por candidato em `curation/AAAA-MM.jsonl`, só de acréscimo. Onde fica é a decisão 11.
 2. Cada linha tem: `run_at`, `ml_product_id`, `asin`, `isbn`, `genre` (e a fonte do gênero), os componentes (`raw`, `s`, `confidence`, `source`, `fetched_at`), `score`, `confiança`, os `gates` (passou ou falhou, com o motivo) e `would_publish`. **Nada de dado de usuário.**
 3. Toda segunda-feira sai um resumo no log do Actions: quantos candidatos teriam sido publicados por gênero, a distribuição dos scores, os 10 primeiros e os 10 logo abaixo do corte.
 4. **Métricas contra a curadoria humana.** São duas réguas:
    - **Rótulo cego:** o Elias marca "publicaria ou não" numa amostra estratificada, sem ver o score: metade acima do corte, metade na faixa de 50 a 70. Com isso medimos a **precisão** (dos que o sistema publicaria, quantos ele aprovou) e o **recall** (dos que ele aprovou, quantos o sistema publicaria).
    - **Recall sobre o catálogo manual:** os livros já curados à mão (`data/offers.json`) que aparecem como candidatos e passam nos gates devem ter `would_publish = true`. Quem não tem, é investigado: ou o peso está errado, ou o livro só entrou por gosto pessoal.
-   - Também medimos: volume por dia e por gênero, cobertura (quantos dos 11 gêneros têm ao menos 1 aprovado), estabilidade (quantos entrariam e sairiam em menos de 7 dias) e a taxa de "dado ausente" por componente.
+   - Também medimos: volume por dia e por gênero, cobertura (quantos dos 10 gêneros têm ao menos 1 aprovado), estabilidade (quantos entrariam e sairiam em menos de 7 dias) e a taxa de "dado ausente" por componente.
 5. **Duração:** no mínimo 30 dias corridos, que é o necessário para ter histórico de preço, e no mínimo 60 rótulos (30 acima e 30 abaixo do corte), com o passo 0 resolvido.
 6. **Critério de saída**, todos juntos:
    - precisão ≥ 0,90 nos rótulos, ou seja, no máximo 3 erros em 30 "publicaria";
@@ -256,7 +257,7 @@ Exemplo de hoje: só preço curto (0,5) e `/highlights` (0,6) presentes dão con
    - os pesos e o limiar finais registrados aqui, com data e o "aprovado" do Elias.
 
    Só então a publicação é ligada. Se a precisão não chegar a 0,90, sobe o limiar em passos de 5 e mede de novo; se o recall cair abaixo de 0,60 com isso, revemos os pesos.
-7. **Orçamento de chamadas:** 1 `/highlights` geral, mais até 11 por gênero (um por slug, se o filtro por atributo funcionar), mais `/products/{id}` só dos `PRODUCT` novos, mais `/reviews` só de quem passou nos gates. O job é separado do coletor, porque o coletor tem prazo de 40 s (`ML_DEADLINE_S`). Os limites de taxa do ML para token de app são **não confirmados**.
+7. **Orçamento de chamadas:** 1 `/highlights` geral, mais os 50 termos do `/trends` e uma busca por gênero via `/products/search?q=` (o filtro do `/highlights` por atributo dá 400, ver o passo 0), mais `/products/{id}` só dos `PRODUCT` novos, mais `/reviews` só de quem passou nos gates. O job é separado do coletor, porque o coletor tem prazo de 40 s (`ML_DEADLINE_S`). Os limites de taxa do ML para token de app são **não confirmados**.
 
 ### 10.4 Links do ML em lote (enquanto não houver método autorizado)
 
@@ -268,6 +269,8 @@ O que muda o desenho: o link do painel é `https://www.mercadolivre.com.br/socia
 - o build não quer depender disso.
 
 Por isso o par produto ↔ link é feito pelo Elias, linha a linha, num arquivo com chave.
+
+**Formato substituído pela §10.7, decisão 3** (lote único das duas lojas, aplicado pelo `affiliate-linker` com `lote-apply`). A validação descrita abaixo continua valendo para as linhas do ML.
 
 **Arquivo:** `collector/ml_links.tsv`, local, fora do git (entra no `.gitignore`). Não tem segredo, porque o `ml_url` já é público no `catalog.json`, mas é transitório. Formato: UTF-8, separado por TAB, com cabeçalho fixo e uma linha por livro.
 
@@ -288,14 +291,14 @@ irmao-do-jorel	MLB19446507	Irmão do Jorel (capa dura)	https://www.mercadolivre.
    A linha válida grava o `ml_url` no `catalog.json` e sai do arquivo. A linha inválida é listada com o motivo, não grava nada e fica no arquivo para correção. A linha vazia continua pendente. Depois, o `build.py` valida de novo todo `ml_url` em cada build: é a segunda barreira. O pytest cobre: link válido, `meli.la`, `matt_word` de outra conta, chave fora da allowlist, `ref` duplicado, produto desconhecido e `book_id` que não bate com o `ml_product_id`.
 4. **Item sem link:** fica na fila e não publica pelo ML (gate 10). Se o livro também tem a Amazon com preço válido, ele pode publicar só com a Amazon (decisão 13). Um candidato pendente há mais de 14 dias sai da fila e volta se ainda for candidato na próxima descoberta. Isso evita fila infinita de livro que já não está em promoção.
 5. **Limite conhecido.** Nenhuma validação prova que o `ref` aponta para aquele produto. Isso depende do Elias colar na linha certa. A mitigação barata: a `product_url` e o `title` ficam ao lado do link, e o resumo do `links-apply` mostra título ↔ produto para ele bater o olho. A decisão 12 diz se isso basta.
-6. **Volume:** como a Amazon também é semi-automática hoje, **nenhum livro novo sai sem esse passo**. O volume diário do gate 8 (sugestão: 5) deve caber em poucos minutos de painel.
+6. **Volume:** como a Amazon também é semi-automática hoje, **nenhum livro novo sai sem esse passo**. Com o gate 8 em até 50 por dia (§10.7), são até 50 links do painel por dia. É o maior custo operacional do projeto e o gatilho para retomar o Busqy (§6) se pesar.
 
 ### 10.5 Decisões em aberto para o Elias
 
 Cada decisão traz as opções e a minha recomendação (**Rec.**).
 
 1. **Qual versão desta spec vale.** (a) Publicação automática com gates, esta, conforme a decisão de 2026-10-18. (b) PR com aprovação humana, do branch `worktree-agent-a26264a6033900af8`. Elas não podem coexistir. **Rec.:** (a), com a sombra de §10.3 como período de prova. Na prática, a sombra já é a aprovação humana até o critério de saída ser atingido.
-2. **Gêneros.** (a) Os 11 de §10.1. (b) 10, juntando `didaticos` e `tecnicos` num `estudo`. (c) Manter os 5. **Rec.:** (a). A mudança no `GENRES` sai pelo `product-manager`.
+2. **Gêneros.** (a) Os 11 de §10.1. (b) 10, juntando `didaticos` e `tecnicos` num `estudo`. (c) Manter os 5. **Rec.:** (a). A mudança no `GENRES` sai pelo `product-manager`. *Decidido: (b), §10.7 decisão 6.*
 3. **Mapeamentos ambíguos.** Humor e LGBTQ+ → `ficcao` (ou `nao-ficcao`); Esoterismo → `religiao` (ou `estilo-de-vida`); Tecnologia → `tecnicos` (ou `didaticos`); Saúde → `estilo-de-vida` (ou `nao-ficcao`). **Rec.:** os da tabela. E `literatura-brasileira` fica manual até a Creators API mostrar se existe o nó; não inferir por autor nem por título.
 4. **Gênero dos livros já publicados.** (a) Manter o manual e só registrar a divergência. (b) Adotar o do ML. **Rec.:** (a). O Elias decide caso a caso as divergências que a primeira sombra listar ("Irmão do Jorel" e "Hábitos Atômicos" são as prováveis).
 5. **Pesos e limiar iniciais.** (a) 35/25/15/25, `score ≥ 70`, `confiança ≥ 0,5`, retirada abaixo de 60 por 2 execuções. (b) O mesmo, com confiança mínima de 0,3, o que permite publicar já com o rótulo da loja e o top 20. **Rec.:** (a). Ela aceita que nada publique antes de 30 dias de histórico, coerente com §3 e com o selo de 90 dias.
@@ -311,19 +314,49 @@ Cada decisão traz as opções e a minha recomendação (**Rec.**).
 
 ### 10.6 Decisões do Elias (2026-10-19)
 1. **Publicação automática com gates**, conforme esta spec. A versão com "PR e aprovação humana" foi descartada.
-2. a 7. Aprovadas como recomendado:
+2. Decisões 2, 3, 5, 8, 9 e 11 de §10.5 (a numeração original dizia "2. a 7."), aprovadas assim. Gêneros e decisão 7 de §10.5 foram fechados na §10.7:
    - os 5 gêneros novos;
    - Humor e LGBTQ+ em `ficcao`, Tecnologia em `estudo`, e `literatura-brasileira` só manual;
    - pesos 35/25/15/25, score ≥ 70, confiança ≥ 0,5 e retirada abaixo de 60 por 2 execuções, aceitando ~30 dias sem publicar;
    - pedir acesso à Google Trends API, sem depender dela: o peso dela é redistribuído enquanto não houver acesso;
    - criar a chave grátis do Google Books;
    - log em `curation/AAAA-MM.jsonl` no branch `price-history`, guardado por 12 meses.
-8. **Volume: pelo menos 50 livros novos por dia vindos do ML.** O teto por gênero sobe para 10/dia, configurável, para manter o equilíbrio entre os 10 gêneros. Os links do ML seguem o fluxo em lote do §10.4.
+8. *(Substituído pela §10.7, decisão 1: até 50 publicados por dia, do ML e/ou da Amazon.)* **Volume: pelo menos 50 livros novos por dia vindos do ML.** O teto por gênero sobe para 10/dia, configurável, para manter o equilíbrio entre os 10 gêneros. Os links do ML seguem o fluxo em lote do §10.4.
    - Custo: são cerca de 50 links do painel por dia colados à mão, o maior custo operacional do projeto. Se pesar, é o gatilho para retomar o Busqy (§6).
 9. **Lançar com a Amazon, sem a Creators API.**
    - A busca na Amazon é manual: o Elias encontra o livro no site, como qualquer usuário, e coloca no lote o ISBN, o ASIN e o preço que viu. O script nunca acessa a Amazon.
    - O link da Amazon é gerado automaticamente a partir do ASIN e da tag (`affiliate_url`). O lote da Amazon só precisa do ASIN certo.
    - O preço vai para `collector/amazon_prices.csv` (`asin,price_cents,list_price_cents,checked_at`). Com o gate de frescor de 12 h, o preço manual da Amazon vence em 12 h e a loja sai da comparação. O livro continua no site se o ML estiver fresco.
    - Livro escolhido pelo Elias na Amazon não precisa do score, porque a curadoria humana é o sinal. Os gates continuam valendo: ISBN, preço fresco, link válido e sem duplicata. Se o mesmo ISBN estiver no ML, entra a comparação de lojas.
-   - Formato do lote único, uma linha por livro e uma loja por linha: `book_id, isbn, store, ml_product_id|asin, product_url, ml_url (só ML), price_cents/list_price_cents (só Amazon), checked_at (só Amazon)`.
-10. **Passo 0 liberado:** a checagem só de leitura da API do ML com o token de app. Ela roda como `workflow_dispatch` no GitHub Actions, com `ML_CLIENT_ID`/`ML_CLIENT_SECRET` vindos dos Secrets e nada ecoado no log, porque o token não pode ficar na máquina do agent nem no repo.
+   - *(Formato substituído pela §10.7, decisão 3.)* Formato do lote único, uma linha por livro e uma loja por linha: `book_id, isbn, store, ml_product_id|asin, product_url, ml_url (só ML), price_cents/list_price_cents (só Amazon), checked_at (só Amazon)`.
+10. **Passo 0 liberado:** a checagem só de leitura da API do ML com o token de app. Ela roda como `workflow_dispatch` no GitHub Actions, com `ML_CLIENT_ID`/`ML_CLIENT_SECRET` vindos dos Secrets e nada ecoado no log, porque o token não pode ficar na máquina do agent nem no repo. **Já executado:** probes 39258219518 e 39259800320, com o resultado em `curator.md` §3.2 e o resumo em §10.2.
+
+### 10.7 Decisões do Elias (2026-10-19, segunda rodada)
+
+Prevalecem sobre a §10.6 e sobre o resto da spec onde houver conflito.
+
+1. **Volume: até 50 livros novos *publicados* por dia**, para popular o site agora, com teto de 10 por gênero, os dois configuráveis. Podem vir do ML, da Amazon ou das duas lojas. A meta é "até 50": o rendimento real das fontes é medido na primeira execução e registrado aqui. Fontes do ML:
+   - `/highlights` geral de `MLB437616`;
+   - os 50 termos do `/trends`, cada um resolvido por `/products/search?q=`;
+   - uma busca por gênero via `/products/search?q=`.
+2. **Publicação pelos gates de validade desde o dia 1.** Um livro publica quando passa em todos estes:
+   - preço real conferido dentro do frescor;
+   - link de afiliado válido da nossa conta (`build.py:affiliate_url`);
+   - gênero dentro dos 10;
+   - identidade casada conforme o gate 7 reescrito (§10.3);
+   - em estoque (item novo ativo);
+   - sem duplicata (gates 4 e 9).
+
+   **O score fica em modo sombra só como nota:** é calculado e logado, mas não bloqueia nem ordena. Até a calibração, a ordem é pela posição no `/highlights` e depois no `/trends`. Atingido o critério de saída da §10.3 item 6, o score passa a ordenar e a retirar.
+3. **Fluxo de links.**
+   - **ML:** o PR diário do curator traz até 50 candidatos num TSV com `book_id`, `ml_product_id`, `title`, a URL do produto (`https://www.mercadolivre.com.br/p/<MLB>`, montada pelo código, só para o Elias abrir no painel) e `ml_url` vazia. O Elias gera os links no painel e cola de volta. O `affiliate-linker` aplica com `lote-apply`, que valida cada linha (§10.4, item 3), abre o PR e faz o merge.
+   - **Amazon:** o código **nunca** busca na Amazon (CLAUDE.md, regra 1). O PR lista o título e o ISBN (quando houver) dos candidatos para o Elias procurar à mão. Ele cola de volta o ASIN e o preço que viu, e o preço vai para o `collector/amazon_prices.csv`. O link é montado pelo build a partir do ASIN e da tag, e nunca é gravado.
+   - **Merge:** fica com o `affiliate-linker`. Um PR aberto pelo `GITHUB_TOKEN` não dispara o `catalog-check`; quem dispara é o push dele.
+4. **Teto: 500 livros ativos no total**, com retirada automática por score < 60 em 2 execuções (só depois da calibração) ou por 30 dias sem oferta. Os 500 não cabem no `_redirects` de hoje: são 4 regras por livro só do ML e 5 por livro nas duas lojas, num limite de 2.000 (`build.py:MAX_REDIRECTS`). Ficam três requisitos:
+   - **Requisito para o `collector-engineer` e o `frontend-developer`:** compactar as regras com um placeholder genérico `/r/:id/* /r/:id 302` (`_redirects` da Cloudflare) para os casos em que o destino é o mesmo do `/r/<id>`. Regras explícitas ficam só onde o destino difere: a tag de canal da Amazon e a loja que não venceu. Antes, confirmar na documentação da Cloudflare a ordem de avaliação entre regra estática e placeholder.
+   - O `catalog-check` falha o PR se o catálogo passar do limite de regras ou de 500 ativos.
+   - Capacidade do coletor para 500 livros dentro do frescor de 2 h do ML: **não medida** (`ML_DEADLINE_S` = 40 s por execução). É o `collector-engineer` quem mede.
+5. **Histórico de preço da Amazon (decisão 7 de §10.5): opção (b).** O histórico da Amazon fica no `price_history` e alimenta o gráfico de variação de preço, aceitando o risco da cláusula 2(h) da Licença. Em paralelo, a opção (c): o Elias pergunta por escrito ao suporte dos Associados. Se a resposta for negativa, o histórico é desligado.
+6. **Gêneros: 10**, todos mapeados a partir de valores reais do `BOOK_GENRE` do ML, sem nenhum slug inventado (tabela da §10.1). Didáticos e técnicos viram `estudo`, Esoterismo vai para `religiao`, Saúde para `estilo-de-vida`, e Autoajuda entra. A mudança no `GENRES` do `build.py` sai pelo `product-manager`.
+7. **Log da sombra e da auditoria:** `curation/AAAA-MM.jsonl` no branch `price-history`, com retenção de 12 meses.
+8. **Ideia em aberto, fora do escopo, para o `product-manager`:** usar grupos de ofertas do Telegram como fonte, no estilo da ferramenta Mandaboa, que reescreve os links com o affiliate id. Não especificado.

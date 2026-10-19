@@ -2,6 +2,8 @@
 
 Status: aprovada, 2026-10-19 (as 5 decisões da seção 14 com as recomendações). Autor: product-manager. Implementação: ver "Divisão por agent".
 
+**Parcialmente substituída por `curadoria-automatica.md` §10.6 e §10.7 (2026-10-19), que são a fonte da verdade da curadoria.** Esta spec fica como a spec técnica do `collector/curator.py`. Continuam valendo: §2, §3 (fatos e resultados dos probes), §4, §6 (exceto a cadência), §8 (exceto as linhas Nicho e Volume), §9, §10, §11 critérios 1–5, 7, 8 e 11–14, e §13. Cada trecho substituído está marcado.
+
 Cópia da spec do PR #4. O nome difere de `curadoria-automatica.md` porque a main já tem outro texto nesse caminho (handoff do Codex + §10 do catalog-curator).
 
 ## 1. Problema e usuário
@@ -11,7 +13,7 @@ Cópia da spec do PR #4. O nome difere de `curadoria-automatica.md` porque a mai
 **Interpretações do pedido:**
 1. **Webscraper que busca "todos os livros"** nas lojas. Esbarra na regra 1 (Amazon) e nos termos do ML (seção 3.3). Também vai contra "curadoria, não despejo". **Descartada.**
 2. **Agente com LLM que escolhe os livros e gera os links sozinho.** Não existe caminho oficial para gerar o link do ML (seção 3.4), e um LLM não é necessário para escolher (seção 8). **Descartada no MVP.**
-3. **Um job semanal que descobre candidatos pela API oficial do ML, filtra por regras objetivas e abre um PR já pronto.** Ao Elias só sobram duas coisas: gerar o link no painel e aprovar. **Recomendada.** É o `curator` previsto na decisão 6 de `alerta-de-preco.md`.
+3. *(Substituído por `curadoria-automatica.md` §10.7: job diário, publicação pelos gates de validade, sem aprovação livro a livro.)* **Um job semanal que descobre candidatos pela API oficial do ML, filtra por regras objetivas e abre um PR já pronto.** Ao Elias só sobram duas coisas: gerar o link no painel e aprovar. **Recomendada.** É o `curator` previsto na decisão 6 de `alerta-de-preco.md`.
 
 ## 2. O que existe hoje (conferido no repo em 2026-10-19)
 
@@ -117,7 +119,7 @@ Não existe "Literatura brasileira": o `curator` sugere `ficcao`, e o Elias troc
 
 ## 5. Recomendação
 
-**Opção C**, sem LLM. O `curator` é um script stdlib (`collector/curator.py`) que reaproveita o cliente do ML do `collect.py` e roda num workflow semanal próprio. Ele abre **um PR por semana** com no máximo **10 candidatos**, adicionados ao `catalog.json` com `"pendente": true` e **sem `ml_url`**. Entrada pendente nunca é coletada nem vai ao ar. O Elias gera os links no painel, troca `"pendente": true` pelo `ml_url`, apaga o que não quer e faz o merge.
+*(Substituído por `curadoria-automatica.md` §10.7, decisões 1 a 3: PR diário com até 50 candidatos, 10 por gênero; o Elias só cola os links e o `affiliate-linker` faz o merge.)* **Opção C**, sem LLM. O `curator` é um script stdlib (`collector/curator.py`) que reaproveita o cliente do ML do `collect.py` e roda num workflow semanal próprio. Ele abre **um PR por semana** com no máximo **10 candidatos**, adicionados ao `catalog.json` com `"pendente": true` e **sem `ml_url`**. Entrada pendente nunca é coletada nem vai ao ar. O Elias gera os links no painel, troca `"pendente": true` pelo `ml_url`, apaga o que não quer e faz o merge.
 
 **Passo 0, que bloqueia o resto:** um `curator.py probe` para conferir, com o token de app, se `/highlights`, `/highlights?attribute=BOOK_GENRE`, `/trends` e `/products/search` respondem.
 - Se o `/highlights` der 403, a fonte do MVP passa a ser uma **lista de ISBNs semeada pelo Elias**: `collector/seeds.txt`, por exemplo listas de editoras. O `curator` resolve cada ISBN pelo `/products/search?product_identifier=`, se essa rota responder.
@@ -160,19 +162,19 @@ Não existe "Literatura brasileira": o `curator` sugere `ficcao`, e o Elias troc
    - em Settings > Actions, ligar "Allow GitHub Actions to create and approve pull requests";
    - criar um ruleset na `main` exigindo PR e o check `catalog-check`;
    - conferir os termos do programa no painel (decisão 5).
-2. **Segunda, 09h BRT:** o `curator.yml` roda.
+2. *(Substituído por `curadoria-automatica.md` §10.7: cron diário.)* **Segunda, 09h BRT:** o `curator.yml` roda.
    - Se já houver um PR aberto com a label `curator`, ele sai sem fazer nada: um PR por vez.
    - Se não houver, ele pega o token de app, consulta o `/highlights` geral e um por nicho mapeado (cerca de 6 chamadas) e lê `/products/{id}` dos `PRODUCT` novos (até cerca de 120 chamadas).
 3. O script filtra e ordena (seção 8) e grava no máximo `min(10, CATALOG_MAX − tamanho atual)` entradas pendentes, além do `curator_seen.json`. Com zero candidatos, não abre PR e só registra no log.
 4. Ele faz commit e push só no branch `curator/AAAA-MM-DD` e abre o PR com a label `curator`. **Fato:** um PR aberto pelo `GITHUB_TOKEN` não dispara outros workflows ([GitHub Docs, GITHUB_TOKEN](https://docs.github.com/en/actions/concepts/security/github_token): "events triggered by the GITHUB_TOKEN will not create a new workflow run"). Por isso o `catalog-check` só roda no primeiro push do Elias, e isso basta, porque o ruleset bloqueia o merge sem o check.
-5. **Elias, cerca de 5 a 10 minutos:**
+5. *(Substituído por `curadoria-automatica.md` §10.7, decisão 3: o Elias só gera e cola os links, sem escolher livro; o `affiliate-linker` aplica com `lote-apply`.)* **Elias, cerca de 5 a 10 minutos:**
    - abre o PR;
    - cola o bloco de URLs no Gerador de links do painel;
    - em cada entrada que quer, troca `"pendente": true` por `"ml_url": "<link do painel>"` e ajusta o `genre` se precisar;
    - apaga as que não quer, que ficam no `curator_seen.json` e não voltam por 180 dias;
    - pode adicionar o `asin` se conferir o "ASIN provável";
    - dá push.
-6. O `catalog-check` valida (`ml_url` preso ao `matt_word`, ISBN, `genre`, `id` único). Com o check verde, o Elias faz o merge.
+6. O `catalog-check` valida (`ml_url` preso ao `matt_word`, ISBN, `genre`, `id` único). Com o check verde, o Elias faz o merge. *(Substituído por `curadoria-automatica.md` §10.7: o merge é do `affiliate-linker`.)*
 7. Na próxima execução do `pipeline.yml`, os livros com `ml_url` entram na coleta e aparecem na vitrine com preço fresco. Os que continuaram pendentes seguem fora do ar.
 
 ## 8. Critérios de seleção (o "agente" de curadoria)
@@ -188,10 +190,10 @@ As regras são determinísticas e ficam em constantes no topo do `curator.py`, c
 | Condição e moeda | Novo, BRL (`winner`/`best_listing`) | Os afiliados do ML só geram link para produto novo (terceiros: grupozap). É também a regra do coletor |
 | Preço | R$ 15 a R$ 400 | Abaixo disso a comissão não paga o esforço; acima, é box raro (decisão 3) |
 | Idioma | `LANGUAGE` = Português; `LANGUAGE` ausente é descarte (`idioma`) | Público do site (decisão 3) |
-| Nicho | `BOOK_GENRE` mapeado para `GENRES`. Sem mapeamento, o livro é descartado | O `GENRES` é fechado |
+| Nicho | `BOOK_GENRE` mapeado para `GENRES`. Sem mapeamento, o livro é descartado. *(Substituído por `curadoria-automatica.md` §10.7, decisão 6: 10 gêneros e os 25 valores mapeados, Autoajuda inclusa.)* | O `GENRES` é fechado |
 | Duplicado | Fora se o `ml_product_id` (a identidade) ou o ISBN, quando houver, já estiver no catálogo, ou se estiver no `curator_seen.json` há menos de 180 dias | Não insistir no que o Elias recusou |
-| Ordem | Posição no ranking (menor primeiro); no empate, maior desconto sobre `original_price` | Mais vendido converte mais |
-| Volume | No máximo 10 por semana, no máximo 4 por nicho, catálogo total ≤ `CATALOG_MAX` = 150 (ativos + pendentes) | "Curadoria, não despejo" (decisão 2). 150 livros × 3 regras cabem com folga no limite de 2.000 do `_redirects` |
+| Ordem | Posição no ranking (menor primeiro); no empate, maior desconto sobre `original_price`. Continua valendo até a calibração; depois, ordena pelo score (§10.7, decisão 2) | Mais vendido converte mais |
+| Volume | *(Substituído por `curadoria-automatica.md` §10.7, decisões 1 e 4: até 50 por dia, 10 por gênero, 500 ativos.)* No máximo 10 por semana, no máximo 4 por nicho, catálogo total ≤ `CATALOG_MAX` = 150 (ativos + pendentes) | "Curadoria, não despejo" (decisão 2). 150 livros × 3 regras cabem com folga no limite de 2.000 do `_redirects` |
 
 **Desconto real contra o histórico:** um livro descoberto agora não tem histórico, então o desconto sobre `original_price` serve só para desempate. O desconto real vale depois, na vitrine e nos canais: o selo de 90 dias e o limiar de 30% de `distribuicao-canais.md`. O `curator` escolhe o que **monitorar**, e o pipeline decide o que **destacar**.
 
@@ -248,11 +250,11 @@ Se um dia entrar:
    - as entradas pendentes não aparecem no `offers.json`, no `_redirects` nem no histórico;
    - um pendente com `ml_url` dá `Invalid`.
 5. **Merge sem preencher não quebra o pipeline:** o mesmo teste do critério 4 passa com 100% das entradas novas pendentes.
-6. **Limite de volume:** nenhuma execução sugere mais de 10 livros, nem mais de 4 por nicho, nem passa de `CATALOG_MAX`. Testes com `/highlights` de 20 itens simulado.
+6. *(Substituído por `curadoria-automatica.md` §10.7: 50 por execução, 10 por nicho, 500 ativos.)* **Limite de volume:** nenhuma execução sugere mais de 10 livros, nem mais de 4 por nicho, nem passa de `CATALOG_MAX`. Testes com `/highlights` de 20 itens simulado.
 7. **Sem duplicado:** um candidato com `ml_product_id` ou ISBN (quando houver) já no catálogo, ou no `curator_seen.json` há menos de 180 dias, não é sugerido.
 8. **Cada candidato passa por:** `BOOK_TITLE` e `AUTHOR` na ficha, ISBN-13 válido (978/979) se houver código na ficha, novo, BRL, preço na faixa, `genre ∈ GENRES`, `id` com `ID_RE.fullmatch` e único, título e autor por `_text`.
-9. **Um PR por vez:** com um PR `curator` aberto, a execução sai com código 0 e não abre outro. Com zero candidatos, não abre PR.
-10. **Aprovação humana obrigatória:**
+9. *(Substituído por `curadoria-automatica.md` §10.7: a cadência passa a ser diária; um PR por vez continua.)* **Um PR por vez:** com um PR `curator` aberto, a execução sai com código 0 e não abre outro. Com zero candidatos, não abre PR.
+10. *(Substituído por `curadoria-automatica.md` §10.7: sem aprovação livro a livro; o merge é do `affiliate-linker` com o check verde. Continua valendo que o workflow não tem `gh pr merge` nem push para a `main`.)* **Aprovação humana obrigatória:**
     - o workflow não contém `gh pr merge`, `--admin` nem push para a `main`;
     - o ruleset da `main` exige PR e o check `catalog-check` (conferência manual no setup).
 11. **Corpo do PR seguro:**
@@ -302,10 +304,10 @@ Se um dia entrar:
 
 ## 14. Decisões para o Elias
 
-1. **Quando ligar o cron:** a decisão 6 dizia "4 semanas de curadoria manual, depois o `curator`". **Recomendo implementar agora**, porque a etapa 1 (coletor) já está pronta, e rodar só por `workflow_dispatch` até o passo 0 confirmar a fonte. O cron semanal liga depois de 2 PRs bons.
-2. **Volume:** 10 candidatos por semana, no máximo 4 por nicho, e teto de 150 livros no catálogo. **Recomendo esses valores**, como constantes fáceis de ajustar.
+1. *(Substituído por `curadoria-automatica.md` §10.7: cron diário.)* **Quando ligar o cron:** a decisão 6 dizia "4 semanas de curadoria manual, depois o `curator`". **Recomendo implementar agora**, porque a etapa 1 (coletor) já está pronta, e rodar só por `workflow_dispatch` até o passo 0 confirmar a fonte. O cron semanal liga depois de 2 PRs bons.
+2. *(Substituído por `curadoria-automatica.md` §10.7.)* **Volume:** 10 candidatos por semana, no máximo 4 por nicho, e teto de 150 livros no catálogo. **Recomendo esses valores**, como constantes fáceis de ajustar.
 3. **Filtro de preço e idioma:** R$ 15 a R$ 400, só português. **Recomendo**, e revisar depois de 4 PRs, vendo o que você apagou.
-4. **Mapeamento de nichos:**
+4. *(Substituído por `curadoria-automatica.md` §10.7, decisão 6.)* **Mapeamento de nichos:**
    - `manga` ← Mangas e HQs;
    - `negocios` ← Negócios;
    - `ficcao` ← Literatura;
