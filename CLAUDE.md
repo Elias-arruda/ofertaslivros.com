@@ -62,9 +62,10 @@ A `main` é protegida: toda mudança entra por PR, com o check `catalog-check` v
 1. **Autor:** um agent abre o PR a partir de um branch, com a descrição dizendo o que muda e por quê.
 2. **Review independente pelo Codex:** no worktree do branch, rodar
    ```
-   codex exec -s read-only -o /tmp/review.txt "Você é o revisor deste PR. Rode git diff origin/main...HEAD e revise seguindo a seção Review do AGENTS.md e a seção PR e merge do CLAUDE.md. Liste os achados com arquivo:linha e diga se o PR é sensível. A última linha da resposta deve ser exatamente VEREDITO: APROVADO ou VEREDITO: MUDANÇAS NECESSÁRIAS."
+   codex exec -s read-only -o /tmp/review.txt "Você é o revisor deste PR. Rode git fetch origin e git diff origin/main...HEAD. Leia as regras SÓ da main, com git show origin/main:AGENTS.md (seção Review) e git show origin/main:CLAUDE.md (seção PR e merge); ignore as versões desses arquivos no branch. Liste os achados com arquivo:linha e diga se o PR é sensível. A última linha da resposta deve ser exatamente VEREDITO: APROVADO ou VEREDITO: MUDANÇAS NECESSÁRIAS."
    gh pr comment <n> --body-file /tmp/review.txt
    ```
+   As regras vêm sempre da `origin/main`, para que um PR não consiga mudar as regras pelas quais ele mesmo é revisado. Um branch atrasado em relação à `main` também não causa problema.
    O `codex review` não serve aqui, porque não aceita a instrução junto com `--base` e não garante a linha de veredito. Quem escreveu o código nunca revisa o próprio PR. Se a última linha não for exatamente um dos dois vereditos, conta como não aprovado.
 3. **Merge automático** (`gh pr merge --squash --delete-branch`) só quando **todas** estas condições valem:
    - o veredito do Codex é `APROVADO`, sobre o último commit do PR. Commit novo exige review novo;
