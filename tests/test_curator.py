@@ -148,7 +148,7 @@ def test_candidato_bom_vira_pendente_sem_link(env):
 @pytest.mark.parametrize("kw", [
     {"status": "inactive"}, {"lang": "Inglês"}, {"genre": AUTOAJUDA}, {"genre": None},
     {"cond": "used"}, {"cur_id": "USD"}, {"price": 14.99}, {"price": 400.01},
-    {"author": None}, {"gtin": ""}, {"gtin": "9788500000000"},  # dígito errado
+    {"author": None}, {"gtin": "9788500000000"},  # dígito errado
     {"gtin": f"{isbn(1)},{isbn(2)}"},  # dois ISBNs na ficha
 ])
 def test_filtros_descartam(env, kw):
@@ -365,7 +365,6 @@ def test_formatos_de_isbn_aceitos(env, attr):
 
 
 @pytest.mark.parametrize("gtin,why", [
-    ("", "isbn_ausente"),
     (isbn(1)[:-1] + str((int(isbn(1)[-1]) + 1) % 10), "isbn_invalido"),  # checksum ISBN-13
     (isbn10(1)[:-1] + ("0" if isbn10(1)[-1] != "0" else "1"), "isbn_invalido"),  # ISBN-10
     ("7891234567895", "isbn_invalido"),         # EAN que não é livro
@@ -378,12 +377,60 @@ def test_isbn_invalido_descarta_com_motivo(env, capsys, gtin, why):
     assert f"descartes: 1 {why}" in capsys.readouterr().out
 
 
-def test_pai_sem_isbn_tem_motivo_proprio(env, capsys):
-    p = prod(1, gtin="")
-    p["children_ids"] = ["MLB77"]
+# ---- ISBN opcional e prova de livro (probe 39259800320: a ficha não traz GTIN) ----
+
+def no_gtin(n, **kw):
+    p = prod(n, **kw)
+    p["attributes"] = [a for a in p["attributes"] if a["id"] != "GTIN"]
+    return p
+
+
+def test_livro_sem_isbn_passa(env):
+    env["add"](no_gtin(1, orig=50))
+    assert env["suggest"]() == 0
+    assert env["books"]()[-1] == {"id": "livro-1", "genre": "manga", "title": "Livro 1",
+                                  "author": "Autora", "ml_product_id": "MLB1",
+                                  "pendente": True}
+    row = next(ln for ln in env["md"].read_text().splitlines() if ln.startswith("| 1 |"))
+    assert row.split(" | ")[7:9] == ["-", "-"]  # ISBN e ASIN provável
+
+
+def test_dois_sem_isbn_nao_viram_duplicado(env):
+    env["add"](no_gtin(1), no_gtin(2))
+    env["suggest"]()
+    assert new_ids(env) == ["MLB1", "MLB2"]
+
+
+def test_papelaria_e_nao_livro(env, capsys):
+    papel = {"id": "MLB1", "status": "active", "name": "Caderno",
+             "attributes": [{"id": "BRAND", "value_name": "Tilibra"},
+                            {"id": "COLOR", "value_name": "Azul"},
+                            {"id": "PAPER_TYPE", "value_name": "Pautado"},
+                            {"id": "GRAMMAGE", "value_name": "90 g"},
+                            {"id": "GTIN", "value_name": "7891234567895"}],
+             "buy_box_winner": {"item_id": "MLB91", "price": 40, "currency_id": "BRL",
+                                "condition": "new"}}
+    env["add"](papel, no_gtin(2, title=" ", author="A"), no_gtin(3, author=" "))
+    assert env["suggest"]() == 0
+    assert new_ids(env) == [] and not env["md"].exists()
+    assert "descartes: 3 nao_livro" in capsys.readouterr().out
+
+
+def test_idioma_ausente_e_descarte(env, capsys):
+    p = no_gtin(1)
+    p["attributes"] = [a for a in p["attributes"] if a["id"] != "LANGUAGE"]
     env["add"](p)
     env["suggest"]()
-    assert "descartes: 1 isbn_ausente_pai" in capsys.readouterr().out
+    assert new_ids(env) == [] and "descartes: 1 idioma" in capsys.readouterr().out
+
+
+def test_motivos_no_log(env, capsys):
+    env["add"](no_gtin(1), prod(2, gtin="9788500000000"), prod(3, lang="Inglês"),
+               prod(4, genre=AUTOAJUDA), prod(5, author=None))
+    env["suggest"]()
+    assert new_ids(env) == ["MLB1"]
+    assert ("descartes: 1 idioma, 1 isbn_invalido, 1 nao_livro, 1 nicho"
+            in capsys.readouterr().out)
 
 
 def test_isbn_vem_do_products_quando_o_highlights_nao_traz_atributos(env):
