@@ -308,3 +308,22 @@ Cada decisão traz as opções e a minha recomendação (**Rec.**).
 12. **Fluxo de links em lote de §10.4.** (a) Aceitar o par por linha, com o limite de não provar o `ref`. (b) Exigir conferência dupla: o Elias abre cada link uma vez à mão antes de aplicar. **Rec.:** (a), com N = 5 novos por dia e M = 2 por gênero.
 13. **Livro nas duas lojas sem link do ML.** (a) Publica só com a Amazon, se o preço dela estiver fresco. (b) Não publica. **Rec.:** (a). O contrato v2 já aceita `stores` com 1 item.
 14. **Seguem pendentes de §6/§8.** (a) Confirmar com o Busqy e com o ML o método contratual de conversão. (b) Decidir se o lançamento é só ML ou espera a Creators API. (c) Definir a frequência intradiária e a política de retirada. **Rec.:** (a) por e-mail, sem integrar nada antes da resposta por escrito; (b) lançar só com ML, porque a Creators API depende de vendas que só vêm com o site no ar; (c) manter o coletor como está (frescor de 2 h no ML) e retirar após 2 execuções com score < 60 ou 6 h sem preço válido.
+
+### 10.6 Decisões do Elias (2026-10-19)
+1. **Publicação automática com gates**, conforme esta spec. A versão com "PR e aprovação humana" foi descartada.
+2. a 7. Aprovadas como recomendado:
+   - os 5 gêneros novos;
+   - Humor e LGBTQ+ em `ficcao`, Tecnologia em `estudo`, e `literatura-brasileira` só manual;
+   - pesos 35/25/15/25, score ≥ 70, confiança ≥ 0,5 e retirada abaixo de 60 por 2 execuções, aceitando ~30 dias sem publicar;
+   - pedir acesso à Google Trends API, sem depender dela: o peso dela é redistribuído enquanto não houver acesso;
+   - criar a chave grátis do Google Books;
+   - log em `curation/AAAA-MM.jsonl` no branch `price-history`, guardado por 12 meses.
+8. **Volume: pelo menos 50 livros novos por dia vindos do ML.** O teto por gênero sobe para 10/dia, configurável, para manter o equilíbrio entre os 10 gêneros. Os links do ML seguem o fluxo em lote do §10.4.
+   - Custo: são cerca de 50 links do painel por dia colados à mão, o maior custo operacional do projeto. Se pesar, é o gatilho para retomar o Busqy (§6).
+9. **Lançar com a Amazon, sem a Creators API.**
+   - A busca na Amazon é manual: o Elias encontra o livro no site, como qualquer usuário, e coloca no lote o ISBN, o ASIN e o preço que viu. O script nunca acessa a Amazon.
+   - O link da Amazon é gerado automaticamente a partir do ASIN e da tag (`affiliate_url`). O lote da Amazon só precisa do ASIN certo.
+   - O preço vai para `collector/amazon_prices.csv` (`asin,price_cents,list_price_cents,checked_at`). Com o gate de frescor de 12 h, o preço manual da Amazon vence em 12 h e a loja sai da comparação. O livro continua no site se o ML estiver fresco.
+   - Livro escolhido pelo Elias na Amazon não precisa do score, porque a curadoria humana é o sinal. Os gates continuam valendo: ISBN, preço fresco, link válido e sem duplicata. Se o mesmo ISBN estiver no ML, entra a comparação de lojas.
+   - Formato do lote único, uma linha por livro e uma loja por linha: `book_id, isbn, store, ml_product_id|asin, product_url, ml_url (só ML), price_cents/list_price_cents (só Amazon), checked_at (só Amazon)`.
+10. **Passo 0 liberado:** a checagem só de leitura da API do ML com o token de app. Ela roda como `workflow_dispatch` no GitHub Actions, com `ML_CLIENT_ID`/`ML_CLIENT_SECRET` vindos dos Secrets e nada ecoado no log, porque o token não pode ficar na máquina do agent nem no repo.
