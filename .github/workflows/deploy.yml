@@ -1,0 +1,73 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  # O pipeline grava price-history com GITHUB_TOKEN; push não inicia outro workflow.
+  # Esta conclusão faz o deploy depois da coleta sem usar PAT.
+  workflow_run:
+    workflows: [pipeline]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      ML_AFFILIATE_ID: ${{ vars.ML_AFFILIATE_ID }}
+      AMAZON_PARTNER_TAG: ${{ vars.AMAZON_PARTNER_TAG }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Abrir os dados validados do coletor
+        run: |
+          git fetch --no-tags --depth=1 origin \
+            refs/heads/price-history:refs/remotes/origin/price-history
+          git show origin/price-history:offers.json > data/offers.json
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          doc = json.loads(Path("data/offers.json").read_text(encoding="utf-8"))
+          offers = doc.get("offers")
+          if doc.get("version") != 2 or doc.get("_exemplo") is True:
+              raise SystemExit("offers.json não contém dados reais no contrato v2")
+          if not isinstance(offers, list) or not offers:
+              raise SystemExit("offers.json não contém ofertas; deploy cancelado")
+          if "amazon" in {store.get("store") for offer in offers
+                           for store in offer.get("stores", [])} \
+                  and not os.environ.get("AMAZON_PARTNER_TAG"):
+              raise SystemExit("AMAZON_PARTNER_TAG precisa estar em Actions Variables")
+          PY
+
+      - name: Validar e gerar o site
+        run: |
+          python3 -m venv .venv
+          . .venv/bin/activate
+          python -m pip install --disable-pip-version-check -r requirements-dev.txt
+          python build.py --selftest
+          pytest
+          python build.py
+
+      - name: Publicar no Cloudflare Workers
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.151.1"
+          command: deploy
