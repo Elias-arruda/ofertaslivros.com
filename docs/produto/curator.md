@@ -65,6 +65,17 @@ Categoria: `MLB1196` ("Livros, Revistas e Comics") **não é folha**. A folha de
 - `/products/search?product_identifier=`: 200.
 - suggest 39258304023: 16 de 16 descartados por ISBN. O `product_gtins` só lia `value_name` do atributo `GTIN` com `\d{8,14}`: hífen, ISBN-10, `values[].name` e ids `ISBN`/`EAN` ficavam de fora. Corrigido (normaliza, converte ISBN-10 para 13, valida checksum), e o log separa `isbn_ausente`, `isbn_ausente_pai`, `isbn_invalido` e `isbn_multiplo`.
 
+**Probe 39259800320 (2026-10-19, token de app):**
+- **Fato:** o `/products/{id}` não traz nenhum atributo `GTIN`, `ISBN` ou `EAN`. Vêm `AUTHOR`, `BOOK_TITLE`, `BOOK_GENRE`, `BOOK_PUBLISHER`, `BOOK_EDITION`, `LANGUAGE`, `PAGES_NUMBER`, `BISAC`, `SYNOPSIS` etc. A correção acima não tinha o que ler: o filtro de ISBN obrigatório descartaria todo candidato.
+- **Fato:** dos 3 primeiros `PRODUCT` do `/highlights` de `MLB437616`, o #3 não é livro. Os atributos são `BRAND`, `COLOR`, `PAPER_TYPE`, `GRAMMAGE` etc., ou seja, papelaria na categoria de livros.
+- **Fato:** `/products/search?product_identifier=<ISBN>` funciona (200).
+
+**Decisão do Elias (2026-10-19, opção 1):**
+- **ISBN opcional.** Se a ficha trouxer ISBN (nos formatos aceitos acima), ele é validado e gravado. Se não trouxer, o candidato entra sem `isbn`. ISBN presente e inválido continua sendo descarte (`isbn_invalido`), e dois ISBNs distintos também (`isbn_multiplo`). Os motivos `isbn_ausente` e `isbn_ausente_pai` saem.
+- **Identidade = `ml_product_id`.** Já é a chave de duplicado no catálogo e no `curator_seen.json`. O ISBN, quando existe, continua sendo checado como duplicado.
+- **Prova de que é livro = `BOOK_TITLE` e `AUTHOR` não vazios na ficha.** Sem eles, o descarte é `nao_livro` (pega a papelaria). Título e autor do candidato vêm desses atributos (escapados no resumo do PR).
+- **Casamento com a Amazon fica para depois:** quando o `isbn` for preenchido à mão no PR ou vier da Creators API (`GetItems`). Sem ISBN, o PR mostra `-` no ISBN e no "ASIN provável", e o `load_catalog` continua exigindo `isbn` em livro com `asin` e `ml_product_id`.
+
 Ids do `BOOK_GENRE` relevantes (de `/categories/MLB437616/attributes`, 2026-10-19):
 - `13061816` Mangas e HQs
 - `13061825` Negócios
@@ -172,12 +183,13 @@ As regras são determinísticas e ficam em constantes no topo do `curator.py`, c
 |---|---|---|
 | Fonte | `/highlights` geral de `MLB437616` e, em segundo, os termos do `/trends` via `/products/search?q=` (o filtro por `BOOK_GENRE` dá 400) | A popularidade vem da própria API |
 | Tipo | Só `PRODUCT`, com `status=active` | Compatível com o coletor (`ml_product_id`) |
-| ISBN | Atributo `GTIN`/`EAN`/`ISBN` da ficha, hífen e espaço removidos, ISBN-10 convertido para 13, `isbn_ok` (978/979 e checksum), e um só ISBN por produto | Casa com a Amazon no futuro e evita ficha errada |
+| Prova de livro | `BOOK_TITLE` e `AUTHOR` não vazios na ficha; senão, `nao_livro` | A categoria tem papelaria (probe 39259800320) |
+| ISBN (opcional) | Ausente: entra sem `isbn`. Presente: atributo `GTIN`/`EAN`/`ISBN` da ficha, hífen e espaço removidos, ISBN-10 convertido para 13, `isbn_ok` (978/979 e checksum), e um só ISBN por produto; senão, `isbn_invalido`/`isbn_multiplo` | A ficha com token de app não traz GTIN (probe 39259800320). Quando vier, casa com a Amazon e evita ficha errada |
 | Condição e moeda | Novo, BRL (`winner`/`best_listing`) | Os afiliados do ML só geram link para produto novo (terceiros: grupozap). É também a regra do coletor |
 | Preço | R$ 15 a R$ 400 | Abaixo disso a comissão não paga o esforço; acima, é box raro (decisão 3) |
-| Idioma | `LANGUAGE` = Português | Público do site (decisão 3) |
+| Idioma | `LANGUAGE` = Português; `LANGUAGE` ausente é descarte (`idioma`) | Público do site (decisão 3) |
 | Nicho | `BOOK_GENRE` mapeado para `GENRES`. Sem mapeamento, o livro é descartado | O `GENRES` é fechado |
-| Duplicado | Fora se o ISBN ou o `ml_product_id` já estiver no catálogo, ou se estiver no `curator_seen.json` há menos de 180 dias | Não insistir no que o Elias recusou |
+| Duplicado | Fora se o `ml_product_id` (a identidade) ou o ISBN, quando houver, já estiver no catálogo, ou se estiver no `curator_seen.json` há menos de 180 dias | Não insistir no que o Elias recusou |
 | Ordem | Posição no ranking (menor primeiro); no empate, maior desconto sobre `original_price` | Mais vendido converte mais |
 | Volume | No máximo 10 por semana, no máximo 4 por nicho, catálogo total ≤ `CATALOG_MAX` = 150 (ativos + pendentes) | "Curadoria, não despejo" (decisão 2). 150 livros × 3 regras cabem com folga no limite de 2.000 do `_redirects` |
 
@@ -196,7 +208,7 @@ Se um dia entrar:
 
 ## 9. Dados
 
-- **`collector/catalog.json`:** ganha o campo opcional `"pendente": true`. Uma entrada pendente tem `id`, `isbn`, `genre`, `title`, `author` e `ml_product_id`. **Pendente com `ml_url` ou `asin` é `Invalid`**, porque é ambíguo. O `_nota` do arquivo e o `BOOK_FIELDS` do `collect.py` são atualizados.
+- **`collector/catalog.json`:** ganha o campo opcional `"pendente": true`. Uma entrada pendente tem `id`, `genre`, `title`, `author`, `ml_product_id` e, quando a ficha trouxer, `isbn`. **Pendente com `ml_url` ou `asin` é `Invalid`**, porque é ambíguo. O `_nota` do arquivo e o `BOOK_FIELDS` do `collect.py` são atualizados.
 - **`collector/curator_seen.json`:** `{ "MLB19698440": "2026-10-19", ... }`, com o `ml_product_id` e a data em que foi sugerido pela primeira vez. Só cresce, é podado depois de 180 dias e fica público no repo (não é dado pessoal).
 - **`id`:** slug ASCII do título (`ID_RE`). Em caso de colisão, ganha o sufixo `-2`. O `id` é estável para sempre (vira deep link), então o Elias pode corrigir no PR, **nunca depois do merge**.
 - **Dado de usuário:** nenhum. Não há LGPD envolvida.
@@ -237,8 +249,8 @@ Se um dia entrar:
    - um pendente com `ml_url` dá `Invalid`.
 5. **Merge sem preencher não quebra o pipeline:** o mesmo teste do critério 4 passa com 100% das entradas novas pendentes.
 6. **Limite de volume:** nenhuma execução sugere mais de 10 livros, nem mais de 4 por nicho, nem passa de `CATALOG_MAX`. Testes com `/highlights` de 20 itens simulado.
-7. **Sem duplicado:** um candidato com ISBN ou `ml_product_id` já no catálogo, ou no `curator_seen.json` há menos de 180 dias, não é sugerido.
-8. **Cada candidato passa por:** ISBN-13 válido (978/979) e igual ao GTIN, novo, BRL, preço na faixa, `genre ∈ GENRES`, `id` com `ID_RE.fullmatch` e único, título e autor por `_text`.
+7. **Sem duplicado:** um candidato com `ml_product_id` ou ISBN (quando houver) já no catálogo, ou no `curator_seen.json` há menos de 180 dias, não é sugerido.
+8. **Cada candidato passa por:** `BOOK_TITLE` e `AUTHOR` na ficha, ISBN-13 válido (978/979) se houver código na ficha, novo, BRL, preço na faixa, `genre ∈ GENRES`, `id` com `ID_RE.fullmatch` e único, título e autor por `_text`.
 9. **Um PR por vez:** com um PR `curator` aberto, a execução sai com código 0 e não abre outro. Com zero candidatos, não abre PR.
 10. **Aprovação humana obrigatória:**
     - o workflow não contém `gh pr merge`, `--admin` nem push para a `main`;
