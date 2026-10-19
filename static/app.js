@@ -27,45 +27,51 @@
     });
   }
 
-  /* Feed: busca, filtro de nicho, ordenação e "carregar mais" sobre os cards que já estão no HTML */
-  const grid = $('.feed'), PAGE = 12;
-  let render = null;
-  if (grid) {
-    const cards = $$(':scope > .card', grid), blocks = $$(':scope > .blk', grid);
-    const full = grid.classList.contains('feed--full');
-    const mais = $('.js-mais'), vazio = $('.vazio'), count = $('#h-ativas + .sec-n'), sel = $('#ordem');
-    const st = { q: '', g: '', order: '', limit: PAGE };
+  /* Feeds (ofertas e novidades): busca, filtro de nicho e ordenação sobre os cards que já estão no HTML.
+     Na home o CSS corta a lista; com busca ou filtro (.filtrando) aparece tudo. Nas páginas completas,
+     "carregar mais" de 12 em 12. */
+  const grids = $$('.feed'), PAGE = 12;
+  const grid = grids[0] || null;
+  if (grids.length) {
+    const st = { q: '', g: '', order: '' };
     const keys = { preco: c => +c.dataset.preco, off: c => -c.dataset.off };
-    $$('.mais a[href="/ofertas/"]').forEach(a => { a.parentNode.hidden = true; });
+    const feeds = grids.map(el => {
+      const sec = el.closest('.sec');
+      return { el, sec, full: el.classList.contains('feed--full'), cards: $$(':scope > .card', el),
+        blocks: $$(':scope > .blk', el), mais: $('.js-mais', sec), vazio: $('.vazio:not(.vazio--fixo)', sec),
+        count: $('.sec-n', sec), limit: PAGE };
+    });
+    const sel = $('#ordem');
     show($('.feed-tools'));
-    render = () => {
-      let list = cards.slice();
+    const render = () => feeds.forEach(f => {
+      const filtrando = Boolean(st.q || st.g);
+      let list = f.cards.slice();
       if (st.order === 'rec') list.sort((a, b) => (a.dataset.rec < b.dataset.rec) - (a.dataset.rec > b.dataset.rec));
       else if (keys[st.order]) list.sort((a, b) => keys[st.order](a) - keys[st.order](b));
       const hits = list.filter(c => (!st.g || c.dataset.g === st.g) && (!st.q || c.dataset.q.includes(st.q)));
+      const max = f.full ? f.limit : Infinity;
+      f.el.classList.toggle('filtrando', filtrando);
       list.forEach(c => {
-        grid.appendChild(c);
+        f.el.appendChild(c);
         const k = hits.indexOf(c);
-        c.hidden = k < 0 || (!full && k >= st.limit);
+        c.hidden = k < 0 || k >= max;
       });
       // Os blocos voltam para a posição de origem, contada entre os cards visíveis
-      const vis = hits.slice(0, full ? hits.length : st.limit);
-      blocks.forEach(b => {
-        b.hidden = Boolean(st.q || st.g);
-        grid.insertBefore(b, vis[+b.dataset.at] || null);
-      });
-      if (mais) mais.hidden = full || hits.length <= st.limit;
-      if (vazio) vazio.hidden = hits.length > 0;
-      if (count) count.textContent = hits.length + ' no momento';
-    };
-    if (sel) sel.addEventListener('change', () => { st.order = sel.value; render(); });
-    if (mais) mais.addEventListener('click', () => {
-      const first = st.limit;
-      st.limit += PAGE;
-      render();
-      const next = cards.filter(c => !c.hidden)[first];
-      if (next) $('.card-title a', next).focus();
+      const vis = hits.slice(0, max);
+      f.blocks.forEach(b => { b.hidden = filtrando; f.el.insertBefore(b, vis[+b.dataset.at] || null); });
+      if (f.mais) f.mais.hidden = !f.full || hits.length <= f.limit;
+      if (f.vazio) f.vazio.hidden = hits.length > 0;
+      else f.sec.hidden = filtrando && !hits.length; // novidades sem resultado: a seção some
+      if (f.count) f.count.textContent = hits.length + ' no momento';
     });
+    if (sel) sel.addEventListener('change', () => { st.order = sel.value; render(); });
+    feeds.forEach(f => f.mais && f.mais.addEventListener('click', () => {
+      const first = f.limit;
+      f.limit += PAGE;
+      render();
+      const next = f.cards.filter(c => !c.hidden)[first];
+      if (next) $('.card-title a', next).focus();
+    }));
     // Filtro sem recarregar: troca o acento global (data-style) e o nicho ativo
     const rail = $('.rail[data-filtro]');
     if (rail) rail.addEventListener('click', e => {
@@ -73,7 +79,7 @@
       if (!a || e.ctrlKey || e.metaKey || e.shiftKey) return;
       e.preventDefault();
       st.g = a.dataset.f;
-      st.limit = PAGE;
+      feeds.forEach(f => { f.limit = PAGE; });
       if (st.g) root.dataset.style = st.g; else delete root.dataset.style;
       $$('a[data-f]', rail).forEach(x => (x === a ? x.setAttribute('aria-current', 'page') : x.removeAttribute('aria-current')));
       render();
@@ -81,10 +87,10 @@
     const busca = $('#q');
     if (busca) busca.addEventListener('input', () => {
       st.q = fold(busca.value);
-      st.limit = PAGE;
+      feeds.forEach(f => { f.limit = PAGE; });
       render();
-      const sec = $('#h-ativas');
-      if (sec && sec.getBoundingClientRect().top > innerHeight * 0.6) sec.scrollIntoView({ block: 'start' });
+      const sec = feeds[0].sec;
+      if (sec.getBoundingClientRect().top > innerHeight * 0.6) sec.scrollIntoView({ block: 'start' });
     });
     render();
   }
