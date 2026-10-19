@@ -1,0 +1,321 @@
+"""Critérios de aceite de docs/produto/curator.md (seção 11). Rede sempre mockada."""
+import io
+import json
+import re
+import socket
+import sys
+from datetime import date
+from pathlib import Path
+from urllib.error import HTTPError
+from urllib.parse import parse_qs, urlsplit
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from collector import collect as c  # noqa: E402
+from collector import curator as cur  # noqa: E402
+
+TODAY = date(2026, 10, 19)
+ML_URL = "https://www.mercadolivre.com.br/social/teste-aff?matt_word=teste-aff&matt_tool=1&ref=X"
+MANGA, NEG, LIT, BIO, AUTOAJUDA = "13061816", "13061825", "7538039", "13611960", "7538148"
+
+
+def isbn(n):
+    base = f"97885{n:07d}"
+    ck = (10 - sum(int(d) * (3 if i % 2 else 1) for i, d in enumerate(base)) % 10) % 10
+    return base + str(ck)
+
+
+def prod(n, genre=MANGA, lang="Português", price=40, cond="new", cur_id="BRL",
+         status="active", orig=None, gtin=None, title=None, author="Autora"):
+    attrs = [{"id": "GTIN", "value_name": gtin if gtin is not None else isbn(n)},
+             {"id": "LANGUAGE", "value_name": lang},
+             {"id": "BOOK_TITLE", "value_name": title or f"Livro {n}"}]
+    if genre:
+        attrs.append({"id": "BOOK_GENRE", "value_id": genre, "value_name": "x"})
+    if author:
+        attrs.append({"id": "AUTHOR", "value_name": author})
+    w = {"item_id": f"MLB9{n}", "price": price, "currency_id": cur_id, "condition": cond}
+    if orig:
+        w["original_price"] = orig
+    return {"id": f"MLB{n}", "status": status, "name": f"Nome {n}", "attributes": attrs,
+            "buy_box_winner": w}
+
+
+class Resp(io.BytesIO):
+    def __init__(self, body, ctype="application/json;charset=UTF-8"):
+        super().__init__(json.dumps(body).encode())
+        self.headers = {"Content-Type": ctype}
+
+
+class FakeML:
+    def __init__(self):
+        self.urls = []
+        self.hl = {None: []}       # BOOK_GENRE (ou None = geral) -> content
+        self.products = {}
+        self.items = {}
+        self.ctype = "application/json;charset=UTF-8"
+
+    def rank(self, *pids, genre=None):
+        self.hl[genre] = [{"id": p, "position": i, "type": "PRODUCT"}
+                          for i, p in enumerate(pids, 1)]
+
+    def __call__(self, req, timeout=None):
+        assert timeout and timeout > 0
+        assert req.get_header("User-agent", "").startswith("ofertaslivros-coletor/")
+        self.urls.append(req.full_url)
+        u = urlsplit(req.full_url)
+        q = parse_qs(u.query)
+        if u.path == "/oauth/token":
+            return Resp({"access_token": "APP_USR-sentinela"})
+        if u.path == f"/highlights/MLB/category/{cur.CATEGORY}":
+            g = q.get("attributeValue", [None])[0]
+            if g not in self.hl:
+                raise HTTPError(req.full_url, 404, "x", {}, None)
+            return Resp({"query_data": {}, "content": self.hl[g]}, self.ctype)
+        if u.path.endswith("/items"):
+            pid = u.path.split("/")[2]
+            if pid not in self.items:
+                raise HTTPError(req.full_url, 404, "x", {}, None)
+            return Resp(self.items[pid])
+        if u.path.startswith("/products/search"):
+            return Resp({"paging": {"total": 1}, "results": [{"id": "MLB1", "name": "x"}]})
+        if u.path.startswith("/trends/"):
+            return Resp([{"keyword": "x", "url": "https://lista.mercadolivre.com.br/x"}])
+        if u.path.startswith("/products/"):
+            return Resp(self.products[u.path.rsplit("/", 1)[1]])
+        raise AssertionError(f"rota inesperada {u.path}")
+
+
+@pytest.fixture
+def env(tmp_path, monkeypatch):
+    fake = FakeML()
+    monkeypatch.setattr(c, "_urlopen", fake)
+    monkeypatch.setattr(c.time, "sleep", lambda s: None)
+
+    def no_socket(host, *a, **k):
+        raise AssertionError(f"rede real chamada: {host}")
+    monkeypatch.setattr(socket, "getaddrinfo", no_socket)
+    monkeypatch.setenv("ML_CLIENT_ID", "id")
+    monkeypatch.setenv("ML_CLIENT_SECRET", "segredo")
+    monkeypatch.setenv("ML_AFFILIATE_ID", "teste-aff")
+    cat = tmp_path / "catalog.json"
+    cat.write_text(json.dumps({"_nota": "x", "books": [
+        {"id": "ja-tenho", "isbn": isbn(999), "ml_product_id": "MLB999", "ml_url": ML_URL,
+         "title": "Já tenho", "author": "A", "genre": "ficcao"}]}))
+    seen = tmp_path / "curator_seen.json"
+    md = tmp_path / "pr.md"
+
+    def suggest(**kw):
+        return cur.suggest(catalog=cat, seen_path=seen, summary_path=md, today=TODAY, **kw)
+
+    def books():
+        return json.loads(cat.read_text())["books"]
+
+    def add(*prods, genre=None):
+        for p in prods:
+            fake.products[p["id"]] = p
+        fake.rank(*(p["id"] for p in prods), genre=genre)
+    return {"fake": fake, "cat": cat, "seen": seen, "md": md, "suggest": suggest,
+            "books": books, "add": add}
+
+
+def new_ids(env):
+    return [b["ml_product_id"] for b in env["books"]() if b.get("pendente")]
+
+
+# ---- filtros (critérios 7 e 8) ----
+
+def test_candidato_bom_vira_pendente_sem_link(env):
+    env["add"](prod(1, orig=50))
+    assert env["suggest"]() == 0
+    b = env["books"]()[-1]
+    assert b == {"id": "livro-1", "isbn": isbn(1), "genre": "manga", "title": "Livro 1",
+                 "author": "Autora", "ml_product_id": "MLB1", "pendente": True}
+    assert "ml_url" not in env["cat"].read_text().split("ja-tenho")[1].split("livro-1")[1]
+    assert json.loads(env["seen"].read_text()) == {"MLB1": "2026-10-19"}
+    assert c.read_catalog(env["cat"])[0]["id"] == "ja-tenho"  # pendente fora da coleta
+
+
+@pytest.mark.parametrize("kw", [
+    {"status": "inactive"}, {"lang": "Inglês"}, {"genre": AUTOAJUDA}, {"genre": None},
+    {"cond": "used"}, {"cur_id": "USD"}, {"price": 14.99}, {"price": 400.01},
+    {"author": None}, {"gtin": ""}, {"gtin": "9788500000000"},  # dígito errado
+    {"gtin": f"{isbn(1)},{isbn(2)}"},  # dois ISBNs na ficha
+])
+def test_filtros_descartam(env, kw):
+    env["add"](prod(1, **kw))
+    assert env["suggest"]() == 0
+    assert new_ids(env) == [] and not env["md"].exists()
+
+
+def test_faixa_de_preco_inclusiva(env):
+    env["add"](prod(1, price=15), prod(2, price=400))
+    env["suggest"]()
+    assert new_ids(env) == ["MLB1", "MLB2"]
+
+
+def test_sem_genero_na_ficha_usa_o_da_lista(env):
+    env["add"](prod(1, genre=None), genre=NEG)
+    env["suggest"]()
+    assert env["books"]()[-1]["genre"] == "negocios"
+
+
+def test_vencedor_usado_cai_para_o_menor_anuncio_novo(env):
+    p = prod(1, cond="used")
+    env["add"](p)
+    env["fake"].items["MLB1"] = {"results": [
+        {"item_id": "MLB71", "condition": "new", "currency_id": "BRL", "price": 55},
+        {"item_id": "MLB72", "condition": "new", "currency_id": "BRL", "price": 45}]}
+    env["suggest"]()
+    assert new_ids(env) == ["MLB1"] and "45,00 |" in env["md"].read_text()
+
+
+def test_sem_duplicado(env):
+    env["seen"].write_text(json.dumps({"MLB2": "2026-09-01", "MLB3": "2026-01-01"}))
+    env["add"](prod(999), prod(1, gtin=isbn(999)), prod(2), prod(3), prod(4, gtin=isbn(3)))
+    env["suggest"]()
+    # 999 no catálogo; 1 com ISBN do catálogo; 2 visto há < 180 dias; 3 visto há > 180
+    # dias volta; 4 tem o mesmo ISBN do 3 e fica de fora
+    assert new_ids(env) == ["MLB3"]
+    assert json.loads(env["seen"].read_text()) == {"MLB2": "2026-09-01", "MLB3": "2026-10-19"}
+
+
+def test_so_product_entra(env):
+    env["fake"].products["MLB1"] = prod(1)
+    env["fake"].hl[None] = [{"id": "MLB1", "position": 1, "type": "PRODUCT"},
+                            {"id": "MLBU123", "position": 2, "type": "USER_PRODUCT"},
+                            {"id": "MLB5", "position": 3, "type": "ITEM"},
+                            {"id": "MLB6/../x", "position": 4, "type": "PRODUCT"}]
+    env["suggest"]()
+    assert new_ids(env) == ["MLB1"]
+    assert not any("MLB5" in u or "MLB6" in u for u in env["fake"].urls)
+
+
+# ---- limites (critério 6) ----
+
+def test_limite_por_nicho(env):
+    env["add"](*(prod(n) for n in range(1, 21)))  # 20 mangás
+    env["suggest"]()
+    assert new_ids(env) == ["MLB1", "MLB2", "MLB3", "MLB4"]
+
+
+def test_limite_semanal_e_ordem(env):
+    gens = [MANGA, NEG, LIT, BIO]
+    ps = [prod(n, genre=gens[n % 4], orig=40 + n) for n in range(1, 21)]
+    env["add"](*ps)
+    env["fake"].rank(*(p["id"] for p in reversed(ps)), genre=MANGA)  # 20 na posição 1
+    env["suggest"]()
+    got = new_ids(env)
+    assert len(got) == 10
+    assert got[0] == "MLB20"  # posição 1 nas duas listas, maior desconto no empate
+
+
+def test_teto_do_catalogo(env):
+    doc = json.loads(env["cat"].read_text())
+    doc["books"] += [{"id": f"p-{n}", "ml_product_id": f"MLB5{n:03d}", "pendente": True,
+                      "title": "t", "author": "a", "genre": "ficcao"} for n in range(146)]
+    env["cat"].write_text(json.dumps(doc))
+    env["add"](*(prod(n, genre=[MANGA, NEG][n % 2]) for n in range(1, 21)))
+    env["suggest"]()
+    assert len(env["books"]()) == cur.CATALOG_MAX
+
+
+def test_catalogo_no_teto_nem_chama_a_rede(env):
+    doc = json.loads(env["cat"].read_text())
+    doc["books"] += [{"id": f"p-{n}", "ml_product_id": f"MLB5{n:03d}", "pendente": True,
+                      "title": "t", "author": "a", "genre": "ficcao"} for n in range(149)]
+    env["cat"].write_text(json.dumps(doc))
+    assert env["suggest"]() == 0 and env["fake"].urls == []
+
+
+def test_catalogo_invalido_nao_comeca(env):
+    env["cat"].write_text(json.dumps({"books": [{"id": "x", "pendente": True}]}))
+    with pytest.raises(c.Invalid):
+        env["suggest"]()
+    assert env["fake"].urls == []
+
+
+# ---- nunca escreve link, nunca Amazon, nunca HTML (critérios 1 a 3) ----
+
+def test_so_api_do_ml_e_nenhum_html(env):
+    env["add"](*(prod(n, genre=[MANGA, NEG, LIT][n % 3]) for n in range(1, 12)))
+    env["suggest"]()
+    cur.probe()
+    assert {urlsplit(u).hostname for u in env["fake"].urls} == {"api.mercadolibre.com"}
+    src = (ROOT / "collector" / "curator.py").read_text()
+    assert "amazon." not in src.lower()
+    for bad in ("html.parser", "bs4", "BeautifulSoup", "playwright", "selenium"):
+        assert bad not in src
+    for b in env["books"]()[1:]:
+        assert "ml_url" not in b and "asin" not in b
+
+
+def test_resposta_html_aborta(env):
+    env["add"](prod(1))
+    env["fake"].ctype = "text/html; charset=utf-8"
+    assert env["suggest"]() == 1
+    assert new_ids(env) == [] and "/products/MLB1" not in " ".join(env["fake"].urls)
+
+
+# ---- corpo do PR (critério 11) ----
+
+def test_markdown_escapado(env):
+    evil = "[clique](https://evil.example/x) <img src=x> | `rm` @elias \\ fim"
+    env["add"](prod(1, title=evil, author="<b>@x</b>"))
+    env["suggest"]()
+    md = env["md"].read_text()
+    row = next(ln for ln in md.splitlines() if ln.startswith("| 1 |"))
+    cells = row.split(" | ")
+    assert len(row.split("|")) == 12  # nenhum | extra quebrou a tabela
+    for cell in cells[1:3]:
+        assert re.fullmatch(r"`[^`]+`", cell)
+        assert not set(cell[1:-1]) & set("[]()<>|`@\\")
+    # fora dos code spans, toda URL é a montada pelo código
+    outside = re.sub(r"`[^`\n]*`", "", md)
+    assert re.findall(r"https?://\S+", outside) == ["https://www.mercadolivre.com.br/p/MLB1"] * 2
+    assert "evil" not in outside and len(md) <= cur.SUMMARY_MAX
+    # o catálogo guarda o título original (o build escapa no HTML)
+    assert env["books"]()[-1]["title"] == evil
+
+
+def test_slug_e_asin_provavel():
+    taken = {"livro"}
+    assert cur.slug("Mangá: Ação & Cia!", taken) == "manga-acao-cia"
+    assert cur.slug("Mangá ação cia", taken) == "manga-acao-cia-2"
+    assert cur.slug("???", taken) == "livro-2"
+    s = cur.slug("x" * 200, taken)
+    assert len(s) <= c.ID_MAX and c.ID_RE.fullmatch(s)
+    assert cur.asin_provavel("9780306406157") == "0306406152"
+    assert cur.asin_provavel("9791234567896") == "-"
+
+
+# ---- probe e segredos (critérios 12 e 13) ----
+
+def test_probe_status_e_contagens_sem_conteudo(env, capsys):
+    env["add"](prod(1), prod(2))
+    assert cur.probe() == 0
+    out = capsys.readouterr().out
+    assert "highlights geral: /highlights/MLB/category/MLB437616 -> 200" in out
+    assert "content=2 tipos=PRODUCT:2" in out
+    assert f"highlights BOOK_GENRE={MANGA}: " in out and "-> 404" in out
+    assert "products/search isbn: /products/search -> 200" in out and "total=1" in out
+    assert "trends: /trends/MLB/MLB437616 -> 200" in out
+    assert "Livro" not in out and "lista.mercadolivre" not in out and "MLB1" not in out
+
+
+def test_token_fora_do_log(env, capsys):
+    env["add"](prod(1))
+    cur.probe()
+    env["suggest"]()
+    out = capsys.readouterr()
+    for s in ("sentinela", "segredo"):
+        assert s not in out.out and s not in out.err
+        assert s not in env["md"].read_text()
+
+
+def test_sem_credenciais_falha_sem_rede(env, monkeypatch):
+    monkeypatch.delenv("ML_CLIENT_SECRET")
+    assert env["suggest"]() == 1 and cur.probe() == 1
+    assert env["fake"].urls == []
