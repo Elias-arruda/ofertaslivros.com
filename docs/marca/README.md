@@ -1,5 +1,16 @@
 # Marca: decisões (2026-10-18)
 
+> **Atualização 2026-10-19 (visual v2, `spec-visual.md`):** o site passou a usar o logo B, um wordmark "ofertas**livros**.com" em curvas: "ofertas" leve, "livros" pesado e o carimbo no lugar do "o" de livros. Ele substitui o Carimbo horizontal no topo e no favicon. Os arquivos estão em `logos/`:
+>
+> | Arquivo | Uso |
+> |---|---|
+> | `wordmark-b.svg` | topo e rodapé no tema claro (`static/logo.svg`) |
+> | `wordmark-b-negativo.svg` | blocos marinho; no `static/logo-negativo.svg` o `<rect>` de fundo foi tirado, para servir também ao tema escuro (#0f1729) sem desenhar uma caixa |
+> | `wordmark-b-mono.svg` | impressão |
+> | `favicon-32.svg` (`static/favicon.svg`), `favicon-16.svg` | favicon |
+>
+> A paleta e a tipografia v2 estão em `paletas.md` (seção "Visual v2") e em `static/fonts/SOURCES.md`. O `contraste.py` agora está no repo.
+
 Material do `brand-designer`. A pesquisa está em `pesquisa.md`, as paletas e o contraste em `paletas.md` e as técnicas de layout em `layout.md`. O `contraste.py` citado em `paletas.md` e as pranchetas (`*.dc.html`) ficaram fora do repo.
 
 ## Logo: "Carimbo de verificado"

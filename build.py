@@ -733,12 +733,12 @@ def internal(href, label, here):
     return f'<a href="{href}"{cur}>{label}</a>'
 
 
-# ponytail: o texto do logotipo usa fonte do sistema dentro do SVG (muda por aparelho);
-# converter em curvas na rodada de refinamento da marca (docs/marca/README.md).
-def brand(tag="p", src="/logo.svg"):
-    """Logo "Carimbo" (360x72). Na home é o h1; nas outras páginas, um <p> acima do h1."""
-    return (f'<{tag} class="brand"><a href="/"><img src="{src}" alt="Ofertas Livros" '
-            f'width="200" height="40"></a></{tag}>')
+def brand(cls="brand"):
+    """Logo B (wordmark em curvas, 274x32). Duas imagens: a positiva no tema claro e a negativa
+    (sem fundo) no escuro; o CSS mostra uma só, então o leitor de tela lê um nome só."""
+    return (f'<a class="{cls}" href="/"><img class="logo-claro" src="/logo.svg" alt="Ofertas Livros" '
+            'width="274" height="32"><img class="logo-escuro" src="/logo-negativo.svg" alt="Ofertas Livros" '
+            'width="274" height="32"></a>')
 
 
 def foot(ch, here=""):
@@ -747,7 +747,7 @@ def foot(ch, here=""):
         links = " ou no ".join(ext(url, name) for name, url in ch)
         follow = f'\n  <p>Siga as ofertas no {links}. {internal("/canais/", "Sobre os canais", here)}</p>'
     return f"""<footer class="foot">
-  {brand(src="/logo-negativo.svg")}
+  {brand("brand brand--foot")}
   <p>Como associado da Amazon, ganhamos com compras qualificadas. Também participamos do programa de afiliados do Mercado Livre. Preços verificados no horário indicado; o preço final é o da loja.</p>{follow}
   <p>{internal("/privacidade/", "Privacidade", here)}</p>
 </footer>"""
@@ -795,7 +795,7 @@ def page(all_offers, genre=None, bot=None, ch=()):
     latest = max(o["checked_at"] for o in offers)
     cards = "\n".join(card(o, bot) for o in offers)
     n = len(offers)
-    head = (f'{brand()}\n<h1>{e(GENRES[genre])}</h1>' if genre else brand("h1"))
+    head = (f'{brand()}\n<h1>{e(GENRES[genre])}</h1>' if genre else f"{brand()}\n<h1>Livros que baixaram de verdade</h1>")
     mast = f"""{head}
 <p class="lede">Só entra aqui livro que baixou de preço de verdade. Conferimos cada um na loja e comparamos com o histórico de preço.</p>
 <p class="status">{n} {"oferta ativa" if n == 1 else "ofertas ativas"}.</p>

@@ -130,3 +130,20 @@ em { font-style: italic; font-family: var(--serif); font-variation-settings: "SO
 .i { width: 1.15em; height: 1.15em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .tnum { font-variant-numeric: tabular-nums lining-nums; }
 @media (max-width: 640px) { body { font-size: 15px; } }
+
+/* ---------- 2. Logo B ---------- */
+/* Wordmark 8,5:1. A 72 px de altura ele tem 610 px de largura: cabe no desktop, não no celular.
+   Até 640 px a largura manda (desvio da spec, que pede 56/46 px de altura). */
+.brand { display: inline-flex; align-items: center; min-height: 44px; flex: none; }
+.brand img { height: 72px; width: auto; }
+.logo-escuro { display: none; }
+:root[data-theme="dark"] .logo-claro { display: none; }
+:root[data-theme="dark"] .logo-escuro { display: block; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .logo-claro { display: none; }
+  :root:not([data-theme="light"]) .logo-escuro { display: block; }
+}
+@media (max-width: 1100px) { .brand img { height: 56px; } }
+@media (max-width: 900px) { .brand img { height: 40px; } }
+@media (max-width: 640px) { .brand img { height: auto; width: min(52vw, 240px); } }
+@media (max-width: 400px) { .brand img { width: min(48vw, 190px); } }
