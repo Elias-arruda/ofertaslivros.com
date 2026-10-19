@@ -39,3 +39,9 @@ Antes de cada um: abra o repo no GitHub, leia o SKILL.md e veja se ele roda scri
 
 ## 4. Testar o hook
 Peça ao Claude para escrever `API_KEY = "abcdefghijklmnop1234"` num arquivo .py. A escrita deve ser bloqueada.
+
+## 5. Curator (docs/produto/curator.md), setup único
+1. Settings > Actions > General: ligar "Allow GitHub Actions to create and approve pull requests" (o `gh pr create` do curator precisa).
+2. Settings > Rules: ruleset na `main` exigindo PR e o check `catalog-check`. É isso que impede o `contents: write` do curator de chegar na `main`.
+3. Conferir no painel de afiliados do ML, logado: termos sobre editar link e automação, se o Gerador aceita várias URLs, e se site, Telegram e WhatsApp estão declarados como canais. Fazer antes do primeiro merge de candidatos.
+4. Actions > curator > Run workflow com `mode=probe`. Se `/highlights` der 200, rodar com `mode=suggest`.

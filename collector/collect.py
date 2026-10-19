@@ -57,7 +57,8 @@ MANUAL_CSV = HERE / "amazon_prices.csv"
 
 ID_MAX = 57  # deep link do Telegram aceita 64; folga para prefixo futuro
 STORES = ("amazon", "mercadolivre")
-BOOK_FIELDS = {"id", "isbn", "genre", "title", "author", "asin", "ml_product_id", "ml_url"}
+BOOK_FIELDS = {"id", "isbn", "genre", "title", "author", "asin", "ml_product_id", "ml_url",
+               "pendente"}
 PUBLIC_FIELDS = ("id", "title", "author", "genre")  # export: sem ids de loja nem URL
 ISBN_RE = re.compile(r"97[89][0-9]{10}")
 # Só o CDN de imagem do ML (é o que a CSP libera em img-src); sem query, aspas ou espaço.
@@ -95,7 +96,10 @@ def isbn_ok(s):
             and sum(int(d) * (3 if i % 2 else 1) for i, d in enumerate(s)) % 10 == 0)
 
 
-def load_catalog(doc):
+def load_catalog(doc, include_pending=False):
+    """Valida o catálogo inteiro (pendentes inclusos: id/isbn/produto únicos entre todos).
+    Pendente ("pendente": true, sugerido pelo curator) não tem ml_url nem asin e fica fora
+    da coleta e do ar; só volta na lista com include_pending=True (uso do curator)."""
     if not isinstance(doc, dict) or not isinstance(doc.get("books"), list) or not doc["books"]:
         raise Invalid('catálogo precisa ser {"books": [...]} não vazio')
     aff = ml_affiliate()
@@ -122,14 +126,25 @@ def load_catalog(doc):
                 if not isinstance(b["asin"], str) or not ASIN_RE.fullmatch(b["asin"]):
                     raise Invalid(f"asin inválido: {b['asin']!r}")
                 out["asin"] = b["asin"]
-            if ("ml_product_id" in b) != ("ml_url" in b):
+            pend = "pendente" in b
+            if pend:
+                if b["pendente"] is not True:
+                    raise Invalid("pendente só aceita true (para publicar, apague o campo)")
+                if "ml_url" in b or "asin" in b:
+                    raise Invalid("pendente não pode ter ml_url nem asin: troque "
+                                  '"pendente": true pelo ml_url do painel')
+                if "ml_product_id" not in b:
+                    raise Invalid("pendente precisa de ml_product_id")
+                out["pendente"] = True
+            elif ("ml_product_id" in b) != ("ml_url" in b):
                 raise Invalid("ml_product_id e ml_url andam juntos")
             if "ml_product_id" in b:
                 pid = b["ml_product_id"]
                 if not isinstance(pid, str) or not MLB_RE.fullmatch(pid):
                     raise Invalid(f"ml_product_id inválido: {pid!r}")
                 out["ml_product_id"] = pid
-                out["ml_url"] = ml_url(b["ml_url"], aff)
+                if not pend:
+                    out["ml_url"] = ml_url(b["ml_url"], aff)
             if "asin" not in out and "ml_product_id" not in out:
                 raise Invalid("livro precisa de asin e/ou ml_product_id")
             if "asin" in out and "ml_product_id" in out and "isbn" not in out:
@@ -143,7 +158,12 @@ def load_catalog(doc):
         except Invalid as e:
             raise Invalid(f"books[{i}]: {e}") from None
         books.append(out)
-    return books
+    if include_pending:
+        return books
+    for b in books:
+        if b.get("pendente"):
+            print(f"catálogo: {b['id']} pendente (sem ml_url), fora da coleta e do ar")
+    return [b for b in books if not b.get("pendente")]
 
 
 def read_catalog(path=None):
@@ -332,6 +352,10 @@ def ml_request(path, token=None, form=None, deadline=None, clock=time.monotonic,
         timeout = TIMEOUT if left is None else min(TIMEOUT, left)
         try:
             with _urlopen(Request(url, data=data, headers=_headers(token)), timeout=timeout) as r:
+                h = getattr(r, "headers", None)  # resposta real sempre tem; o BytesIO dos testes não
+                if h is not None and not (h.get("Content-Type") or "").startswith(
+                        "application/json"):
+                    raise MLError(f"resposta não é JSON em {where}")  # HTML nunca é lido
                 return json.loads(r.read(MAX_BYTES), parse_float=Decimal)
         except HTTPError as e:
             if (e.code != 429 and e.code < 500) or attempt == RETRIES:
