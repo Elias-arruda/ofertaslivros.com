@@ -12,11 +12,11 @@
      "store": "mercadolivre",
      "ml_product_id": "MLB19698440",
      "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=elias-arruda&matt_tool=31781474&forceInApp=true&ref=BABPW5QJ0odTXWLmeH%2BNzr0QbL7ZIDCuvN7%2BKTQsNjlhiKx%2FD58rpHe6BWvePfiZ1lha9JpchE3s0ms5U2jdhVZb%2Fo0RWkLt92bo0Ts%2BDRHMz1vasai0T%2B93%2BXx5%2F0LrNSqKM8sGUcdm7JXT%2BwlOxthZgWPaqL9Cc0B88pd6tZYr4QZ13e9KRJhHjbPVs%2BvkNl3yTDXXcyxbwrnj5KmLUT2fjOTIW6eFFAaSVRbE4hkkZVs2lrHekmlIB7rvqK%2F3lVJbTQ%3D%3D",
-     "price_cents": 14368,
-     "list_price_cents": 24490,
-     "lowest_90d_cents": 14368,
+     "price_cents": 14000,
+     "list_price_cents": 14000,
+     "lowest_90d_cents": 14000,
      "history_since": "2026-10-18",
-     "checked_at": "2026-10-18T23:58:43+00:00"
+     "checked_at": "2026-10-19T03:55:08+00:00"
     }
    ]
   },
@@ -35,7 +35,7 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 3992,
      "history_since": "2026-10-18",
-     "checked_at": "2026-10-18T23:58:43+00:00"
+     "checked_at": "2026-10-19T03:55:08+00:00"
     }
    ]
   }

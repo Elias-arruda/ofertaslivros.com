@@ -1,3 +1,5 @@
 book_id,store,price_cents,list_price_cents,checked_at,source
 irmao-do-jorel,mercadolivre,3992,6490,2026-10-18T23:58:43+00:00,ml_api
 senhor-dos-aneis-box-trilogia,mercadolivre,14368,24490,2026-10-18T23:58:43+00:00,ml_api
+senhor-dos-aneis-box-trilogia,mercadolivre,14000,14000,2026-10-19T03:55:08+00:00,ml_api
+irmao-do-jorel,mercadolivre,3992,6490,2026-10-19T03:55:08+00:00,ml_api
