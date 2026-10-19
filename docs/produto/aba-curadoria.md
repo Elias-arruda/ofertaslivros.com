@@ -128,7 +128,7 @@ Critério "em oferta" (`python3 build.py --selftest`, sem rede):
 1. Loja vencedora com menos de 30 dias de histórico: oferta se e só se o "de/por" dá ≥ 10%. É o comportamento de hoje.
 2. Com 30 dias ou mais e `median_90d_cents`: oferta se `price_cents ≤ 0,85 × median_90d_cents` ou selo `"90d"`; um "de/por" de 40% sem isso **não** é oferta.
 3. Com 30 dias ou mais e sem `median_90d_cents`: cai na regra do critério 1.
-4. Amazon vencedora com `coverage_90d` < 0,8: regra do critério 1.
+4. Amazon vencedora: regra do critério 1 enquanto a cobertura mínima da série manual não for decidida (`curator.md` §14, decisão 3); decidida, a série abaixo dela continua na regra do critério 1.
 5. "Menor preço desde" (selo `"since"`) não torna o livro oferta.
 
 Página e vitrine:
@@ -186,4 +186,4 @@ Proposta:
 3. **Nome da seção "Destaques da curadoria" da home:** (a) **renomear para "Destaques" (recomendado)**, para não confundir com a área; (b) manter.
 4. **Números do critério "em oferta"** (decisão de produto derivada da escolha A, §10.8): (a) **10% no "de/por", 30 dias, 85% da mediana dos dias 8 a 90, ou o selo de 90 dias (recomendado)**; (b) ajustar algum deles.
 5. **Texto exato do CLAUDE.md:** aprovar a redação da seção 13 ou ajustar.
-6. **Pendências do CLAUDE.md que afetam a área:** a Creators API ainda não liberada mantém a Amazon manual, com histórico esparso (a regra de cobertura de 80% decide), e a pergunta por escrito aos Associados (decisão 7 de §10.6) vale também para a mediana da Amazon. Nada a decidir agora; fica registrado.
+6. **Pendências do CLAUDE.md que afetam a área:** a Creators API ainda não liberada mantém a Amazon manual, com histórico esparso, e a pergunta por escrito aos Associados (decisão 7 de §10.6) vale também para a mediana da Amazon. A cobertura mínima da série manual é a decisão 3 de `curator.md` §14; até ela sair, a Amazon só vira oferta pelo "de/por".

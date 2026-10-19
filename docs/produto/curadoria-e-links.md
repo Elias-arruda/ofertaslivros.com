@@ -59,7 +59,7 @@ Catálogo é a lista monitorada (`collector/catalog.json`). Pela decisão A do E
 
 - **Da vitrine de ofertas** (o livro segue na área Curadoria): deixou de estar em oferta pelo critério da §10.8.
 - **Do site** (o livro continua no catálogo): nenhuma loja elegível pelo frescor, item pausado ou encerrado e, só depois da calibração, `score < 60` por 2 execuções (§10.3). Isso também cumpre o item 5.2 do ML.
-- **Do catálogo:** GTIN deixou de bater com o ISBN; link de afiliado inválido ou recusado no build; 30 dias sem nenhum item novo ativo em nenhuma loja (sinal de edição esgotada); 180 dias sem entrar na vitrine e sem sinal de demanda. Retirada registrada com motivo e componentes (§5, auditoria).
+- **Do catálogo:** GTIN deixou de bater com o ISBN; link de afiliado inválido ou recusado no build; 30 dias sem nenhum item novo ativo em nenhuma loja (sinal de edição esgotada; é a leitura provisória do "30 dias sem oferta" de `curadoria-automatica.md` §10.7, decisão 4, e §10.8, item 6). ~~180 dias sem entrar na vitrine e sem sinal de demanda~~ *Substituído pela §10.8, item 6, que deixa em aberto a retirada por falta de oferta (`aba-curadoria.md` §14, decisão 1).* Retirada registrada com motivo e componentes (§5, auditoria).
 - **O `id` nunca é reaproveitado**, mesmo depois da retirada (gate 9).
 
 ### A.4 Gêneros

@@ -467,7 +467,7 @@ Respostas do Elias às 14 decisões, registradas no fim do dia. **Substituem** o
 - pedir o acesso à Google Trends API alpha (item 8) → Elias;
 - conciliar `docs/produto/curator.md` e `collector/curator.py` com estas decisões. Estão desatualizados: `WEEK_MAX=10` e `GENRE_MAX=4` (10 por semana, 4 por nicho) contra 50 por dia e 10 por gênero; um `GENRE_MAP` com 5 gêneros e sem `autoajuda` contra os 10 com `estudo`; sem `tags` → `product-manager` (spec) e quem implementar a entrega 2 (código);
 - campo `tags` no contrato v2 (`comparacao-lojas.md`) e no `load_catalog` → `product-manager` e `collector-engineer`; diff do `GENRES`/`TAGS` no `build.py` → `frontend-developer`;
-- regra de cobertura de 80% para o selo de 90 dias da Amazon (§10.5) → `product-manager` e `collector-engineer`;
+- cobertura mínima da série manual da Amazon para o selo de 90 dias e para o critério "em oferta" (§10.5; proposta de 80% em `curator.md` 5.7) → Elias (`curator.md` §14, decisão 3); implementação → `collector-engineer` e `frontend-developer`;
 - ~~teto de vitrine ativa por causa do limite de 2.000 regras do `_redirects`~~ decidido na §10.7, decisão 4 (500 ativos, regras compactadas); teto diário da fila da Amazon (gate 8) → Elias (`curator.md` §14).
 
 ### 10.7 Decisões do Elias (2026-10-19, segunda rodada)
@@ -509,7 +509,8 @@ Prevalece sobre todo o resto desta spec e sobre `curadoria-e-links.md`, `curator
 1. **Opção A: o livro entra no catálogo publicado pelos gates de validade** (§10.7, decisão 2), sem bloqueio por desconto e sem bloqueio pelo score. Isso resolve o conflito com `curadoria-e-links.md` A.2, linha "Desconto real": o desconto mínimo deixa de decidir quem entra e passa a decidir só quem aparece como oferta (item 3).
 2. **Onde o livro publicado aparece:**
    - **Área "Curadoria"** (`/curadoria/`, spec em `aba-curadoria.md`): todos os livros publicados com loja dentro do frescor, com ou sem desconto.
-   - **Vitrine de ofertas** (home: hero, destaques e ofertas ativas; páginas de nicho e de tag; posts dos canais): só os livros **em oferta** (item 3). É o que mais se busca no site.
+   - **Vitrine de ofertas** (home: destaques e ofertas ativas; páginas de nicho e de tag; posts dos canais): só os livros **em oferta** (item 3). É o que mais se busca no site.
+   - **Hero da home:** ofertas primeiro; com menos de 5 ofertas, continua completando com livros sem oferta, como já faz a `main`. Provisório: está em aberto em `aba-curadoria.md` §14, decisão 2.
    - Livro sem nenhuma loja fresca sai dos dois lugares, como hoje (`build.py:resolve`).
 3. **Critério "em oferta"** (decisão de produto derivada da escolha do Elias, tomada pelo `product-manager`; o Elias pode ajustar os números). Avaliado na loja vencedora (menor preço entre as lojas frescas, como no `resolve`):
 
@@ -520,7 +521,7 @@ Prevalece sobre todo o resto desta spec e sobre `curadoria-e-links.md`, `curator
 
    - A mediana usa os dias 8 a 90 (anti-maquiagem de `curadoria-e-links.md` A.2): uma alta logo antes da "promoção" não infla o desconto. Valor por dia: o menor preço daquele dia BRT na loja.
    - "Menor preço desde DD/MM" (menos de 90 dias) continua aparecendo como informação, mas **não promove a oferta**, como já decidido no commit 180471e.
-   - Amazon manual: a série da Amazon só usa a linha "30 dias ou mais" se tiver a cobertura mínima de `curator.md` 5.7 (80% dos dias); abaixo disso, vale o "de/por".
+   - Amazon manual: a cobertura mínima da série manual ainda está em aberto (`curator.md` §14, decisão 3; proposta de 80% dos dias em 5.7). Até o Elias decidir, a Amazon vencedora usa sempre a linha "menos de 30 dias" (o "de/por"). Decidida a cobertura, a série que a atingir passa a usar a linha "30 dias ou mais".
    - Dado novo: `median_90d_cents` por loja no `offers.json`, calculado pelo coletor a partir do `price_history`, opcional no contrato v2 (`comparacao-lojas.md`). Sem ele, o build cai na regra de menos de 30 dias.
 4. **Score:** continua em sombra, só como nota (§10.3). Ele não decide nem a publicação nem o "em oferta".
 5. **Volume (conciliação de texto):** até 50 livros novos publicados por dia, até 10 por gênero, configuráveis. Os 50 são meta e teto: entram menos se menos passarem nos gates, e nunca mais de 50, porque cada livro custa um link manual do ML e o teto de 500 ativos (§10.7, decisão 4) enche em 10 dias.
