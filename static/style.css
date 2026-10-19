@@ -803,3 +803,103 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
   /* sem a barra animada não há animationend: o carrossel não avança sozinho */
   .hero.js .segs li.on i::after { animation: none !important; transform: scaleX(1); }
 }
+
+/* ---------- 14. Novidades e home curta ---------- */
+.nov-nota { margin-top: 12px; max-width: 46ch; font-size: 15px; color: var(--muted); }
+.vazio--fixo a { font-weight: 600; color: var(--text); text-decoration-color: var(--accent); text-underline-offset: 3px; }
+/* Home: o CSS corta a lista e o "Ver todas" leva à página completa. Buscando ou filtrando (.filtrando,
+   posta pelo app.js), aparece tudo e o link some. */
+.feed--home:not(.filtrando) > .card:nth-child(n+25 of .card) { display: none; }
+.feed--nov.feed--home:not(.filtrando) > .card:nth-child(n+13 of .card) { display: none; }
+.mais--m, .feed.filtrando ~ .mais { display: none; }
+@media (max-width: 640px) {
+  .mais--m { display: flex; }
+  .feed--home:not(.filtrando) > .card:nth-child(n+5 of .card) { display: none; }
+  .grid--feat > li:nth-child(n+5) { display: none; }
+  /* Destaques e novidades viram trilho horizontal: uma linha de cards em vez de duas */
+  .grid--feat, .feed--nov.feed--home:not(.filtrando) {
+    display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+    margin: 6px calc(-1 * var(--pad)) 0; padding: 18px var(--pad) 6px; scroll-padding-inline: var(--pad);
+  }
+  .grid--feat > li, .feed--nov.feed--home:not(.filtrando) > li { flex: 0 0 44%; scroll-snap-align: start; }
+  /* Card mais baixo: capa num quadro 5:4 */
+  .card .obj { aspect-ratio: 5 / 4; }
+  .card-body { padding-top: 10px; }
+  .card-title { margin-top: 6px; }
+  .card-foot { padding-top: 10px; }
+  /* Hero: o livro no canto, o texto em volta */
+  .slide { display: block; position: relative; padding: 16px 16px 18px; }
+  .hero-obj { position: absolute; top: 10px; right: 6px; width: 112px; max-width: none; }
+  .chips, .hero-title, .hero-sub { margin-right: 112px; }
+  .chips { margin-bottom: 10px; }
+  .hero-title { font-size: clamp(26px, 8vw, 34px); -webkit-line-clamp: 4; }
+  .hero-title--long { font-size: clamp(22px, 6.6vw, 28px); }
+  .hero-sub { font-size: 17px; }
+  .blurb { font-size: 15px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  .hero-deal { margin: 14px 0 4px; gap: 8px; }
+  .hero-deal .price strong { font-size: 28px; }
+  .off-pill { font-size: 16px; }
+  .hero-acts { margin-top: 12px; gap: 8px; }
+  .hero-acts .buy, .hero-acts .go { flex: 1 1 100%; }
+  .hero-acts .btn { flex: 1 1 auto; min-height: 44px; padding: 0 14px; font-size: 14px; }
+  /* Filtro: círculos menores */
+  .cur { width: 100px; }
+  .ring { width: 64px; height: 64px; padding: 3px; }
+  .av--lg, .spines { width: 58px; height: 58px; }
+  .cur-d { font-size: 11.5px; }
+  /* Blocos no grid: compactos */
+  .blk--bot { padding: 18px 18px 18px; gap: 6px; }
+  .blk--bot .mascote { width: 56px; top: 14px; left: auto; right: 14px; box-shadow: 0 0 0 4px #edf1f51a; }
+  .blk--bot .kicker { margin-right: 64px; }
+  .blk--bot .blk-h { font-size: 22px; margin-right: 40px; }
+  .blk--bot p { font-size: 14px; }
+  .blk--canais { padding: 16px 18px; gap: 10px; }
+  .blk--canais .blk-h { font-size: 20px; }
+  .blk--canais .btn { min-height: 44px; padding: 0 16px; font-size: 14px; }
+  /* Capítulos mais próximos */
+  .bot, .canais, .faq { margin-top: 40px; }
+  .bot { padding: 22px; gap: 14px; border-radius: 26px; }
+  .bot-art { justify-self: start; }
+  .mascote--big { width: 84px; box-shadow: 0 0 0 5px #edf1f514; }
+  .radar--big { display: none; }
+  .bot h2 { font-size: 28px; }
+  .passos { margin-top: 14px; gap: 6px; font-size: 14px; }
+  .canais { padding: 22px; border-radius: 26px; }
+  .canais h2 { font-size: 28px; }
+  .canais-p { font-size: 15px; }
+  .btn--big { min-height: 48px; font-size: 15px; padding: 0 18px; }
+  .canais-acts { margin: 16px 0 6px; }
+  .faq h2 { font-size: 28px; }
+  .faq-list { margin-top: 14px; gap: 8px; }
+  .foot { padding: 32px var(--pad) 84px; }
+  .foot-grid { gap: 18px; }
+  .brand--foot img { width: 180px; }
+  /* Mais compacto ainda: card numa linha de meta, blocos sem a frase de apoio, links do rodapé em linha */
+  .card-meta { font-size: 11.5px; }
+  .card-meta .av { display: none; }
+  .card-title { font-size: 16px; }
+  .card-sub { font-size: 14px; }
+  .blk--bot p:not(:last-of-type), .blk--canais p { display: none; }
+  .bot-art { display: none; }
+  .bot { margin-top: 32px; }
+  .passos li { padding: 4px 12px 4px 4px; }
+  .passos .n { width: 24px; height: 24px; }
+  .bot-acts { margin-top: 14px; }
+  .bot-note { font-size: 12.5px; margin-top: 10px; }
+  .intro p { font-size: 14.5px; }
+  .foot-brand p, .foot-brand .pill { display: none; }
+  .foot-cols { grid-template-columns: 1fr; gap: 10px; }
+  .foot-col ul { display: flex; flex-wrap: wrap; column-gap: 18px; }
+  .foot-t { margin-bottom: 0; }
+  .foot-legal { margin-top: 16px; padding-top: 14px; }
+  .card .obj { aspect-ratio: 3 / 2; }
+  .card .stamp { white-space: nowrap; letter-spacing: .02em; padding: 3px 7px; }
+  .cur-d { display: none; }
+  .faq summary { min-height: 48px; padding: 8px 16px; font-size: 15.5px; }
+  .kicker--muted { margin-bottom: 6px; }
+  .slide .blurb { display: none; }
+  .bot h2, .canais h2, .faq h2 { font-size: 24px; }
+  .faq-list { gap: 6px; }
+  .sec { margin-top: 24px; }
+  .foot { padding-bottom: 76px; } /* o FAB de 48 px fica a 20 px do fim */
+}

@@ -773,7 +773,7 @@ def ranking(offers, bot, at, skip=()):
 FEAT_MAX = 10
 # Quantos cards a home mostra antes do "Ver todas" (celular, desktop). O CSS corta; a busca e o
 # filtro do JS (classe .filtrando) mostram tudo. As páginas completas usam o "carregar mais" do JS.
-CAP = {"ofertas": (6, 24), "novidades": (4, 12)}
+CAP = {"ofertas": (4, 24), "novidades": (4, 12)}  # celular: 4 + 4 cabem na meta de 5.000 px
 
 
 def ver_todas(kind, n, home):
