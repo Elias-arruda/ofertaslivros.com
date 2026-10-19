@@ -762,9 +762,11 @@ def shell(title, desc, mast, body, ch=(), here=""):
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title}</title>
 <meta name="description" content="{desc}">
-<meta name="theme-color" content="#e8ecf0">
-<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#edf1f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1729" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preload" href="/fonts/fraunces-latin-full-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>

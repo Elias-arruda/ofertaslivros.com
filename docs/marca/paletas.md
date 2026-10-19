@@ -164,3 +164,80 @@ Par obrigatório mais fraco: **texto2/fundo = 6.56:1**
 
 Par obrigatório mais fraco: **destaque/superficie = 7.05:1**
 
+
+## Visual v2 (2026-10-19): papéis da spec com a Ficha refinada
+
+Decisão do Elias (`spec-visual.md`): os papéis da spec do ofertasdiscos com a paleta Ficha. Os valores vivem só no `static/style.css` (`:root` e `:root[data-theme="dark"]`); a tabela abaixo é a saída do `python3 docs/marca/contraste.py`, que lê o CSS e sai com erro se algum par falhar.
+
+| Papel na spec | Token | Claro | Escuro |
+|---|---|---|---|
+| cor profunda (`--wine`) | `--wine` | #1c2b4a | #1c2b4a |
+| base clara (`--ivory`) / fundo | `--bg` | #edf1f5 | #0f1729 |
+| cartões grandes, modal | `--bg2` | #f3f6f9 | #18233b |
+| tinta | `--tint` | #e6ecf3 | #1d2a45 |
+| superfície / pílula / linha | `--surface` / `--surface2` / `--line` | marinho a 5% / 9% / 13% | #e6ebf3 a 4% / 8% / 10% |
+| texto / secundário | `--text` / `--muted` | #1c2b4a / #4a5670 | #e6ebf3 / #a9b4c8 |
+| acento padrão (`--coral`) e selo | `--coral` (texto `--coral-ink`) | #b3262f (#ffffff) | #ff8a8f (#0f1729) |
+| acento secundário (`--rose`) | `--rose` | #f2a3a8 | #f2a3a8 |
+
+O acento padrão muda no escuro porque o vermelho #b3262f fica com 2,75:1 sobre #0f1729 (abaixo dos 3:1 de UI). O #ff8a8f é o destaque escuro da Ficha.
+
+### Acentos por nicho
+
+Saturação alta e luminância relativa entre 0,22 e 0,25: é a faixa em que o texto quase preto passa 4,5:1 sobre o acento **e** o acento passa 3:1 tanto no fundo claro quanto no escuro. Os acentos não mudam com o tema.
+
+| Nicho | `--accent` | `--accent2` | `--accent-ink` |
+|---|---|---|---|
+| Literatura brasileira | #1f9a5a verde-mata | #7fd6a4 | #04140b |
+| Ficção | #9468f5 violeta | #c7b2ff | #0d0626 |
+| Negócios e finanças | #b87d00 ocre | #f2c14e | #1a1000 |
+| Não ficção | #2b8fd6 azul-céu | #8cc8f2 | #03111f |
+| Mangá e HQ | #e5468f pink | #ff9cc6 | #22040f |
+
+O acento como **texto** só aparece em título grande (≥ 24 px, onde o mínimo é 3:1); texto pequeno fica em `--text`.
+
+### Contraste (saída do script)
+
+| Tema | Par | Cores | Razão | Mínimo | OK |
+|---|---|---|---|---|---|
+| claro | ficcao: texto sobre o acento | #0d0626 / #9468f5 | 5.19:1 | 4.5 | sim |
+| claro | ficcao: acento sobre bg | #9468f5 / #edf1f5 | 3.33:1 | 3.0 | sim |
+| claro | ficcao: acento sobre bg2 | #9468f5 / #f3f6f9 | 3.48:1 | 3.0 | sim |
+| claro | literatura-brasileira: texto sobre o acento | #04140b / #1f9a5a | 5.25:1 | 4.5 | sim |
+| claro | literatura-brasileira: acento sobre bg | #1f9a5a / #edf1f5 | 3.17:1 | 3.0 | sim |
+| claro | literatura-brasileira: acento sobre bg2 | #1f9a5a / #f3f6f9 | 3.32:1 | 3.0 | sim |
+| claro | manga: texto sobre o acento | #22040f / #e5468f | 5.13:1 | 4.5 | sim |
+| claro | manga: acento sobre bg | #e5468f / #edf1f5 | 3.30:1 | 3.0 | sim |
+| claro | manga: acento sobre bg2 | #e5468f / #f3f6f9 | 3.45:1 | 3.0 | sim |
+| claro | nao-ficcao: texto sobre o acento | #03111f / #2b8fd6 | 5.44:1 | 4.5 | sim |
+| claro | nao-ficcao: acento sobre bg | #2b8fd6 / #edf1f5 | 3.08:1 | 3.0 | sim |
+| claro | nao-ficcao: acento sobre bg2 | #2b8fd6 / #f3f6f9 | 3.23:1 | 3.0 | sim |
+| claro | negocios: texto sobre o acento | #1a1000 / #b87d00 | 5.34:1 | 4.5 | sim |
+| claro | negocios: acento sobre bg | #b87d00 / #edf1f5 | 3.10:1 | 3.0 | sim |
+| claro | negocios: acento sobre bg2 | #b87d00 / #f3f6f9 | 3.24:1 | 3.0 | sim |
+| claro | padrão: texto sobre o acento | #ffffff / #b3262f | 6.49:1 | 4.5 | sim |
+| claro | padrão: acento sobre bg | #b3262f / #edf1f5 | 5.72:1 | 3.0 | sim |
+| claro | padrão: acento sobre bg2 | #b3262f / #f3f6f9 | 5.98:1 | 3.0 | sim |
+| claro | text sobre bg | #1c2b4a / #edf1f5 | 12.39:1 | 4.5 | sim |
+| claro | text sobre bg2 | #1c2b4a / #f3f6f9 | 12.96:1 | 4.5 | sim |
+| claro | muted sobre bg | #4a5670 / #edf1f5 | 6.48:1 | 4.5 | sim |
+| claro | muted sobre bg2 | #4a5670 / #f3f6f9 | 6.78:1 | 4.5 | sim |
+| escuro | ficcao: acento sobre bg | #9468f5 / #0f1729 | 4.73:1 | 3.0 | sim |
+| escuro | ficcao: acento sobre bg2 | #9468f5 / #18233b | 4.14:1 | 3.0 | sim |
+| escuro | literatura-brasileira: acento sobre bg | #1f9a5a / #0f1729 | 4.96:1 | 3.0 | sim |
+| escuro | literatura-brasileira: acento sobre bg2 | #1f9a5a / #18233b | 4.34:1 | 3.0 | sim |
+| escuro | manga: acento sobre bg | #e5468f / #0f1729 | 4.77:1 | 3.0 | sim |
+| escuro | manga: acento sobre bg2 | #e5468f / #18233b | 4.17:1 | 3.0 | sim |
+| escuro | nao-ficcao: acento sobre bg | #2b8fd6 / #0f1729 | 5.11:1 | 3.0 | sim |
+| escuro | nao-ficcao: acento sobre bg2 | #2b8fd6 / #18233b | 4.47:1 | 3.0 | sim |
+| escuro | negocios: acento sobre bg | #b87d00 / #0f1729 | 5.08:1 | 3.0 | sim |
+| escuro | negocios: acento sobre bg2 | #b87d00 / #18233b | 4.45:1 | 3.0 | sim |
+| escuro | padrão: texto sobre o acento | #0f1729 / #ff8a8f | 7.90:1 | 4.5 | sim |
+| escuro | padrão: acento sobre bg | #ff8a8f / #0f1729 | 7.90:1 | 3.0 | sim |
+| escuro | padrão: acento sobre bg2 | #ff8a8f / #18233b | 6.92:1 | 3.0 | sim |
+| escuro | text sobre bg | #e6ebf3 / #0f1729 | 14.93:1 | 4.5 | sim |
+| escuro | text sobre bg2 | #e6ebf3 / #18233b | 13.07:1 | 4.5 | sim |
+| escuro | muted sobre bg | #a9b4c8 / #0f1729 | 8.55:1 | 4.5 | sim |
+| escuro | muted sobre bg2 | #a9b4c8 / #18233b | 7.49:1 | 4.5 | sim |
+| blocos | marfim sobre o marinho | #edf1f5 / #1c2b4a | 12.39:1 | 4.5 | sim |
+| blocos | rosado sobre o marinho | #f2a3a8 / #1c2b4a | 7.08:1 | 4.5 | sim |
