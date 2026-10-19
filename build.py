@@ -378,6 +378,9 @@ def seal_of(win, el):
     return "since", max(hs)
 
 
+NEW_DAYS = 3  # badge "Novo": o livro entrou no histórico (history_since) nos últimos 3 dias
+
+
 def resolve(books, now):
     """Livro -> oferta exibida: campos do livro + os da loja vencedora, só com lojas no prazo.
     Vencedora: menor price_cents; no empate, a verificada mais recentemente."""
@@ -388,7 +391,9 @@ def resolve(books, now):
             continue  # nenhuma loja no prazo: o livro sai da lista
         win = min(el, key=lambda s: (s["price_cents"], -s["checked_at"].timestamp()))
         seal, since = seal_of(win, el)
-        out.append({**b, **win, "stores": el, "alt": next((s for s in el if s is not win), None),
+        hs = [s["history_since"] for s in b["stores"]]
+        novo = None not in hs and (now.astimezone(BRT).date() - min(hs)).days < NEW_DAYS
+        out.append({**b, **win, "novo": novo, "stores": el, "alt": next((s for s in el if s is not win), None),
                     "seal": seal, "since": since, "now": now})  # now: relógio do build, para o "visto hoje"
     if not out:
         raise Invalid("nenhuma oferta com preço dentro do prazo de frescor")
@@ -547,7 +552,7 @@ def na(store):
 def go(o):
     """Link de afiliado da vencedora: sempre o nosso /r/<id>, nunca a URL da loja."""
     return (f'<a class="go" href="/r/{e(o["id"])}" rel="sponsored noopener noreferrer" target="_blank">'
-            f'Ver {na(o["store"])} por {brl(o["price_cents"])}'
+            f'Ver {na(o["store"])} por {brl(o["price_cents"])}{icon("seta")}'
             f'<span class="sr">: {e(o["title"])} (abre em nova aba)</span></a>')
 
 
@@ -582,30 +587,77 @@ def card(o, bot=None, h=2):
 </li>"""
 
 
-def slide(o, k, n):
-    # Emoção, depois decisão: a frase da curadoria (se houver) vem logo antes do preço
+def badge(o):
+    """("alta" | "novo", rótulo) só com dado real: trending_rank do back ou history_since recente.
+    "Só N em estoque" não existe: não temos o dado."""
+    return ("alta", "Em alta") if o["trending_rank"] else ("novo", "Novo") if o["novo"] else None
+
+
+def obj(o, cls="obj", eager=False):
+    """O objeto-metáfora: a capa sobre o miolo do livro (páginas e fita na cor do nicho).
+    Sem foto, a capa vira o gradiente do nicho com a inicial (decorativa: o título está ao lado)."""
+    load = 'loading="eager" fetchpriority="high"' if eager else 'loading="lazy"'
+    if o["image_url"]:
+        cover = (f'<div class="cover"><img src="{e(o["image_url"])}" alt="Capa de {e(o["title"])}, de {e(o["author"])}" '
+                 f'width="120" height="180" {load} decoding="async"></div>')
+    else:
+        cover = f'<div class="cover cover--none" aria-hidden="true"><span class="ini">{e(o["title"][:1].upper())}</span></div>'
+    return f'<div class="{cls}"><span class="pages" aria-hidden="true"></span>{cover}</div>'
+
+
+def avatar(g, cls="av"):
+    """Círculo do nicho: hoje um ícone desenhado; troca pela ilustração do curador quando houver arte."""
+    return f'<span class="{cls}" data-g="{g}" aria-hidden="true">{icon("g-" + g)}</span>'
+
+
+def alert_link(o, bot, full=True):
+    """Me avise se baixar (Telegram): texto completo no hero, no modal e na página; sino no card."""
+    if not bot:
+        return ""
+    t = e(o["title"])
+    label = ('Me avise se baixar (Telegram)' f'<span class="sr">: alerta de preço de {t} (abre o Telegram)</span>' if full
+             else f'<span class="sr">Me avise se baixar (Telegram): alerta de preço de {t}</span>')
+    cls = "btn btn--ghost alert" if full else "bell"
+    return (f'<a class="{cls}" href="{e(tg_alert_url(bot, o["id"]))}" rel="noopener noreferrer" target="_blank">'
+            f'{icon("sino")}{label}</a>')
+
+
+def slide(o, k, n, bot=None):
+    g, t = o["genre"], e(o["title"])
+    chips = [f'<span class="chip chip--g">{icon("g-" + g)}{e(GENRES[g])}</span>']
+    b = badge(o)
+    if b:
+        chips.append(f'<span class="chip chip--{b[0]}">{b[1]}</span>')
+    off = discount(o)
+    old = f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>' if off else ""
+    pill = f'<span class="off-pill">−{off}%</span>' if off else ""
     blurb = f'\n    <p class="blurb">{e(o["blurb"])}</p>' if o["blurb"] else ""
-    return f"""<div class="slide" id="d-{e(o["id"])}" role="group" aria-roledescription="slide" aria-label="{k} de {n}">
-  {cover(o, eager=k == 1)}
-  <div class="slide-body">
-    <h3 class="slide-title">{e(o["title"])}</h3>
-    <p class="author">{e(o["author"])}</p>{blurb}
-    {deal(o, "    ")}
-    <p class="meta">{meta_html(o)}</p>{chart(o, "    ")}
-    <div class="acts">{buy(o)}</div>
+    stamp = stamp_html(o)
+    long = " hero-title--long" if len(o["title"]) > 38 else ""
+    return f"""<div class="slide" id="d-{e(o["id"])}" data-g="{g}" role="group" aria-roledescription="slide" aria-label="{k} de {n}">
+  <div class="hero-glow" aria-hidden="true"></div>
+  <div class="slide-text">
+    <p class="chips">{"".join(chips)}</p>
+    <h3 class="hero-title{long}">{t}</h3>
+    <p class="hero-sub">{e(o["author"])}</p>{blurb}
+    <div class="hero-deal">{stamp}<p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong>{old}</p>{pill}</div>
+    <p class="meta">{meta_html(o)}</p>
+    <div class="hero-acts">{buy(o)}<a class="btn btn--ghost" href="/livro/{e(o["id"])}/" data-modal="{e(o["id"])}">Ver detalhes<span class="sr"> de {t}</span></a>{alert_link(o, bot)}</div>
+    <p class="sign">{avatar(g)}Curadoria de {e(GENRES[g])}</p>
   </div>
+  {obj(o, "obj hero-obj", eager=k == 1)}
 </div>"""
 
 
-def hero(items):
-    """Carrossel só com CSS: passagem por @keyframes, pausa (hover, foco, checkbox),
-    manual com scroll-snap em prefers-reduced-motion ou depois de tocar num indicador."""
+def hero(items, bot=None):
+    """Carrossel. Sem JS: passagem por @keyframes, pausa (hover, foco, checkbox) e segmentos que
+    são links para cada slide. Com JS: setas, arraste, contador e barra que avança no animationend."""
     n = len(items)
     if not 3 <= n <= 5:
         return ""
-    slides = "\n".join(slide(o, k, n) for k, o in enumerate(items, 1))
-    dots = "".join(f'<li><a href="#d-{e(o["id"])}"><span class="sr">Mostrar destaque {k} de {n}: '
-                   f'{e(o["title"])}</span></a></li>' for k, o in enumerate(items, 1))
+    slides = "\n".join(slide(o, k, n, bot) for k, o in enumerate(items, 1))
+    segs = "".join(f'<li><a href="#d-{e(o["id"])}"><span class="sr">Mostrar destaque {k} de {n}: '
+                   f'{e(o["title"])}</span><i></i></a></li>' for k, o in enumerate(items, 1))
     return f"""<section class="hero hero--{n}" aria-roledescription="carrossel" aria-labelledby="h-destaque">
 <h2 class="sr" id="h-destaque">Em destaque</h2>
 <div class="hero-view">
@@ -613,9 +665,12 @@ def hero(items):
 {slides}
 </div>
 </div>
-<div class="hero-bar">
-<ol class="dots">{dots}</ol>
-<p class="pause"><input type="checkbox" id="pausar"><label for="pausar">Pausar passagem</label></p>
+<div class="hero-nav">
+<ol class="segs">{segs}</ol>
+<p class="hero-count tnum" hidden><span class="js-n">1</span>/{n}</p>
+<button class="arrow js-prev" type="button" hidden>{icon("esq")}<span class="sr">Destaque anterior</span></button>
+<button class="arrow js-next" type="button" hidden>{icon("dir")}<span class="sr">Próximo destaque</span></button>
+<p class="pause"><input type="checkbox" id="pausar"><label for="pausar">Pausar</label></p>
 </div>
 </section>"""
 
@@ -699,7 +754,7 @@ def home_sections(offers, bot=None, ch=()):
         return f'<{tag} class="minis">\n' + "\n".join(mini(o) for o in items) + f"\n</{tag}>"
 
     parts = [
-        hero(slides),
+        hero(slides, bot),
         feat and section("h-curadoria", "Destaques da curadoria" if curated else "Destaques de hoje",
                          f'<ol class="grid grid--feat">\n{cards(feat)}\n</ol>',
                          "" if curated else "Primeiro os que estão no menor preço do histórico, depois os maiores descontos."),
