@@ -682,51 +682,93 @@ def hero(items, bot=None):
 </section>"""
 
 
-def mini(o):
-    return f"""<li class="mini">
-  {obj(o, "obj obj--sm")}
-  <div class="mini-body">
-    <h3 class="mini-title">{e(o["title"])}</h3>
-    <p class="price">{price_html(o)}</p>
-    <p class="meta">{meta_html(o)}</p>
-  </div>
-  {buy(o)}
+def section(sid, title, body, count=None, note=""):
+    """Cabeçalho de seção: H2, contador colado e uma frase curta."""
+    n = f'<span class="sec-n">{count} no momento</span>' if count is not None else ""
+    note = f'<p class="sec-note">{note}</p>' if note else ""
+    return (f'<section class="sec" aria-labelledby="{sid}">\n<div class="sec-head"><h2 id="{sid}">{title}</h2>{n}{note}</div>'
+            f'\n{body}\n</section>')
+
+
+def aneis(cls=""):
+    """Anéis de carimbo girando devagar: a textura dos blocos marinho (o "sulco" da spec)."""
+    return f'<span class="aneis {cls}" aria-hidden="true"></span>'
+
+
+def ch_buttons(ch, big=False):
+    """WhatsApp verde e Telegram em contorno, só os canais com env."""
+    out = []
+    for name, url in ch:
+        cls = "btn btn--wa" if name == "WhatsApp" else "btn btn--tg"
+        out.append(f'<a class="{cls}{" btn--big" if big else ""}" href="{e(url)}" rel="noopener noreferrer" target="_blank">'
+                   f'{icon("wa" if name == "WhatsApp" else "tg")}Canal no {name}<span class="sr"> (abre em nova aba)</span></a>')
+    return "".join(out)
+
+
+def strip_canais(ch, at):
+    """Faixa dos canais dentro do grid, largura toda. Só com TELEGRAM_CHANNEL_ID ou WHATSAPP_CHANNEL_ID."""
+    if not ch:
+        return ""
+    return f"""<li class="blk blk--canais" data-at="{at}">
+  <span class="radar" aria-hidden="true"></span>
+  <div><h3 class="blk-h">Receba as próximas ofertas <em>de graça</em></h3>
+  <p>As mesmas ofertas do site, com o preço conferido, chegam no canal. Sem cadastro.</p></div>
+  <div class="blk-acts">{ch_buttons(ch)}</div>{aneis()}
 </li>"""
 
 
-def section(sid, title, body, intro=""):
-    intro = f'\n<p class="sec-intro">{intro}</p>' if intro else ""
-    return f'<section class="sec" aria-labelledby="{sid}">\n<h2 id="{sid}">{title}</h2>{intro}\n{body}\n</section>'
-
-
-def join_banner(ch):
-    """Banner dos canais. Sem TELEGRAM_CHANNEL_ID nem WHATSAPP_CHANNEL_ID, não sai."""
-    if not ch:
-        return ""
-    links = "".join(f"<li>{ext(url, f'Canal no {name}')}</li>" for name, url in ch)
-    return f"""<section class="join" aria-labelledby="h-canais">
-<h2 id="h-canais">Receba as próximas ofertas</h2>
-<p>As mesmas ofertas do site, com o preço conferido, chegam no canal. Sem cadastro.</p>
-<ul class="join-links">{links}</ul>
-</section>"""
-
-
-def monitor(bot):
-    """Explica o alerta de preço. Sem TELEGRAM_BOT_USERNAME, não sai."""
+def banner_bot(bot, at):
+    """Banner do alerta em 2 colunas do grid. Só com TELEGRAM_BOT_USERNAME."""
     if not bot:
         return ""
-    cta = ext(f"https://t.me/{bot}", f"Abrir o @{e(bot)} no Telegram").replace("<a ", '<a class="alert alert--solid" ', 1)
-    return section("h-alerta", "Crie um alerta de preço", f"""<ol class="steps">
-<li>Escolha um livro e toque em “Me avise se baixar (Telegram)”.</li>
-<li>No Telegram, toque em Iniciar. O bot confirma o alerta.</li>
-<li>Quando o preço cair abaixo do de hoje, avisamos você por lá.</li>
-</ol>
-<p class="acts">{cta}</p>""",
-                   "Escolha um livro e avisamos no Telegram quando o preço cair.")
+    return f"""<li class="blk blk--bot" data-at="{at}">
+  <span class="mascote" aria-hidden="true">{icon("carimbo", "i i-carimbo")}</span>
+  <p class="kicker">{icon("sino")}Alerta grátis no Telegram</p>
+  <h3 class="blk-h">Escolha o livro. A gente avisa quando baixar.</h3>
+  <p>Toque no sino de qualquer oferta e o bot guarda o preço de hoje.</p>
+  <p><a class="go" href="https://t.me/{e(bot)}" rel="noopener noreferrer" target="_blank">Ativar alertas{icon("seta")}<span class="sr"> (abre o Telegram)</span></a></p>{aneis()}
+</li>"""
 
 
-HOME_GRID = 8  # cards em "Ofertas ativas"; o resto vai para "Mais livros"
-HOT_MAX = 4
+def ranking(offers, bot, at):
+    """"Em alta agora": só com trending_rank vindo do back (popularidade real)."""
+    hot = sorted((o for o in offers if o["trending_rank"]), key=lambda o: o["trending_rank"])[:10]
+    if not hot:
+        return ""
+    items = "".join(
+        f'<li class="rank-i" data-g="{o["genre"]}"><span class="rank-n">{k}</span>'
+        f'<span class="rank-t"><a href="/livro/{e(o["id"])}/" data-modal="{e(o["id"])}">{e(o["title"])}</a>'
+        f'<span class="rank-a">{e(o["author"])}</span></span>{buy_circle(o)}</li>'
+        for k, o in enumerate(hot, 1))
+    return f"""<li class="blk blk--rank" data-at="{at}">
+  <div class="rank-head">{icon("raio")}<h3 class="blk-h" id="h-alta">Em alta agora</h3></div>
+  <ol class="rank" aria-labelledby="h-alta">{items}</ol>
+</li>"""
+
+
+FEAT_MAX = 10
+FEED_NOJS = 24  # sem JS, a home mostra 24 e leva a /ofertas/; com JS, 12 e "Carregar mais"
+
+
+def feed(offers, bot=None, ch=(), full=False):
+    """Ofertas ativas: ordenação (JS), grid com blocos intercalados e "carregar mais".
+    Os blocos guardam a posição (data-at) para o JS recolocá-los depois de ordenar ou filtrar."""
+    n = len(offers)
+    cards = [card(o, bot) for o in offers]
+    blocks = [(4, banner_bot(bot, 4)), (8, strip_canais(ch, 8)), (12, ranking(offers, bot, 12))]
+    for at, html_ in sorted(blocks, reverse=True):
+        if html_:
+            cards.insert(min(at, len(cards)), html_)
+    tools = ('<div class="feed-tools" hidden><label for="ordem">Ordenar por</label><select id="ordem">'
+             '<option value="">Em destaque</option><option value="preco">Menor preço</option>'
+             '<option value="off">Maior desconto</option><option value="rec">Mais recentes</option></select></div>')
+    more = ("" if full or n <= FEED_NOJS else
+            f'<p class="mais"><a class="btn btn--ghost" href="/ofertas/">{icon("livro", "i i-livro")}Ver todas as {n} ofertas</a></p>')
+    more += f'<p class="mais"><button class="btn btn--ghost js-mais" type="button" hidden>{icon("livro", "i i-livro")}Carregar mais ofertas</button></p>'
+    body = (f'{tools}\n<p class="vazio" hidden role="status">Nenhum livro com esse título ou autor. '
+            f'Tente outro nome ou volte para Todos.</p>\n<ol class="grid feed{" feed--full" if full else ""}">\n'
+            + "\n".join(cards) + f"\n</ol>\n{more}")
+    return section("h-ativas", "Ofertas ativas", body, n, "Conferidas na loja. A que vence sai da lista.")
 
 
 def ranked(offers):
@@ -735,42 +777,20 @@ def ranked(offers):
 
 
 def home_sections(offers, bot=None, ch=()):
-    """Seções da home. Um livro aparece em no máximo 2: banner + destaques,
-    ou banner/ativas/mais livros + maiores descontos."""
+    """Hero (5), destaques (até 10, sem repetir o hero), filtro e o feed completo
+    (a busca, o filtro e a ordenação do JS trabalham sobre ele)."""
     top = ranked(offers)
     slides = top[:5] if len(top) >= 3 else []
     curated = any(o["featured"] for o in offers)
-    feat = [o for o in top[:4] if o["featured"] or not curated]
-    in_feat = {o["id"] for o in feat}
-    rest = [o for o in offers if o["id"] not in in_feat]
-    grid, more = rest[:HOME_GRID], rest[HOME_GRID:]
-    # ponytail: "Mais livros" = ofertas da 9ª em diante; com data/catalog.json, pode virar os monitorados.
     in_hero = {o["id"] for o in slides}
-    pool = [o for o in offers if o["id"] not in in_hero]
-    if any(o["trending_rank"] for o in offers):  # popularidade real, vinda do back
-        hot_title = "Em alta"
-        hot = sorted((o for o in pool if o["trending_rank"]), key=lambda o: o["trending_rank"])[:HOT_MAX]
-    else:  # sem dado de popularidade, título honesto
-        hot_title = "Outros descontos"
-        hot = sorted((o for o in pool if discount(o) > 0), key=lambda o: -discount(o))[:HOT_MAX]
-
-    def cards(items):
-        return "\n".join(card(o, bot, h=3) for o in items)
-
-    def minis(items, tag="ul"):
-        return f'<{tag} class="minis">\n' + "\n".join(mini(o) for o in items) + f"\n</{tag}>"
-
+    feat = [o for o in top if o["id"] not in in_hero and (o["featured"] or not curated)][:FEAT_MAX] if slides else []
     parts = [
         hero(slides, bot),
         feat and section("h-curadoria", "Destaques da curadoria" if curated else "Destaques de hoje",
-                         f'<ol class="grid grid--feat">\n{cards(feat)}\n</ol>',
-                         "" if curated else "Primeiro os que estão no menor preço do histórico, depois os maiores descontos."),
+                         '<ol class="grid grid--feat">\n' + "\n".join(card(o, bot) for o in feat) + "\n</ol>",
+                         len(feat), "" if curated else "Primeiro o menor preço do histórico, depois o maior desconto."),
         nav(offers, None, filtro=True),
-        grid and section("h-ativas", "Ofertas ativas", f'<ol class="grid">\n{cards(grid)}\n</ol>'),
-        join_banner(ch),
-        more and section("h-mais", "Mais livros em oferta", minis(more)),
-        hot and section("h-alta", hot_title, minis(hot, "ol")),
-        monitor(bot),
+        feed(offers, bot, ch),
     ]
     return "\n".join(p for p in parts if p)
 
@@ -839,6 +859,9 @@ ICONS = {
     "dir": '<path d="m9 6 6 6-6 6"/>',
     "x": '<path d="M6 6l12 12M18 6 6 18"/>',
     "raio": '<path d="M13 3 5 14h6l-1 7 8-11h-6z"/>',
+    "carimbo": '<circle cx="12" cy="12" r="10.5"/><circle cx="12" cy="12" r="7.8" stroke-width="1"/>'
+               '<path fill="currentColor" stroke="none" transform="translate(12 12.4) scale(.6) translate(-16 -16.6)" '
+               'd="M9.6 12.4C11.6 11.5 13.8 11.6 15.3 12.8V21.6C13.8 20.5 11.6 20.4 9.6 21.2ZM22.4 12.4C20.4 11.5 18.2 11.6 16.7 12.8V21.6C18.2 20.5 20.4 20.4 22.4 21.2Z"/>',
     "livro": '<path d="M3 6c3-1.5 6-1.5 9 0v13c-3-1.5-6-1.5-9 0zM21 6c-3-1.5-6-1.5-9 0v13c3-1.5 6-1.5 9 0z"/>',
     # um por nicho: o lugar do curador ilustrado, até haver arte
     "g-literatura-brasileira": '<path d="M5 19C5 10 11 5 19 5c0 8-5 14-14 14zM5 19l8-8M9 15h4M11 13V9"/>',
@@ -950,8 +973,7 @@ def page(all_offers, genre=None, bot=None, ch=()):
     if genre is None:
         body = intro("Livros que baixaram de verdade", LEDE) + "\n" + home_sections(offers, bot, ch)
     else:
-        cards = "\n".join(card(o, bot) for o in offers)
-        body = intro(e(GENRES[genre]), LEDE) + f'\n{nav(all_offers, genre)}\n<ol class="grid">\n{cards}\n</ol>'
+        body = intro(e(GENRES[genre]), LEDE) + f"\n{nav(all_offers, genre)}\n{feed(offers, bot, ch, full=True)}"
     return shell(all_offers, title, desc, body, ch, style=genre)
 
 
