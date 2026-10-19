@@ -1,5 +1,5 @@
 {
- "_nota": "Uma entrada por livro. id é estável para sempre (vira deep link do Telegram). ml_product_id é o produto de catálogo (/p/MLB...). Livro nas duas lojas: asin + ml_product_id + isbn (ISBN-13, casa as lojas e é conferido contra o GTIN do ML).",
+ "_nota": "Uma entrada por livro. id é estável para sempre (vira deep link do Telegram). ml_product_id é o produto de catálogo (/p/MLB...). Livro nas duas lojas: asin + ml_product_id + isbn (ISBN-13, casa as lojas e é conferido contra o GTIN do ML). \"pendente\": true = sugestão do curator, sem ml_url nem asin: não é coletada nem vai ao ar. Para publicar, troque \"pendente\": true pelo \"ml_url\" do painel.",
  "books": [
   {"id": "senhor-dos-aneis-box-trilogia", "ml_product_id": "MLB19698440",
    "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=elias-arruda&matt_tool=31781474&forceInApp=true&ref=BABPW5QJ0odTXWLmeH%2BNzr0QbL7ZIDCuvN7%2BKTQsNjlhiKx%2FD58rpHe6BWvePfiZ1lha9JpchE3s0ms5U2jdhVZb%2Fo0RWkLt92bo0Ts%2BDRHMz1vasai0T%2B93%2BXx5%2F0LrNSqKM8sGUcdm7JXT%2BwlOxthZgWPaqL9Cc0B88pd6tZYr4QZ13e9KRJhHjbPVs%2BvkNl3yTDXXcyxbwrnj5KmLUT2fjOTIW6eFFAaSVRbE4hkkZVs2lrHekmlIB7rvqK%2F3lVJbTQ%3D%3D",

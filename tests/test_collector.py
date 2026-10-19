@@ -275,9 +275,62 @@ def test_catalogo_rejeita_duplicado(monkeypatch):
 
 
 def test_catalogo_do_repo_e_valido(monkeypatch):
+    # sem lista fixa de ids: o catálogo cresce a cada PR do curator
     monkeypatch.setenv("ML_AFFILIATE_ID", "elias-arruda")
-    assert [b["id"] for b in c.read_catalog()] == ["senhor-dos-aneis-box-trilogia",
-                                                   "irmao-do-jorel"]
+    ids = [b["id"] for b in c.load_catalog(json.loads(c.CATALOG.read_text()),
+                                           include_pending=True)]
+    assert {"senhor-dos-aneis-box-trilogia", "irmao-do-jorel"} <= set(ids)
+
+
+# ---- pendente (sugestão do curator, ainda sem link do painel) ----
+
+PEND = {"id": "livro-pendente", "isbn": "9780306406157", "ml_product_id": "MLB33",
+        "title": "Pendente", "author": "C", "genre": "negocios", "pendente": True}
+
+
+def test_pendente_fica_fora_da_coleta_e_do_ar(env, capsys):
+    doc = json.loads(json.dumps(CATALOG))
+    doc["books"].append(dict(PEND))
+    env["cat"].write_text(json.dumps(doc))
+    assert env["run"]() == 0
+    assert "/products/MLB33" not in env["fake"].paths  # nem request
+    assert "livro-pendente" not in offers(env["hist"])
+    assert not any(r.startswith("livro-pendente,") for r in rows(env["hist"]))
+    assert "livro-pendente pendente" in capsys.readouterr().out
+    out = env["hist"] / "public.json"
+    c.export_catalog(c.read_catalog(env["cat"]), out)
+    assert "livro-pendente" not in out.read_text()
+
+
+def test_catalogo_so_com_pendentes_nao_quebra_o_pipeline(env):
+    env["cat"].write_text(json.dumps({"books": [dict(PEND)]}))
+    env["manual"].write_text(HEADER)
+    assert env["run"]() == 0
+    assert offers(env["hist"]) == {}
+    assert env["fake"].paths == ["/oauth/token"]
+
+
+@pytest.mark.parametrize("change", [
+    {"ml_url": ML_URL}, {"asin": "B0ABCDEFGH"}, {"pendente": False}, {"pendente": "sim"},
+    {"ml_product_id": None}, {"ml_product_id": "MLB11"},  # duplica um livro ativo
+])
+def test_pendente_rejeita(change, monkeypatch):
+    monkeypatch.setenv("ML_AFFILIATE_ID", "teste-aff")
+    doc = json.loads(json.dumps(CATALOG))
+    p = {**PEND, **change}
+    if p["ml_product_id"] is None:
+        del p["ml_product_id"]
+    doc["books"].append(p)
+    with pytest.raises(Invalid):
+        c.load_catalog(doc)
+
+
+def test_resposta_html_aborta(monkeypatch):
+    class Html(io.BytesIO):
+        headers = {"Content-Type": "text/html; charset=utf-8"}
+    monkeypatch.setattr(c, "_urlopen", lambda req, timeout=None: Html(b"{}"))
+    with pytest.raises(c.MLError, match="não é JSON"):
+        c.ml_request("/products/MLB1")
 
 
 # ---- offers.json v2 ----
