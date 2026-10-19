@@ -57,7 +57,8 @@ MANUAL_CSV = HERE / "amazon_prices.csv"
 
 ID_MAX = 57  # deep link do Telegram aceita 64; folga para prefixo futuro
 STORES = ("amazon", "mercadolivre")
-BOOK_FIELDS = {"id", "isbn", "genre", "title", "author", "asin", "ml_product_id", "ml_url"}
+BOOK_FIELDS = {"id", "isbn", "genre", "title", "author", "asin", "ml_product_id", "ml_url",
+               "pendente"}
 PUBLIC_FIELDS = ("id", "title", "author", "genre")  # export: sem ids de loja nem URL
 ISBN_RE = re.compile(r"97[89][0-9]{10}")
 # Só o CDN de imagem do ML (é o que a CSP libera em img-src); sem query, aspas ou espaço.
@@ -95,7 +96,10 @@ def isbn_ok(s):
             and sum(int(d) * (3 if i % 2 else 1) for i, d in enumerate(s)) % 10 == 0)
 
 
-def load_catalog(doc):
+def load_catalog(doc, include_pending=False):
+    """Valida o catálogo inteiro (pendentes inclusos: id/isbn/produto únicos entre todos).
+    Pendente ("pendente": true, sugerido pelo curator) não tem ml_url nem asin e fica fora
+    da coleta e do ar; só volta na lista com include_pending=True (uso do curator)."""
     if not isinstance(doc, dict) or not isinstance(doc.get("books"), list) or not doc["books"]:
         raise Invalid('catálogo precisa ser {"books": [...]} não vazio')
     aff = ml_affiliate()
@@ -122,14 +126,25 @@ def load_catalog(doc):
                 if not isinstance(b["asin"], str) or not ASIN_RE.fullmatch(b["asin"]):
                     raise Invalid(f"asin inválido: {b['asin']!r}")
                 out["asin"] = b["asin"]
-            if ("ml_product_id" in b) != ("ml_url" in b):
+            pend = "pendente" in b
+            if pend:
+                if b["pendente"] is not True:
+                    raise Invalid("pendente só aceita true (para publicar, apague o campo)")
+                if "ml_url" in b or "asin" in b:
+                    raise Invalid("pendente não pode ter ml_url nem asin: troque "
+                                  '"pendente": true pelo ml_url do painel')
+                if "ml_product_id" not in b:
+                    raise Invalid("pendente precisa de ml_product_id")
+                out["pendente"] = True
+            elif ("ml_product_id" in b) != ("ml_url" in b):
                 raise Invalid("ml_product_id e ml_url andam juntos")
             if "ml_product_id" in b:
                 pid = b["ml_product_id"]
                 if not isinstance(pid, str) or not MLB_RE.fullmatch(pid):
                     raise Invalid(f"ml_product_id inválido: {pid!r}")
                 out["ml_product_id"] = pid
-                out["ml_url"] = ml_url(b["ml_url"], aff)
+                if not pend:
+                    out["ml_url"] = ml_url(b["ml_url"], aff)
             if "asin" not in out and "ml_product_id" not in out:
                 raise Invalid("livro precisa de asin e/ou ml_product_id")
             if "asin" in out and "ml_product_id" in out and "isbn" not in out:
@@ -143,7 +158,12 @@ def load_catalog(doc):
         except Invalid as e:
             raise Invalid(f"books[{i}]: {e}") from None
         books.append(out)
-    return books
+    if include_pending:
+        return books
+    for b in books:
+        if b.get("pendente"):
+            print(f"catálogo: {b['id']} pendente (sem ml_url), fora da coleta e do ar")
+    return [b for b in books if not b.get("pendente")]
 
 
 def read_catalog(path=None):
@@ -332,6 +352,10 @@ def ml_request(path, token=None, form=None, deadline=None, clock=time.monotonic,
         timeout = TIMEOUT if left is None else min(TIMEOUT, left)
         try:
             with _urlopen(Request(url, data=data, headers=_headers(token)), timeout=timeout) as r:
+                h = getattr(r, "headers", None)  # resposta real sempre tem; o BytesIO dos testes não
+                if h is not None and not (h.get("Content-Type") or "").startswith(
+                        "application/json"):
+                    raise MLError(f"resposta não é JSON em {where}")  # HTML nunca é lido
                 return json.loads(r.read(MAX_BYTES), parse_float=Decimal)
         except HTTPError as e:
             if (e.code != 429 and e.code < 500) or attempt == RETRIES:
@@ -472,13 +496,47 @@ def product_image(prod):
     return u if isinstance(u, str) and IMG_RE.fullmatch(u) else None
 
 
+# Ids de atributo que podem trazer o ISBN na ficha do produto (o ML usa GTIN; os outros
+# são variações plausíveis, aceitas para não descartar livro por nome de atributo).
+CODE_ATTR_RE = re.compile(r"(GTIN|EAN|ISBN)(_?1[03])?")
+CODE_RE = re.compile(r"[0-9]{8,14}|[0-9]{9}[0-9X]")
+
+
+def isbn10_to_13(s):
+    """ISBN-10 com dígito verificador válido -> ISBN-13 (978). Senão None."""
+    if not re.fullmatch(r"[0-9]{9}[0-9X]", s):
+        return None
+    if sum((10 - i) * (10 if d == "X" else int(d)) for i, d in enumerate(s)) % 11:
+        return None
+    core = "978" + s[:9]
+    return core + str((10 - sum(int(d) * (3 if i % 2 else 1)
+                                for i, d in enumerate(core)) % 10) % 10)
+
+
+def _codes(text):
+    """"978-85-359-1484-9, 85 359 1484 6" -> códigos só com dígitos (e X do ISBN-10).
+    Vírgula, ponto e vírgula, barra e | separam valores; hífen e espaço dentro de um valor
+    são formatação. Se o valor sem eles não fecha um código, tenta cada pedaço por espaço."""
+    for part in re.split(r"[,;/|]", text.upper()):
+        part = re.sub(r"ISBN(-?1[03])?:?", " ", part)
+        whole = re.sub(r"[\s.-]", "", part)
+        yield from [whole] if CODE_RE.fullmatch(whole) else \
+            [t for t in (re.sub(r"[.-]", "", x) for x in part.split()) if CODE_RE.fullmatch(t)]
+
+
 def product_gtins(prod):
-    """GTINs do atributo GTIN (pode vir vários, separados por vírgula)."""
+    """Códigos dos atributos GTIN/EAN/ISBN da ficha (value_name e values[].name; pode vir
+    vários). ISBN-10 válido volta como ISBN-13; o resto volta como veio, só dígitos."""
     out = set()
     attrs = prod.get("attributes") if isinstance(prod, dict) else None
     for a in attrs if isinstance(attrs, list) else []:
-        if isinstance(a, dict) and a.get("id") == "GTIN" and isinstance(a.get("value_name"), str):
-            out |= set(re.findall(r"\d{8,14}", a["value_name"]))
+        if not isinstance(a, dict) or not isinstance(a.get("id"), str) \
+                or not CODE_ATTR_RE.fullmatch(a["id"]):
+            continue
+        vals = a.get("values") if isinstance(a.get("values"), list) else []
+        for v in [a.get("value_name")] + [v.get("name") for v in vals if isinstance(v, dict)]:
+            if isinstance(v, str):
+                out |= {isbn10_to_13(x) or x for x in _codes(v)}
     return out
 
 
@@ -520,7 +578,6 @@ def collect_ml(books, token, now, deadline, start=0, clock=time.monotonic, sleep
             d["buy_box"] = "sim" if w else "não"
             gtins = product_gtins(prod)
             if "isbn" in b and gtins and b["isbn"] not in gtins:
-                # ponytail: só ISBN-13; GTIN em ISBN-10 contaria como divergente
                 print(f"::warning::ML: {b['id']}: GTIN do produto não bate com o isbn do "
                       f"catálogo; preço do ML descartado")
                 n["gtin_divergente"] += 1
