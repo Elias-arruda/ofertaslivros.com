@@ -741,6 +741,75 @@ def brand(cls="brand"):
             'width="274" height="32"></a>')
 
 
+# Ícones desenhados para o site (traço 2, viewBox 24), num sprite só: cada uso é um <use>.
+ICONS = {
+    "busca": '<circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4.5 4.5"/>',
+    "sol": '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    "lua": '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+    "tg": '<path d="M21 4 3 11.2l6 2.3L18 7.5l-7 7.3.3 5.2 3-3.6 4.2 3.1z"/>',
+    "wa": '<path d="M4 20l1.3-3.9A8.5 8.5 0 1 1 8.2 19z"/><path d="M9.2 8.6c-.3 2.9 3.2 6.4 6.2 6.2l.6-1.7-2-.9-.9.8a5 5 0 0 1-2.3-2.3l.8-.9-.9-2z"/>',
+    "seta": '<path d="M7 17 17 7M8 7h9v9"/>',
+    "sino": '<path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0"/>',
+    "chev": '<path d="m6 9 6 6 6-6"/>',
+    "esq": '<path d="m15 6-6 6 6 6"/>',
+    "dir": '<path d="m9 6 6 6-6 6"/>',
+    "x": '<path d="M6 6l12 12M18 6 6 18"/>',
+    "raio": '<path d="M13 3 5 14h6l-1 7 8-11h-6z"/>',
+    "livro": '<path d="M3 6c3-1.5 6-1.5 9 0v13c-3-1.5-6-1.5-9 0zM21 6c-3-1.5-6-1.5-9 0v13c3-1.5 6-1.5 9 0z"/>',
+    # um por nicho: o lugar do curador ilustrado, até haver arte
+    "g-literatura-brasileira": '<path d="M5 19C5 10 11 5 19 5c0 8-5 14-14 14zM5 19l8-8M9 15h4M11 13V9"/>',
+    "g-ficcao": '<path d="M15 4a7.5 7.5 0 1 0 5.5 11.5A6 6 0 0 1 15 4zM6 3v4M4 5h4"/>',
+    "g-negocios": '<path d="M4 20h16M6 16l4.5-4.5 3 3L19 9M15 9h4v4"/>',
+    "g-nao-ficcao": '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/>',
+    "g-manga": '<path d="M4 4h16v12h-9l-4.5 4v-4H4z"/><path d="m13 6.5-3 4h3.5l-2.5 3.5"/>',
+}
+SPRITE = ('<svg class="sprite" hidden aria-hidden="true">'
+          + "".join(f'<symbol id="i-{k}" viewBox="0 0 24 24">{v}</symbol>' for k, v in ICONS.items()) + "</svg>")
+assert set(f"g-{g}" for g in GENRES) <= set(ICONS)
+
+
+def icon(name, cls="i"):
+    return f'<svg class="{cls}" aria-hidden="true" focusable="false"><use href="#i-{name}"/></svg>'
+
+
+def live(offers):
+    """Pílula do topo: horário real da coleta mais recente e o número de ofertas no ar.
+    Nada de "ao vivo": o site é gerado pelo cron, então o rótulo diz quando conferimos."""
+    latest, now, n = max(o["checked_at"] for o in offers), offers[0]["now"], len(offers)
+    d = latest.astimezone(BRT)
+    day = "" if d.date() == now.astimezone(BRT).date() else f" em {d:%d/%m}"
+    return (f'<p class="live"><span class="dot" aria-hidden="true"></span>Conferido{day} às '
+            f'<time datetime="{e(latest.isoformat())}">{d:%H}h{d:%M}</time> <b class="tnum">{n}</b>'
+            f'<span class="sr"> {"oferta ativa" if n == 1 else "ofertas ativas"}</span></p>')
+
+
+def header(offers, ch):
+    """Header de vidro. Buscar e tema só funcionam com JS: saem com hidden e o app.js mostra."""
+    links = dict(ch)
+    nav = [f'<button class="pill js-busca" type="button" hidden aria-expanded="false" aria-controls="busca">'
+           f'{icon("busca")}<span class="pill-t">Buscar</span></button>',
+           f'<button class="pill pill--ico js-tema" type="button" hidden aria-pressed="false">'
+           f'{icon("sol", "i i-sol")}{icon("lua", "i i-lua")}<span class="sr">Tema escuro</span></button>']
+    if "Telegram" in links:
+        nav.append(f'<a class="pill pill--tg" href="{e(links["Telegram"])}" rel="noopener noreferrer" target="_blank">'
+                   f'{icon("tg")}<span class="pill-t">Telegram</span><span class="sr"> (canal, abre em nova aba)</span></a>')
+    if "WhatsApp" in links:
+        nav.append(f'<a class="pill pill--wa" href="{e(links["WhatsApp"])}" rel="noopener noreferrer" target="_blank">'
+                   f'{icon("wa")}<span class="pill-t">Canal no WhatsApp</span><span class="sr"> (abre em nova aba)</span></a>')
+    return f"""<header class="top">
+<div class="top-bar">
+{brand()}
+{live(offers)}
+<nav class="acoes" aria-label="Atalhos">{"".join(nav)}</nav>
+</div>
+<div class="busca" id="busca" hidden><label class="sr" for="q">Buscar por título ou autor</label><input id="q" type="search" placeholder="Buscar por título ou autor" autocomplete="off" spellcheck="false" enterkeyhint="search"></div>
+</header>"""
+
+
+def intro(h1, text):
+    return f'<div class="intro"><h1>{h1}</h1><p>{text}</p></div>'
+
+
 def foot(ch, here=""):
     follow = ""
     if ch:
@@ -753,10 +822,11 @@ def foot(ch, here=""):
 </footer>"""
 
 
-def shell(title, desc, mast, body, ch=(), here=""):
-    """Esqueleto comum. title/desc/mast/body já chegam escapados."""
+def shell(offers, title, desc, body, ch=(), here="", style=None):
+    """Esqueleto comum. title/desc/body já chegam escapados. style: nicho da página (acento global)."""
+    ds = f' data-style="{style}"' if style in GENRES else ""
     return f"""<!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR"{ds}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -770,11 +840,10 @@ def shell(title, desc, mast, body, ch=(), here=""):
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+{SPRITE}
 <div class="bg-blobs" aria-hidden="true"><i></i><i></i><i></i></div>
 <a class="skip" href="#conteudo">Pular para o conteúdo</a>
-<header class="mast">
-{mast}
-</header>
+{header(offers, ch)}
 <main id="conteudo">
 {body}
 </main>
@@ -784,39 +853,29 @@ def shell(title, desc, mast, body, ch=(), here=""):
 """
 
 
-def carimbo(dt):
-    """Assinatura "feito à mão": carimbo girado com a hora da coleta mais recente. Só CSS."""
-    d = dt.astimezone(BRT)
-    return (f'<p class="carimbo">conferido <time datetime="{e(dt.isoformat())}">'
-            f'<b>{d:%d/%m}</b> às {d:%H}h{d:%M}</time></p>')
+LEDE = ("Só entra aqui livro que baixou de preço de verdade. Conferimos cada um na loja "
+        "e comparamos com o histórico de preço.")
 
 
 def page(all_offers, genre=None, bot=None, ch=()):
     offers = [o for o in all_offers if genre is None or o["genre"] == genre]
-    latest = max(o["checked_at"] for o in offers)
-    cards = "\n".join(card(o, bot) for o in offers)
-    n = len(offers)
-    head = (f'{brand()}\n<h1>{e(GENRES[genre])}</h1>' if genre else f"{brand()}\n<h1>Livros que baixaram de verdade</h1>")
-    mast = f"""{head}
-<p class="lede">Só entra aqui livro que baixou de preço de verdade. Conferimos cada um na loja e comparamos com o histórico de preço.</p>
-<p class="status">{n} {"oferta ativa" if n == 1 else "ofertas ativas"}.</p>
-{carimbo(latest)}
-{nav(all_offers, genre)}"""
     title = (f"{e(GENRES[genre])}: ofertas de livros" if genre
              else "Ofertas Livros: descontos de livros conferidos na loja")
     desc = (f"{e(GENRES[genre])} em oferta" if genre else "Ofertas de livros") + (
         " na Amazon e no Mercado Livre, conferidas uma a uma e comparadas com o histórico de preço.")
     if genre is None:
-        mast = mast.replace(f"\n{nav(all_offers, genre)}", "")  # na home, os nichos viram a seção 3
-        return shell(title, desc, mast, home_sections(offers, bot, ch), ch)
-    return shell(title, desc, mast, f'<ol class="grid">\n{cards}\n</ol>', ch)
+        body = intro("Livros que baixaram de verdade", LEDE) + "\n" + home_sections(offers, bot, ch)
+    else:
+        cards = "\n".join(card(o, bot) for o in offers)
+        body = intro(e(GENRES[genre]), LEDE) + f'\n{nav(all_offers, genre)}\n<ol class="grid">\n{cards}\n</ol>'
+    return shell(all_offers, title, desc, body, ch, style=genre)
 
 
-def privacy(bot=None, ch=()):
+def privacy(offers, bot=None, ch=()):
     bot_name = (f'o bot <a href="https://t.me/{e(bot)}" rel="noopener noreferrer" target="_blank">@{e(bot)}</a>'
                 if bot else "o nosso bot")
-    mast = f'{brand()}\n<h1>Privacidade</h1>'
-    body = f"""<article class="doc">
+    body = f"""<h1 class="page-h1">Privacidade</h1>
+<article class="doc">
 <h2>No site</h2>
 <p>O site não tem cadastro, cookies, scripts nem ferramentas de análise. Ele é hospedado na Cloudflare, que recebe os dados técnicos de cada acesso (como o endereço IP) para entregar as páginas.</p>
 <p>Ao clicar em uma oferta, você vai para a Amazon ou para o Mercado Livre. A partir daí valem as políticas de privacidade de cada loja.</p>
@@ -839,18 +898,18 @@ def privacy(bot=None, ch=()):
 <li>bloquear o bot também apaga todos os seus dados.</li>
 </ul>
 </article>"""
-    return shell("Privacidade: Ofertas Livros",
-                 "O que o Ofertas Livros guarda, onde, por quanto tempo e como apagar.", mast, body, ch, "/privacidade/")
+    return shell(offers, "Privacidade: Ofertas Livros",
+                 "O que o Ofertas Livros guarda, onde, por quanto tempo e como apagar.", body, ch, "/privacidade/")
 
 
-def canais(ch, bot=None):
+def canais(offers, ch, bot=None):
     desc = {"Telegram": "as ofertas chegam assim que são publicadas, até 8 por dia, das 8h às 22h.",
             "WhatsApp": "um resumo por dia com até 5 ofertas."}
     items = "\n".join(f"<li>{ext(url, f'Canal no {name}')}: {desc[name]}</li>" for name, url in ch)
     alert = (f'<p>Quer saber de um livro só? Peça um alerta de preço ao {ext(f"https://t.me/{bot}", "@" + e(bot))} '
              'ou toque em “Me avise se baixar” na oferta.</p>' if bot else "")
-    mast = f'{brand()}\n<h1>Canais</h1>'
-    body = f"""<article class="doc">
+    body = f"""<h1 class="page-h1">Canais</h1>
+<article class="doc">
 <p>Os canais repetem as ofertas do site, com preço conferido e o horário da verificação. São só de leitura e não pedem cadastro.</p>
 <ul>
 {items}
@@ -858,7 +917,7 @@ def canais(ch, bot=None):
 {alert}
 <p>Os links dos canais são de afiliado: ganhamos com compras qualificadas, e o preço final é o da loja.</p>
 </article>"""
-    return shell("Canais: Ofertas Livros", "Siga as ofertas de livros no Telegram e no WhatsApp.", mast, body, ch, "/canais/")
+    return shell(offers, "Canais: Ofertas Livros", "Siga as ofertas de livros no Telegram e no WhatsApp.", body, ch, "/canais/")
 
 
 MAX_REDIRECTS = 2000  # limite de regras estáticas do _redirects na Cloudflare
@@ -916,11 +975,11 @@ def build(dev=False):
     offers = resolve(books, now)
     bot, ch = tg_bot(), channels()
     # tudo validado e renderizado antes de tocar no dist/
-    pages = {"index.html": page(offers, bot=bot, ch=ch), "privacidade/index.html": privacy(bot, ch)}
+    pages = {"index.html": page(offers, bot=bot, ch=ch), "privacidade/index.html": privacy(offers, bot, ch)}
     for g in {o["genre"] for o in offers}:
         pages[f"{g}/index.html"] = page(offers, g, bot, ch)
     if ch:
-        pages["canais/index.html"] = canais(ch, bot)
+        pages["canais/index.html"] = canais(offers, ch, bot)
     rules = redirects(offers)
     shutil.rmtree(DIST, ignore_errors=True)
     shutil.copytree(STATIC, DIST)

@@ -145,8 +145,7 @@ em { font-style: italic; font-family: var(--serif); font-variation-settings: "SO
 }
 @media (max-width: 1100px) { .brand img { height: 56px; } }
 @media (max-width: 900px) { .brand img { height: 40px; } }
-@media (max-width: 640px) { .brand img { height: auto; width: min(52vw, 240px); } }
-@media (max-width: 400px) { .brand img { width: min(48vw, 190px); } }
+@media (max-width: 640px) { .brand img { height: auto; width: min(46vw, 220px); } }
 
 /* ---------- 3. Fundo e textura (spec 2.8) ---------- */
 /* Três manchas desfocadas no acento atual: trocar de nicho muda o clima da página inteira */
@@ -168,4 +167,69 @@ body::after {
   content: ""; position: fixed; inset: 0; z-index: 100; pointer-events: none;
   background: url(/grao.svg) repeat; background-size: 160px;
   opacity: .06; mix-blend-mode: overlay;
+}
+
+/* ---------- 4. Header (spec 4) ---------- */
+.top {
+  position: sticky; top: 0; z-index: 30;
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4);
+  border-bottom: 1px solid var(--line);
+}
+.top-bar { max-width: 1440px; margin: 0 auto; display: flex; align-items: center; gap: 16px; padding: 6px var(--pad); }
+.pill, .live {
+  display: inline-flex; align-items: center; gap: 8px; border-radius: 999px;
+  background: var(--surface2); white-space: nowrap;
+}
+/* Conferido às HHhMM: a bolinha pulsa, o número é o de ofertas no ar */
+.live { padding: 6px 12px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.live b { padding: 1px 8px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); letter-spacing: 0; transition: background-color .3s var(--ease); }
+.dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: #3ef08a; }
+.dot::after { content: ""; position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 0 #3ef08a; animation: pulse 1.8s ease-out infinite; }
+@keyframes pulse { to { box-shadow: 0 0 0 9px #3ef08a00; } }
+.acoes { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.pill {
+  height: 42px; padding: 0 14px; border: 1px solid var(--line);
+  font: 600 14px/1 var(--sans); text-decoration: none;
+  transition: transform .2s var(--ease), background-color .3s var(--ease), filter .2s;
+}
+.pill--ico { width: 42px; padding: 0; justify-content: center; }
+.pill:hover { transform: translateY(-2px); }
+.pill:active { transform: scale(.97); }
+.pill--tg .i { color: #229ed9; }
+.pill--tg:hover { background: color-mix(in srgb, #229ed9 14%, var(--surface2)); }
+.pill--wa { padding: 0 18px; border: 0; background: #25d366; color: #06210f; font-weight: 700; box-shadow: 0 10px 24px -14px #25d366e6; }
+.pill--wa:hover { filter: brightness(1.06); }
+/* Sol no tema escuro (para voltar ao claro), lua no claro */
+.i-sol { display: none; }
+:root[data-theme="dark"] .i-sol { display: block; }
+:root[data-theme="dark"] .i-lua { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .i-sol { display: block; }
+  :root:not([data-theme="light"]) .i-lua { display: none; }
+}
+/* Faixa de busca, de vidro, logo abaixo da barra */
+.busca { padding: 10px var(--pad) 14px; border-top: 1px solid var(--line); }
+.busca input {
+  display: block; width: 100%; max-width: 640px; height: 48px; margin: 0 auto; padding: 0 20px;
+  border-radius: 999px; border: 1px solid var(--line); background: var(--bg2); color: var(--text);
+  font: 400 16px var(--sans); transition: border-color .3s var(--ease);
+}
+.busca input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+.intro { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px clamp(16px, 3vw, 36px); margin-top: 26px; padding: 0 4px; }
+.intro h1, .page-h1 { font-size: clamp(30px, 4vw, 52px); letter-spacing: -1px; }
+.page-h1 { margin: 26px 4px 18px; }
+.intro p { flex: 1 1 340px; max-width: 62ch; color: var(--muted); }
+main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
+@media (max-width: 1100px) { .live { letter-spacing: .03em; } }
+@media (max-width: 900px) { .pill--tg { width: 42px; padding: 0; justify-content: center; } .pill--tg .pill-t { display: none; } }
+@media (max-width: 640px) {
+  .live { display: none; }
+  .top-bar { gap: 8px; }
+  .js-busca { width: 42px; padding: 0; justify-content: center; }
+  .js-busca .pill-t, .pill--wa .pill-t { display: none; }
+  /* O logo B é largo: o Telegram sai do topo no celular (fica no bloco de canais e no rodapé)
+     e o WhatsApp vira círculo antes dos 350 px da spec */
+  .pill--tg { display: none; }
+  .pill--wa { width: 42px; padding: 0; justify-content: center; }
 }
