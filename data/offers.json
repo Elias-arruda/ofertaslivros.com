@@ -1,7 +1,7 @@
 {
   "version": 2,
   "_exemplo": true,
-  "_nota": "Dados de exemplo (contrato v2, docs/produto/comparacao-lojas.md). ASINs, MLB ids e links do ML são fictícios (só o formato é válido). Preços em centavos. Sem image_url: a foto do ML é testada no selftest. history_since recente de propósito: o exemplo não tem 90 dias de histórico. Casos: ML vence (habitos-atomicos, dom-casmurro), Amazon vence (torto-arado, a-psicologia-financeira), empate com o ML verificado depois (tudo-e-rio), ML fora do prazo de 2 h (1984-orwell) e livros com uma loja. price_points (proposta ao contrato) só com dias depois do history_since, sem inventar 90 dias: gráfico em torto-arado, habitos-atomicos, rapido-e-devagar e one-piece-vol-1 (subiu depois de cair: sem \"caiu\"); dom-casmurro tem um ponto só (sem gráfico). blurb (proposta ao contrato) em rapido-e-devagar e torto-arado: resumo do livro, não citação nem resenha.",
+  "_nota": "Dados de exemplo (contrato v2, docs/produto/comparacao-lojas.md). ASINs, MLB ids e links do ML são fictícios (só o formato é válido). Preços em centavos. Sem image_url: a foto do ML é testada no selftest. history_since recente de propósito: o exemplo não tem 90 dias de histórico. Casos: ML vence (habitos-atomicos, dom-casmurro), Amazon vence (torto-arado, a-psicologia-financeira), empate com o ML verificado depois (tudo-e-rio), ML fora do prazo de 2 h (1984-orwell) e livros com uma loja. price_points (proposta ao contrato) só com dias depois do history_since, sem inventar 90 dias: gráfico em torto-arado, habitos-atomicos, rapido-e-devagar e one-piece-vol-1 (subiu depois de cair: sem \"caiu\"); dom-casmurro tem um ponto só (sem gráfico). blurb (proposta ao contrato) em rapido-e-devagar e torto-arado: resumo do livro, não citação nem resenha. Novidades (desconto abaixo de 10% e sem selo, decisão de 2026-10-19): vidas-secas (8%, sem history_since), sapiens (0%), o-pequeno-principe (9%, entrou 17/10: badge Novo), naruto-vol-1 (0%, entrou 16/10: badge Novo) e pai-rico-pai-pobre (4%); todas com lowest_90d_cents abaixo do preço (sem 'menor preço desde').",
   "offers": [
     {
       "id": "habitos-atomicos",
@@ -305,6 +305,90 @@
           "lowest_90d_cents": 1490,
           "history_since": "2026-10-04",
           "checked_at": "2026-10-18T06:12:00-03:00"
+        }
+      ]
+    },
+    {
+      "id": "vidas-secas",
+      "genre": "literatura-brasileira",
+      "title": "Vidas Secas",
+      "author": "Graciliano Ramos",
+      "stores": [
+        {
+          "store": "amazon",
+          "asin": "B0EXEMPL11",
+          "price_cents": 3290,
+          "list_price_cents": 3590,
+          "lowest_90d_cents": 3290,
+          "checked_at": "2026-10-18T08:40:00-03:00"
+        }
+      ]
+    },
+    {
+      "id": "sapiens",
+      "genre": "nao-ficcao",
+      "title": "Sapiens: Uma Breve História da Humanidade",
+      "author": "Yuval Noah Harari",
+      "stores": [
+        {
+          "store": "amazon",
+          "asin": "B0EXEMPL12",
+          "price_cents": 5490,
+          "list_price_cents": 5490,
+          "lowest_90d_cents": 5290,
+          "checked_at": "2026-10-18T08:35:00-03:00",
+          "history_since": "2026-10-10"
+        }
+      ]
+    },
+    {
+      "id": "o-pequeno-principe",
+      "genre": "ficcao",
+      "title": "O Pequeno Príncipe",
+      "author": "Antoine de Saint-Exupéry",
+      "stores": [
+        {
+          "store": "amazon",
+          "asin": "B0EXEMPL13",
+          "price_cents": 2990,
+          "list_price_cents": 3290,
+          "lowest_90d_cents": 2890,
+          "checked_at": "2026-10-18T08:30:00-03:00",
+          "history_since": "2026-10-17"
+        }
+      ]
+    },
+    {
+      "id": "naruto-vol-1",
+      "genre": "manga",
+      "title": "Naruto Gold Vol. 1",
+      "author": "Masashi Kishimoto",
+      "stores": [
+        {
+          "store": "amazon",
+          "asin": "B0EXEMPL14",
+          "price_cents": 3490,
+          "list_price_cents": 3490,
+          "lowest_90d_cents": 3290,
+          "checked_at": "2026-10-18T08:25:00-03:00",
+          "history_since": "2026-10-16"
+        }
+      ]
+    },
+    {
+      "id": "pai-rico-pai-pobre",
+      "genre": "negocios",
+      "title": "Pai Rico, Pai Pobre",
+      "author": "Robert T. Kiyosaki",
+      "stores": [
+        {
+          "store": "amazon",
+          "asin": "B0EXEMPL15",
+          "price_cents": 4490,
+          "list_price_cents": 4690,
+          "lowest_90d_cents": 3990,
+          "checked_at": "2026-10-18T08:20:00-03:00",
+          "history_since": "2026-10-05"
         }
       ]
     }

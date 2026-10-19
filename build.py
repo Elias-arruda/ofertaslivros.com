@@ -12,6 +12,7 @@ import json
 import os
 import re
 import shutil
+import unicodedata
 import sys
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -378,6 +379,14 @@ def seal_of(win, el):
     return "since", max(hs)
 
 
+NEW_DAYS = 3  # badge "Novo": o livro entrou no histórico (history_since) nos últimos 3 dias
+# Decisão do Elias (2026-10-19): só é OFERTA quem tem desconto >= 10% sobre o list_price da vencedora
+# ou o selo válido de 90 dias. O resto é NOVIDADE: fica no site, nunca rotulado como oferta (fora do
+# hero, dos destaques, das ofertas ativas, do ranking, da contagem e dos canais). O "menor preço desde"
+# continua aparecendo (é informação honesta), mas não promove o livro a oferta.
+OFERTA_MIN_DESCONTO = 10
+
+
 def resolve(books, now):
     """Livro -> oferta exibida: campos do livro + os da loja vencedora, só com lojas no prazo.
     Vencedora: menor price_cents; no empate, a verificada mais recentemente."""
@@ -388,7 +397,11 @@ def resolve(books, now):
             continue  # nenhuma loja no prazo: o livro sai da lista
         win = min(el, key=lambda s: (s["price_cents"], -s["checked_at"].timestamp()))
         seal, since = seal_of(win, el)
-        out.append({**b, **win, "stores": el, "alt": next((s for s in el if s is not win), None),
+        hs = [s["history_since"] for s in b["stores"]]
+        novo = None not in hs and (now.astimezone(BRT).date() - min(hs)).days < NEW_DAYS
+        oferta = seal == "90d" or discount(win) >= OFERTA_MIN_DESCONTO
+        out.append({**b, **win, "novo": novo, "oferta": oferta, "stores": el,
+                    "alt": next((s for s in el if s is not win), None),
                     "seal": seal, "since": since, "now": now})  # now: relógio do build, para o "visto hoje"
     if not out:
         raise Invalid("nenhuma oferta com preço dentro do prazo de frescor")
@@ -413,6 +426,23 @@ def when(dt):
     return f"{d:%d/%m} às {d:%H}h{d:%M}"
 
 
+def ofertas(items):
+    return [o for o in items if o["oferta"]]
+
+
+def novidades(items):
+    """Sem oferta: entrada mais recente no histórico primeiro, depois o título."""
+    def key(o):
+        hs = [s["history_since"] for s in o["stores"] if s["history_since"]]
+        return (-(min(hs).toordinal() if hs else 0), fold(o["title"]))
+    return sorted((o for o in items if not o["oferta"]), key=key)
+
+
+def off(o):
+    """Desconto que pode aparecer na tela: só em oferta (novidade não mostra riscado nem %)."""
+    return discount(o) if o["oferta"] else 0
+
+
 def discount(o):
     return (o["list_price_cents"] - o["price_cents"]) * 100 // o["list_price_cents"]  # piso: não exagera
 
@@ -429,6 +459,8 @@ def post_text(o, url):
             or p.path not in {f"/r/{o['id']}", f"/r/{o['id']}/tg", f"/r/{o['id']}/wa"}
             or p.query or p.fragment):
         raise Invalid(f"post_text só aceita o /r/ do nosso domínio: {url!r}")
+    if not o.get("oferta"):
+        raise Invalid(f"post_text só publica oferta; {o['id']!r} é novidade")
     _ascii(url)
     off = discount(o)
     price = brl(o["price_cents"]) + (f" (de {brl(o['list_price_cents'])}, -{off}%)" if off else "")
@@ -440,20 +472,6 @@ def post_text(o, url):
         lines.append(f"Também {na(a['store'])} por {brl(a['price_cents'])}")
     lines.append(f"Link de afiliado: {url}")
     return "\n".join(lines)
-
-
-def cover(o, small=False, eager=False):
-    """Foto real do ML num quadro 2:3 neutro (object-fit: contain). Sem foto, um placeholder sóbrio
-    que não finge ser capa: carimbo pequeno + título discreto (decorativo, o título está ao lado)."""
-    cls = "cover cover--sm" if small else "cover"
-    load = 'loading="eager" fetchpriority="high"' if eager else 'loading="lazy"'
-    if o["image_url"]:
-        return (f'<div class="{cls} cover--photo">\n'
-                f'      <img src="{e(o["image_url"])}" alt="Capa de {e(o["title"])}, de {e(o["author"])}" '
-                f'width="120" height="180" {load} decoding="async">\n    </div>')
-    title = "" if small else f'\n      <span class="cover-t" aria-hidden="true">{e(o["title"])}</span>'
-    return (f'<div class="{cls} cover--none">\n'
-            f'      <img src="/capa.svg" alt="" width="120" height="180" {load} decoding="async">{title}\n    </div>')
 
 
 def price_html(o):
@@ -469,13 +487,6 @@ def stamp_html(o):
     return ('<p class="stamp">Menor preço em 90 dias</p>' if kind == "90d" else
             f'<p class="stamp stamp--since">Menor preço desde {o["since"]:%d/%m}</p>'
             if kind == "since" else "")
-
-
-def deal(o, pad="      "):
-    """Selo colado ao preço: os dois num bloco só, na mesma ordem em todo lugar."""
-    stamp = stamp_html(o)
-    stamp = f"\n{pad}  {stamp}" if stamp else ""
-    return f'<div class="deal">{stamp}\n{pad}  <p class="price">{price_html(o)}</p>\n{pad}</div>'
 
 
 def series(o):
@@ -516,6 +527,11 @@ def chart(o, pad="  "):
             f'<span>{e(label)}</span></p>')
 
 
+def checked_txt(s, now):
+    d = s["checked_at"].astimezone(BRT)
+    return f'visto {"hoje" if d.date() == now.astimezone(BRT).date() else f"em {d:%d/%m}"} às {d:%H}h{d:%M}'
+
+
 def checked(s, now):
     """"visto hoje às 08h47" ou "visto em 17/10 às 08h47", relativo ao relógio do build (BRT).
     ponytail: o "hoje" congela no build; vale porque o cron refaz o site bem antes de virar o dia."""
@@ -547,65 +563,163 @@ def na(store):
 def go(o):
     """Link de afiliado da vencedora: sempre o nosso /r/<id>, nunca a URL da loja."""
     return (f'<a class="go" href="/r/{e(o["id"])}" rel="sponsored noopener noreferrer" target="_blank">'
-            f'Ver {na(o["store"])} por {brl(o["price_cents"])}'
+            f'Ver {na(o["store"])} por {brl(o["price_cents"])}{icon("seta")}'
             f'<span class="sr">: {e(o["title"])} (abre em nova aba)</span></a>')
 
 
-def buy(o):
-    """Botão da vencedora + seta (<details> nativo) com a outra loja elegível, se houver."""
+def alt_details(o):
+    """Seta (<details> nativo) com a outra loja elegível, se houver."""
     a = o["alt"]
     if not a:
-        return f'<div class="buy">{go(o)}</div>'
-    other = (f'<details class="alt"><summary><span class="sr">Outra loja: {STORES[a["store"]]}</span></summary>\n'
-             f'      <p class="alt-box"><a href="/r/{e(o["id"])}/{a["store"]}" rel="sponsored noopener noreferrer" '
-             f'target="_blank">Também {na(a["store"])}: {brl(a["price_cents"])}'
-             f'<span class="sr">, {e(o["title"])} (abre em nova aba)</span></a>'
-             f'<span class="alt-when">{checked(a, o["now"])}</span></p></details>')
-    return f'<div class="buy">{go(o)}\n    {other}</div>'
+        return ""
+    return (f'<details class="alt"><summary>{icon("chev")}<span class="sr">Outra loja: {STORES[a["store"]]}</span></summary>'
+            f'<p class="alt-box"><a href="/r/{e(o["id"])}/{a["store"]}" rel="sponsored noopener noreferrer" '
+            f'target="_blank">Também {na(a["store"])}: {brl(a["price_cents"])}'
+            f'<span class="sr">, {e(o["title"])} (abre em nova aba)</span></a>'
+            f'<span class="alt-when">{checked(a, o["now"])}</span></p></details>')
 
 
-def card(o, bot=None, h=2):
-    t = e(o["title"])
-    alert = (f' <a class="alert" href="{e(tg_alert_url(bot, o["id"]))}" rel="noopener noreferrer" target="_blank">'
-             f'Me avise se baixar (Telegram)<span class="sr">: alerta de preço de {t} (abre o Telegram)</span></a>' if bot else "")
-    return f"""<li class="card">
-  <div class="top">
-    {cover(o)}
-    <div class="head">
-      <h{h} class="title">{t}</h{h}>
-      <p class="author">{e(o["author"])}</p>
-      {deal(o)}
-    </div>
+def buy(o):
+    """Botão da vencedora + seta com a outra loja."""
+    return f'<div class="buy">{go(o)}{alt_details(o)}</div>'
+
+
+def buy_circle(o):
+    """Botão de compra do card: círculo com a seta; loja e preço no nome acessível."""
+    return (f'<a class="buy-c" href="/r/{e(o["id"])}" rel="sponsored noopener noreferrer" target="_blank">{icon("seta")}'
+            f'<span class="sr">Ver {na(o["store"])} por {brl(o["price_cents"])}: {e(o["title"])} (abre em nova aba)</span></a>')
+
+
+def fold(text):
+    """Minúsculas sem acento, para a busca do app.js (que dobra a consulta do mesmo jeito)."""
+    return "".join(c for c in unicodedata.normalize("NFKD", text.lower()) if not unicodedata.combining(c))
+
+
+def card(o, bot=None, h=3):
+    """Card da vitrine. O título (link para /livro/<id>/, que o JS abre no modal) cobre o card;
+    a compra, a seta e o sino ficam por cima."""
+    g, t, oid, off_ = o["genre"], e(o["title"]), e(o["id"]), off(o)
+    b = badge(o)
+    bdg = f'<span class="badge badge--{b[0]}">{b[1]}</span>' if b else ""
+    stk = f'<span class="sticker" aria-hidden="true">−{off_}%</span>' if off_ else ""
+    old = (f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>'
+           f'<span class="sr">, {off_}% de desconto</span>' if off_ else "")
+    hs = [s["history_since"] for s in o["stores"] if s["history_since"]]
+    rec = f'{min(hs) if hs else "0000-00-00"}|{o["checked_at"].astimezone(timezone.utc):%Y-%m-%dT%H:%M}'
+    return f"""<li class="card" data-g="{g}" data-id="{oid}" data-q="{e(fold(o["title"] + " " + o["author"]))}" data-preco="{o["price_cents"]}" data-off="{off_}" data-rec="{rec}" data-tipo="{"oferta" if o["oferta"] else "novidade"}">
+  <div class="sleeve">{obj(o)}{bdg}{stk}{alert_link(o, bot, full=False)}</div>
+  <div class="card-body">
+    <p class="card-meta">{avatar(g, "av av--sm")}<span><span class="store">{STORES[o["store"]]}</span> <span>{checked(o, o["now"])}</span></span></p>
+    <h{h} class="card-title"><a href="/livro/{oid}/" data-modal="{oid}">{t}</a></h{h}>
+    <p class="card-sub">{e(o["author"])}</p>
+    {stamp_html(o)}
+    <div class="card-foot"><p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong>{old}</p>{alt_details(o)}{buy_circle(o)}</div>
   </div>
-  <p class="meta">{meta_html(o)}</p>{chart(o)}
-  <div class="acts">{buy(o)}{alert}</div>
 </li>"""
 
 
-def slide(o, k, n):
-    # Emoção, depois decisão: a frase da curadoria (se houver) vem logo antes do preço
+def badge(o):
+    """("alta" | "novo", rótulo) só com dado real: trending_rank do back ou history_since recente.
+    "Só N em estoque" não existe: não temos o dado."""
+    return ("alta", "Em alta") if o["trending_rank"] else ("novo", "Novo") if o["novo"] else None
+
+
+def obj(o, cls="obj", eager=False):
+    """O objeto-metáfora: a capa sobre o miolo do livro (páginas e fita na cor do nicho).
+    Sem foto, a capa vira o gradiente do nicho com a inicial (decorativa: o título está ao lado)."""
+    load = 'loading="eager" fetchpriority="high"' if eager else 'loading="lazy"'
+    if o["image_url"]:
+        cover = (f'<div class="cover"><img src="{e(o["image_url"])}" alt="Capa de {e(o["title"])}, de {e(o["author"])}" '
+                 f'width="120" height="180" {load} decoding="async"></div>')
+    else:
+        cover = f'<div class="cover cover--none" aria-hidden="true"><span class="ini">{e(o["title"][:1].upper())}</span></div>'
+    return f'<div class="{cls}"><span class="pages" aria-hidden="true"></span>{cover}</div>'
+
+
+def avatar(g, cls="av"):
+    """Círculo do nicho: hoje um ícone desenhado; troca pela ilustração do curador quando houver arte."""
+    return f'<span class="{cls}" data-g="{g}" aria-hidden="true">{icon("g-" + g)}</span>'
+
+
+SOON = '<span class="sr">, </span><span class="soon">em breve</span>'
+CHANNELS = ("Telegram", "WhatsApp")
+
+
+def cta(href, inner, cls, sr="", rel="noopener noreferrer"):
+    """Link real quando há destino; sem ele (env ausente ou vazia), o mesmo componente no estado
+    "em breve": <span> com aria-disabled, fora do tab, com a etiqueta também no texto acessível.
+    Nunca <a href="#">."""
+    if href:
+        return f'<a class="{cls}" href="{e(href)}" rel="{rel}" target="_blank">{inner}{sr}</a>'
+    return f'<span class="{cls} is-soon" aria-disabled="true">{inner}{SOON}</span>'
+
+
+def chan_urls(ch):
+    """{nome: url ou None} dos dois canais, sempre os dois (o ausente sai "em breve")."""
+    links = dict(ch)
+    return {n: links.get(n) for n in CHANNELS}
+
+
+def alert_link(o, bot, full=True):
+    """Me avise se baixar (Telegram): texto completo no hero, no modal e na página; sino no card.
+    Sem TELEGRAM_BOT_USERNAME, o mesmo botão no estado "em breve"."""
+    t = e(o["title"])
+    href = tg_alert_url(bot, o["id"]) if bot else None
+    if full:
+        return cta(href, f'{icon("sino")}Me avise se baixar (Telegram)', "btn btn--ghost alert",
+                   f'<span class="sr">: alerta de preço de {t} (abre o Telegram)</span>')
+    return cta(href, f'{icon("sino")}<span class="sr">Me avise se baixar (Telegram): alerta de preço de {t}</span>', "bell")
+
+
+def slide(o, k, n, bot=None):
+    g, t = o["genre"], e(o["title"])
+    chips = [f'<span class="chip chip--g">{icon("g-" + g)}{e(GENRES[g])}</span>']
+    b = badge(o)
+    if not o["oferta"]:  # novidade completando o hero: chip próprio, sem desconto nem riscado
+        chips.append('<span class="chip chip--nov">Novidade</span>')
+    elif b:
+        chips.append(f'<span class="chip chip--{b[0]}">{b[1]}</span>')
+    off = discount(o) if o["oferta"] else 0
+    old = f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>' if off else ""
+    pill = f'<span class="off-pill">−{off}%</span>' if off else ""
     blurb = f'\n    <p class="blurb">{e(o["blurb"])}</p>' if o["blurb"] else ""
-    return f"""<div class="slide" id="d-{e(o["id"])}" role="group" aria-roledescription="slide" aria-label="{k} de {n}">
-  {cover(o, eager=k == 1)}
-  <div class="slide-body">
-    <h3 class="slide-title">{e(o["title"])}</h3>
-    <p class="author">{e(o["author"])}</p>{blurb}
-    {deal(o, "    ")}
-    <p class="meta">{meta_html(o)}</p>{chart(o, "    ")}
-    <div class="acts">{buy(o)}</div>
+    stamp = stamp_html(o)
+    long = " hero-title--long" if len(o["title"]) > 38 else ""
+    aria = f' role="group" aria-roledescription="slide" aria-label="{k} de {n}"' if n > 1 else ""
+    return f"""<div class="slide" id="d-{e(o["id"])}" data-g="{g}" data-tipo="{"oferta" if o["oferta"] else "novidade"}"{aria}>
+  <div class="hero-glow" aria-hidden="true"></div>
+  <div class="slide-text">
+    <p class="chips">{"".join(chips)}</p>
+    <h3 class="hero-title{long}">{t}</h3>
+    <p class="hero-sub">{e(o["author"])}</p>{blurb}
+    <div class="hero-deal">{stamp}<p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong>{old}</p>{pill}</div>
+    <p class="meta">{meta_html(o)}</p>
+    <div class="hero-acts">{buy(o)}<a class="btn btn--ghost" href="/livro/{e(o["id"])}/" data-modal="{e(o["id"])}">Ver detalhes<span class="sr"> de {t}</span></a>{alert_link(o, bot)}</div>
+    <p class="sign">{avatar(g)}Curadoria de {e(GENRES[g])}</p>
   </div>
+  {obj(o, "obj hero-obj", eager=k == 1)}
 </div>"""
 
 
-def hero(items):
-    """Carrossel só com CSS: passagem por @keyframes, pausa (hover, foco, checkbox),
-    manual com scroll-snap em prefers-reduced-motion ou depois de tocar num indicador."""
+def hero(items, bot=None):
+    """Destaque logo depois do header, com 1 a 5 livros. Com 2 ou mais é carrossel: sem JS, passagem
+    por @keyframes, pausa (hover, foco, checkbox) e segmentos que são links para cada slide; com JS,
+    setas, arraste, contador e barra. Com 1 livro não há controles nem passagem."""
     n = len(items)
-    if not 3 <= n <= 5:
+    if not 1 <= n <= 5:
         return ""
-    slides = "\n".join(slide(o, k, n) for k, o in enumerate(items, 1))
-    dots = "".join(f'<li><a href="#d-{e(o["id"])}"><span class="sr">Mostrar destaque {k} de {n}: '
-                   f'{e(o["title"])}</span></a></li>' for k, o in enumerate(items, 1))
+    slides = "\n".join(slide(o, k, n, bot) for k, o in enumerate(items, 1))
+    if n == 1:
+        return f"""<section class="hero hero--1" aria-labelledby="h-destaque">
+<h2 class="sr" id="h-destaque">Em destaque</h2>
+<div class="hero-view">
+<div class="hero-track">
+{slides}
+</div>
+</div>
+</section>"""
+    segs = "".join(f'<li><a href="#d-{e(o["id"])}"><span class="sr">Mostrar destaque {k} de {n}: '
+                   f'{e(o["title"])}</span><i></i></a></li>' for k, o in enumerate(items, 1))
     return f"""<section class="hero hero--{n}" aria-roledescription="carrossel" aria-labelledby="h-destaque">
 <h2 class="sr" id="h-destaque">Em destaque</h2>
 <div class="hero-view">
@@ -613,58 +727,146 @@ def hero(items):
 {slides}
 </div>
 </div>
-<div class="hero-bar">
-<ol class="dots">{dots}</ol>
-<p class="pause"><input type="checkbox" id="pausar"><label for="pausar">Pausar passagem</label></p>
+<div class="hero-nav">
+<ol class="segs">{segs}</ol>
+<p class="hero-count tnum" hidden><span class="js-n">1</span>/{n}</p>
+<button class="arrow js-prev" type="button" hidden>{icon("esq")}<span class="sr">Destaque anterior</span></button>
+<button class="arrow js-next" type="button" hidden>{icon("dir")}<span class="sr">Próximo destaque</span></button>
+<p class="pause"><input type="checkbox" id="pausar"><label for="pausar">Pausar</label></p>
 </div>
 </section>"""
 
 
-def mini(o):
-    return f"""<li class="mini">
-  {cover(o, small=True)}
-  <div class="mini-body">
-    <h3 class="mini-title">{e(o["title"])}</h3>
-    <p class="price">{price_html(o)}</p>
-    <p class="meta">{meta_html(o)}</p>
-  </div>
-  {buy(o)}
+def hero_items(offers):
+    """Até 5 para o hero: as ofertas primeiro (featured, selo, desconto) e, se faltarem, as novidades
+    (entrada mais recente primeiro), marcadas como Novidade."""
+    top = ranked(ofertas(offers))[:5]
+    return top + novidades(offers)[:5 - len(top)]
+
+
+def section(sid, title, body, count=None, note="", unit=("oferta", "ofertas")):
+    """Cabeçalho de seção: H2, contador com rótulo por extenso ("10 ofertas no momento") e uma frase curta.
+    data-s/data-p: o app.js reescreve a contagem depois de buscar ou filtrar, no singular ou plural."""
+    n = (f'<span class="sec-n" data-s="{unit[0]} no momento" data-p="{unit[1]} no momento">'
+         f'{count} {unit[0] if count == 1 else unit[1]} no momento</span>' if count is not None else "")
+    note = f'<p class="sec-note">{note}</p>' if note else ""
+    return (f'<section class="sec" aria-labelledby="{sid}">\n<div class="sec-head"><h2 id="{sid}">{title}</h2>{n}{note}</div>'
+            f'\n{body}\n</section>')
+
+
+def aneis(cls=""):
+    """Anéis de carimbo girando devagar: a textura dos blocos marinho (o "sulco" da spec)."""
+    return f'<span class="aneis {cls}" aria-hidden="true"></span>'
+
+
+def ch_buttons(ch, big=False):
+    """WhatsApp verde e Telegram em contorno; o canal sem env sai "em breve"."""
+    out = []
+    for name, url in chan_urls(ch).items():
+        cls = ("btn btn--wa" if name == "WhatsApp" else "btn btn--tg") + (" btn--big" if big else "")
+        out.append(cta(url, f'{icon("wa" if name == "WhatsApp" else "tg")}Canal no {name}', cls,
+                       '<span class="sr"> (abre em nova aba)</span>'))
+    return "".join(out)
+
+
+def strip_canais(ch, at):
+    """Faixa dos canais dentro do grid, largura toda. Sem as envs, os botões saem "em breve"."""
+    return f"""<li class="blk blk--canais" data-at="{at}">
+  <span class="radar" aria-hidden="true"></span>
+  <div><h3 class="blk-h">Receba as próximas ofertas <em>de graça</em></h3>
+  <p>As mesmas ofertas do site, com o preço conferido, chegam no canal. Sem cadastro.</p></div>
+  <div class="blk-acts">{ch_buttons(ch)}</div>{aneis()}
 </li>"""
 
 
-def section(sid, title, body, intro=""):
-    intro = f'\n<p class="sec-intro">{intro}</p>' if intro else ""
-    return f'<section class="sec" aria-labelledby="{sid}">\n<h2 id="{sid}">{title}</h2>{intro}\n{body}\n</section>'
+def banner_bot(bot, at):
+    """Banner do alerta em 2 colunas do grid. Sem TELEGRAM_BOT_USERNAME, o botão sai "em breve"."""
+    return f"""<li class="blk blk--bot" data-at="{at}">
+  <span class="mascote" aria-hidden="true">{icon("carimbo", "i i-carimbo")}</span>
+  <p class="kicker">{icon("sino")}Alerta grátis no Telegram</p>
+  <h3 class="blk-h">Escolha o livro. A gente avisa quando baixar.</h3>
+  <p>Toque no sino de qualquer oferta e o bot guarda o preço de hoje.</p>
+  <p>{cta(bot and f"https://t.me/{bot}", f'Ativar alertas{icon("seta")}', "go", '<span class="sr"> (abre o Telegram)</span>')}</p>{aneis()}
+</li>"""
 
 
-def join_banner(ch):
-    """Banner dos canais. Sem TELEGRAM_CHANNEL_ID nem WHATSAPP_CHANNEL_ID, não sai."""
-    if not ch:
+def ranking(offers, bot, at, skip=()):
+    """"Em alta agora": só ofertas com trending_rank vindo do back (popularidade real), sem as que já
+    apareceram no hero e nos destaques (nenhum livro em mais de 2 lugares)."""
+    hot = sorted((o for o in offers if o["oferta"] and o["trending_rank"] and o["id"] not in skip),
+                 key=lambda o: o["trending_rank"])[:10]
+    if not hot:
         return ""
-    links = "".join(f"<li>{ext(url, f'Canal no {name}')}</li>" for name, url in ch)
-    return f"""<section class="join" aria-labelledby="h-canais">
-<h2 id="h-canais">Receba as próximas ofertas</h2>
-<p>As mesmas ofertas do site, com o preço conferido, chegam no canal. Sem cadastro.</p>
-<ul class="join-links">{links}</ul>
-</section>"""
+    items = "".join(
+        f'<li class="rank-i" data-g="{o["genre"]}"><span class="rank-n">{k}</span>'
+        f'<span class="rank-t"><a href="/livro/{e(o["id"])}/" data-modal="{e(o["id"])}">{e(o["title"])}</a>'
+        f'<span class="rank-a">{e(o["author"])}</span></span>{buy_circle(o)}</li>'
+        for k, o in enumerate(hot, 1))
+    return f"""<li class="blk blk--rank" data-at="{at}">
+  <div class="rank-head">{icon("raio")}<h3 class="blk-h" id="h-alta">Em alta agora</h3></div>
+  <ol class="rank" aria-labelledby="h-alta">{items}</ol>
+</li>"""
 
 
-def monitor(bot):
-    """Explica o alerta de preço. Sem TELEGRAM_BOT_USERNAME, não sai."""
-    if not bot:
+FEAT_MAX = 10
+# Quantos cards a home mostra antes do "Ver todas" (celular, desktop). O CSS corta; a busca e o
+# filtro do JS (classe .filtrando) mostram tudo. As páginas completas usam o "carregar mais" do JS.
+CAP = {"ofertas": (4, 24), "novidades": (4, 12)}  # celular: 4 + 4 cabem na meta de 5.000 px
+
+
+def ver_todas(kind, n, home):
+    if not home or n <= CAP[kind][0]:
         return ""
-    cta = ext(f"https://t.me/{bot}", f"Abrir o @{e(bot)} no Telegram").replace("<a ", '<a class="alert alert--solid" ', 1)
-    return section("h-alerta", "Crie um alerta de preço", f"""<ol class="steps">
-<li>Escolha um livro e toque em “Me avise se baixar (Telegram)”.</li>
-<li>No Telegram, toque em Iniciar. O bot confirma o alerta.</li>
-<li>Quando o preço cair abaixo do de hoje, avisamos você por lá.</li>
-</ol>
-<p class="acts">{cta}</p>""",
-                   "Escolha um livro e avisamos no Telegram quando o preço cair.")
+    href, label = ("/ofertas/", f"Ver todas as {n} ofertas") if kind == "ofertas" else (
+        "/novidades/", f"Ver todas as {n} novidades")
+    m = " mais--m" if n <= CAP[kind][1] else ""  # só no celular quando o desktop já mostra todas
+    return f'<p class="mais{m}"><a class="btn btn--ghost" href="{href}">{icon("livro", "i i-livro")}{label}</a></p>'
 
 
-HOME_GRID = 8  # cards em "Ofertas ativas"; o resto vai para "Mais livros"
-HOT_MAX = 4
+def feed(offers, bot=None, ch=(), full=False, skip=()):
+    """Ofertas ativas: ordenação (JS), grid com blocos intercalados e "Ver todas" / "carregar mais".
+    Os blocos guardam a posição (data-at) para o JS recolocá-los depois de ordenar ou filtrar.
+    Sem nenhuma oferta, um estado vazio que aponta para as novidades e o alerta."""
+    items = ofertas(offers)
+    n = len(items)
+    if not n:
+        return ('<section class="sec" aria-labelledby="h-ativas">\n<div class="sec-head"><h2 id="h-ativas">Ofertas ativas</h2></div>\n'
+                '<p class="vazio vazio--fixo">Nenhuma oferta conferida agora. Veja as <a href="#h-novidades">novidades</a> '
+                'ou ative um alerta no sino de um livro.</p>\n</section>')
+    cards = [card(o, bot) for o in items]
+    blocks = [(4, banner_bot(bot, 4)), (8, strip_canais(ch, 8)), (12, ranking(items, bot, 12, skip))]
+    for at, html_ in sorted(blocks, reverse=True):
+        if html_:
+            cards.insert(min(at, len(cards)), html_)
+    tools = ('<div class="feed-tools" hidden><label for="ordem">Ordenar por</label><select id="ordem">'
+             '<option value="">Em destaque</option><option value="preco">Menor preço</option>'
+             '<option value="off">Maior desconto</option><option value="rec">Mais recentes</option></select></div>')
+    more = ver_todas("ofertas", n, not full) + (
+        f'<p class="mais"><button class="btn btn--ghost js-mais" type="button" hidden>{icon("livro", "i i-livro")}'
+        'Carregar mais ofertas</button></p>' if full else "")
+    body = (f'{tools}\n<p class="vazio" hidden role="status">Nenhuma oferta com esse título ou autor. '
+            f'Tente outro nome ou volte para Todos.</p>\n<ol class="grid feed{" feed--full" if full else " feed--home"}">\n'
+            + "\n".join(cards) + f"\n</ol>\n{more}")
+    return section("h-ativas", "Ofertas ativas", body, n, "Conferidas na loja. A que vence sai da lista.")
+
+
+NOV_NOTE = "Livros que entraram na nossa vigilância. Ainda sem desconto que valha anunciar; ative o alerta."
+
+
+def news(offers, bot=None, full=False, skip=()):
+    """Novidades: mesmos cards, sem sticker nem riscado. Sem novidade, a seção não sai.
+    skip: as que já estão no hero vão para o fim (no celular aparecem 4)."""
+    items = novidades(offers)
+    items = [o for o in items if o["id"] not in skip] + [o for o in items if o["id"] in skip]
+    n = len(items)
+    if not n:
+        return ""
+    more = ver_todas("novidades", n, not full) + (
+        f'<p class="mais"><button class="btn btn--ghost js-mais" type="button" hidden>{icon("livro", "i i-livro")}'
+        'Carregar mais novidades</button></p>' if full else "")
+    body = (f'<ol class="grid feed feed--nov{" feed--full" if full else " feed--home"}">\n'
+            + "\n".join(card(o, bot) for o in items) + f"\n</ol>\n{more}")
+    return section("h-novidades", "Novidades", body, n, NOV_NOTE, ("novidade", "novidades"))
 
 
 def ranked(offers):
@@ -672,55 +874,140 @@ def ranked(offers):
     return sorted(offers, key=lambda o: (not o["featured"], seal(o) is None, -discount(o)))
 
 
+def bot_block(bot):
+    """Capítulo marinho do alerta. "Pedir um livro" também abre o bot: não há formulário
+    (site sem backend, CSP form-action 'none'). Sem o bot, os botões saem "em breve"."""
+    url = bot and f"https://t.me/{bot}"
+    steps = ("Escolha o livro e toque no sino", "No Telegram, toque em Iniciar", "Quando o preço cair, avisamos")
+    lis = "".join(f'<li><span class="n">{k}</span>{t}</li>' for k, t in enumerate(steps, 1))
+    return f"""<section class="bot" aria-labelledby="h-bot">
+  <div class="bot-art" aria-hidden="true"><span class="radar radar--big"></span><span class="mascote mascote--big">{icon("carimbo", "i i-carimbo")}</span></div>
+  <div class="bot-text">
+    <p class="kicker">{icon("sino")}Seu alerta no Telegram</p>
+    <h2 id="h-bot">Avisamos quando o livro baixar. <em>Você só escolhe qual.</em></h2>
+    <ol class="passos">{lis}</ol>
+    <p class="bot-acts">{cta(url, f'Ativar no Telegram{icon("seta")}', "go", '<span class="sr"> (abre o Telegram)</span>')}
+    {cta(url, "Pedir um livro", "btn btn--ivory", '<span class="sr"> ao bot (abre o Telegram)</span>')}</p>
+    <p class="bot-note">{"O bot guarda" if bot else "Quando estiver no ar, o bot vai guardar"} só o necessário para avisar você e {"apaga" if bot else "apagar"} o alerta quando ele disparar. Veja a <a href="/privacidade/">privacidade</a>.</p>
+  </div>{aneis("aneis--big")}
+</section>"""
+
+
+def channels_block(ch):
+    """Seção dos canais (cartão claro). Canal sem env sai "em breve"; sem nenhum, sem o link de /canais/."""
+    return f"""<section class="canais" aria-labelledby="h-canais">
+  <p class="kicker kicker--muted">Canais gratuitos</p>
+  <h2 id="h-canais">As ofertas inteiras, <em>no seu celular.</em></h2>
+  <p class="canais-p">As mesmas ofertas do site, com o preço conferido e o horário da verificação. Só leitura, sem cadastro.</p>
+  <p class="canais-acts">{ch_buttons(ch, big=True)}</p>
+  {'<p><a class="link" href="/canais/">Como funcionam os canais</a></p>' if ch else ""}
+</section>"""
+
+
+def faq(bot, ch):
+    """Perguntas sobre o que o site faz de verdade: curadoria, histórico, alerta, canais e afiliado."""
+    qa = [("Como vocês escolhem as ofertas?",
+           "Acompanhamos o preço de uma lista de livros na Amazon e no Mercado Livre. Só entra no site o livro "
+           "que está mais barato do que costuma ficar, e cada preço mostra o horário em que foi conferido na loja. "
+           "Quando o preço volta a subir ou fica velho, a oferta sai da lista."),
+          ("O que quer dizer “menor preço em 90 dias”?",
+           "Que o preço de agora é o menor que registramos nos últimos 90 dias, em todas as lojas em que o livro "
+           "está à venda. O selo só aparece quando temos 90 dias de histórico de verdade; com menos, mostramos "
+           "“menor preço desde” a data em que começamos a acompanhar."),
+          ("O preço do site é o mesmo da loja?",
+           "Era no horário indicado em cada oferta. Preço muda rápido, então o preço final é sempre o da loja, "
+           "na hora da compra.")]
+    if bot:
+        qa.append(("Como funciona o alerta de preço?",
+                   f'Toque no sino de um livro (ou em “Me avise se baixar”) e o bot <a href="https://t.me/{e(bot)}" '
+                   'rel="noopener noreferrer" target="_blank">@' + e(bot) + '</a> guarda o preço de hoje. Quando ele cair, '
+                   'avisamos por lá. Para parar, mande /parar ao bot.'))
+    else:  # o bot ainda não responde: nada de prometer que o alerta já funciona
+        qa.append(("Como vai funcionar o alerta de preço?",
+                   "Em breve você poderá tocar no sino de um livro (ou em “Me avise se baixar”) e o nosso bot no "
+                   "Telegram vai guardar o preço de hoje e avisar quando ele cair. Por enquanto o alerta ainda não está no ar."))
+    if ch:
+        qa.append(("Onde mais recebo as ofertas?",
+                   "Nos canais " + " e ".join(n for n, _ in ch) + ', que repetem as ofertas do site. '
+                   '<a href="/canais/">Veja como funcionam</a>.'))
+    else:
+        qa.append(("Vai ter canal no Telegram ou no WhatsApp?",
+                   "Em breve. Os canais vão repetir as ofertas do site, com o preço conferido e o horário da verificação."))
+    qa.append(("Vocês ganham com isso?",
+               "Sim. Os links são de afiliado: como associados da Amazon e afiliados do Mercado Livre, ganhamos uma "
+               "comissão com compras qualificadas, sem custo a mais para você. Isso não muda qual oferta entra no site."))
+    items = "".join(f'<details><summary>{q}{icon("chev")}</summary><p>{a}</p></details>' for q, a in qa)
+    return f"""<section class="faq" aria-labelledby="h-faq">
+  <p class="kicker kicker--muted">Perguntas</p>
+  <h2 id="h-faq">Como o site funciona</h2>
+  <div class="faq-list">{items}</div>
+</section>"""
+
+
+def fab(bot):
+    """Botão flutuante "Pedir um livro": abre o bot (sem formulário); sem o bot, "em breve"."""
+    return cta(bot and f"https://t.me/{bot}", f'{icon("busca")}<span class="fab-t">Pedir um livro</span>', "fab",
+               '<span class="sr"> ao bot do Telegram (abre o Telegram)</span>')
+
+
 def home_sections(offers, bot=None, ch=()):
-    """Seções da home. Um livro aparece em no máximo 2: banner + destaques,
-    ou banner/ativas/mais livros + maiores descontos."""
-    top = ranked(offers)
-    slides = top[:5] if len(top) >= 3 else []
-    curated = any(o["featured"] for o in offers)
-    feat = [o for o in top[:4] if o["featured"] or not curated]
-    in_feat = {o["id"] for o in feat}
-    rest = [o for o in offers if o["id"] not in in_feat]
-    grid, more = rest[:HOME_GRID], rest[HOME_GRID:]
-    # ponytail: "Mais livros" = ofertas da 9ª em diante; com data/catalog.json, pode virar os monitorados.
+    """Hero (até 5, ofertas primeiro e novidades completando), destaques (ofertas fora do hero),
+    filtro, ofertas ativas e novidades. Nas listas, o que já apareceu acima vai para o fim:
+    nenhum livro em mais de 2 lugares, e no celular os primeiros cards são livros novos para quem rola."""
+    slides = hero_items(offers)
+    top = ranked(ofertas(offers))
+    curated = any(o["featured"] for o in top)
     in_hero = {o["id"] for o in slides}
-    pool = [o for o in offers if o["id"] not in in_hero]
-    if any(o["trending_rank"] for o in offers):  # popularidade real, vinda do back
-        hot_title = "Em alta"
-        hot = sorted((o for o in pool if o["trending_rank"]), key=lambda o: o["trending_rank"])[:HOT_MAX]
-    else:  # sem dado de popularidade, título honesto
-        hot_title = "Outros descontos"
-        hot = sorted((o for o in pool if discount(o) > 0), key=lambda o: -discount(o))[:HOT_MAX]
-
-    def cards(items):
-        return "\n".join(card(o, bot, h=3) for o in items)
-
-    def minis(items, tag="ul"):
-        return f'<{tag} class="minis">\n' + "\n".join(mini(o) for o in items) + f"\n</{tag}>"
-
+    feat = [o for o in top if o["id"] not in in_hero and (o["featured"] or not curated)][:FEAT_MAX]
+    shown = in_hero | {o["id"] for o in feat}
+    order = [o for o in offers if o["id"] not in shown] + [o for o in offers if o["id"] in shown]
     parts = [
-        hero(slides),
+        hero(slides, bot),
         feat and section("h-curadoria", "Destaques da curadoria" if curated else "Destaques de hoje",
-                         f'<ol class="grid grid--feat">\n{cards(feat)}\n</ol>',
-                         "" if curated else "Primeiro os que estão no menor preço do histórico, depois os maiores descontos."),
-        section("h-nichos", "Por tipo de livro", nav(offers, None)),
-        grid and section("h-ativas", "Ofertas ativas", f'<ol class="grid">\n{cards(grid)}\n</ol>'),
-        join_banner(ch),
-        more and section("h-mais", "Mais livros em oferta", minis(more)),
-        hot and section("h-alta", hot_title, minis(hot, "ol")),
-        monitor(bot),
+                         '<ol class="grid grid--feat">\n' + "\n".join(card(o, bot) for o in feat) + "\n</ol>",
+                         len(feat), "" if curated else "Primeiro o menor preço do histórico, depois o maior desconto."),
+        nav(offers, None, filtro=True),
+        feed(order, bot, ch, skip=shown),
+        news(offers, bot, skip=in_hero),
+        bot_block(bot),
+        channels_block(ch),
+        faq(bot, ch),
+        fab(bot),
     ]
     return "\n".join(p for p in parts if p)
 
 
-def nav(offers, current):
+GENRE_DESC = {
+    "literatura-brasileira": "Clássicos e contemporâneos daqui",
+    "ficcao": "Romance, fantasia e suspense",
+    "negocios": "Carreira, gestão e dinheiro",
+    "nao-ficcao": "História, ciência e ensaio",
+    "manga": "Mangá, HQ e graphic novel",
+}
+assert set(GENRE_DESC) == set(GENRES)
+
+
+def nav(offers, current, filtro=False):
+    """Filtro por nicho: círculos com o ícone de cada nicho (o lugar do curador ilustrado).
+    São links para /<nicho>/; com filtro=True (home e /ofertas/), o app.js filtra sem recarregar."""
     present = [g for g in GENRES if any(o["genre"] == g for o in offers)]
-    items = [("/", "Todos", current is None)] + [(f"/{g}/", GENRES[g], g == current) for g in present]
-    current_attr = ' aria-current="page"'
-    links = "".join(
-        f'<li><a href="{href}"{current_attr if cur else ""}>{e(label)}</a></li>'
-        for href, label, cur in items)
-    return f'<nav class="nichos" aria-label="Nichos"><ul>{links}</ul></nav>'
+    def n(items):  # conta ofertas; nicho só com novidades diz isso, sem "0 ofertas"
+        k, m = len(ofertas(items)), len(items) - len(ofertas(items))
+        return (f'{k} {"oferta" if k == 1 else "ofertas"}' if k else f'{m} {"novidade" if m == 1 else "novidades"}')
+    spines = "".join(f'<i data-g="{g}"></i>' for g in present)
+    items = [("/", "", "Todos", "Ofertas e novidades", offers,
+              f'<span class="spines">{spines}</span>', current is None)]
+    items += [(f"/{g}/", g, GENRES[g], GENRE_DESC[g], [o for o in offers if o["genre"] == g],
+               avatar(g, "av av--lg"), g == current) for g in present]
+    lis = "".join(
+        f'<li><a class="cur" href="{href}" data-f="{g}"{f" data-g={chr(34)}{g}{chr(34)}" if g else ""}'
+        f'{" aria-current=" + chr(34) + "page" + chr(34) if cur else ""}>'
+        f'<span class="ring" aria-hidden="true">{pic}</span><span class="cur-n">{e(label)}</span>'
+        f'<span class="cur-d">{e(desc)}</span><span class="cur-c">{n(k)}</span></a></li>'
+        for href, g, label, desc, k, pic, cur in items)
+    attr = " data-filtro" if filtro else ""
+    return (f'<section class="filtros" aria-labelledby="h-filtro"><h2 id="h-filtro">Filtrar por categoria</h2>'
+            f'<nav aria-label="Nichos"><ul class="rail"{attr}>{lis}</ul></nav></section>')
 
 
 def ext(href, label):
@@ -733,92 +1020,273 @@ def internal(href, label, here):
     return f'<a href="{href}"{cur}>{label}</a>'
 
 
-# ponytail: o texto do logotipo usa fonte do sistema dentro do SVG (muda por aparelho);
-# converter em curvas na rodada de refinamento da marca (docs/marca/README.md).
-def brand(tag="p", src="/logo.svg"):
-    """Logo "Carimbo" (360x72). Na home é o h1; nas outras páginas, um <p> acima do h1."""
-    return (f'<{tag} class="brand"><a href="/"><img src="{src}" alt="Ofertas Livros" '
-            f'width="200" height="40"></a></{tag}>')
+def brand(cls="brand"):
+    """Logo B (wordmark em curvas, 274x32). Duas imagens: a positiva no tema claro e a negativa
+    (sem fundo) no escuro; o CSS mostra uma só, então o leitor de tela lê um nome só."""
+    return (f'<a class="{cls}" href="/"><img class="logo-claro" src="/logo.svg" alt="Ofertas Livros" '
+            'width="274" height="32"><img class="logo-escuro" src="/logo-negativo.svg" alt="Ofertas Livros" '
+            'width="274" height="32"></a>')
 
 
-def foot(ch, here=""):
-    follow = ""
-    if ch:
-        links = " ou no ".join(ext(url, name) for name, url in ch)
-        follow = f'\n  <p>Siga as ofertas no {links}. {internal("/canais/", "Sobre os canais", here)}</p>'
+# Ícones desenhados para o site (traço 2, viewBox 24), num sprite só: cada uso é um <use>.
+ICONS = {
+    "busca": '<circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4.5 4.5"/>',
+    "sol": '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    "lua": '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+    "tg": '<path d="M21 4 3 11.2l6 2.3L18 7.5l-7 7.3.3 5.2 3-3.6 4.2 3.1z"/>',
+    "wa": '<path d="M4 20l1.3-3.9A8.5 8.5 0 1 1 8.2 19z"/><path d="M9.2 8.6c-.3 2.9 3.2 6.4 6.2 6.2l.6-1.7-2-.9-.9.8a5 5 0 0 1-2.3-2.3l.8-.9-.9-2z"/>',
+    "seta": '<path d="M7 17 17 7M8 7h9v9"/>',
+    "sino": '<path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0"/>',
+    "chev": '<path d="m6 9 6 6 6-6"/>',
+    "esq": '<path d="m15 6-6 6 6 6"/>',
+    "dir": '<path d="m9 6 6 6-6 6"/>',
+    "x": '<path d="M6 6l12 12M18 6 6 18"/>',
+    "raio": '<path d="M13 3 5 14h6l-1 7 8-11h-6z"/>',
+    "carimbo": '<circle cx="12" cy="12" r="10.5"/><circle cx="12" cy="12" r="7.8" stroke-width="1"/>'
+               '<path fill="currentColor" stroke="none" transform="translate(12 12.4) scale(.6) translate(-16 -16.6)" '
+               'd="M9.6 12.4C11.6 11.5 13.8 11.6 15.3 12.8V21.6C13.8 20.5 11.6 20.4 9.6 21.2ZM22.4 12.4C20.4 11.5 18.2 11.6 16.7 12.8V21.6C18.2 20.5 20.4 20.4 22.4 21.2Z"/>',
+    "livro": '<path d="M3 6c3-1.5 6-1.5 9 0v13c-3-1.5-6-1.5-9 0zM21 6c-3-1.5-6-1.5-9 0v13c3-1.5 6-1.5 9 0z"/>',
+    # um por nicho: o lugar do curador ilustrado, até haver arte
+    "g-literatura-brasileira": '<path d="M5 19C5 10 11 5 19 5c0 8-5 14-14 14zM5 19l8-8M9 15h4M11 13V9"/>',
+    "g-ficcao": '<path d="M15 4a7.5 7.5 0 1 0 5.5 11.5A6 6 0 0 1 15 4zM6 3v4M4 5h4"/>',
+    "g-negocios": '<path d="M4 20h16M6 16l4.5-4.5 3 3L19 9M15 9h4v4"/>',
+    "g-nao-ficcao": '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/>',
+    "g-manga": '<path d="M4 4h16v12h-9l-4.5 4v-4H4z"/><path d="m13 6.5-3 4h3.5l-2.5 3.5"/>',
+}
+SPRITE = ('<svg class="sprite" hidden aria-hidden="true">'
+          + "".join(f'<symbol id="i-{k}" viewBox="0 0 24 24">{v}</symbol>' for k, v in ICONS.items()) + "</svg>")
+assert set(f"g-{g}" for g in GENRES) <= set(ICONS)
+
+
+def icon(name, cls="i"):
+    return f'<svg class="{cls}" aria-hidden="true" focusable="false"><use href="#i-{name}"/></svg>'
+
+
+def carimbo(offers, cls):
+    """Carimbo "conferido DD/MM às HHhMM" com o horário da coleta mais recente (estilo do v1: girado,
+    vermelho, só CSS). Não é link nem botão. Sai duas vezes: na barra (desktop) e no topo do conteúdo
+    (celular, onde a barra não tem largura); o CSS mostra uma só, então o leitor de tela lê uma só."""
+    latest = max(o["checked_at"] for o in offers)
+    d = latest.astimezone(BRT)
+    return (f'<p class="carimbo {cls}"><span>conferido</span> <time datetime="{e(latest.isoformat())}">'
+            f'<b>{d:%d/%m}</b> às {d:%H}h{d:%M}</time></p>')
+
+
+def header(offers, ch):
+    """Header de vidro. Buscar e tema só funcionam com JS: saem com hidden e o app.js mostra."""
+    nav = [f'<button class="pill js-busca" type="button" hidden aria-expanded="false" aria-controls="busca">'
+           f'{icon("busca")}<span class="pill-t">Buscar</span></button>',
+           f'<button class="pill pill--ico js-tema" type="button" hidden aria-pressed="false">'
+           f'{icon("sol", "i i-sol")}{icon("lua", "i i-lua")}<span class="sr">Tema escuro</span></button>']
+    urls = chan_urls(ch)  # canal sem env: a mesma pílula, "em breve"
+    nav.append(cta(urls["Telegram"], f'{icon("tg")}<span class="pill-t">Canal no Telegram</span>', "pill pill--tg",
+                   '<span class="sr"> (abre em nova aba)</span>'))
+    nav.append(cta(urls["WhatsApp"], f'{icon("wa")}<span class="pill-t">Canal no WhatsApp</span>', "pill pill--wa",
+                   '<span class="sr"> (abre em nova aba)</span>'))
+    return f"""<header class="top">
+<div class="top-bar">
+<span class="menu-slot" aria-hidden="true"></span>
+{brand()}
+{carimbo(offers, "carimbo--bar")}
+<nav class="acoes" aria-label="Atalhos">{"".join(nav)}</nav>
+</div>
+<div class="busca" id="busca" hidden><label class="sr" for="q">Buscar por título ou autor</label><input id="q" name="busca" type="search" placeholder="Título ou autor…" autocomplete="off" spellcheck="false" enterkeyhint="search"></div>
+</header>"""
+
+
+def intro(h1, text):
+    return f'<div class="intro"><h1>{h1}</h1><p>{text}</p></div>'
+
+
+AFFILIATE = ("Como associado da Amazon, ganhamos com compras qualificadas. Também participamos do programa "
+             "de afiliados do Mercado Livre. Preços verificados no horário indicado; o preço final é o da loja.")
+
+
+def foot(offers, bot=None, ch=(), here=""):
+    """Rodapé: marca, colunas de links (só o que existe) e o aviso de associado na linha final."""
+    present = [g for g in GENRES if any(o["genre"] == g for o in offers)]
+    cols = [("Ofertas", [internal("/ofertas/", "Todas as ofertas", here)]
+             + ([internal("/novidades/", "Novidades", here)] if novidades(offers) else [])
+             + [internal(f"/{g}/", e(GENRES[g]), here) for g in present])]
+    receber = ([internal("/canais/", "Canais", here)] if ch else
+               [cta(None, n, "foot-soon") for n in CHANNELS]) + (
+        [ext(f"https://t.me/{bot}", "Alerta no Telegram")] if bot else [cta(None, "Alerta de preço", "foot-soon")])
+    cols.append(("Receber ofertas", receber))
+    cols.append(("Sobre", [internal("/#h-faq", "Como o site funciona", here), internal("/privacidade/", "Privacidade", here)]))
+    html_cols = "".join(f'<nav class="foot-col" aria-label="{t}"><p class="foot-t">{t}</p><ul>'
+                        + "".join(f"<li>{x}</li>" for x in links) + "</ul></nav>" for t, links in cols)
+    tg = chan_urls(ch)["Telegram"]
+    social = cta(tg, f'{icon("tg")}' + (f'@{e(tg.rsplit("/", 1)[1])} no Telegram' if tg else "Canal no Telegram"), "pill",
+                 '<span class="sr"> (abre em nova aba)</span>')
     return f"""<footer class="foot">
-  {brand(src="/logo-negativo.svg")}
-  <p>Como associado da Amazon, ganhamos com compras qualificadas. Também participamos do programa de afiliados do Mercado Livre. Preços verificados no horário indicado; o preço final é o da loja.</p>{follow}
-  <p>{internal("/privacidade/", "Privacidade", here)}</p>
+  <div class="foot-grid">
+    <div class="foot-brand">{brand("brand brand--foot")}<p>Livros que baixaram de preço de verdade, conferidos na loja.</p>{social}</div>
+    <div class="foot-cols">{html_cols}</div>
+  </div>
+  <p class="foot-legal">{AFFILIATE}</p>
 </footer>"""
 
 
-def shell(title, desc, mast, body, ch=(), here=""):
-    """Esqueleto comum. title/desc/mast/body já chegam escapados."""
+def offer_json(o, bot):
+    """Dados do modal de uma oferta, em texto puro (o app.js escreve com textContent).
+    Os links são só os nossos (/r/..., /livro/..., t.me): o JS confere o formato de novo."""
+    off_, a, dr = off(o), o["alt"], drop(o)
+    pts = series(o)
+    lojas = [{"txt": f"Ver {na(o['store'])} por {brl(o['price_cents'])}", "href": f"/r/{o['id']}", "main": True}]
+    if a:
+        lojas.append({"txt": f"Também {na(a['store'])}: {brl(a['price_cents'])}", "href": f"/r/{o['id']}/{a['store']}",
+                      "w": checked_txt(a, o["now"]), "main": False})
+    kind = seal(o)
+    return {"id": o["id"], "t": o["title"], "a": o["author"], "g": o["genre"], "gl": GENRES[o["genre"]],
+            "img": o["image_url"], "p": brl(o["price_cents"]), "de": brl(o["list_price_cents"]) if off_ else None,
+            "off": off_, "nov": not o["oferta"], "blurb": o["blurb"],
+            "selo": ("Menor preço em 90 dias" if kind == "90d" else
+                     f"Menor preço desde {o['since']:%d/%m}" if kind == "since" else None), "desde": kind == "since",
+            "meta": f"{STORES[o['store']]}, {checked_txt(o, o['now'])}"
+                    + (f". Caiu {brl(dr[0])} desde {dr[1]:%d/%m}" if dr else ""),
+            "hist": chart_label(o, pts) if pts else None, "lojas": lojas,
+            "alerta": tg_alert_url(bot, o["id"]) if bot else None, "pag": f"/livro/{o['id']}/"}
+
+
+def data_script(offers, bot):
+    """<script type="application/json"> com os dados do modal. json.dumps e todo "<" vira \\u003c:
+    nenhum </script> ou <!-- pode sair do bloco, venha o que vier no título."""
+    raw = json.dumps([offer_json(o, bot) for o in offers], ensure_ascii=False, separators=(",", ":"))
+    raw = raw.replace("<", "\\u003c")
+    return f'<script type="application/json" id="ofertas">{raw}</script>'
+
+
+MODAL = f"""<dialog class="modal" id="detalhe" aria-labelledby="m-t">
+<div class="m-top"><button class="arrow js-mprev" type="button">{icon("esq")}<span class="sr">Livro anterior</span></button><span class="m-n tnum"></span><button class="arrow js-mnext" type="button">{icon("dir")}<span class="sr">Próximo livro</span></button><button class="arrow m-x js-mx" type="button">{icon("x")}<span class="sr">Fechar</span></button></div>
+<div class="m-grid">
+<div class="obj hero-obj m-obj"><span class="pages" aria-hidden="true"></span><div class="cover"><img class="m-img" alt="" width="120" height="180" decoding="async"><span class="ini m-ini" aria-hidden="true"></span></div></div>
+<div class="m-body"><p class="chips"><span class="chip chip--g"><svg class="i" aria-hidden="true" focusable="false"><use class="m-gi" href="#i-carimbo"/></svg><span class="m-g"></span></span></p><h2 class="m-t" id="m-t"></h2><p class="hero-sub m-a"></p><blockquote class="nota m-nota"><p class="m-blurb"></p></blockquote><p class="m-selo"><span class="stamp"></span></p><p class="meta m-meta"></p><p class="hist m-hist"></p></div>
+</div>
+<div class="m-foot"><p class="price"><strong class="m-p"></strong> <s class="old m-de"></s> <span class="off-pill m-off"></span></p><div class="m-acts"></div></div>
+</dialog>"""
+
+
+def shell(offers, title, desc, body, ch=(), here="", style=None, bot=None, modal=False):
+    """Esqueleto comum. title/desc/body já chegam escapados. style: nicho da página (acento global)."""
+    ds = f' data-style="{style}"' if style in GENRES else ""
     return f"""<!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR"{ds}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title}</title>
 <meta name="description" content="{desc}">
-<meta name="theme-color" content="#e8ecf0">
-<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#edf1f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1729" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preload" href="/fonts/fraunces-latin-full-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/style.css">
+<script src="/app.js" defer></script>
 </head>
 <body>
+{SPRITE}
+<div class="bg-blobs" aria-hidden="true"><i></i><i></i><i></i></div>
 <a class="skip" href="#conteudo">Pular para o conteúdo</a>
-<header class="mast">
-{mast}
-</header>
+{header(offers, ch)}
 <main id="conteudo">
+{carimbo(offers, "carimbo--m")}
 {body}
 </main>
-{foot(ch, here)}
+{foot(offers, bot, ch, here)}{(chr(10) + MODAL + chr(10) + data_script(offers, bot)) if modal else ""}
 </body>
 </html>
 """
 
 
-def carimbo(dt):
-    """Assinatura "feito à mão": carimbo girado com a hora da coleta mais recente. Só CSS."""
-    d = dt.astimezone(BRT)
-    return (f'<p class="carimbo">conferido <time datetime="{e(dt.isoformat())}">'
-            f'<b>{d:%d/%m}</b> às {d:%H}h{d:%M}</time></p>')
+LEDE = ("Oferta aqui é livro que baixou de preço de verdade: conferimos cada um na loja e comparamos "
+        "com o histórico. Os que ainda não baixaram ficam nas novidades, com alerta.")
 
 
 def page(all_offers, genre=None, bot=None, ch=()):
     offers = [o for o in all_offers if genre is None or o["genre"] == genre]
-    latest = max(o["checked_at"] for o in offers)
-    cards = "\n".join(card(o, bot) for o in offers)
-    n = len(offers)
-    head = (f'{brand()}\n<h1>{e(GENRES[genre])}</h1>' if genre else brand("h1"))
-    mast = f"""{head}
-<p class="lede">Só entra aqui livro que baixou de preço de verdade. Conferimos cada um na loja e comparamos com o histórico de preço.</p>
-<p class="status">{n} {"oferta ativa" if n == 1 else "ofertas ativas"}.</p>
-{carimbo(latest)}
-{nav(all_offers, genre)}"""
     title = (f"{e(GENRES[genre])}: ofertas de livros" if genre
              else "Ofertas Livros: descontos de livros conferidos na loja")
     desc = (f"{e(GENRES[genre])} em oferta" if genre else "Ofertas de livros") + (
         " na Amazon e no Mercado Livre, conferidas uma a uma e comparadas com o histórico de preço.")
     if genre is None:
-        mast = mast.replace(f"\n{nav(all_offers, genre)}", "")  # na home, os nichos viram a seção 3
-        return shell(title, desc, mast, home_sections(offers, bot, ch), ch)
-    return shell(title, desc, mast, f'<ol class="grid">\n{cards}\n</ol>', ch)
+        # o H1 só promete "baixaram" quando o hero logo abaixo é todo de ofertas
+        h1 = ("Livros que baixaram de verdade" if all(o["oferta"] for o in hero_items(offers))
+              else "Livros conferidos na loja")
+        body = intro(h1, LEDE) + "\n" + home_sections(offers, bot, ch)
+    else:
+        body = (intro(e(GENRES[genre]), LEDE) + f"\n{nav(all_offers, genre)}\n{feed(offers, bot, ch, full=True)}"
+                + f"\n{news(offers, bot, full=True)}")
+    return shell(all_offers, title, desc, body, ch, style=genre, bot=bot, modal=True)
 
 
-def privacy(bot=None, ch=()):
+def store_list(o):
+    """Na página e no modal a outra loja aparece inteira (no card ela é só a seta)."""
+    a = o["alt"]
+    if not a:
+        return ""
+    return (f'<p class="other"><a class="btn btn--ghost" href="/r/{e(o["id"])}/{a["store"]}" rel="sponsored noopener noreferrer" '
+            f'target="_blank">Também {na(a["store"])}: {brl(a["price_cents"])}{icon("seta")}'
+            f'<span class="sr">, {e(o["title"])} (abre em nova aba)</span></a>'
+            f'<span class="alt-when">{checked(a, o["now"])}</span></p>')
+
+
+def book_page(o, offers, bot=None, ch=()):
+    """/livro/<id>/: a página real dos detalhes (o modal do JS é só um atalho para ela)."""
+    g, t = o["genre"], e(o["title"])
+    off_ = off(o)
+    old = f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>' if off_ else ""
+    pill = f'<span class="off-pill">−{off_}%</span>' if off_ else ""
+    nov = "" if o["oferta"] else '\n    <p class="nov-nota">Novidade: ainda sem desconto que valha anunciar. Ative o alerta e avisamos quando cair.</p>'
+    b = badge(o)
+    chips = f'<span class="chip chip--g">{icon("g-" + g)}{e(GENRES[g])}</span>' + (
+        f'<span class="chip chip--{b[0]}">{b[1]}</span>' if b else "")
+    note = (f'<blockquote class="nota"><p>{e(o["blurb"])}</p><footer>{avatar(g)}Curadoria de {e(GENRES[g])}</footer></blockquote>'
+            if o["blurb"] else "")
+    body = f"""<p class="crumbs"><a href="/">Início</a> / <a href="/{g}/">{e(GENRES[g])}</a></p>
+<article class="livro" data-g="{g}">
+  {obj(o, "obj hero-obj livro-obj", eager=True)}
+  <div class="livro-text">
+    <p class="chips">{chips}</p>
+    <h1 class="livro-h1">{t}</h1>
+    <p class="hero-sub">{e(o["author"])}</p>
+    {note}
+    <div class="hero-deal">{stamp_html(o)}<p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong>{old}</p>{pill}</div>
+    <p class="meta">{meta_html(o)}</p>{chart(o, "    ")}{nov}
+    <div class="hero-acts">{go(o)}{alert_link(o, bot)}</div>
+    {store_list(o)}
+  </div>
+</article>"""
+    return shell(offers, f"{t}, de {e(o['author'])}: {'oferta' if o['oferta'] else 'preço'} conferid{'a' if o['oferta'] else 'o'} | Ofertas Livros",
+                 f"{t}, de {e(o['author'])}, por {brl(o['price_cents'])} {na(o['store'])}. Preço conferido na loja.",
+                 body, ch, style=g, bot=bot)
+
+
+def all_page(offers, bot=None, ch=()):
+    """/ofertas/: a lista completa das ofertas (sem JS, é para onde o "Ver todas" leva)."""
+    body = (intro("Todas as ofertas", LEDE) + f"\n{nav(offers, None, filtro=True)}\n{feed(offers, bot, ch, full=True)}")
+    return shell(offers, "Todas as ofertas de livros | Ofertas Livros",
+                 "Todas as ofertas de livros ativas, conferidas na loja.", body, ch, "/ofertas/", bot=bot, modal=True)
+
+
+def news_page(offers, bot=None, ch=()):
+    """/novidades/: todos os livros acompanhados que ainda não são oferta."""
+    body = intro("Novidades", NOV_NOTE) + f"\n{news(offers, bot, full=True)}"
+    return shell(offers, "Novidades: livros acompanhados | Ofertas Livros",
+                 "Livros que entraram na nossa vigilância de preço, ainda sem desconto que valha anunciar.",
+                 body, ch, "/novidades/", bot=bot, modal=True)
+
+
+def privacy(offers, bot=None, ch=()):
     bot_name = (f'o bot <a href="https://t.me/{e(bot)}" rel="noopener noreferrer" target="_blank">@{e(bot)}</a>'
                 if bot else "o nosso bot")
-    mast = f'{brand()}\n<h1>Privacidade</h1>'
-    body = f"""<article class="doc">
+    body = f"""<h1 class="page-h1">Privacidade</h1>
+<article class="doc">
 <h2>No site</h2>
-<p>O site não tem cadastro, cookies, scripts nem ferramentas de análise. Ele é hospedado na Cloudflare, que recebe os dados técnicos de cada acesso (como o endereço IP) para entregar as páginas.</p>
+<p>O site não tem cadastro, cookies nem ferramentas de análise. Ele tem um script próprio, servido pelo próprio site, para a busca, os filtros e o tema; a única coisa que ele guarda é a sua escolha de tema claro ou escuro, no seu navegador (localStorage), e nada disso sai do aparelho. O site é hospedado na Cloudflare, que recebe os dados técnicos de cada acesso (como o endereço IP) para entregar as páginas.</p>
 <p>Ao clicar em uma oferta, você vai para a Amazon ou para o Mercado Livre. A partir daí valem as políticas de privacidade de cada loja.</p>
 <h2>No alerta de preço do Telegram</h2>
-<p>Quando você pede um alerta para {bot_name}, guardamos só o necessário para avisar você:</p>
+<p>{"Quando você pede um alerta para " + bot_name + ", guardamos" if bot else "O alerta ainda não está no ar. Em breve você poderá pedir um alerta para " + bot_name + ". Quando isso funcionar, vamos guardar"} só o necessário para avisar você:</p>
 <ul>
 <li>o identificador da conversa com o bot no Telegram (chat_id);</li>
 <li>o livro e o preço-alvo do alerta;</li>
@@ -836,18 +1304,18 @@ def privacy(bot=None, ch=()):
 <li>bloquear o bot também apaga todos os seus dados.</li>
 </ul>
 </article>"""
-    return shell("Privacidade: Ofertas Livros",
-                 "O que o Ofertas Livros guarda, onde, por quanto tempo e como apagar.", mast, body, ch, "/privacidade/")
+    return shell(offers, "Privacidade: Ofertas Livros",
+                 "O que o Ofertas Livros guarda, onde, por quanto tempo e como apagar.", body, ch, "/privacidade/", bot=bot)
 
 
-def canais(ch, bot=None):
+def canais(offers, ch, bot=None):
     desc = {"Telegram": "as ofertas chegam assim que são publicadas, até 8 por dia, das 8h às 22h.",
             "WhatsApp": "um resumo por dia com até 5 ofertas."}
     items = "\n".join(f"<li>{ext(url, f'Canal no {name}')}: {desc[name]}</li>" for name, url in ch)
     alert = (f'<p>Quer saber de um livro só? Peça um alerta de preço ao {ext(f"https://t.me/{bot}", "@" + e(bot))} '
              'ou toque em “Me avise se baixar” na oferta.</p>' if bot else "")
-    mast = f'{brand()}\n<h1>Canais</h1>'
-    body = f"""<article class="doc">
+    body = f"""<h1 class="page-h1">Canais</h1>
+<article class="doc">
 <p>Os canais repetem as ofertas do site, com preço conferido e o horário da verificação. São só de leitura e não pedem cadastro.</p>
 <ul>
 {items}
@@ -855,7 +1323,7 @@ def canais(ch, bot=None):
 {alert}
 <p>Os links dos canais são de afiliado: ganhamos com compras qualificadas, e o preço final é o da loja.</p>
 </article>"""
-    return shell("Canais: Ofertas Livros", "Siga as ofertas de livros no Telegram e no WhatsApp.", mast, body, ch, "/canais/")
+    return shell(offers, "Canais: Ofertas Livros", "Siga as ofertas de livros no Telegram e no WhatsApp.", body, ch, "/canais/", bot=bot)
 
 
 MAX_REDIRECTS = 2000  # limite de regras estáticas do _redirects na Cloudflare
@@ -878,7 +1346,7 @@ def redirects(offers):
 
 
 HEADERS = """/*
-  Content-Security-Policy: default-src 'none'; style-src 'self'; img-src 'self' https://http2.mlstatic.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://http2.mlstatic.com; font-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
@@ -901,6 +1369,21 @@ def require_prod(doc):
         raise Invalid("offers.json marcado como _exemplo (build local: python3 build.py --dev)")
 
 
+def render_pages(offers, bot=None, ch=()):
+    """{caminho em dist/: HTML}. Uma página por nicho presente, por livro e a lista completa."""
+    pages = {"index.html": page(offers, bot=bot, ch=ch), "privacidade/index.html": privacy(offers, bot, ch),
+             "ofertas/index.html": all_page(offers, bot, ch)}
+    if novidades(offers):
+        pages["novidades/index.html"] = news_page(offers, bot, ch)
+    for g in {o["genre"] for o in offers}:
+        pages[f"{g}/index.html"] = page(offers, g, bot, ch)
+    if ch:
+        pages["canais/index.html"] = canais(offers, ch, bot)
+    for o in offers:  # id validado por ID_RE: seguro como diretório
+        pages[f"livro/{o['id']}/index.html"] = book_page(o, offers, bot, ch)
+    return pages
+
+
 def build(dev=False):
     doc = json.loads(DATA.read_text(encoding="utf-8"))
     if not dev:
@@ -912,21 +1395,16 @@ def build(dev=False):
            else datetime.now(timezone.utc))
     offers = resolve(books, now)
     bot, ch = tg_bot(), channels()
-    # tudo validado e renderizado antes de tocar no dist/
-    pages = {"index.html": page(offers, bot=bot, ch=ch), "privacidade/index.html": privacy(bot, ch)}
-    for g in {o["genre"] for o in offers}:
-        pages[f"{g}/index.html"] = page(offers, g, bot, ch)
-    if ch:
-        pages["canais/index.html"] = canais(ch, bot)
+    pages = render_pages(offers, bot, ch)  # tudo validado e renderizado antes de tocar no dist/
     rules = redirects(offers)
     shutil.rmtree(DIST, ignore_errors=True)
     shutil.copytree(STATIC, DIST)
     for path, body in pages.items():
-        (DIST / path).parent.mkdir(exist_ok=True)
+        (DIST / path).parent.mkdir(parents=True, exist_ok=True)
         (DIST / path).write_text(body, encoding="utf-8")
     (DIST / "_redirects").write_text(rules, encoding="utf-8")
     (DIST / "_headers").write_text(HEADERS, encoding="utf-8")
-    print(f"ok: {len(offers)} ofertas ({len(books) - len(offers)} fora do prazo), "
+    print(f"ok: {len(ofertas(offers))} ofertas, {len(novidades(offers))} novidades ({len(books) - len(offers)} fora do prazo), "
           f"{len(pages)} páginas -> {DIST}")
 
 
@@ -957,6 +1435,9 @@ def selftest():
         except Invalid:
             return True
         return False
+
+    def vis(h):  # o HTML visível: sem o esqueleto do modal e sem o JSON (testados à parte)
+        return re.sub(r'<script type="application/json".*?</script>', "", h.replace(MODAL, ""), flags=re.S)
 
     o = load(good, ml)
     assert o[0]["url"] == "https://www.amazon.com.br/dp/B0ABCDEFGH?tag=" + partner_tag()
@@ -1015,7 +1496,7 @@ def selftest():
     assert rejects({k: v for k, v in good.items() if k != "genre"})
     p = page(o, "manga")
     assert "B0ABCDEFGH" not in p and 'href="/r/livro-1"' in p and 'href="/r/livro-2"' not in p
-    assert 'href="/manga/" aria-current="page"' in p
+    assert re.search(r'href="/manga/"[^>]*aria-current="page"', p)
     # ASIN inválido / com URL injetada
     for bad in ("B0ABC", "b0abcdefgh", "B0ABCDEFGH\n", "B0ABCDEFGH?tag=evil-20",
                 "../../evil", "x@evil.com/"):
@@ -1057,12 +1538,14 @@ def selftest():
     # escape no HTML
     xss = load({**good, "title": '<script>alert(1)</script>"'})
     assert "<script>" not in page(xss) and "&lt;script&gt;" in page(xss)
-    # botão de alerta: só com TELEGRAM_BOT_USERNAME válido
-    assert "t.me" not in page(o) and 'class="alert"' not in page(o)
+    # botão de alerta: link real só com TELEGRAM_BOT_USERNAME válido; sem ele, o mesmo sino "em breve"
+    p0 = page(o)
+    assert "t.me" not in p0 and '<a class="bell"' not in p0
+    assert p0.count('<span class="bell is-soon" aria-disabled="true">') == vis(p0).count('class="card"')
     pb = page(o, bot="ofertaslivros_bot")
-    assert ('<a class="alert" href="https://t.me/ofertaslivros_bot?start=livro-1" '
-            'rel="noopener noreferrer" target="_blank">Me avise se baixar') in pb
-    assert pb.count("?start=") == 2  # um botão por card; o bloco de alerta usa t.me/<bot> sem start
+    assert '<a class="bell" href="https://t.me/ofertaslivros_bot?start=livro-1" rel="noopener noreferrer" target="_blank">' in pb
+    assert pb.count('class="bell"') == 2 and pb.count('"alerta":"https://t.me/ofertaslivros_bot?start=') == 2  # sino por card + modal
+    assert ">Me avise se baixar (Telegram)<" not in pb[pb.index('id="h-ativas"'):].split("<dialog")[0]  # no card só o sino
     pb = page(xss, bot="ofertaslivros_bot")
     assert "<script>" not in pb and "alerta de preço de &lt;script&gt;" in pb
     saved = os.environ.pop("TELEGRAM_BOT_USERNAME", None)
@@ -1087,17 +1570,36 @@ def selftest():
     except Invalid:
         pass
     # marca: favicon SVG no <head>, logo no topo (h1 só na home) e negativo no rodapé, em todas as páginas
-    for h in (page(o), page(o, "manga"), privacy(), canais([("Telegram", "https://t.me/x")])):
+    every = (page(o), page(o, "manga"), privacy(o), canais(o, [("Telegram", "https://t.me/x")]),
+             book_page(o[0], o), all_page(o))
+    for h in every:  # marca, fontes locais e o app.js em todas as páginas
         head = h[:h.index("</head>")]
         assert '<link rel="icon" type="image/svg+xml" href="/favicon.svg">' in head
-        assert h.count('alt="Ofertas Livros" width="200" height="40"') == 2 and 'src="/logo-negativo.svg"' in h
-    assert '<h1 class="brand"><a href="/"><img src="/logo.svg"' in page(o)
-    assert '<h1 class="brand">' not in page(o, "manga") and '<p class="brand"><a href="/"><img src="/logo.svg"' in privacy()
-    assert all((STATIC / f).is_file() for f in ("favicon.svg", "logo.svg", "logo-negativo.svg"))
+        assert '<script src="/app.js" defer></script>' in head and h.count("<script") == h.count("</script>")
+        assert ('<link rel="preload" href="/fonts/fraunces-latin-full-normal.woff2" as="font" type="font/woff2" crossorigin>'
+                in head and head.count('rel="preload"') == 1)
+        assert h.count('src="/logo.svg" alt="Ofertas Livros"') == 2 and h.count('src="/logo-negativo.svg" alt="Ofertas Livros"') == 2
+        assert not re.search(r"https?://[^\"]*(fonts\.|googleapis|gstatic|jsdelivr|unpkg|cdn)", h)  # nenhuma fonte/script externo
+        assert h.count("<h1") == 1
+    for h in every:  # header: espaço do menu (vazio e escondido), carimbo na barra e no conteúdo, sem número solto
+        top = h[h.index('<header class="top">'):h.index("</header>")]
+        assert '<span class="menu-slot" aria-hidden="true"></span>' in top and "<button" not in top.split("menu-slot")[0]
+        assert top.count('class="carimbo carimbo--bar"') == 1 and h.count('class="carimbo carimbo--m"') == 1
+        assert "tnum" not in top and 'class="live"' not in top
+        assert top.index("menu-slot") < top.index('class="brand"') < top.index("carimbo--bar") < top.index("js-busca")
+    assert all((STATIC / f).is_file() for f in ("favicon.svg", "logo.svg", "logo-negativo.svg", "app.js", "grao.svg",
+                                                "fonts/fraunces-latin-full-normal.woff2", "fonts/fraunces-latin-full-italic.woff2",
+                                                "fonts/outfit-latin-wght-normal.woff2", "fonts/SOURCES.md"))
+    assert "<rect" not in (STATIC / "logo-negativo.svg").read_text()  # sem caixa no tema escuro
+    css = (STATIC / "style.css").read_text(encoding="utf-8")
+    assert "http" not in css and "@import" not in css  # CSS sem nada externo
+    assert set(re.findall(r"url\(([^)]*)\)", css)) <= {"/fonts/fraunces-latin-full-normal.woff2", "/fonts/fraunces-latin-full-italic.woff2",
+                                                      "/fonts/outfit-latin-wght-normal.woff2", "/grao.svg", "/chevron.svg"}
+    assert all(f"--g-{g}:" in css and f'[data-g="{g}"]' in css for g in GENRES)  # um acento por nicho
     # privacidade: linkada no rodapé de todas as páginas
     assert '<a href="/privacidade/">Privacidade</a>' in page(o)
-    assert '<a href="/privacidade/" aria-current="page">' in privacy()
-    pv = privacy("ofertaslivros_bot")
+    assert '<a href="/privacidade/" aria-current="page">' in privacy(o)
+    pv = privacy(o, "ofertaslivros_bot")
     assert all(w in pv for w in ("chat_id", "Cloudflare D1", "90 dias", "/parar", "bloquear o bot",
                                  "https://t.me/ofertaslivros_bot"))
     # _redirects: 4 linhas por livro de uma loja + curinga; tag da Amazon por canal
@@ -1151,8 +1653,8 @@ def selftest():
     ch = channels()
     assert ch == [("Telegram", "https://t.me/ofertaslivros"),
                   ("WhatsApp", "https://whatsapp.com/channel/0029VaAbCdEfGhIjKlMnOp12")]
-    for html_ in (page(o, ch=ch), canais(ch, "ofertaslivros_bot")):
-        assert ('<a href="https://t.me/ofertaslivros" rel="noopener noreferrer" target="_blank">' in html_
+    for html_ in (page(o, ch=ch), canais(o, ch, "ofertaslivros_bot")):
+        assert ('href="https://t.me/ofertaslivros" rel="noopener noreferrer" target="_blank">' in html_
                 and 'href="https://whatsapp.com/channel/0029VaAbCdEfGhIjKlMnOp12" rel="noopener noreferrer"' in html_)
     assert '<a href="/canais/">' in page(o, ch=ch)
     for k, bad in (("TELEGRAM_CHANNEL_ID", "-1001234567890"), ("TELEGRAM_CHANNEL_ID", "@a/b"),
@@ -1192,18 +1694,19 @@ def selftest():
     assert brl(123456) == "R$ 1.234,56" and brl(5) == "R$ 0,05"
     # selo de 90 dias: só com history_since cobrindo 90 dias (checked_at 18/10 BRT)
     def stamp(**kw):
-        return page(load(A(**kw)))
+        return vis(page(load(A(**kw))))
     assert 'class="stamp' not in stamp()                                   # sem histórico
     assert "Menor preço desde 21/07" in stamp(history_since="2026-07-21")  # 89 dias
     assert "Menor preço em 90 dias" not in stamp(history_since="2026-07-21")
     assert "Menor preço em 90 dias" in stamp(history_since="2026-07-20")   # 90 dias
-    # selo colado ao preço: pílula (90 dias) ou contorno (desde), logo antes do <p class="price">
-    assert re.search(r'<div class="deal">\s*<p class="stamp">Menor preço em 90 dias</p>\s*<p class="price">',
+    # selo colado ao preço: pílula (90 dias) ou contorno (desde), logo antes do preço do card
+    assert re.search(r'<p class="stamp">Menor preço em 90 dias</p>\s*<div class="card-foot"><p class="price">',
                      stamp(history_since="2026-07-20"))
-    assert re.search(r'<p class="stamp stamp--since">Menor preço desde 21/07</p>\s*<p class="price">',
+    assert re.search(r'<p class="stamp stamp--since">Menor preço desde 21/07</p>\s*<div class="card-foot"><p class="price">',
                      stamp(history_since="2026-07-21"))
     assert stamp().count('<p class="price">') == stamp(history_since="2026-07-20").count('<p class="price">')
-    assert stamp(history_since="2026-07-20").count("−50%") == 2  # uma vez por ficha (destaque + lista compacta)
+    x = stamp(history_since="2026-07-20")
+    assert x.count("−50%") == 2 and x[x.index('id="h-ativas"'):].count("−50%") == 1  # uma vez no hero, uma no card
     assert 'class="stamp' not in stamp(history_since="2026-07-20", lowest_90d_cents=1000)
     for bad in ("2026-10-19", "20260720", "2026-02-30", "2026-07-20T00:00", 20260720):
         assert rejects(A(history_since=bad)), bad
@@ -1229,30 +1732,33 @@ def selftest():
         assert rejects(A(history_since="2026-10-01", price_points=bad)), bad
     assert rejects(A(price_points=ok_pp))                                 # sem history_since
     assert load(A(history_since="2026-06-01", price_points=pp(("2026-06-10", 990))))  # fora da janela de 90 dias
-    h = stamp(history_since="2026-10-01", price_points=ok_pp)
+    def livro(**kw):  # o gráfico do histórico fica na página do livro
+        r = load(A(**kw))
+        return vis(book_page(r[0], r))
+    h = livro(history_since="2026-10-01", price_points=ok_pp)
     assert h.count('<p class="hist"><svg class="spark"') == 1 and "<span>desde 01/10: R$ 19,90 a R$ 29,90</span>" in h
     assert "<title>Preço na Amazon de 01/10 a 18/10: R$ 19,90 a R$ 29,90</title>" in h
     assert 'class="spark-dot" cx="117.0" cy="29.0"' in h and 'points="3.0,3.0 63.4,16.0 117.0,29.0"' in h
     assert "style=" not in h[h.index("<svg"):h.index("</svg>")]
-    assert 'class="hist"' not in stamp(history_since="2026-10-01", price_points=ok_pp[:1])  # 1 ponto: sem gráfico
-    assert 'class="hist"' not in stamp(history_since="2026-10-01")                          # sem série
+    assert 'class="hist"' not in livro(history_since="2026-10-01", price_points=ok_pp[:1])  # 1 ponto: sem gráfico
+    assert 'class="hist"' not in livro(history_since="2026-10-01")                          # sem série
     # ponto de hoje: vale o preço atual verificado, não o do ponto
     r = load(A(history_since="2026-10-01", price_points=pp(("2026-10-01", 2990), ("2026-10-18", 2500))))[0]
     assert series(r) == [(date(2026, 10, 1), 2990), (date(2026, 10, 18), 1990)]
     # rótulo: "90 dias" só com o selo de 90 dias e a série cobrindo os 90 dias
     full = pp(("2026-07-20", 2990), ("2026-09-01", 2490))
-    assert "<span>90 dias: R$ 19,90 a R$ 29,90</span>" in stamp(history_since="2026-07-20", price_points=full)
-    assert "<span>desde 01/08: " in stamp(history_since="2026-07-20", price_points=pp(("2026-08-01", 2990), ("2026-09-01", 2490)))
-    assert "<span>desde 21/07: " in stamp(history_since="2026-07-21", price_points=pp(("2026-07-21", 2990), ("2026-09-01", 2490)))
-    assert "<span>desde 20/07: " in stamp(history_since="2026-07-20", lowest_90d_cents=1000,  # sem selo
+    assert "<span>90 dias: R$ 19,90 a R$ 29,90</span>" in livro(history_since="2026-07-20", price_points=full)
+    assert "<span>desde 01/08: " in livro(history_since="2026-07-20", price_points=pp(("2026-08-01", 2990), ("2026-09-01", 2490)))
+    assert "<span>desde 21/07: " in livro(history_since="2026-07-21", price_points=pp(("2026-07-21", 2990), ("2026-09-01", 2490)))
+    assert "<span>desde 20/07: " in livro(history_since="2026-07-20", lowest_90d_cents=1000,  # sem selo
                                           price_points=pp(("2026-07-20", 2990), ("2026-09-01", 2490)))
-    assert "<span>desde 01/10: R$ 19,90</span>" in stamp(history_since="2026-10-01",       # preço parado
+    assert "<span>desde 01/10: R$ 19,90</span>" in livro(history_since="2026-10-01",       # preço parado
                                                               price_points=pp(("2026-10-01", 1990), ("2026-10-10", 1990)))
     # gráfico da vencedora (ML), não da outra loja
     two_pp = load({**good, "stores": [{**amz, "history_since": "2026-10-01", "price_points": ok_pp},
                                       {**mls, "price_cents": 1890, "history_since": "2026-10-05",
                                        "price_points": pp(("2026-10-05", 2190), ("2026-10-12", 2090))}]})
-    assert "<span>desde 05/10: R$ 18,90 a R$ 21,90</span>" in page(two_pp) and "desde 01/10" not in page(two_pp)
+    assert "<span>desde 05/10: R$ 18,90 a R$ 21,90</span>" in vis(book_page(two_pp[0], two_pp)) and "desde 01/10" not in vis(book_page(two_pp[0], two_pp))
     assert rejects({**good, "history_start": "2026-07-01"})  # campo da proposta antiga, substituído
     # campos novos: tipo errado quebra o build
     for bad in ("true", 1, 0, None, "sim"):
@@ -1269,36 +1775,173 @@ def selftest():
     # home: seções, carrossel sem JS, fallbacks honestos
     def offers_n(n, extra=None, store=None):
         return load(*({**good, "id": f"l-{k}", "title": f"Livro {k}", **(extra or {}).get(k, {}),
-                       "stores": [{**amz, "price_cents": 4000 - 100 * k, "list_price_cents": 4000,
+                       "stores": [{**amz, "price_cents": 4000 - 100 * k, "list_price_cents": 6000,  # >= 33%: ofertas
                                    **(store or {}).get(k, {})}]} for k in range(n)))
     saved = {k: os.environ.pop(k, None) for k in ("TELEGRAM_CHANNEL_ID", "WHATSAPP_CHANNEL_ID")}
-    h = page(offers_n(14))
-    assert "<script" not in h and h.count('aria-roledescription="slide"') == 5
-    assert '<input type="checkbox" id="pausar"><label for="pausar">Pausar passagem</label>' in h
+    h = vis(page(offers_n(14)))
+    assert h.count('aria-roledescription="slide"') == 5
+    assert '<input type="checkbox" id="pausar"><label for="pausar">Pausar</label>' in h  # pausa sem JS (WCAG 2.2.2)
     assert "Destaques de hoje" in h and "Destaques da curadoria" not in h
-    assert "Outros descontos" in h and "Em alta" not in h        # sem trending_rank
-    assert "Mais livros em oferta" in h and 'href="/manga/"' in h
-    assert 'class="join"' not in h and "Crie um alerta" not in h         # sem canais nem bot
-    assert max(h.count(f'href="/r/l-{k}"') for k in range(14)) <= 2      # no máximo 2 seções
-    # fallback do destaque: selo válido antes do maior desconto (l-13 tem o maior)
+    assert "Em alta" not in h and 'class="badge' not in h and 'class="chip chip--' not in h.replace("chip--g", "")
+    assert 'href="/manga/"' in h and "data-filtro" in h
+    for cls in ('blk--bot', 'blk--canais', 'class="bot"', 'class="canais"', 'fab is-soon'):
+        assert cls in h, cls                                               # sem bot nem canais: tudo "em breve"
+    assert "t.me" not in h and "whatsapp.com" not in h
+    hero_ids = re.findall(r'<div class="slide" id="d-([a-z0-9-]+)"', h)
+    feat = h[h.index('id="h-curadoria"'):h.index('id="h-filtro"')]
+    assert len(hero_ids) == 5 and feat.count('class="card"') == 9 and not any(f'data-id="{i}"' in feat for i in hero_ids)
+    assert h[h.index('id="h-ativas"'):].count('class="card"') == 14       # o feed tem todas (busca/filtro do JS)
+    assert re.search(r'id="h-ativas">Ofertas ativas</h2><span class="sec-n"[^>]*>14 ofertas no momento</span>', h)
+    assert '<p class="mais mais--m"><a class="btn btn--ghost" href="/ofertas/">' in h  # 14: "ver todas" só no celular (corta em 4)
+    big = vis(page(offers_n(30)))
+    assert '<p class="mais"><a class="btn btn--ghost" href="/ofertas/">' in big and "Ver todas as 30 ofertas" in big  # > 24
+    # fallback do destaque: selo válido antes do maior desconto
     h = page(offers_n(10, store={2: {"history_since": "2026-06-01", "lowest_90d_cents": 3800}}))
     assert h.index('id="d-l-2"') < h.index('id="d-l-9"')
-    assert "Mais livros" not in h                                        # sobram 6 para a grade
-    h = page(offers_n(10, {7: {"featured": True}, 0: {"trending_rank": 2}, 1: {"trending_rank": 1}}))
-    assert "Destaques da curadoria" in h and h.index('id="d-l-7"') < h.index('id="d-l-9"')
-    sec = h[h.index('id="h-curadoria"'):h.index('id="h-nichos"')]
-    assert sec.count('class="card"') == 1                               # só o curado
-    alta = h[h.index("Em alta"):]
-    assert alta.index('href="/r/l-1"') < alta.index('href="/r/l-0"')    # ordem do trending_rank
-    h = page(offers_n(2), bot="ofertaslivros_bot", ch=[("Telegram", "https://t.me/ofertaslivros")])
-    assert "carrossel" not in h                                          # menos de 3: sem banner
-    assert 'class="join"' in h and "Receba as próximas ofertas" in h
-    assert 'href="https://t.me/ofertaslivros_bot" rel="noopener noreferrer"' in h  # bloco de alerta, sem start
-    g = page(offers_n(4), "manga")
-    assert "carrossel" not in g and 'href="/manga/" aria-current="page"' in g
+    h = vis(page(offers_n(10, {**{k: {"featured": True} for k in range(7)}, 8: {"trending_rank": 2}, 9: {"trending_rank": 1}})))
+    feat = h[h.index('id="h-curadoria"'):h.index('id="h-filtro"')]
+    assert "Destaques da curadoria" in h and feat.count('class="card"') == 2 and 'data-id="l-0"' in feat and 'data-id="l-1"' in feat  # só curados, fora do hero
+    alta = h[h.index("Em alta agora"):]
+    assert alta.index('href="/r/l-9"') < alta.index('href="/r/l-8"')    # ordem do trending_rank
+    assert h.count('class="badge badge--alta">Em alta</span>') == 2      # os 2 do ranking, uma vez cada (só no feed)
+    h = vis(page(offers_n(2), bot="ofertaslivros_bot", ch=[("Telegram", "https://t.me/ofertaslivros")]))
+    assert h.count('class="slide"') == 2 and "Destaques" not in h        # 2 ofertas: as duas no hero, sem destaques
+    for cls in ('blk--bot', 'blk--canais', 'class="bot"', 'class="canais"', 'class="fab"'):
+        assert cls in h, cls
+    assert 'href="https://t.me/ofertaslivros_bot" rel="noopener noreferrer"' in h  # bloco do alerta, sem start
+    assert "Pedir um livro" in h and "<form" not in h and "<input" in h  # pedir = bot; só o input da busca
+    g = vis(page(offers_n(4), "manga"))
+    assert "carrossel" not in g and re.search(r'href="/manga/"[^>]*aria-current="page"', g)
+    assert '<html lang="pt-BR" data-style="manga">' in page(offers_n(4), "manga")
     for k, v in saved.items():
         if v is not None:
             os.environ[k] = v
+    # oferta x novidade (OFERTA_MIN_DESCONTO = 10%): o limiar e o selo de 90 dias contam; o "desde" não
+    def tipo(**kw):
+        return load(A(**kw))[0]["oferta"]
+    assert OFERTA_MIN_DESCONTO == 10
+    assert tipo(price_cents=9100, list_price_cents=10000, lowest_90d_cents=9000) is False      # 9%: novidade
+    assert tipo(price_cents=9000, list_price_cents=10000, lowest_90d_cents=8000) is True       # 10%: oferta
+    assert tipo(price_cents=9900, list_price_cents=9900, lowest_90d_cents=9900, history_since="2026-07-20") is True  # selo 90d
+    assert tipo(price_cents=9900, list_price_cents=9900, lowest_90d_cents=9900, history_since="2026-10-10") is False  # "desde" com 0%
+    assert tipo(price_cents=9000, list_price_cents=10000, lowest_90d_cents=9000, history_since="2026-10-10") is True  # "desde" com 10%
+    desde = vis(page(load(A(price_cents=9900, list_price_cents=9900, lowest_90d_cents=9900, history_since="2026-10-10"))))
+    assert 'data-tipo="novidade"' in desde and '<p class="stamp stamp--since">Menor preço desde 10/10</p>' in desde  # selo continua
+    assert 'id="h-novidades"' in desde and "Nenhuma oferta conferida agora" in desde
+    assert tipo(price_cents=9900, list_price_cents=9900, lowest_90d_cents=9000, history_since="2026-07-20") is False  # acima do mínimo
+    def nov(i, hs=None, title=None, **kw):
+        st = {**amz, "price_cents": 5000, "list_price_cents": 5000, "lowest_90d_cents": 4500, **kw}
+        if hs:
+            st["history_since"] = hs
+        return {**good, "id": f"nov-{i}", "title": title or f"Novo {i}", "genre": "manga", "stores": [st]}
+    mix = load(*[{**good, "id": f"l-{k}", "title": f"Livro {k}", "stores": [{**amz, "price_cents": 4000 - 100 * k,
+                                                                             "list_price_cents": 6000}]} for k in range(5)],
+               nov(1, "2026-10-01", "Zeta"), nov(2, "2026-10-17", "Beta"), nov(3, "2026-10-17", "Alfa"), nov(4))
+    h = vis(page(mix, bot="ofertaslivros_bot"))
+    hero_ = h[:h.index('id="h-filtro"')]
+    ativas = h[h.index('id="h-ativas"'):h.index('id="h-novidades"')]
+    novs = h[h.index('id="h-novidades"'):]
+    assert "nov-" not in hero_ and "nov-" not in ativas and "Em alta agora" not in novs
+    assert re.findall(r'data-id="(nov-\d)"', novs) == ["nov-3", "nov-2", "nov-1", "nov-4"]  # history_since desc, título
+    assert re.search(r'id="h-ativas">Ofertas ativas</h2><span class="sec-n"[^>]*>5 ofertas no momento</span>', h)  # sem novidades
+    assert re.search(r'id="h-novidades">Novidades</h2><span class="sec-n"[^>]*>4 novidades no momento</span><p class="sec-note">Livros que entraram', h)
+    assert '<span class="cur-c">5 ofertas</span>' in h                                      # "Todos" conta ofertas
+    assert re.search(r'<span class="sec-n"[^>]*>1 oferta no momento</span>', vis(page(load(good))))  # singular
+    card_n = novs[novs.index('data-id="nov-2"'):]
+    card_n = card_n[:card_n.index("</li>")]
+    assert ('class="sticker"' not in card_n and "<s " not in card_n and "desconto" not in card_n
+            and not re.search(r"(?i)\bofertas?\b", card_n) and 'data-tipo="novidade"' in card_n)
+    assert ('class="buy-c"' in card_n and 'class="bell"' in card_n and "visto hoje às" in card_n
+            and 'class="badge badge--novo">Novo<' in card_n)                                # loja, horário, compra, sino, Novo
+    assert '<p class="mais mais--m"><a class="btn btn--ghost" href="/novidades/">' not in h   # 4 novidades: cabem no celular
+    pg = render_pages(mix)
+    assert "nov-" not in pg["ofertas/index.html"].split('id="ofertas"')[0].split("<main")[1]  # /ofertas/ sem novidade
+    assert pg["novidades/index.html"].count('data-tipo="novidade"') == 4 and "livro/nov-1/index.html" in pg
+    assert "Novidade: ainda sem desconto" in pg["livro/nov-1/index.html"] and "oferta conferida" not in pg["livro/nov-1/index.html"]
+    gm = vis(page(mix, "manga"))
+    assert gm.index('id="h-ativas"') < gm.index('id="h-novidades"')                       # nicho: Ofertas, depois Novidades
+    blob = json.loads(re.search(r'id="ofertas">(.*?)</script>', page(mix)).group(1))
+    assert all(d["off"] == 0 and d["de"] is None and d["nov"] for d in blob if d["id"].startswith("nov-"))
+    try:
+        post_text(next(o for o in mix if o["id"] == "nov-1"), "https://ofertaslivros.com/r/nov-1/tg")
+        raise AssertionError("post_text aceitou novidade")
+    except Invalid:
+        pass
+    assert post_text(mix[0], "https://ofertaslivros.com/r/l-0/tg")                         # oferta passa
+    # sem nenhuma oferta: só novidades, sem carrossel nem "0 ofertas"
+    only = load(nov(1, "2026-10-01"), nov(2, "2026-10-17"))
+    h = vis(page(only))
+    assert "Destaques" not in h and 'class="tnum"' not in h and "0 oferta" not in h
+    hero_ = h[h.index('<section class="hero'):h.index("</section>")]
+    assert hero_.count('data-tipo="novidade"') == 2 and not re.search(r"(?i)\bofertas?\b", hero_)  # hero só com novidades
+    assert "<h1>Livros conferidos na loja</h1>" in h and "baixaram de verdade</h1>" not in h
+    assert "Nenhuma oferta conferida agora. Veja as <a href=\"#h-novidades\">novidades</a>" in h and 'id="h-novidades"' in h
+    assert '<span class="cur-c">2 novidades</span>' in h
+    assert "Nenhuma oferta conferida agora" in render_pages(only)["ofertas/index.html"]
+    # hero logo depois do header com qualquer número de livros: ofertas primeiro, novidades completando até 5
+    def hero_of(items, bot=None):
+        h = vis(page(items, bot=bot))
+        if '<section class="hero' not in h:
+            return None, h
+        return h[h.index('<section class="hero'):h.index("</section>", h.index('<section class="hero'))], h
+    def ofs(n):
+        return [{**good, "id": f"o-{k}", "title": f"Oferta {k}", "stores": [{**amz, "price_cents": 4000 - 100 * k,
+                                                                             "list_price_cents": 6000}]} for k in range(n)]
+    for n in (1, 2, 5):
+        hr, h = hero_of(load(*ofs(n)))
+        assert hr.count('class="slide"') == n and 'data-tipo="novidade"' not in hr, n
+        assert h.index('class="intro"') < h.index('<section class="hero') < h.index('id="h-filtro"')  # ordem da spec
+        assert ("<h1>Livros que baixaram de verdade</h1>" in h) and (f'class="hero hero--{n}"' in hr)
+    hr, h = hero_of(load(*ofs(1)))
+    for ctl in ('class="hero-nav"', "segs", "js-prev", "js-next", "pausar", "aria-roledescription"):
+        assert ctl not in hr, ctl                                               # 1 slide: sem controles nem passagem
+    hr, h = hero_of(load(*ofs(2)))
+    assert 'aria-roledescription="carrossel"' in hr and "js-next" in hr and 'id="pausar"' in hr
+    mix1 = load(*ofs(1), nov(1, "2026-10-01"), nov(2, "2026-10-17"), nov(3, "2026-10-16"), nov(4, "2026-10-15"), nov(5, "2026-10-14"))
+    hr, h = hero_of(mix1, bot="ofertaslivros_bot")
+    tipos = re.findall(r'class="slide" id="d-([a-z0-9-]+)" data-g="\w+" data-tipo="(\w+)"', hr)
+    assert tipos == [("o-0", "oferta"), ("nov-2", "novidade"), ("nov-3", "novidade"), ("nov-4", "novidade"), ("nov-5", "novidade")]
+    sl = hr[hr.index('id="d-nov-2"'):hr.index('id="d-nov-3"')]
+    assert '<span class="chip chip--nov">Novidade</span>' in sl and "off-pill" not in sl and "<s " not in sl
+    assert not re.search(r"(?i)\bofertas?\b", sl) and 'href="/r/nov-2"' in sl and "Me avise se baixar (Telegram)" in sl
+    assert "<h1>Livros conferidos na loja</h1>" in h                                       # hero misturado: H1 sem "baixaram"
+    nv = h[h.index('id="h-novidades"'):]
+    assert max(h.count(f'href="/livro/nov-{k}/"') for k in range(1, 6)) <= 2              # hero + novidades, no máximo
+    assert nv.index('data-id="nov-1"') < nv.index('data-id="nov-2"')                       # a que está no hero vai para o fim
+    assert hero_of(load(nov(1)))[0].count('class="slide"') == 1                            # 0 ofertas, 1 novidade
+    # envs vazias (vars ausentes no Actions chegam como ""): bot e canais ausentes, sem quebrar o build
+    saved = {k: os.environ.pop(k, None) for k in ("TELEGRAM_BOT_USERNAME", "TELEGRAM_CHANNEL_ID", "WHATSAPP_CHANNEL_ID")}
+    os.environ.update(TELEGRAM_BOT_USERNAME="", TELEGRAM_CHANNEL_ID="", WHATSAPP_CHANNEL_ID="")
+    assert tg_bot() is None and channels() == []
+    pages0 = render_pages(load(*ofs(2)), tg_bot(), channels())
+    assert "canais/index.html" not in pages0
+    for path, h in pages0.items():   # nenhum link para t.me/WhatsApp, nenhum href="#"; o que depende deles diz "em breve"
+        assert not re.search(r'href="(https://t\.me|https://whatsapp\.com|#")', h) and 'href="#"' not in h, path
+    h = pages0["index.html"]
+    soon = re.findall(r'<span class="([^"]*) is-soon" aria-disabled="true">(.*?)<span class="sr">, </span><span class="soon">em breve</span></span>', h)
+    kinds = [k for k, _ in soon]
+    for k in ("pill pill--tg", "pill pill--wa", "bell", "btn btn--ghost alert", "go", "btn btn--ivory",
+              "btn btn--tg", "btn btn--wa", "fab", "foot-soon"):
+        assert k in kinds, k                                                   # header, card, hero, banner, bloco, canais, FAB, rodapé
+    assert any("Canal no WhatsApp" in t for k, t in soon if k == "pill pill--wa")  # texto acessível: "Canal no WhatsApp, em breve"
+    assert not re.search(r"<(?:a|button)[^>]*\bis-soon", h) and "tabindex" not in h.split("<dialog")[0]
+    assert "Em breve você poderá tocar no sino" in h and "Para parar, mande /parar" not in h  # FAQ não promete o alerta
+    assert "O alerta ainda não está no ar" in pages0["privacidade/index.html"]
+    js = (STATIC / "app.js").read_text(encoding="utf-8")
+    assert "is-soon" in js and "aria-disabled" in js and "em breve" in js                  # modal sem bot: sino "em breve"
+    hb = render_pages(load(*ofs(2)), "ofertaslivros_bot", [("Telegram", "https://t.me/ofertaslivros"),
+                                                            ("WhatsApp", "https://whatsapp.com/channel/0029VaAbCdEfGhIjKlMnOp12")])
+    h = hb["index.html"]
+    assert "is-soon" not in h and 'class="soon"' not in h and "canais/index.html" in hb  # com as envs: tudo link real
+    assert '<a class="pill pill--wa" href="https://whatsapp.com/channel/0029VaAbCdEfGhIjKlMnOp12"' in h
+    assert '<a class="bell" href="https://t.me/ofertaslivros_bot?start=o-0"' in h and '<a class="fab" href="https://t.me/ofertaslivros_bot"' in h
+    for k, v in saved.items():
+        os.environ.pop(k, None)
+        if v is not None:
+            os.environ[k] = v
+    # nenhum livro em mais de 2 seções da home (hero ou destaques + ofertas ativas)
+    h = vis(page(offers_n(14, {k: {"trending_rank": k + 1} for k in range(14)})))
+    assert max(h.count(f'href="/livro/l-{k}/"') for k in range(14)) <= 2
     # contrato v2: version, stores, isbn, image_url
     for d in ({"offers": [good]}, {"version": 1, "offers": [good]}, {"version": "2", "offers": [good]},
               {"version": 2.0, "offers": [good]}, {"version": True, "offers": [good]}, {"version": 2}, []):
@@ -1371,28 +2014,37 @@ def selftest():
     r = load({**good, "stores": [{**a8, "history_since": h90}, {**m8, "price_cents": 2490}]},
              now=datetime(2026, 10, 18, 11, 0, tzinfo=BRT))[0]
     assert r["seal"] == "90d" and len(r["stores"]) == 1
-    # card: botão com loja e preço da vencedora; seta só com a segunda loja elegível
-    one = page(load(good))
-    assert ">Ver na Amazon por R$\u00a019,90<" in one and "<details" not in one
+    # card: compra em círculo (loja e preço no nome acessível); seta só com a segunda loja elegível
+    one = vis(page(load(good)))
+    assert ('<a class="buy-c" href="/r/livro-1" rel="sponsored noopener noreferrer" target="_blank">' in one
+            and "<span class=\"sr\">Ver na Amazon por R$\u00a019,90: T (abre em nova aba)</span>" in one and '<details class="alt"' not in one)
     two = load({**good, "stores": [amz, {**mls, "price_cents": 1890, "checked_at": "2026-10-18T08:30:00-03:00"}]})
-    home12 = page(load(*({**good, "id": f"x-{k}", "stores": [amz, {**mls, "price_cents": 1890}]} for k in range(12))))
-    assert 'class="mini"' in home12 and home12.count("<details") == home12.count('class="go"')  # listas compactas também
-    for h in (page(two), page(two, "manga"), home12):
-        assert ">Ver no Mercado Livre por R$\u00a018,90<" in h
-        assert ('<details class="alt"><summary><span class="sr">Outra loja: Amazon</span></summary>' in h)
-        assert ('<a href="/r/' in h and '/amazon" rel="sponsored noopener noreferrer" target="_blank">'
-                'Também na Amazon: R$\u00a019,90' in h)
-    h = page(two)
-    assert h.count("<details") == h.count('class="go"') and h.count("visto hoje às") == 4  # 2 seções x 2 lojas
-    assert 'no Mercado Livre</span>, visto hoje às <time datetime="2026-10-18T08:30:00-03:00">08h30</time>' in h
+    home12 = vis(page(load(*({**good, "id": f"x-{k}", "stores": [amz, {**mls, "price_cents": 1890}]} for k in range(12)))))
+    assert home12.count('class="buy-c"') == home12.count('class="card"') == 12 + 7  # feed + destaques (12 - 5 do hero)
+    assert home12.count('<details class="alt"') == home12.count('class="card"') + 5            # seta em cada card e em cada slide
+    for h in (vis(page(two)), vis(page(two, "manga")), home12):
+        assert "Ver no Mercado Livre por R$\u00a018,90" in h
+        assert '<span class="sr">Outra loja: Amazon</span></summary>' in h
+        assert '/amazon" rel="sponsored noopener noreferrer" target="_blank">Também na Amazon: R$\u00a019,90' in h
+    h = vis(page(two))
+    assert h[h.index('id="h-ativas"'):].count("visto hoje às") == 2           # no card: vencedora + a outra na seta
+    assert ('<span class="store">Mercado Livre</span> <span>visto hoje às <time datetime="2026-10-18T08:30:00-03:00">08h30</time>'
+            in h)
     assert '<span class="alt-when">visto hoje às <time datetime="2026-10-18T08:00:00-03:00">08h00</time>' in h
+    bp = vis(book_page(two[0], two, "ofertaslivros_bot"))                   # página: as duas lojas por extenso
+    assert ">Ver no Mercado Livre por R$\u00a018,90<svg" in bp and '<p class="other"><a class="btn btn--ghost" href="/r/livro-1/amazon"' in bp
+    assert 'no Mercado Livre</span>, visto hoje às <time datetime="2026-10-18T08:30:00-03:00">08h30</time>' in bp
+    assert ">Me avise se baixar (Telegram)<span" in bp                       # texto completo na página
     # urgência honesta: "visto em DD/MM" quando não é hoje (relógio do build); nada de contador
-    h = page(load(A(checked_at="2026-10-17T22:00:00-03:00")))
+    h = vis(page(load(A(checked_at="2026-10-17T22:00:00-03:00"))))
     assert 'visto em 17/10 às <time datetime="2026-10-17T22:00:00-03:00">22h00</time>' in h and "visto hoje" not in h
-    assert page(load(A(checked_at="2026-10-18T01:30:00Z"))).count("visto em 17/10 às") == 2  # 22h30 BRT do dia 17
-    # "caiu R$ X desde DD/MM": último preço diferente do atual na série, se era maior
+    x = vis(page(load(A(checked_at="2026-10-18T01:30:00Z"))))
+    assert x[x.index('id="h-ativas"'):].count("visto em 17/10 às") == 1        # 22h30 BRT do dia 17 (no card)
+    assert ('<p class="carimbo carimbo--bar"><span>conferido</span> <time datetime="2026-10-17T22:00:00-03:00">'
+            '<b>17/10</b> às 22h00</time></p>') in h                          # o carimbo do topo também
+    # "caiu R$ X desde DD/MM": último preço diferente do atual na série, se era maior (hero e página)
     def fell(price=1990, **kw):
-        return page(load(A(history_since="2026-10-01", price_cents=price, **kw)))
+        return livro(history_since="2026-10-01", price_cents=price, **kw)
     assert "Caiu R$\u00a05,00 desde 10/10</span>" in fell(price_points=ok_pp)
     assert "Caiu R$\u00a010,00 desde 01/10" in fell(price_points=pp(("2026-10-01", 2990), ("2026-10-12", 1990)))
     assert "Caiu R$\u00a010,00 desde 01/10" in fell(price_points=pp(("2026-10-01", 2990), ("2026-10-18", 2500)))  # hoje não conta
@@ -1401,32 +2053,77 @@ def selftest():
     h = fell(price_points=pp(("2026-10-01", 2990)))
     assert "Caiu R$\u00a010,00 desde 01/10" in h and 'class="hist"' not in h        # 1 ponto: queda sim, gráfico não
     assert not re.search(r"acaba|restam|minutos|últimas", page(o))
-    assert "<details" not in page(load({**good, "stores": [amz, {**mls, "price_cents": 1890}]},
+    assert '<details class="alt"' not in page(load({**good, "stores": [amz, {**mls, "price_cents": 1890}]},
                                        now=datetime(2026, 10, 18, 10, 31, tzinfo=BRT)))  # ML velho: sem seta
-    # capa real (só mlstatic) x placeholder sóbrio; alt, dimensões, lazy e eager só no 1º slide
-    h = page(load({**good, "image_url": img}))
-    assert (f'<div class="cover cover--photo">\n      <img src="{img}" alt="Capa de T, de A" width="120" height="180" '
-            'loading="lazy" decoding="async">' in h and "/capa.svg" not in h)
-    h = page(load(good))
-    assert ('<div class="cover cover--none">\n      <img src="/capa.svg" alt="" width="120" height="180" '
-            'loading="lazy" decoding="async">\n      <span class="cover-t" aria-hidden="true">T</span>' in h)
-    assert '<div class="cover cover--sm cover--none">\n      <img src="/capa.svg" alt="" width="120" height="180"' in h
-    assert not re.search(r"cover--\d", h) and "Capa ilustrativa" not in h        # sem capa falsa colorida
-    h = page(load({**good, "image_url": img, "title": 'O "x" <b>', "author": "A & B"}))
+    # capa real (só mlstatic) x placeholder do nicho (gradiente + inicial, decorativo); alt, dimensões, lazy
+    h = vis(page(load({**good, "image_url": img})))
+    assert (f'<div class="cover"><img src="{img}" alt="Capa de T, de A" width="120" height="180" '
+            'loading="lazy" decoding="async"></div>' in h and "/capa.svg" not in h)
+    h = vis(page(load(good)))
+    assert '<div class="cover cover--none" aria-hidden="true"><span class="ini">T</span></div>' in h
+    assert '<span class="pages" aria-hidden="true"></span>' in h            # o miolo do livro atrás da capa
+    h = vis(page(load({**good, "image_url": img, "title": 'O "x" <b>', "author": "A & B"})))
     assert 'alt="Capa de O &quot;x&quot; &lt;b&gt;, de A &amp; B"' in h and '"x" <b>' not in h
-    h = page(offers_n(5, {k: {"image_url": img} for k in range(5)}))
-    hero_ = h[:h.index('id="h-curadoria"')]
+    h = vis(page(offers_n(5, {k: {"image_url": img} for k in range(5)})))
+    hero_ = h[:h.index('id="h-filtro"')]
     assert hero_.count('loading="eager" fetchpriority="high"') == 1 and h.count('loading="eager"') == 1
     assert hero_.index('loading="eager"') < hero_.index('loading="lazy"')
-    assert h.count("<img ") == h.count('width="120" height="180"') + 2                # + logo do topo e do rodapé
-    h = page(offers_n(5, {0: {"blurb": '<i>"Duas" & irmãs</i>'}}))
+    assert h.count("<img ") == h.count('width="120" height="180"') + 4       # + logo claro e escuro no topo e no rodapé
+    r = load({**good, "image_url": img})
+    assert vis(book_page(r[0], r)).count('loading="eager" fetchpriority="high"') == 1  # na página do livro a capa é a LCP
+    h = vis(page(offers_n(5, {0: {"blurb": '<i>"Duas" & irmãs</i>'}})))
     assert h.count('class="blurb"') == 1 and '<i>"Duas"' not in h
-    assert re.search(r'<p class="blurb">&lt;i&gt;&quot;Duas&quot; &amp; irmãs&lt;/i&gt;</p>\s*<div class="deal">', h)
-    assert 'class="blurb"' not in page(offers_n(5))
+    assert re.search(r'<p class="blurb">&lt;i&gt;&quot;Duas&quot; &amp; irmãs&lt;/i&gt;</p>\s*<div class="hero-deal">', h)
+    assert 'class="blurb"' not in vis(page(offers_n(5)))
     # CSP: só a foto do ML entra além do próprio site
     csp = HEADERS.split("Content-Security-Policy: ")[1].splitlines()[0]
-    assert "img-src 'self' https://http2.mlstatic.com;" in csp and csp.count("https://") == 1
-    assert "script-src" not in csp and "default-src 'none'" in csp
+    assert csp == ("default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://http2.mlstatic.com; "
+                   "font-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+    # JS: só o nosso arquivo, sem script inline executável; o JSON embutido não fecha o <script> antes da hora
+    evil = '</script><script>alert(1)</script><!--'
+    h = page(load({**good, "title": evil, "author": "</SCRIPT>"}), bot="ofertaslivros_bot")
+    blob = re.search(r'<script type="application/json" id="ofertas">(.*?)</script>', h, re.S).group(1)
+    assert "<" not in blob and json.loads(blob)[0]["t"] == evil and json.loads(blob)[0]["a"] == "</SCRIPT>"
+    assert h.count("<script") == h.count("</script>") == 2                      # app.js + JSON, nada mais
+    assert re.findall(r"<script(?: [^>]*)?>", h) == ['<script src="/app.js" defer>', '<script type="application/json" id="ofertas">']
+    assert "<script>" not in vis(h) and "&lt;/script&gt;&lt;script&gt;" in vis(h)
+    d0 = json.loads(blob)[0]
+    assert d0["lojas"][0]["href"] == "/r/livro-1" and d0["pag"] == "/livro/livro-1/" and d0["alerta"].startswith("https://t.me/")
+    assert '<dialog class="modal" id="detalhe"' in h and h.count('id="ofertas"') == 1
+    assert '<dialog' not in privacy(o) and 'id="ofertas"' not in book_page(o[0], o)  # modal só onde há cards
+    js = (STATIC / "app.js").read_text(encoding="utf-8")
+    assert not re.search(r"innerHTML|outerHTML|insertAdjacentHTML|\beval\s*\(|new\s+Function|document\.write|"
+                         r"set(?:Timeout|Interval)\s*\(\s*['\"`]|https?://(?!http2\.mlstatic\.com|t\.me)", js)
+    assert len(js.encode()) < 15_000                                          # meta: menos de 15 KB
+    if shutil.which("node"):                                                    # sintaxe, se houver node
+        import subprocess
+        subprocess.run(["node", "--check", str(STATIC / "app.js")], check=True)
+    # contraste dos tokens (docs/marca/contraste.py lê o style.css; sai com erro se algum par falhar)
+    import subprocess
+    subprocess.run([sys.executable, "-I", str(ROOT / "docs" / "marca" / "contraste.py")], check=True, stdout=subprocess.DEVNULL)
+    # badges só com dado real: "Novo" = history_since nos últimos 3 dias; "Em alta" = trending_rank
+    def badges(*stores, **kw):
+        return re.findall(r'class="badge badge--(\w+)">', vis(page(load({**good, **kw, "stores": list(stores)}))))
+    assert badges(amz) == []                                                    # sem histórico: não sabemos se é novo
+    assert badges({**amz, "history_since": "2026-10-16"}) == ["novo"]          # 2 dias
+    assert badges({**amz, "history_since": "2026-10-18"}) == ["novo"]
+    assert badges({**amz, "history_since": "2026-10-15"}) == []                # 3 dias: já não é novo
+    assert badges({**amz, "history_since": "2026-10-17"}, {**mls, "price_cents": 2990}) == []  # outra loja sem histórico
+    assert badges({**amz, "history_since": "2026-10-17"}, trending_rank=4) == ["alta"]
+    assert badges(amz, trending_rank=1) == ["alta"]
+    assert not re.search(r"(?i)estoque|ao vivo|restam|últimas unidades", vis(page(offers_n(14))))
+    # páginas geradas: home, nichos, /ofertas/, /livro/<id>/ e privacidade; /canais/ só com canal
+    pg = render_pages(load(good, ml))
+    assert set(pg) == {"index.html", "privacidade/index.html", "ofertas/index.html", "manga/index.html",
+                       "ficcao/index.html", "livro/livro-1/index.html", "livro/livro-2/index.html"}
+    assert "canais/index.html" in render_pages(load(good), ch=[("Telegram", "https://t.me/ofertaslivros")])
+    lv = pg["livro/livro-1/index.html"]
+    assert "<h1 class=\"livro-h1\">T</h1>" in lv and '<html lang="pt-BR" data-style="manga">' in lv
+    assert 'href="/r/livro-1" rel="sponsored noopener noreferrer" target="_blank"' in lv
+    assert 'href="/livro/livro-1/" data-modal="livro-1"' in pg["index.html"]  # o modal é atalho para a página real
+    assert pg["ofertas/index.html"].count('class="card"') == 2 and "feed--full" in pg["ofertas/index.html"]
+    for path, h in pg.items():                                                 # rodapé obrigatório em todas
+        assert "ganhamos com compras qualificadas" in h and "o preço final é o da loja" in h, path
     # post: linha "também" só com a outra loja elegível até 10% mais cara, sem URL de loja
     def post(ml_price, now=NOW):
         r = load({**good, "title": "Torto Arado", "author": "Itamar Vieira Junior",
