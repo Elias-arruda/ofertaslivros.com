@@ -142,7 +142,11 @@ Ids do `BOOK_GENRE`: os 25 valores e o slug de cada um estão na tabela de `cura
 ### 5.2 Nichos e tags
 - Os 10 gêneros de `curadoria-automatica.md` §10.1, com o mapa `BOOK_GENRE → slug` de lá: `literatura-brasileira` (só manual), `ficcao`, `nao-ficcao`, `negocios`, `manga`, `autoajuda`, `infantojuvenil`, `religiao`, `estudo`, `estilo-de-vida`. **Autoajuda entra.**
 - `BOOK_GENRE` = LGBTQ+ (76624760) → `genre: "ficcao"`, `tags: ["lgbtqia"]`, `genre_source: "padrao_lgbtqia"` (§10.1.1). O Elias corrige o gênero à mão quando for não ficção.
-- Livro já publicado mantém o gênero manual (decisão 4). Bíblia, Vade Mecum e apostila de concurso ficam fora do automático (decisão B5 de `curadoria-e-links.md`).
+- Livro já publicado mantém o gênero manual (decisão 4).
+- **Exclusões B5 (aprovadas na rodada 5):** Bíblia, Vade Mecum e apostila de concurso ficam fora do automático. Critério:
+  - **exclui** se a categoria do ML bater numa lista fechada de exclusão (`B5_SUBGENRES`: ids de `BOOK_SUBGENRES`/`BOOK_GENRE` da ficha, levantados pelo `catalog-curator` entre os 208 subgêneros) **ou** se o título, sem acento e em minúsculas, tiver uma palavra da lista forte (`B5_FORTE`: `biblia`, `vade mecum`, `apostila`);
+  - **dúvida** se o título tiver só uma palavra da lista fraca (`B5_FRACA`, por exemplo `concurso`, `edital`, `oab`, `enem`): o livro não publica e vai para o log com o motivo `revisar_b5`; o `catalog-curator` revisa e, se for o caso, ajusta as listas;
+  - é filtro de exclusão, não casamento de identidade: a regra "nunca casar por título" continua valendo para a identidade e para o casamento entre lojas.
 
 ### 5.3 Pontuação e modo sombra
 - Componentes, pesos e fórmulas de `curadoria-automatica.md` §10.3: preço 35, demanda 25, avaliações `15·min(1; v/50)`, tendência 25. Componente ausente não conta como zero.
@@ -197,22 +201,22 @@ O destino é sempre um caminho interno que começa com `/r/`, então não vira `
 **Decidido pelo Elias (§10.7, decisão 4):**
 1. **Teto de 500 livros ativos** (`ACTIVE_MAX = 500`, ativos + pendentes), que substitui o `CATALOG_MAX = 150`. O `catalog-check` falha o PR acima de 500 ou do limite de regras.
 2. **Regras compactadas:** um placeholder genérico `/r/:id/* /r/:id 302` para os casos em que o destino é o do `/r/<id>`, e regras explícitas só onde o destino difere (tag de canal da Amazon e a loja que não venceu). É a R1/R2 acima com um placeholder só; o frontend-developer escolhe a forma, desde que caiba nos 500 com folga e passe o critério 10. Antes, conferir na doc da Cloudflare a ordem entre regra estática e placeholder.
-3. **Retirada:** 6 h sem nenhuma loja fresca; "30 dias sem oferta" (leitura em aberto, `curadoria-automatica.md` §10.8, item 6); e, só depois da calibração, `score < 60` em 2 execuções.
+3. **Retirada:** 6 h sem nenhuma loja fresca tira do site; 30 dias sem anúncio ativo (todos) ou 30 dias sem entrar em oferta (só automáticos, manuais isentos) tiram do catálogo (`curadoria-automatica.md` §10.8, item 6, rodada 5); e, só depois da calibração, `score < 60` em 2 execuções.
 4. O collector-engineer mede o tempo por livro e sobe o `ML_DEADLINE_S` (o job tem 10 min de `timeout-minutes`). R3 (Worker) só se 500 não couber no `_redirects` compactado.
 
 **Risco que fica:** pela conta acima, o coletor de hoje mantém **160 a 320 livros frescos**. Com 500 ativos, o resto fica sem preço fresco e some do site sozinho até ser relido. A medição do collector-engineer vem antes de passar de ~300.
 
-### 5.7 Fila diária da Amazon manual e cobertura de 80% (proposta, decisões 2 e 3 da seção 14)
+### 5.7 Fila diária da Amazon manual (decidida) e cobertura de 80% (padrão provisório)
 
 **O custo real não é a fila, é a conferência diária.** Cada linha nova da `amazon_links.tsv` custa ao Elias uns 2 min (abrir, conferir a edição, SiteStripe, ISBN). Mas cada livro aceito passa a exigir **uma conferência de preço por dia, para sempre** (frescor de 12 h), e isso cresce com o catálogo. A 50 por dia, em 30 dias seriam até 1.500 livros para conferir à mão.
 
-**Proposta:**
-- `AMAZON_QUEUE_DAY = 5`: a `amazon-todo` traz no máximo 5 linhas novas por dia, as de maior score (no empate, maior demanda, porque o objetivo da Amazon agora é chegar às 10 vendas que liberam a Creators API).
-- `AMAZON_ACTIVE_MAX = 30`: no máximo 30 livros com a Amazon em conferência manual de preço. A `amazon_queue.csv`, que já existe, lista só esses 30, por score. A uns 30 s por livro, dá ~15 min por dia, acima dos ~10 min previstos em `distribuicao-canais.md`; com 20, fica em ~10 min.
+**Decidido (rodada 5) e padrões:**
+- `AMAZON_QUEUE_DAY = 10` (decisão do Elias): a `amazon-todo` traz no máximo 10 linhas novas por dia, as de maior score (no empate, maior demanda, porque o objetivo da Amazon agora é chegar às 10 vendas que liberam a Creators API).
+- `AMAZON_ACTIVE_MAX = 30` (padrão provisório; o Elias não respondeu sobre ele, e com 10 por dia enche em 3 dias): no máximo 30 livros com a Amazon em conferência manual de preço. A `amazon_queue.csv`, que já existe, lista só esses 30, por score. A uns 30 s por livro, dá ~15 min por dia, acima dos ~10 min previstos em `distribuicao-canais.md`; com 20, fica em ~10 min.
 - Acima do teto, um livro novo só entra na Amazon no lugar do de menor score. O que sai mantém o `asin` no catálogo (não precisa refazer o SiteStripe se voltar), só sai da conferência diária, e o livro segue pelo ML quando a Amazon perde o frescor.
 - Quando a Creators API sair, os dois tetos somem: `GetItems` traz preço, ASIN e ISBN.
 
-**Cobertura de 80% para o selo de 90 dias da Amazon.** Com amostras manuais esparsas, o mínimo que guardamos é maior ou igual ao mínimo real. O selo "menor preço em 90 dias" é afirmação ao consumidor (CDC, `distribuicao-canais.md` §12.3).
+**Cobertura de 80% para o selo de 90 dias e para o critério "em oferta" da Amazon: padrão provisório.** O Elias não respondeu sobre a cobertura na rodada 5; vale 80% até ele decidir outro valor. Com amostras manuais esparsas, o mínimo que guardamos é maior ou igual ao mínimo real. O selo "menor preço em 90 dias" é afirmação ao consumidor (CDC, `distribuicao-canais.md` §12.3).
 - **Regra:** a série da Amazon de um livro só conta para o selo e para o componente Preço se tiver amostra em **pelo menos 80% dos dias BRT da janela de 90 dias** (≥ 72 dias distintos com linha `source=manual`), além dos 90 dias de `history_since`.
 - **Abaixo de 80%:**
   - se a vencedora é a Amazon, **sem selo** ("90d" e "since"), porque o "desde DD/MM" tem o mesmo problema;
@@ -302,13 +306,15 @@ Os critérios por livro que bloqueiam ou só pontuam estão em `curadoria-e-link
 11. **Amazon manual:** a `amazon-todo` nunca escreve mais de `AMAZON_QUEUE_DAY` linhas novas por dia; a `amazon_queue.csv` nunca lista mais de `AMAZON_ACTIVE_MAX` livros.
 12. **Cobertura:** uma série da Amazon com 71 dias distintos de amostra em 90 não dá selo "90d" nem "since" quando a Amazon vence; com o ML vencendo, o selo sai como "no Mercado Livre". Com 72 dias, conta normalmente.
 13. `python3 build.py --selftest` e `pytest` verdes.
+14. **Retirada (§10.8, item 6):** livro automático com `ultima_oferta` (ou publicação) há 31 dias sai no PR do dia; livro manual (sem `genre_source`) na mesma situação fica; qualquer livro com 31 dias sem anúncio ativo sai. O `id` retirado nunca volta a ser usado.
+15. **B5:** título com `bíblia` (com acento) ou subgênero de `B5_SUBGENRES` é excluído; título com só `concurso` vai para `revisar_b5` e não publica; nenhum dos dois casos usa o título para identidade.
 
 ## 12. Divisão por agent (ordem de execução)
 
 1. **collector-engineer, passo 0 restante** (§10.2) e registro do resultado em `curadoria-automatica.md` §10.2.
 2. **frontend-developer:** `GENRES` com 10 slugs, `TAGS`, `RESERVED`, `in_niche`, páginas de tag (diff de §10.1.1); `_redirects` compactado e o teste no `wrangler dev`; `seal_of` com `coverage_90d` e o texto "no Mercado Livre"; o critério "em oferta" e a área Curadoria (`aba-curadoria.md`).
 3. **collector-engineer:** `tags` e `genre_source` no `load_catalog`/`BOOK_FIELDS`; `coverage_90d` e `median_90d_cents` no `offers.json`; tetos da Amazon em `write_queue`; as mudanças do `curator.py` da seção 15; `curator.yml` diário; medição do tempo por livro no coletor e proposta de `ML_DEADLINE_S`.
-4. **catalog-curator:** conferir o mapa dos 25 `BOOK_GENRE` no código contra §10.1 e definir como excluir Bíblia, Vade Mecum e apostila (B5) sem casar por título.
+4. **catalog-curator:** conferir o mapa dos 25 `BOOK_GENRE` no código contra §10.1; levantar `B5_SUBGENRES` e as listas `B5_FORTE`/`B5_FRACA` (5.2) e revisar os casos `revisar_b5`.
 5. **security-auditor:** escopo da `GOOGLE_BOOKS_API_KEY` (só no passo, nunca em URL logada); push no `price-history`; `_redirects` compactado (as regras dinâmicas não viram open redirect); `.gitignore` da `amazon_links.tsv`. Rodar `/security-review`.
 6. **code-reviewer:** um PR para o build (2), um para o coletor e o curador (3 e 4). No PR do build, com `web-design-guidelines`.
 - **alerts-engineer:** nada aqui. Os links de canal (`/r/<id>/tg`, `/wa`) continuam iguais para quem posta.
@@ -330,7 +336,7 @@ Os critérios por livro que bloqueiam ou só pontuam estão em `curadoria-e-link
 **Operação e custo**
 - **Coletor é o gargalo** (5.6): sem subir o `ML_DEADLINE_S`, livros novos ficam sem preço fresco e somem do site sozinhos. Medir antes de passar de ~300 ativos.
 - **Vitrine de ofertas magra no começo:** com o critério "em oferta" (§10.8), livro sem "de/por" ≥ 10% fica só na Curadoria. A home pode ter poucas ofertas nos primeiros dias; o volume de 50 por dia compensa.
-- **Tempo do Elias:** ~50 links do ML por dia e até 5 linhas da Amazon, mais a conferência de até 30 preços da Amazon. Se pesar, é o gatilho para reabrir o Busqy.
+- **Tempo do Elias:** ~50 links do ML por dia e até 10 linhas da Amazon, mais a conferência de até 30 preços da Amazon. Se pesar, é o gatilho para reabrir o Busqy.
 - **Fonte curta:** o `/highlights` dá 20 itens. Pode não haver 50 por dia; a primeira execução mostra.
 - Custo em dinheiro: R$ 0 (Actions em repo público, Google Books com cota gratuita, Cloudflare Free).
 
@@ -340,8 +346,8 @@ Os critérios por livro que bloqueiam ou só pontuam estão em `curadoria-e-link
 
 **Em aberto, para o Elias:**
 1. ~~Teto da vitrine e `_redirects`~~ Decidido na §10.7, decisão 4 (5.6).
-2. **Fila diária da Amazon** (5.7): (a) **5 linhas por dia e 30 livros em conferência (recomendado)**; (b) 5 por dia e 20 livros, para caber nos ~10 min por dia; (c) outro N.
-3. **Cobertura para o selo da Amazon** (5.7): (a) **80%, com conferência ~6 dias por semana (recomendado)**; (b) 70%, que aceita pular o fim de semana, com risco maior de o selo afirmar um mínimo que não foi o real; (c) nunca dar selo com a série manual da Amazon até a Creators API.
+2. ~~Fila diária da Amazon~~ Decidido na rodada 5: `AMAZON_QUEUE_DAY = 10`. `AMAZON_ACTIVE_MAX = 30` fica como padrão provisório.
+3. **Cobertura para o selo e o "em oferta" da Amazon** (5.7), **sem resposta na rodada 5; 80% vale como padrão provisório**: (a) **80%, com conferência ~6 dias por semana (recomendado)**; (b) 70%, que aceita pular o fim de semana, com risco maior de o selo afirmar um mínimo que não foi o real; (c) nunca dar selo com a série manual da Amazon até a Creators API.
 4. **Texto do selo restrito:** "Menor preço em 90 dias no Mercado Livre" (recomendado) ou simplesmente não mostrar selo quando a Amazon está abaixo da cobertura.
 
 ## 15. O que muda no `collector/curator.py` (não implementado)
@@ -357,8 +363,9 @@ Os critérios por livro que bloqueiam ou só pontuam estão em `curadoria-e-link
 | 7 | Google Books | Não existe; docstring diz "só fala com api.mercadolibre.com" | Cliente por ISBN conhecido em `www.googleapis.com/books/v1/volumes?q=isbn:`, chave do env, URL nunca logada; docstring e critério 1 atualizados | collector-engineer; security-auditor revisa |
 | 8 | Score em sombra | Não existe | Gravação de `curation/AAAA-MM.jsonl` na mesma execução diária (caminho recebido por argumento, como o `--history` do coletor) e o resumo de segunda | collector-engineer |
 | 9 | PR semanal | `summary()`, `suggest`, passo de PR no `curator.yml` | Fica, diário, com até 50 `pendente` e a `ml_links.tsv` (§10.7, decisão 3) | collector-engineer |
-| 10 | Filas de link | Não existe | `links-todo`/`links-apply` (§10.4) e `amazon-todo`/`amazon-apply` (§10.5), com `AMAZON_QUEUE_DAY = 5`. `asin_provavel()` é reaproveitado | collector-engineer |
-| 11 | Exclusões B5 | Não existe | Bíblia, Vade Mecum e apostila fora do automático, por critério a definir que não case por título | catalog-curator define; collector-engineer implementa |
+| 10 | Filas de link | Não existe | `links-todo`/`links-apply` (§10.4) e `amazon-todo`/`amazon-apply` (§10.5), com `AMAZON_QUEUE_DAY = 10`. `asin_provavel()` é reaproveitado | collector-engineer |
+| 11 | Exclusões B5 | Não existe | Categoria do ML (`B5_SUBGENRES`) ou lista forte no título exclui; lista fraca vai para `revisar_b5` (5.2) | catalog-curator levanta as listas; collector-engineer implementa |
+| 14 | Retirada | Não existe | `ultima_oferta` por livro no arquivo de estado; retirada por 30 dias sem anúncio ativo (todos) ou sem oferta (só com `genre_source`), no PR diário (§10.8, item 6) | collector-engineer |
 | 12 | Orçamento | `LOOKUP_MAX = 60`, `DEADLINE_S = 300` | Medir na sombra; provavelmente maior para render 50 por dia. `timeout-minutes` do job acompanha | collector-engineer |
 | 13 | Testes | `tests/` do desenho antigo | Critérios 1 a 9 e 11 da seção 11 | collector-engineer |
 

@@ -467,7 +467,7 @@ Respostas do Elias às 14 decisões, registradas no fim do dia. **Substituem** o
 - pedir o acesso à Google Trends API alpha (item 8) → Elias;
 - conciliar `docs/produto/curator.md` e `collector/curator.py` com estas decisões. Estão desatualizados: `WEEK_MAX=10` e `GENRE_MAX=4` (10 por semana, 4 por nicho) contra 50 por dia e 10 por gênero; um `GENRE_MAP` com 5 gêneros e sem `autoajuda` contra os 10 com `estudo`; sem `tags` → `product-manager` (spec) e quem implementar a entrega 2 (código);
 - campo `tags` no contrato v2 (`comparacao-lojas.md`) e no `load_catalog` → `product-manager` e `collector-engineer`; diff do `GENRES`/`TAGS` no `build.py` → `frontend-developer`;
-- cobertura mínima da série manual da Amazon para o selo de 90 dias e para o critério "em oferta" (§10.5; proposta de 80% em `curator.md` 5.7) → Elias (`curator.md` §14, decisão 3); implementação → `collector-engineer` e `frontend-developer`;
+- cobertura mínima da série manual da Amazon para o selo de 90 dias e para o critério "em oferta": **80% como padrão provisório** (rodada 5, sem resposta do Elias sobre o valor) → Elias confirma ou ajusta (`curator.md` §14, decisão 3); implementação → `collector-engineer` e `frontend-developer`;
 - ~~teto de vitrine ativa por causa do limite de 2.000 regras do `_redirects`~~ decidido na §10.7, decisão 4 (500 ativos, regras compactadas); teto diário da fila da Amazon (gate 8) → Elias (`curator.md` §14).
 
 ### 10.7 Decisões do Elias (2026-10-19, segunda rodada)
@@ -510,7 +510,7 @@ Prevalece sobre todo o resto desta spec e sobre `curadoria-e-links.md`, `curator
 2. **Onde o livro publicado aparece:**
    - **Área "Curadoria"** (`/curadoria/`, spec em `aba-curadoria.md`): todos os livros publicados com loja dentro do frescor, com ou sem desconto.
    - **Vitrine de ofertas** (home: destaques e ofertas ativas; páginas de nicho e de tag; posts dos canais): só os livros **em oferta** (item 3). É o que mais se busca no site.
-   - **Hero da home:** ofertas primeiro; com menos de 5 ofertas, continua completando com livros sem oferta, como já faz a `main`. Provisório: está em aberto em `aba-curadoria.md` §14, decisão 2.
+   - **Hero da home:** ofertas primeiro; com menos de 5 ofertas, continua completando com livros sem oferta, como já faz a `main` (decidido, rodada 5).
    - Livro sem nenhuma loja fresca sai dos dois lugares, como hoje (`build.py:resolve`).
 3. **Critério "em oferta"** (decisão de produto derivada da escolha do Elias, tomada pelo `product-manager`; o Elias pode ajustar os números). Avaliado na loja vencedora (menor preço entre as lojas frescas, como no `resolve`):
 
@@ -521,11 +521,15 @@ Prevalece sobre todo o resto desta spec e sobre `curadoria-e-links.md`, `curator
 
    - A mediana usa os dias 8 a 90 (anti-maquiagem de `curadoria-e-links.md` A.2): uma alta logo antes da "promoção" não infla o desconto. Valor por dia: o menor preço daquele dia BRT na loja.
    - "Menor preço desde DD/MM" (menos de 90 dias) continua aparecendo como informação, mas **não promove a oferta**, como já decidido no commit 180471e.
-   - Amazon manual: a cobertura mínima da série manual ainda está em aberto (`curator.md` §14, decisão 3; proposta de 80% dos dias em 5.7). Até o Elias decidir, a Amazon vencedora usa sempre a linha "menos de 30 dias" (o "de/por"). Decidida a cobertura, a série que a atingir passa a usar a linha "30 dias ou mais".
+   - Amazon manual: **padrão provisório de cobertura mínima de 80%** (`curator.md` 5.7). O Elias não respondeu sobre a cobertura na rodada 5; 80% vale até ele decidir outro valor. A série da Amazon só usa a linha "30 dias ou mais" se tiver amostra em pelo menos 80% dos dias BRT da janela usada (dias 8 a 90, limitada ao `history_since`); abaixo disso, vale o "de/por".
    - Dado novo: `median_90d_cents` por loja no `offers.json`, calculado pelo coletor a partir do `price_history`, opcional no contrato v2 (`comparacao-lojas.md`). Sem ele, o build cai na regra de menos de 30 dias.
 4. **Score:** continua em sombra, só como nota (§10.3). Ele não decide nem a publicação nem o "em oferta".
 5. **Volume (conciliação de texto):** até 50 livros novos publicados por dia, até 10 por gênero, configuráveis. Os 50 são meta e teto: entram menos se menos passarem nos gates, e nunca mais de 50, porque cada livro custa um link manual do ML e o teto de 500 ativos (§10.7, decisão 4) enche em 10 dias.
-6. **Retirada "por 30 dias sem oferta"** (§10.7, decisão 4): com a Curadoria aceitando livro sem desconto, a frase tem duas leituras. **Em aberto para o Elias** (`aba-curadoria.md` §14, decisão 1). Até ele decidir, vale a leitura (a), a mais conservadora: sai quem passou 30 dias sem anúncio ativo em nenhuma loja.
+6. **Retirada (decidida, rodada 5; interpretação adotada do "A mas também com a B, mix dos dois"):** o livro sai do site e do catálogo por qualquer uma destas regras:
+   - **(a) 30 dias sem anúncio ativo** em nenhuma loja. Vale para todos os livros, manuais e automáticos;
+   - **(b) 30 dias sem entrar em oferta** (critério do item 3), contados do último dia em que esteve em oferta ou, se nunca esteve, do dia da publicação. Vale só para os livros automáticos; **os manuais ficam isentos**. Automático é o livro que o `curator` gravou com `genre_source` (ele sempre grava); sem `genre_source`, é manual;
+   - continuam as outras: 6 h sem nenhuma loja fresca tira o livro do site (não do catálogo), e `score < 60` por 2 execuções, só depois da calibração.
+   - **Como:** o `curator` guarda, por livro, o último dia em oferta (`ultima_oferta`, AAAA-MM-DD) num arquivo de estado ao lado do `curator_seen.json`, calculado com a mesma função do build (o `curator.py` importa do `build.py`, como o `collect.py` já importa `GENRES`). A retirada sai no PR diário do curator, com o motivo no `jsonl`. O `id` nunca é reaproveitado (gate 9).
 
 **Conciliação entre a §10.6 (rodada 3, respondida às 12h00 num branch paralelo) e a §10.7 (PR #14, 11h27):**
 
@@ -547,3 +551,12 @@ Prevalece sobre todo o resto desta spec e sobre `curadoria-e-links.md`, `curator
 - `build.py` (frontend-developer): `resolve` com a regra do item 3; home, nichos e canais só com `oferta`; página `/curadoria/` (`aba-curadoria.md`).
 - `collect.py` (collector-engineer): `median_90d_cents` por loja no `offers.json`.
 - `curator.py` (collector-engineer): sem filtro de desconto na entrada; volume do item 5.
+
+**Respostas do Elias às decisões em aberto do PR #14 (2026-10-19, rodada 5):**
+1. **Retirada:** mix de (a) e (b), com os manuais isentos da (b). Interpretação adotada no item 6.
+2. **Hero da home:** completa com livros sem oferta quando há menos de 5 ofertas (item 2).
+3. **"Destaques da curadoria"** da home **não** é renomeada.
+4. **Critério "em oferta"** aprovado como está (item 3): "de/por" ≥ 10% antes de 30 dias de histórico; depois, ≤ 85% da mediana dos dias 8 a 90 ou o selo de 90 dias. Deixa de ser decisão derivada e passa a ser decisão do Elias.
+5. **Texto do CLAUDE.md** de `aba-curadoria.md` §13 aprovado. Fica na spec; a edição do CLAUDE.md sai em outro PR.
+6. **Fila diária da Amazon:** `AMAZON_QUEUE_DAY = 10`. Sobre a cobertura mínima ele não respondeu: **80% fica como padrão provisório**, explícito no item 3 e em `curator.md` 5.7.
+7. **B5 aprovada:** Bíblia, Vade Mecum e apostila de concurso saem do automático pela categoria do ML mais uma lista de palavras no título; o `catalog-curator` revisa os casos de dúvida. Regra em `curator.md` 5.2. A lista de palavras é filtro de exclusão, não casamento de identidade: a regra "nunca casar por título" continua valendo.

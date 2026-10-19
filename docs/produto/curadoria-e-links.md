@@ -59,7 +59,7 @@ Catálogo é a lista monitorada (`collector/catalog.json`). Pela decisão A do E
 
 - **Da vitrine de ofertas** (o livro segue na área Curadoria): deixou de estar em oferta pelo critério da §10.8.
 - **Do site** (o livro continua no catálogo): nenhuma loja elegível pelo frescor, item pausado ou encerrado e, só depois da calibração, `score < 60` por 2 execuções (§10.3). Isso também cumpre o item 5.2 do ML.
-- **Do catálogo:** GTIN deixou de bater com o ISBN; link de afiliado inválido ou recusado no build; 30 dias sem nenhum item novo ativo em nenhuma loja (sinal de edição esgotada; é a leitura provisória do "30 dias sem oferta" de `curadoria-automatica.md` §10.7, decisão 4, e §10.8, item 6). ~~180 dias sem entrar na vitrine e sem sinal de demanda~~ *Substituído pela §10.8, item 6, que deixa em aberto a retirada por falta de oferta (`aba-curadoria.md` §14, decisão 1).* Retirada registrada com motivo e componentes (§5, auditoria).
+- **Do catálogo:** GTIN deixou de bater com o ISBN; link de afiliado inválido ou recusado no build; 30 dias sem nenhum item novo ativo em nenhuma loja (sinal de edição esgotada); para livro automático, também 30 dias sem entrar em oferta, com os manuais isentos (`curadoria-automatica.md` §10.8, item 6, decidido na rodada 5). ~~180 dias sem entrar na vitrine e sem sinal de demanda~~ *Substituído pela §10.8, item 6.* Retirada registrada com motivo e componentes (§5, auditoria).
 - **O `id` nunca é reaproveitado**, mesmo depois da retirada (gate 9).
 
 ### A.4 Gêneros
@@ -314,7 +314,7 @@ Ajuste barato, se o Gerador aceitar mesmo várias URLs:
 - **B2.** O link do ML **fica liberado** nos canais de Telegram e WhatsApp, seguindo a página "Onde compartilhar". O Elias aceitou o risco de a página "Pode compartilhar" valer. Se o painel ou o suporte disser o contrário, o canal passa a apontar para o site.
 - **B3.** Mantém `/r/<id>/mercadolivre`. O destino continua sendo o link completo do painel, sem edição, e o botão diz "Ver no Mercado Livre".
 - **B4.** Os critérios de A.2 foram aprovados como estão. *(O "Desconto real" foi revisto pela decisão A, `curadoria-automatica.md` §10.8: separa oferta de curadoria e não bloqueia a entrada.)*
-- **B5.** Bíblia, Vade Mecum e apostilas de concurso ficam fora do automático e entram só manualmente.
+- **B5.** Bíblia, Vade Mecum e apostilas de concurso ficam fora do automático e entram só manualmente. **Critério aprovado (rodada 5):** categoria do ML mais lista de palavras no título, com o `catalog-curator` revisando os casos de dúvida (`curator.md` 5.2).
 
 ## D. Próximos passos (nada executado)
 
