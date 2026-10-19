@@ -200,6 +200,13 @@
         if (l.w) { const w = d.createElement('span'); w.className = 'alt-when'; w.textContent = l.w; acts.append(w); }
       });
       if (o.alerta && OK.tg.test(o.alerta)) acts.append(link(o.alerta, 'Me avise se baixar (Telegram)', 'btn btn--ghost', 'noopener noreferrer', ' (abre o Telegram)'));
+      else { // sem bot: o mesmo botão, "em breve", sem link nem foco
+        const b = d.createElement('span'), sep = d.createElement('span'), tag = d.createElement('span');
+        b.className = 'btn btn--ghost alert is-soon'; b.setAttribute('aria-disabled', 'true');
+        b.textContent = 'Me avise se baixar (Telegram)';
+        sep.className = 'sr'; sep.textContent = ', '; tag.className = 'soon'; tag.textContent = 'em breve';
+        b.append(sep, tag); acts.append(b);
+      }
       if (OK.pag.test(o.pag)) acts.append(link(o.pag, 'Página do livro', 'link'));
       txt('.m-n', list.length > 1 ? (idx + 1) + '/' + list.length : '');
       $('.js-mprev', dlg).hidden = $('.js-mnext', dlg).hidden = list.length < 2;

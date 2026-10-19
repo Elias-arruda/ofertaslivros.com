@@ -921,7 +921,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
   .card .obj { aspect-ratio: 3 / 2; }
   .card .stamp { white-space: nowrap; letter-spacing: .02em; padding: 3px 7px; }
   .cur-d { display: none; }
-  .faq summary { min-height: 48px; padding: 8px 16px; font-size: 15.5px; }
+  .faq summary { min-height: 46px; padding: 7px 16px; font-size: 15.5px; }
   .kicker--muted { margin-bottom: 6px; }
   .slide .blurb { display: none; }
   .bot h2, .canais h2, .faq h2 { font-size: 24px; }
@@ -952,3 +952,24 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
   .slide { padding-bottom: 10px; }
   .hero-nav { padding-bottom: 8px; }
 }
+
+/* ---------- 16. Estado "em breve" (bot e canais ainda não estão no ar) ---------- */
+/* Mesma cara do componente, sem link nem foco, com a etiqueta "em breve" (também no texto acessível).
+   Opacidade .9: o texto segue AA; a etiqueta é texto/fundo cheios (12:1 no claro, 15:1 no escuro). */
+.soon {
+  display: inline-flex; align-items: center; margin-left: 8px; padding: 2px 7px; border-radius: 999px;
+  font: 700 11px/1.2 var(--sans); text-transform: uppercase; letter-spacing: .06em;
+  background: var(--text); color: var(--bg); white-space: nowrap; opacity: 1;
+}
+.is-soon { cursor: default; opacity: .9; box-shadow: none; }
+.is-soon:hover, .is-soon:active { transform: none; filter: none; }
+.pill--tg.is-soon:hover { background: var(--surface2); }
+.bell.is-soon:hover { background: color-mix(in srgb, var(--bg2) 82%, transparent); color: var(--text); }
+.bell.is-soon { overflow: visible; }
+.bell.is-soon .soon { position: absolute; left: 50%; bottom: -9px; margin: 0; transform: translateX(-50%); font-size: 9.5px; padding: 1px 5px; }
+.blk .soon, .bot .soon, .fab .soon { background: var(--ivory); color: var(--wine); }
+.foot-soon { display: inline-flex; align-items: center; min-height: 36px; font-weight: 600; color: var(--muted); }
+.pill--wa.is-soon .soon, .btn--wa.is-soon .soon { background: #06210f; color: #ffffff; }
+@media (max-width: 900px) { .pill.is-soon { position: relative; } .pill--tg.is-soon .soon { position: absolute; left: 50%; bottom: -7px; margin: 0; transform: translateX(-50%); font-size: 9px; padding: 1px 4px; } }
+@media (max-width: 640px) { .pill--wa.is-soon .soon { position: absolute; left: 50%; bottom: -7px; margin: 0; transform: translateX(-50%); font-size: 9px; padding: 1px 4px; } }
+@media (max-width: 640px) { .fab.is-soon .soon { position: absolute; top: -8px; right: -4px; margin: 0; font-size: 9px; padding: 1px 5px; } .foot-soon { min-height: 32px; } }  /* não é alvo de toque: não precisa de 44 px */

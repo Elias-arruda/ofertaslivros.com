@@ -641,16 +641,34 @@ def avatar(g, cls="av"):
     return f'<span class="{cls}" data-g="{g}" aria-hidden="true">{icon("g-" + g)}</span>'
 
 
+SOON = '<span class="sr">, </span><span class="soon">em breve</span>'
+CHANNELS = ("Telegram", "WhatsApp")
+
+
+def cta(href, inner, cls, sr="", rel="noopener noreferrer"):
+    """Link real quando há destino; sem ele (env ausente ou vazia), o mesmo componente no estado
+    "em breve": <span> com aria-disabled, fora do tab, com a etiqueta também no texto acessível.
+    Nunca <a href="#">."""
+    if href:
+        return f'<a class="{cls}" href="{e(href)}" rel="{rel}" target="_blank">{inner}{sr}</a>'
+    return f'<span class="{cls} is-soon" aria-disabled="true">{inner}{SOON}</span>'
+
+
+def chan_urls(ch):
+    """{nome: url ou None} dos dois canais, sempre os dois (o ausente sai "em breve")."""
+    links = dict(ch)
+    return {n: links.get(n) for n in CHANNELS}
+
+
 def alert_link(o, bot, full=True):
-    """Me avise se baixar (Telegram): texto completo no hero, no modal e na página; sino no card."""
-    if not bot:
-        return ""
+    """Me avise se baixar (Telegram): texto completo no hero, no modal e na página; sino no card.
+    Sem TELEGRAM_BOT_USERNAME, o mesmo botão no estado "em breve"."""
     t = e(o["title"])
-    label = ('Me avise se baixar (Telegram)' f'<span class="sr">: alerta de preço de {t} (abre o Telegram)</span>' if full
-             else f'<span class="sr">Me avise se baixar (Telegram): alerta de preço de {t}</span>')
-    cls = "btn btn--ghost alert" if full else "bell"
-    return (f'<a class="{cls}" href="{e(tg_alert_url(bot, o["id"]))}" rel="noopener noreferrer" target="_blank">'
-            f'{icon("sino")}{label}</a>')
+    href = tg_alert_url(bot, o["id"]) if bot else None
+    if full:
+        return cta(href, f'{icon("sino")}Me avise se baixar (Telegram)', "btn btn--ghost alert",
+                   f'<span class="sr">: alerta de preço de {t} (abre o Telegram)</span>')
+    return cta(href, f'{icon("sino")}<span class="sr">Me avise se baixar (Telegram): alerta de preço de {t}</span>', "bell")
 
 
 def slide(o, k, n, bot=None):
@@ -742,19 +760,17 @@ def aneis(cls=""):
 
 
 def ch_buttons(ch, big=False):
-    """WhatsApp verde e Telegram em contorno, só os canais com env."""
+    """WhatsApp verde e Telegram em contorno; o canal sem env sai "em breve"."""
     out = []
-    for name, url in ch:
-        cls = "btn btn--wa" if name == "WhatsApp" else "btn btn--tg"
-        out.append(f'<a class="{cls}{" btn--big" if big else ""}" href="{e(url)}" rel="noopener noreferrer" target="_blank">'
-                   f'{icon("wa" if name == "WhatsApp" else "tg")}Canal no {name}<span class="sr"> (abre em nova aba)</span></a>')
+    for name, url in chan_urls(ch).items():
+        cls = ("btn btn--wa" if name == "WhatsApp" else "btn btn--tg") + (" btn--big" if big else "")
+        out.append(cta(url, f'{icon("wa" if name == "WhatsApp" else "tg")}Canal no {name}', cls,
+                       '<span class="sr"> (abre em nova aba)</span>'))
     return "".join(out)
 
 
 def strip_canais(ch, at):
-    """Faixa dos canais dentro do grid, largura toda. Só com TELEGRAM_CHANNEL_ID ou WHATSAPP_CHANNEL_ID."""
-    if not ch:
-        return ""
+    """Faixa dos canais dentro do grid, largura toda. Sem as envs, os botões saem "em breve"."""
     return f"""<li class="blk blk--canais" data-at="{at}">
   <span class="radar" aria-hidden="true"></span>
   <div><h3 class="blk-h">Receba as próximas ofertas <em>de graça</em></h3>
@@ -764,15 +780,13 @@ def strip_canais(ch, at):
 
 
 def banner_bot(bot, at):
-    """Banner do alerta em 2 colunas do grid. Só com TELEGRAM_BOT_USERNAME."""
-    if not bot:
-        return ""
+    """Banner do alerta em 2 colunas do grid. Sem TELEGRAM_BOT_USERNAME, o botão sai "em breve"."""
     return f"""<li class="blk blk--bot" data-at="{at}">
   <span class="mascote" aria-hidden="true">{icon("carimbo", "i i-carimbo")}</span>
   <p class="kicker">{icon("sino")}Alerta grátis no Telegram</p>
   <h3 class="blk-h">Escolha o livro. A gente avisa quando baixar.</h3>
   <p>Toque no sino de qualquer oferta e o bot guarda o preço de hoje.</p>
-  <p><a class="go" href="https://t.me/{e(bot)}" rel="noopener noreferrer" target="_blank">Ativar alertas{icon("seta")}<span class="sr"> (abre o Telegram)</span></a></p>{aneis()}
+  <p>{cta(bot and f"https://t.me/{bot}", f'Ativar alertas{icon("seta")}', "go", '<span class="sr"> (abre o Telegram)</span>')}</p>{aneis()}
 </li>"""
 
 
@@ -862,10 +876,8 @@ def ranked(offers):
 
 def bot_block(bot):
     """Capítulo marinho do alerta. "Pedir um livro" também abre o bot: não há formulário
-    (site sem backend, CSP form-action 'none')."""
-    if not bot:
-        return ""
-    url = f"https://t.me/{e(bot)}"
+    (site sem backend, CSP form-action 'none'). Sem o bot, os botões saem "em breve"."""
+    url = bot and f"https://t.me/{bot}"
     steps = ("Escolha o livro e toque no sino", "No Telegram, toque em Iniciar", "Quando o preço cair, avisamos")
     lis = "".join(f'<li><span class="n">{k}</span>{t}</li>' for k, t in enumerate(steps, 1))
     return f"""<section class="bot" aria-labelledby="h-bot">
@@ -874,23 +886,21 @@ def bot_block(bot):
     <p class="kicker">{icon("sino")}Seu alerta no Telegram</p>
     <h2 id="h-bot">Avisamos quando o livro baixar. <em>Você só escolhe qual.</em></h2>
     <ol class="passos">{lis}</ol>
-    <p class="bot-acts"><a class="go" href="{url}" rel="noopener noreferrer" target="_blank">Ativar no Telegram{icon("seta")}<span class="sr"> (abre o Telegram)</span></a>
-    <a class="btn btn--ivory" href="{url}" rel="noopener noreferrer" target="_blank">Pedir um livro<span class="sr"> ao bot (abre o Telegram)</span></a></p>
-    <p class="bot-note">O bot guarda só o necessário para avisar você e apaga o alerta quando ele dispara. Veja a <a href="/privacidade/">privacidade</a>.</p>
+    <p class="bot-acts">{cta(url, f'Ativar no Telegram{icon("seta")}', "go", '<span class="sr"> (abre o Telegram)</span>')}
+    {cta(url, "Pedir um livro", "btn btn--ivory", '<span class="sr"> ao bot (abre o Telegram)</span>')}</p>
+    <p class="bot-note">{"O bot guarda" if bot else "Quando estiver no ar, o bot vai guardar"} só o necessário para avisar você e {"apaga" if bot else "apagar"} o alerta quando ele disparar. Veja a <a href="/privacidade/">privacidade</a>.</p>
   </div>{aneis("aneis--big")}
 </section>"""
 
 
 def channels_block(ch):
-    """Seção dos canais (cartão claro). Só com as envs dos canais."""
-    if not ch:
-        return ""
+    """Seção dos canais (cartão claro). Canal sem env sai "em breve"; sem nenhum, sem o link de /canais/."""
     return f"""<section class="canais" aria-labelledby="h-canais">
   <p class="kicker kicker--muted">Canais gratuitos</p>
   <h2 id="h-canais">As ofertas inteiras, <em>no seu celular.</em></h2>
   <p class="canais-p">As mesmas ofertas do site, com o preço conferido e o horário da verificação. Só leitura, sem cadastro.</p>
   <p class="canais-acts">{ch_buttons(ch, big=True)}</p>
-  <p><a class="link" href="/canais/">Como funcionam os canais</a></p>
+  {'<p><a class="link" href="/canais/">Como funcionam os canais</a></p>' if ch else ""}
 </section>"""
 
 
@@ -912,10 +922,17 @@ def faq(bot, ch):
                    f'Toque no sino de um livro (ou em “Me avise se baixar”) e o bot <a href="https://t.me/{e(bot)}" '
                    'rel="noopener noreferrer" target="_blank">@' + e(bot) + '</a> guarda o preço de hoje. Quando ele cair, '
                    'avisamos por lá. Para parar, mande /parar ao bot.'))
+    else:  # o bot ainda não responde: nada de prometer que o alerta já funciona
+        qa.append(("Como vai funcionar o alerta de preço?",
+                   "Em breve você poderá tocar no sino de um livro (ou em “Me avise se baixar”) e o nosso bot no "
+                   "Telegram vai guardar o preço de hoje e avisar quando ele cair. Por enquanto o alerta ainda não está no ar."))
     if ch:
         qa.append(("Onde mais recebo as ofertas?",
                    "Nos canais " + " e ".join(n for n, _ in ch) + ', que repetem as ofertas do site. '
                    '<a href="/canais/">Veja como funcionam</a>.'))
+    else:
+        qa.append(("Vai ter canal no Telegram ou no WhatsApp?",
+                   "Em breve. Os canais vão repetir as ofertas do site, com o preço conferido e o horário da verificação."))
     qa.append(("Vocês ganham com isso?",
                "Sim. Os links são de afiliado: como associados da Amazon e afiliados do Mercado Livre, ganhamos uma "
                "comissão com compras qualificadas, sem custo a mais para você. Isso não muda qual oferta entra no site."))
@@ -928,11 +945,9 @@ def faq(bot, ch):
 
 
 def fab(bot):
-    """Botão flutuante "Pedir um livro": abre o bot (sem formulário)."""
-    if not bot:
-        return ""
-    return (f'<a class="fab" href="https://t.me/{e(bot)}" rel="noopener noreferrer" target="_blank">{icon("busca")}'
-            '<span class="fab-t">Pedir um livro</span><span class="sr"> ao bot do Telegram (abre o Telegram)</span></a>')
+    """Botão flutuante "Pedir um livro": abre o bot (sem formulário); sem o bot, "em breve"."""
+    return cta(bot and f"https://t.me/{bot}", f'{icon("busca")}<span class="fab-t">Pedir um livro</span>', "fab",
+               '<span class="sr"> ao bot do Telegram (abre o Telegram)</span>')
 
 
 def home_sections(offers, bot=None, ch=()):
@@ -1059,17 +1074,15 @@ def carimbo(offers, cls):
 
 def header(offers, ch):
     """Header de vidro. Buscar e tema só funcionam com JS: saem com hidden e o app.js mostra."""
-    links = dict(ch)
     nav = [f'<button class="pill js-busca" type="button" hidden aria-expanded="false" aria-controls="busca">'
            f'{icon("busca")}<span class="pill-t">Buscar</span></button>',
            f'<button class="pill pill--ico js-tema" type="button" hidden aria-pressed="false">'
            f'{icon("sol", "i i-sol")}{icon("lua", "i i-lua")}<span class="sr">Tema escuro</span></button>']
-    if "Telegram" in links:
-        nav.append(f'<a class="pill pill--tg" href="{e(links["Telegram"])}" rel="noopener noreferrer" target="_blank">'
-                   f'{icon("tg")}<span class="pill-t">Telegram</span><span class="sr"> (canal, abre em nova aba)</span></a>')
-    if "WhatsApp" in links:
-        nav.append(f'<a class="pill pill--wa" href="{e(links["WhatsApp"])}" rel="noopener noreferrer" target="_blank">'
-                   f'{icon("wa")}<span class="pill-t">Canal no WhatsApp</span><span class="sr"> (abre em nova aba)</span></a>')
+    urls = chan_urls(ch)  # canal sem env: a mesma pílula, "em breve"
+    nav.append(cta(urls["Telegram"], f'{icon("tg")}<span class="pill-t">Canal no Telegram</span>', "pill pill--tg",
+                   '<span class="sr"> (abre em nova aba)</span>'))
+    nav.append(cta(urls["WhatsApp"], f'{icon("wa")}<span class="pill-t">Canal no WhatsApp</span>', "pill pill--wa",
+                   '<span class="sr"> (abre em nova aba)</span>'))
     return f"""<header class="top">
 <div class="top-bar">
 <span class="menu-slot" aria-hidden="true"></span>
@@ -1095,16 +1108,16 @@ def foot(offers, bot=None, ch=(), here=""):
     cols = [("Ofertas", [internal("/ofertas/", "Todas as ofertas", here)]
              + ([internal("/novidades/", "Novidades", here)] if novidades(offers) else [])
              + [internal(f"/{g}/", e(GENRES[g]), here) for g in present])]
-    receber = ([internal("/canais/", "Canais", here)] if ch else []) + (
-        [ext(f"https://t.me/{bot}", "Alerta no Telegram")] if bot else [])
-    if receber:
-        cols.append(("Receber ofertas", receber))
+    receber = ([internal("/canais/", "Canais", here)] if ch else
+               [cta(None, n, "foot-soon") for n in CHANNELS]) + (
+        [ext(f"https://t.me/{bot}", "Alerta no Telegram")] if bot else [cta(None, "Alerta de preço", "foot-soon")])
+    cols.append(("Receber ofertas", receber))
     cols.append(("Sobre", [internal("/#h-faq", "Como o site funciona", here), internal("/privacidade/", "Privacidade", here)]))
     html_cols = "".join(f'<nav class="foot-col" aria-label="{t}"><p class="foot-t">{t}</p><ul>'
                         + "".join(f"<li>{x}</li>" for x in links) + "</ul></nav>" for t, links in cols)
-    tg = dict(ch).get("Telegram")
-    social = (f'<a class="pill" href="{e(tg)}" rel="noopener noreferrer" target="_blank">{icon("tg")}'
-              f'@{e(tg.rsplit("/", 1)[1])} no Telegram<span class="sr"> (abre em nova aba)</span></a>' if tg else "")
+    tg = chan_urls(ch)["Telegram"]
+    social = cta(tg, f'{icon("tg")}' + (f'@{e(tg.rsplit("/", 1)[1])} no Telegram' if tg else "Canal no Telegram"), "pill",
+                 '<span class="sr"> (abre em nova aba)</span>')
     return f"""<footer class="foot">
   <div class="foot-grid">
     <div class="foot-brand">{brand("brand brand--foot")}<p>Livros que baixaram de preço de verdade, conferidos na loja.</p>{social}</div>
@@ -1273,7 +1286,7 @@ def privacy(offers, bot=None, ch=()):
 <p>O site não tem cadastro, cookies nem ferramentas de análise. Ele tem um script próprio, servido pelo próprio site, para a busca, os filtros e o tema; a única coisa que ele guarda é a sua escolha de tema claro ou escuro, no seu navegador (localStorage), e nada disso sai do aparelho. O site é hospedado na Cloudflare, que recebe os dados técnicos de cada acesso (como o endereço IP) para entregar as páginas.</p>
 <p>Ao clicar em uma oferta, você vai para a Amazon ou para o Mercado Livre. A partir daí valem as políticas de privacidade de cada loja.</p>
 <h2>No alerta de preço do Telegram</h2>
-<p>Quando você pede um alerta para {bot_name}, guardamos só o necessário para avisar você:</p>
+<p>{"Quando você pede um alerta para " + bot_name + ", guardamos" if bot else "O alerta ainda não está no ar. Em breve você poderá pedir um alerta para " + bot_name + ". Quando isso funcionar, vamos guardar"} só o necessário para avisar você:</p>
 <ul>
 <li>o identificador da conversa com o bot no Telegram (chat_id);</li>
 <li>o livro e o preço-alvo do alerta;</li>
@@ -1525,8 +1538,10 @@ def selftest():
     # escape no HTML
     xss = load({**good, "title": '<script>alert(1)</script>"'})
     assert "<script>" not in page(xss) and "&lt;script&gt;" in page(xss)
-    # botão de alerta: só com TELEGRAM_BOT_USERNAME válido
-    assert "t.me" not in page(o) and 'class="alert"' not in page(o)
+    # botão de alerta: link real só com TELEGRAM_BOT_USERNAME válido; sem ele, o mesmo sino "em breve"
+    p0 = page(o)
+    assert "t.me" not in p0 and '<a class="bell"' not in p0
+    assert p0.count('<span class="bell is-soon" aria-disabled="true">') == vis(p0).count('class="card"')
     pb = page(o, bot="ofertaslivros_bot")
     assert '<a class="bell" href="https://t.me/ofertaslivros_bot?start=livro-1" rel="noopener noreferrer" target="_blank">' in pb
     assert pb.count('class="bell"') == 2 and pb.count('"alerta":"https://t.me/ofertaslivros_bot?start=') == 2  # sino por card + modal
@@ -1769,8 +1784,9 @@ def selftest():
     assert "Destaques de hoje" in h and "Destaques da curadoria" not in h
     assert "Em alta" not in h and 'class="badge' not in h and 'class="chip chip--' not in h.replace("chip--g", "")
     assert 'href="/manga/"' in h and "data-filtro" in h
-    for cls in ('blk--bot', 'blk--canais', 'class="bot"', 'class="canais"', 'class="fab"', "t.me"):
-        assert cls not in h, cls                                           # sem bot nem canais: nada disso
+    for cls in ('blk--bot', 'blk--canais', 'class="bot"', 'class="canais"', 'fab is-soon'):
+        assert cls in h, cls                                               # sem bot nem canais: tudo "em breve"
+    assert "t.me" not in h and "whatsapp.com" not in h
     hero_ids = re.findall(r'<div class="slide" id="d-([a-z0-9-]+)"', h)
     feat = h[h.index('id="h-curadoria"'):h.index('id="h-filtro"')]
     assert len(hero_ids) == 5 and feat.count('class="card"') == 9 and not any(f'data-id="{i}"' in feat for i in hero_ids)
@@ -1897,8 +1913,28 @@ def selftest():
     saved = {k: os.environ.pop(k, None) for k in ("TELEGRAM_BOT_USERNAME", "TELEGRAM_CHANNEL_ID", "WHATSAPP_CHANNEL_ID")}
     os.environ.update(TELEGRAM_BOT_USERNAME="", TELEGRAM_CHANNEL_ID="", WHATSAPP_CHANNEL_ID="")
     assert tg_bot() is None and channels() == []
-    h = render_pages(load(*ofs(2)), tg_bot(), channels())["index.html"]
-    assert "t.me" not in h and "whatsapp.com" not in h and 'class="bot"' not in h and "canais/index.html" not in render_pages(load(*ofs(2)))
+    pages0 = render_pages(load(*ofs(2)), tg_bot(), channels())
+    assert "canais/index.html" not in pages0
+    for path, h in pages0.items():   # nenhum link para t.me/WhatsApp, nenhum href="#"; o que depende deles diz "em breve"
+        assert not re.search(r'href="(https://t\.me|https://whatsapp\.com|#")', h) and 'href="#"' not in h, path
+    h = pages0["index.html"]
+    soon = re.findall(r'<span class="([^"]*) is-soon" aria-disabled="true">(.*?)<span class="sr">, </span><span class="soon">em breve</span></span>', h)
+    kinds = [k for k, _ in soon]
+    for k in ("pill pill--tg", "pill pill--wa", "bell", "btn btn--ghost alert", "go", "btn btn--ivory",
+              "btn btn--tg", "btn btn--wa", "fab", "foot-soon"):
+        assert k in kinds, k                                                   # header, card, hero, banner, bloco, canais, FAB, rodapé
+    assert any("Canal no WhatsApp" in t for k, t in soon if k == "pill pill--wa")  # texto acessível: "Canal no WhatsApp, em breve"
+    assert not re.search(r"<(?:a|button)[^>]*\bis-soon", h) and "tabindex" not in h.split("<dialog")[0]
+    assert "Em breve você poderá tocar no sino" in h and "Para parar, mande /parar" not in h  # FAQ não promete o alerta
+    assert "O alerta ainda não está no ar" in pages0["privacidade/index.html"]
+    js = (STATIC / "app.js").read_text(encoding="utf-8")
+    assert "is-soon" in js and "aria-disabled" in js and "em breve" in js                  # modal sem bot: sino "em breve"
+    hb = render_pages(load(*ofs(2)), "ofertaslivros_bot", [("Telegram", "https://t.me/ofertaslivros"),
+                                                            ("WhatsApp", "https://whatsapp.com/channel/0029VaAbCdEfGhIjKlMnOp12")])
+    h = hb["index.html"]
+    assert "is-soon" not in h and 'class="soon"' not in h and "canais/index.html" in hb  # com as envs: tudo link real
+    assert '<a class="pill pill--wa" href="https://whatsapp.com/channel/0029VaAbCdEfGhIjKlMnOp12"' in h
+    assert '<a class="bell" href="https://t.me/ofertaslivros_bot?start=o-0"' in h and '<a class="fab" href="https://t.me/ofertaslivros_bot"' in h
     for k, v in saved.items():
         os.environ.pop(k, None)
         if v is not None:
