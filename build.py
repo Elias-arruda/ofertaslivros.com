@@ -12,6 +12,7 @@ import json
 import os
 import re
 import shutil
+import unicodedata
 import sys
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -447,20 +448,6 @@ def post_text(o, url):
     return "\n".join(lines)
 
 
-def cover(o, small=False, eager=False):
-    """Foto real do ML num quadro 2:3 neutro (object-fit: contain). Sem foto, um placeholder sóbrio
-    que não finge ser capa: carimbo pequeno + título discreto (decorativo, o título está ao lado)."""
-    cls = "cover cover--sm" if small else "cover"
-    load = 'loading="eager" fetchpriority="high"' if eager else 'loading="lazy"'
-    if o["image_url"]:
-        return (f'<div class="{cls} cover--photo">\n'
-                f'      <img src="{e(o["image_url"])}" alt="Capa de {e(o["title"])}, de {e(o["author"])}" '
-                f'width="120" height="180" {load} decoding="async">\n    </div>')
-    title = "" if small else f'\n      <span class="cover-t" aria-hidden="true">{e(o["title"])}</span>'
-    return (f'<div class="{cls} cover--none">\n'
-            f'      <img src="/capa.svg" alt="" width="120" height="180" {load} decoding="async">{title}\n    </div>')
-
-
 def price_html(o):
     off = discount(o)
     old = (f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>'
@@ -556,34 +543,54 @@ def go(o):
             f'<span class="sr">: {e(o["title"])} (abre em nova aba)</span></a>')
 
 
-def buy(o):
-    """Botão da vencedora + seta (<details> nativo) com a outra loja elegível, se houver."""
+def alt_details(o):
+    """Seta (<details> nativo) com a outra loja elegível, se houver."""
     a = o["alt"]
     if not a:
-        return f'<div class="buy">{go(o)}</div>'
-    other = (f'<details class="alt"><summary><span class="sr">Outra loja: {STORES[a["store"]]}</span></summary>\n'
-             f'      <p class="alt-box"><a href="/r/{e(o["id"])}/{a["store"]}" rel="sponsored noopener noreferrer" '
-             f'target="_blank">Também {na(a["store"])}: {brl(a["price_cents"])}'
-             f'<span class="sr">, {e(o["title"])} (abre em nova aba)</span></a>'
-             f'<span class="alt-when">{checked(a, o["now"])}</span></p></details>')
-    return f'<div class="buy">{go(o)}\n    {other}</div>'
+        return ""
+    return (f'<details class="alt"><summary>{icon("chev")}<span class="sr">Outra loja: {STORES[a["store"]]}</span></summary>'
+            f'<p class="alt-box"><a href="/r/{e(o["id"])}/{a["store"]}" rel="sponsored noopener noreferrer" '
+            f'target="_blank">Também {na(a["store"])}: {brl(a["price_cents"])}'
+            f'<span class="sr">, {e(o["title"])} (abre em nova aba)</span></a>'
+            f'<span class="alt-when">{checked(a, o["now"])}</span></p></details>')
 
 
-def card(o, bot=None, h=2):
-    t = e(o["title"])
-    alert = (f' <a class="alert" href="{e(tg_alert_url(bot, o["id"]))}" rel="noopener noreferrer" target="_blank">'
-             f'Me avise se baixar (Telegram)<span class="sr">: alerta de preço de {t} (abre o Telegram)</span></a>' if bot else "")
-    return f"""<li class="card">
-  <div class="top">
-    {cover(o)}
-    <div class="head">
-      <h{h} class="title">{t}</h{h}>
-      <p class="author">{e(o["author"])}</p>
-      {deal(o)}
-    </div>
+def buy(o):
+    """Botão da vencedora + seta com a outra loja."""
+    return f'<div class="buy">{go(o)}{alt_details(o)}</div>'
+
+
+def buy_circle(o):
+    """Botão de compra do card: círculo com a seta; loja e preço no nome acessível."""
+    return (f'<a class="buy-c" href="/r/{e(o["id"])}" rel="sponsored noopener noreferrer" target="_blank">{icon("seta")}'
+            f'<span class="sr">Ver {na(o["store"])} por {brl(o["price_cents"])}: {e(o["title"])} (abre em nova aba)</span></a>')
+
+
+def fold(text):
+    """Minúsculas sem acento, para a busca do app.js (que dobra a consulta do mesmo jeito)."""
+    return "".join(c for c in unicodedata.normalize("NFKD", text.lower()) if not unicodedata.combining(c))
+
+
+def card(o, bot=None, h=3):
+    """Card da vitrine. O título (link para /livro/<id>/, que o JS abre no modal) cobre o card;
+    a compra, a seta e o sino ficam por cima."""
+    g, t, oid, off = o["genre"], e(o["title"]), e(o["id"]), discount(o)
+    b = badge(o)
+    bdg = f'<span class="badge badge--{b[0]}">{b[1]}</span>' if b else ""
+    stk = f'<span class="sticker" aria-hidden="true">−{off}%</span>' if off else ""
+    old = (f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>'
+           f'<span class="sr">, {off}% de desconto</span>' if off else "")
+    hs = [s["history_since"] for s in o["stores"] if s["history_since"]]
+    rec = f'{min(hs) if hs else "0000-00-00"}|{o["checked_at"].astimezone(timezone.utc):%Y-%m-%dT%H:%M}'
+    return f"""<li class="card" data-g="{g}" data-id="{oid}" data-q="{e(fold(o["title"] + " " + o["author"]))}" data-preco="{o["price_cents"]}" data-off="{off}" data-rec="{rec}">
+  <div class="sleeve">{obj(o)}{bdg}{stk}{alert_link(o, bot, full=False)}</div>
+  <div class="card-body">
+    <p class="card-meta">{avatar(g, "av av--sm")}<span><span class="store">{STORES[o["store"]]}</span> <span>{checked(o, o["now"])}</span></span></p>
+    <h{h} class="card-title"><a href="/livro/{oid}/" data-modal="{oid}">{t}</a></h{h}>
+    <p class="card-sub">{e(o["author"])}</p>
+    {stamp_html(o)}
+    <div class="card-foot"><p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong>{old}</p>{alt_details(o)}{buy_circle(o)}</div>
   </div>
-  <p class="meta">{meta_html(o)}</p>{chart(o)}
-  <div class="acts">{buy(o)}{alert}</div>
 </li>"""
 
 
@@ -677,7 +684,7 @@ def hero(items, bot=None):
 
 def mini(o):
     return f"""<li class="mini">
-  {cover(o, small=True)}
+  {obj(o, "obj obj--sm")}
   <div class="mini-body">
     <h3 class="mini-title">{e(o["title"])}</h3>
     <p class="price">{price_html(o)}</p>
