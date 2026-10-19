@@ -770,6 +770,7 @@ def shell(title, desc, mast, body, ch=(), here=""):
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+<div class="bg-blobs" aria-hidden="true"><i></i><i></i><i></i></div>
 <a class="skip" href="#conteudo">Pular para o conteúdo</a>
 <header class="mast">
 {mast}

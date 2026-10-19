@@ -147,3 +147,25 @@ em { font-style: italic; font-family: var(--serif); font-variation-settings: "SO
 @media (max-width: 900px) { .brand img { height: 40px; } }
 @media (max-width: 640px) { .brand img { height: auto; width: min(52vw, 240px); } }
 @media (max-width: 400px) { .brand img { width: min(48vw, 190px); } }
+
+/* ---------- 3. Fundo e textura (spec 2.8) ---------- */
+/* Três manchas desfocadas no acento atual: trocar de nicho muda o clima da página inteira */
+.bg-blobs { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.bg-blobs i {
+  position: absolute; width: 55vmax; aspect-ratio: 1; border-radius: 50%;
+  filter: blur(110px); opacity: .22;
+  transition: background-color .7s var(--ease);
+  animation: drift 28s var(--ease) infinite alternate;
+}
+.bg-blobs i:nth-child(1) { left: -18vmax; top: -22vmax; background: var(--accent); }
+.bg-blobs i:nth-child(2) { right: -20vmax; bottom: -24vmax; background: var(--accent2); animation-delay: -9s; }
+.bg-blobs i:nth-child(3) { width: 35vmax; left: 35%; top: 30%; background: var(--wine); animation-delay: -18s; }
+:root[data-theme="dark"] .bg-blobs i { opacity: .16; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bg-blobs i { opacity: .16; } }
+@keyframes drift { to { transform: translate(8vmax, 6vmax) scale(1.15); } }
+/* Grão de papel por cima de tudo (arquivo próprio: a CSP não libera data: no img-src) */
+body::after {
+  content: ""; position: fixed; inset: 0; z-index: 100; pointer-events: none;
+  background: url(/grao.svg) repeat; background-size: 160px;
+  opacity: .06; mix-blend-mode: overlay;
+}
