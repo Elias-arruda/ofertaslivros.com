@@ -1,7 +1,7 @@
 # Curadoria de livros de todas as áreas e link de afiliado do ML
 
 Status: pesquisa (entrega 1 do `catalog-curator`), 2026-10-19. Nada foi implementado.
-Este doc **complementa** `curadoria-automatica.md` §10, não o substitui: gêneros, pontuação, gates, modo sombra e o fluxo de links em lote continuam lá. **Em caso de conflito, prevalece `curadoria-automatica.md` §10** (com a precedência §10.7 > §10.6 > §10.5). Aqui ficam as fontes com o que os termos de cada uma permitem, os critérios de entrada e saída, os 100 candidatos iniciais e a pesquisa do link do ML.
+Este doc **complementa** `curadoria-automatica.md` §10, não o substitui: gêneros, pontuação, gates, modo sombra e o fluxo de links em lote continuam lá. **Em caso de conflito, prevalece `curadoria-automatica.md` §10** (com a precedência da §10.8 de lá). Aqui ficam as fontes com o que os termos de cada uma permitem, os critérios de entrada e saída, os 100 candidatos iniciais e a pesquisa do link do ML.
 
 Convenção (a mesma de §10): **Fato** tem fonte e data. **Inferência** é dedução minha, a confirmar. **Não confirmado** é o que tentei e não consegui verificar. Todas as fontes foram acessadas em **2026-10-19**.
 
@@ -16,11 +16,11 @@ Convenção (a mesma de §10): **Fato** tem fonte e data. **Inferência** é ded
 | **API pública do ML** (`/categories`, `/highlights`, `/trends`, `/products`, `/reviews`) | Descoberta (mais vendidos e tendências da categoria `MLB437616`), preço, GTIN, gênero (`BOOK_GENRE`) | [Termos do Programa de Desenvolvedores](https://developers.mercadolivre.com.br/pt_br/termos-e-condicoes). **Fato**, li o texto: 5.2 manda tirar do site o conteúdo que deixar de estar disponível. 5.3 manda atualizar a cada 24 h, e a cada **6 h** quando o conteúdo é listagem de artigos, e diz que "o Aplicativo deverá explicitar a frequência com que atualiza". 5.4 exige **autorização expressa** do ML para usar ou publicar o conteúdo de um jeito que gere estatística de vendas (5.4.3), preço médio ou volume vendido por categoria (5.4.4) e taxas de conversão (5.4.6). 7.6 proíbe robôs e scraping do site ou dos serviços. 7.8 proíbe volume abusivo | Em produção para preço. As rotas de descoberta ainda estão no passo 0 de §10.2 |
 | **Amazon Creators API** | Descoberta (busca, browse nodes), preço, ASIN, avaliações | É o único caminho permitido para a Amazon (CLAUDE.md, regra 1). O acesso exige cerca de 10 vendas qualificadas em 30 dias ([Creators API, Introduction](https://affiliate-program.amazon.com/creatorsapi/docs/en-us/introduction), citada em `22548f4`) | **Indisponível** para a conta. Até lá, o ASIN entra à mão |
 | **Open Library** | Metadados por ISBN (título, editora, data), checagem de ISBN | [Developers API](https://openlibrary.org/developers/api). **Fato:** o limite é de 1 req/s sem identificação e de 3 req/s com `User-Agent` e e-mail. A página diz "Please do not use our APIs to bulk download metadata" (para volume, usar os dumps mensais) e proíbe "Use Open Library as a backend for high-traffic commercial services" | Usada nesta pesquisa (A.4). Só pode rodar na curadoria, com cache, e nunca no caminho de uma requisição do site. O e-mail do `User-Agent` deve ser um contato do projeto, não o pessoal |
-| **Google Books API** | Metadados, `averageRating`/`ratingsCount` | [Terms](https://developers.google.com/books/terms). **Fato:** proíbe cobrar do usuário pelo uso da aplicação e obriga a remover conteúdo infrator quando pedido. Vale também o Google APIs ToS | **Fato:** a chamada anônima de hoje deu 429 com `quota_limit_value: "0"`. Sem chave própria, não há cota. É a decisão 6 de §10.5 |
+| **Google Books API** | Metadados, `averageRating`/`ratingsCount` | [Terms](https://developers.google.com/books/terms). **Fato:** proíbe cobrar do usuário pelo uso da aplicação e obriga a remover conteúdo infrator quando pedido. Vale também o Google APIs ToS | **Fato:** a chamada anônima de hoje deu 429 com `quota_limit_value: "0"`. Sem chave própria, não há cota. Decidido: chave própria (decisão 9 de §10.6) |
 | **Ranking Nielsen-PublishNews** | Sinal de demanda (mais vendidos do varejo físico brasileiro) | **Não confirmado:** não achei termos de uso nem política de reprodução. **Fato:** a página descreve a metodologia (BookScan da NielsenIQ, só livro físico, painel de 60% a 70% do mercado trade) ([exemplo de ranking](https://www.publishnews.com.br/ranking-nielsen/anual/5/2025/2/0)). O dado é da Nielsen | **Só entrada manual.** Nada de coleta automática nem republicar a lista ou os números. No máximo, o Elias anota "constou no ranking de <mês>" como sinal interno |
 | **Lista da Veja** | Idem | **Não confirmado:** não verifiquei de onde vem a lista nem os termos. Uma revista não é dado aberto | Só entrada manual, com o mesmo tratamento do PublishNews |
 | **Prêmio Jabuti (CBL)** | Sinal editorial (premiados e finalistas) | É um fato público (quem ganhou), que a imprensa reproduz ([CNN Brasil, vencedores de 2025](https://www.cnnbrasil.com.br/pop/premio-jabuti-2025-confira-os-livros-vencedores-de-todas-as-categorias/); [PublishNews, finalistas de 2025](https://www.publishnews.com.br/materias/2025/10/07/chico-buarque-jeferson-tenorio-e-ruy-castro-sao-finalistas-do-premio-jabuti-2025-veja-a-lista-completa)). **Não confirmado:** não li o site oficial | Entrada manual uma vez por ano: um arquivo com título, autor e categoria, e o ISBN conferido pelo GTIN do ML. Serve de semente para `literatura-brasileira`, que o ML não mapeia (§10.1) |
-| **Google Trends API** | Tendência | Ver §10.2 (alpha, acesso por formulário) | Sem acesso. Decisão 5 |
+| **Google Trends API** | Tendência | Ver §10.2 (alpha, acesso por formulário) | Sem acesso. Pedido decidido (decisão 8 de §10.6) |
 
 **Proibido, sem exceção:**
 - Scraping da Amazon, **incluindo as páginas de Mais Vendidos**, de busca e de produto, e a foto da capa tirada da página.
@@ -37,17 +37,17 @@ Convenção (a mesma de §10): **Fato** tem fonte e data. **Inferência** é ded
 
 ### A.2 Critérios de entrada no catálogo
 
-Catálogo é a lista monitorada (`collector/catalog.json`). Vitrine são as ofertas ativas. Um livro pode estar no catálogo sem aparecer na vitrine. Os gates de §4 e §10.3 continuam valendo. Abaixo, os critérios por livro, com o que bloqueia e o que só pontua.
+Catálogo é a lista monitorada (`collector/catalog.json`). Pela decisão A do Elias (`curadoria-automatica.md` §10.8), todo livro publicado com loja fresca aparece na área **Curadoria** (`/curadoria/`), com ou sem desconto; a **vitrine de ofertas** (home, páginas de nicho e canais) mostra só os que estão **em oferta**. Os gates de §4 e §10.3 continuam valendo. Abaixo, os critérios por livro, com o que bloqueia e o que só pontua.
 
 | Critério | Regra | Tipo |
 |---|---|---|
 | ISBN válido | ISBN-13 com dígito verificador correto e prefixo 978 ou 979. O ISBN-10 é convertido. ~~Sem ISBN, o livro não entra~~ *Substituído pelo gate 7 reescrito (`curadoria-automatica.md` §10.3): o ISBN é opcional para livro só do ML, porque o `/products/{id}` não traz GTIN (probe 39259800320); presente, tem de ser válido* | Bloqueia se presente e inválido |
-| Mesma edição nas duas lojas | O casamento é só pelo ISBN-13, resolvido por `/products/search?product_identifier=<isbn>` (gate 7 reescrito; a ficha não traz GTIN). Se não bater, o livro entra só com a loja que confere. **Nunca casar por título.** Capa dura, brochura, box, edição de colecionador e HQ adaptada têm ISBNs diferentes. Nesta pesquisa, por exemplo, o "1984" que a Open Library devolveu primeiro era a versão em quadrinhos (`9788535932522`), e não o romance (`9788535914849`) | Bloqueia |
+| Mesma edição nas duas lojas | Gate 7 da rodada 3 (`curadoria-automatica.md` §10.3): identidade por loja; o casamento é pelo ISBN-13 quando os dois lados têm, e, sem ISBN no ML, pelo `isbn_confirmado` que o Elias preenche na fila da Amazon (§10.5). A confirmação pelo `/products/search` foi rejeitada. Se não bater, o livro entra só com a loja que confere. **Nunca casar por título.** Capa dura, brochura, box, edição de colecionador e HQ adaptada têm ISBNs diferentes. Nesta pesquisa, por exemplo, o "1984" que a Open Library devolveu primeiro era a versão em quadrinhos (`9788535932522`), e não o romance (`9788535914849`) | Bloqueia |
 | Formato | Livro físico: categoria `MLB437616` no ML e ASIN de livro físico na Amazon, não Kindle | Bloqueia |
 | Idioma | Edição brasileira (prefixos `97885`/`97865`) como padrão. Importado, só por entrada manual | Bloqueia no automático |
 | Disponibilidade | Item ativo na buy box ou em `/products/{id}/items`, condição **novo** e preço conferido dentro do frescor (2 h no ML, 12 h na Amazon) | Bloqueia |
 | Vendedor no ML | Reputação verde. **Não confirmado:** terceiros dizem que o link de afiliado só vale para "produtos novos de vendedores com reputação verde" (resumo do resultado de busca sobre a [página do programa](https://www.mercadolivre.com.br/l/afiliados-home)). O campo é `seller_reputation.level_id` de `GET /users/{seller_id}`, a conferir no passo 0 | Bloqueia (se confirmado) |
-| Desconto real | Contra o **nosso** histórico, não contra o `original_price`. Proposta: preço ≤ 85% da mediana de 90 dias ou ≤ o mínimo de 90 dias. Anti-maquiagem: a mediana usa os dias 8 a 90, para que uma alta de preço logo antes da "promoção" não infle o desconto. Com menos de 30 dias de histórico, vale §10.3 (nota baixa, confiança 0,5) | Pontua. Para a vitrine, bloqueia sem desconto mínimo |
+| Desconto real | **Não bloqueia a entrada nem a publicação** (decisão A, `curadoria-automatica.md` §10.8). Decide só se o livro aparece como **oferta** na home, nas páginas de nicho e nos canais, pelo critério "em oferta" da §10.8: com menos de 30 dias de histórico nosso, "de/por" da loja com desconto ≥ 10%; com 30 dias ou mais, preço ≤ 85% da mediana dos dias 8 a 90 (anti-maquiagem: uma alta logo antes da "promoção" não infla o desconto) ou o selo de 90 dias. Sem oferta, o livro fica só na área Curadoria. No score em sombra, vale §10.3 | Pontua (sombra) e separa oferta de curadoria |
 | Popularidade | Posição no `/highlights` (oficial), o bônus do `/trends` e as marcações manuais (PublishNews, Jabuti, Veja). Um sinal ausente não conta como zero | Pontua |
 | Duas lojas | Livro com as duas lojas tem nota maior, porque alimenta a comparação. Hoje a Amazon é manual, então isso pesa pouco | Pontua |
 | Equilíbrio de gêneros | No máximo M novos livros por gênero por dia (gate 8) | Bloqueia o excedente |
@@ -57,7 +57,8 @@ Catálogo é a lista monitorada (`collector/catalog.json`). Vitrine são as ofer
 
 ### A.3 Critérios de saída
 
-- **Da vitrine** (o livro continua no catálogo): nenhuma loja elegível pelo frescor, preço acima do corte de desconto, item pausado ou encerrado, `score < 60` por 2 execuções (§10.3). Isso também cumpre o item 5.2 do ML.
+- **Da vitrine de ofertas** (o livro segue na área Curadoria): deixou de estar em oferta pelo critério da §10.8.
+- **Do site** (o livro continua no catálogo): nenhuma loja elegível pelo frescor, item pausado ou encerrado e, só depois da calibração, `score < 60` por 2 execuções (§10.3). Isso também cumpre o item 5.2 do ML.
 - **Do catálogo:** GTIN deixou de bater com o ISBN; link de afiliado inválido ou recusado no build; 30 dias sem nenhum item novo ativo em nenhuma loja (sinal de edição esgotada); 180 dias sem entrar na vitrine e sem sinal de demanda. Retirada registrada com motivo e componentes (§5, auditoria).
 - **O `id` nunca é reaproveitado**, mesmo depois da retirada (gate 9).
 
@@ -239,7 +240,7 @@ Como verifiquei:
 - 73 ISBNs confirmados e 27 a verificar.
 - Dos confirmados, 12 têm ⚠ de edição.
 - Faltam mais ISBNs em mangá e estilo de vida (7 em cada): a Open Library cobre mal as traduções recentes e a Panini.
-- O caminho para fechar os 27 é o GTIN do produto do ML (passo 0 de §10.2) ou uma chave própria do Google Books (decisão 6). Scraping de loja ou de livraria, para isso, não.
+- O caminho para fechar os 27 era o GTIN do produto do ML, mas o passo 0 mostrou que a ficha não traz GTIN (§10.2); sobra a chave própria do Google Books (decisão 9 de §10.6). Scraping de loja ou de livraria, para isso, não.
 - A seleção dos títulos é minha, a partir de presença conhecida no varejo, e não de um ranking medido, com exceção de Verity e A Biblioteca da Meia-Noite. O `/highlights` deve substituir essa escolha assim que o passo 0 rodar.
 
 ---
@@ -299,7 +300,7 @@ Ajuste barato, se o Gerador aceitar mesmo várias URLs:
 
 ---
 
-## C. Decisões novas para o Elias (somam-se às de §10.5)
+## C. Decisões novas para o Elias (somam-se às de §10.6)
 
 - **B1.** Pedir ao ML autorização por escrito (cláusula 5.4) para usar Δ`sold_quantity` na pontuação, ou desistir desse sinal e ficar só com o `/highlights`.
 - **B2.** Conferir no painel se Telegram e WhatsApp são permitidos. Isso bloqueia o link do ML nos canais da Fase 2.
@@ -307,15 +308,23 @@ Ajuste barato, se o Gerador aceitar mesmo várias URLs:
 - **B4.** Aprovar os critérios de A.2, em especial o desconto mínimo (≤ 85% da mediana dos dias 8 a 90, ou ≤ o mínimo de 90 dias) e as séries (vol. 1 + o mais recente).
 - **B5.** Bíblia e Vade Mecum ficam fora do automático?
 
+### C.1 Decisões do Elias (2026-10-19)
+
+- **B1.** O Δ`sold_quantity` sai da pontuação. A popularidade vem do `/highlights`. Em paralelo, pedir ao ML autorização por escrito (cláusula 5.4). Se vier, o sinal volta.
+- **B2.** O link do ML **fica liberado** nos canais de Telegram e WhatsApp, seguindo a página "Onde compartilhar". O Elias aceitou o risco de a página "Pode compartilhar" valer. Se o painel ou o suporte disser o contrário, o canal passa a apontar para o site.
+- **B3.** Mantém `/r/<id>/mercadolivre`. O destino continua sendo o link completo do painel, sem edição, e o botão diz "Ver no Mercado Livre".
+- **B4.** Os critérios de A.2 foram aprovados como estão. *(O "Desconto real" foi revisto pela decisão A, `curadoria-automatica.md` §10.8: separa oferta de curadoria e não bloqueia a entrada.)*
+- **B5.** Bíblia, Vade Mecum e apostilas de concurso ficam fora do automático e entram só manualmente.
+
 ## D. Próximos passos (nada executado)
 
 | # | Passo | Agent |
 |---|---|---|
-| 1 | Levar as decisões B1–B5 e as de §10.5 ao Elias, e consolidar `GENRES` e rótulos | `product-manager` |
+| 1 | Consolidar `GENRES` e os rótulos de A.4 (B1–B5 já decididas em C.1) | `product-manager` |
 | 2 | Ler os Termos do programa de afiliados no painel, logado, e registrar aqui os itens sobre canais, edição de link e automação | Elias (manual) |
 | 3 | Rodar o passo 0 (`probe` só leitura com o token de app), incluindo `/users/{seller_id}` para reputação e `/products/search?product_identifier=<ISBN>` para os 27 ISBNs a verificar | `catalog-curator` |
 | 4 | Fechar os ISBNs a verificar pelo GTIN do ML e corrigir as edições com ⚠ | `catalog-curator` |
-| 5 | Implementar descoberta, casamento por ISBN, pontuação em sombra, gates e `links-todo`/`links-apply`, com pytest para casamento, gates e validação de link (entrega 2, depois da aprovação) | `catalog-curator` |
-| 6 | Mostrar a frequência de atualização no rodapé (cláusula 5.3) e, se a B3 aprovar, o `href` direto do ML | `frontend-developer` |
-| 7 | Bloquear o link do ML nos posts de Telegram e WhatsApp até a B2 ser respondida | `alerts-engineer` |
+| 5 | Implementar descoberta, casamento pelo gate 7, pontuação em sombra, gates e `links-todo`/`links-apply`, com pytest para casamento, gates e validação de link (entrega 2, depois da aprovação) | `catalog-curator` |
+| 6 | Mostrar a frequência de atualização no rodapé (cláusula 5.3) | `frontend-developer` |
+| 7 | ~~Bloquear o link do ML nos posts de Telegram e WhatsApp~~ Cancelado: a B2 liberou o link do ML nos canais | — |
 | 8 | Revisar o fluxo de links em lote e o uso de dados de terceiros antes de ligar a publicação | `security-auditor` |
