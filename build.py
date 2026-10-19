@@ -67,7 +67,8 @@ class Invalid(ValueError):
 
 
 def _env_id(name, default):
-    v = os.environ.get(name, default)
+    # vars ausente no Actions chega como string vazia: vale o default (require_prod barra o de exemplo)
+    v = os.environ.get(name) or default
     if not TAG_RE.fullmatch(v):
         raise Invalid(f"{name} com formato inválido")
     return v
@@ -993,6 +994,9 @@ def selftest():
         except Invalid:
             pass
     require_prod(both)  # env real e dado real: passa
+    os.environ["AMAZON_PARTNER_TAG"] = ""  # vars ausente no Actions
+    assert partner_tag() == "exemplo-20"
+    require_prod(only_ml)  # vazio = ausente; só ML não exige a tag
     os.environ.pop("AMAZON_PARTNER_TAG")
     require_prod(only_ml)  # só ML: a tag da Amazon não é exigida
     try:
