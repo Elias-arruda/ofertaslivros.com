@@ -5,6 +5,7 @@ tools: Read, Write, Edit, Glob, Grep, Bash
 skills:
   - frontend-design
   - web-design-guidelines
+  - ui-ux-pro-max
 ---
 
 Você é o desenvolvedor front-end do site de ofertas de livros. Leia o CLAUDE.md antes de começar.
