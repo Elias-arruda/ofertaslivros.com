@@ -5,6 +5,7 @@ Leia este arquivo inteiro antes de qualquer tarefa. Ele é o contexto do projeto
 ## Objetivo
 Site de ofertas de livros com links de afiliado da Amazon e do Mercado Livre.
 Referência de produto: https://ofertasdiscos.com (vitrine curada + canais WhatsApp/Telegram + bot de alertas).
+Referência visual: a linguagem do ofertasdiscos.com, adaptada para livros com a paleta e o logo da nossa marca. A fonte da verdade é `docs/marca/spec-visual.md` (decisão de 2026-10-19).
 Domínio comprado na HostGator. A HostGator é usada SÓ para o domínio (DNS).
 
 ## Decisões tomadas
@@ -12,7 +13,8 @@ Domínio comprado na HostGator. A HostGator é usada SÓ para o domínio (DNS).
 - **Diferencial:** histórico de preço ("menor preço em 90 dias"), que sites genéricos não mostram.
 - **Arquitetura:**
   - Coletor em Python rodando em GitHub Actions (cron), gravando o histórico de preços em SQLite (ou Supabase, se precisar).
-  - O coletor gera `data/offers.json`, e um site estático (Astro ou HTML puro) é gerado a partir dele.
+  - O coletor gera `data/offers.json`, e o `build.py` gera o site estático (HTML puro) a partir dele.
+  - JavaScript só como melhoria progressiva: um arquivo próprio (`static/app.js`), CSP `script-src 'self'`, sem script de terceiros nem inline, e o site completo sem JS. Fontes OFL auto-hospedadas (`font-src 'self'`).
   - Deploy no Cloudflare Workers (static assets, plano Free), que é o caminho que a Cloudflare indica para projetos novos no lugar do Pages. `_headers` e `_redirects` funcionam igual.
   - DNS: trocar os nameservers do domínio no painel da HostGator para os da Cloudflare. A HostGator fica só como registrador; não contratar hospedagem lá.
 - **Fase 2:** canal no Telegram alimentado pelo mesmo pipeline. Depois, um bot com lista de desejos.
