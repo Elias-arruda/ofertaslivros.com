@@ -1,0 +1,74 @@
+name: pipeline
+
+# Só cron e disparo manual: nada de pull_request/pull_request_target (fork não roda isto).
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+# Uma execução por vez; a que chega enquanto outra roda espera (não cancela a atual).
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write # só para o push no branch price-history
+    env:
+      HISTORY_BRANCH: price-history
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # o token não fica em .git/config durante a coleta
+
+      - name: Abrir o branch do histórico
+        id: history
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          b64=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          echo "::add-mask::$b64"
+          export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="http.https://github.com/.extraheader" \
+                 GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $b64"
+          rc=0; git ls-remote --exit-code --heads origin "$HISTORY_BRANCH" >/dev/null || rc=$?
+          if [ "$rc" -eq 0 ]; then
+            git fetch --no-tags --depth=1 origin "$HISTORY_BRANCH"
+            git worktree add --detach history FETCH_HEAD
+          elif [ "$rc" -eq 2 ]; then
+            # 2 = branch não existe: primeira execução, branch órfão só com dados
+            git worktree add --orphan -b "$HISTORY_BRANCH" history
+          else
+            echo "::error::ls-remote falhou (código $rc)"; exit 1
+          fi
+
+      - name: Coletar (manual da Amazon + API do ML) e gerar offers.json v2
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          # sem fallback: variável ausente faz o build falhar (fail-closed)
+          ML_AFFILIATE_ID: ${{ vars.ML_AFFILIATE_ID }}
+        run: python3 collector/collect.py run --history history
+
+      - name: Gravar histórico
+        # grava mesmo se o ML falhou (as linhas manuais e as do ML que deram certo não se perdem);
+        # se a validação falhou, nada foi escrito e o diff sai vazio.
+        if: ${{ !cancelled() && steps.history.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: history
+        run: |
+          git add -A
+          if git diff --cached --quiet; then echo "sem mudanças"; exit 0; fi
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "price_history: run $GITHUB_RUN_ID"
+          b64=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          echo "::add-mask::$b64"
+          export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="http.https://github.com/.extraheader" \
+                 GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $b64"
+          git push -q origin "HEAD:refs/heads/$HISTORY_BRANCH"

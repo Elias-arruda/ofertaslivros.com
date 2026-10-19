@@ -335,5 +335,5 @@ Site:
 2. Link por item: **o link vai para a loja com o menor preço**, e a outra loja fica numa seta ao lado. O contrato está em `comparacao-lojas.md`. Cliques do ML por canal: números agregados no MVP.
 3. Limiar e limites (30% ou selo, 8 posts por dia no Telegram, 5 no resumo do WhatsApp): **talvez**. Ficam como constantes fáceis de ajustar, com esses valores iniciais.
 4. Foto: ML com a foto do produto vinda da API. Amazon sem foto até a Creators API, quando passa a usar a imagem que ela devolver. Sem Open Library.
-5. Bot do Telegram: `@ofertaslivros_bot` (grafia confirmada pelo Elias).
+5. Bot do Telegram: `@ofertaslivros_bot`.
 6. Horário do resumo do WhatsApp: em teste. Começa às 11h BRT, configurável.

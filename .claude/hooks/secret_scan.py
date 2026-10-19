@@ -24,7 +24,31 @@ PATTERNS = {
 ALLOWED_SUFFIXES = (".env.example", ".md")
 
 
+def staged() -> int:
+    """Modo pre-commit (`--staged`): vale para qualquer ferramenta, não só o Claude."""
+    import subprocess
+
+    def git(*args):
+        return subprocess.run(["git", *args], capture_output=True, check=True).stdout
+
+    names = git("diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z").split(b"\0")
+    bad = []
+    for name in filter(None, (n.decode() for n in names)):
+        if name.endswith(ALLOWED_SUFFIXES):
+            continue
+        text = git("show", f":{name}").decode("utf-8", "ignore")
+        hits = [k for k, rx in PATTERNS.items() if re.search(rx, text)]
+        if hits:
+            bad.append(f"  {name}: {', '.join(hits)}")
+    if bad:
+        print("Commit bloqueado: possível segredo\n" + "\n".join(bad), file=sys.stderr)
+        return 1
+    return 0
+
+
 def main() -> int:
+    if "--staged" in sys.argv:
+        return staged()
     try:
         payload = json.load(sys.stdin)
     except json.JSONDecodeError:

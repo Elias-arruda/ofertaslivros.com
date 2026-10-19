@@ -1,0 +1,3 @@
+#!/bin/sh
+# Ative uma vez por clone: git config core.hooksPath .githooks
+exec python3 -I "$(git rev-parse --show-toplevel)/.claude/hooks/secret_scan.py" --staged
