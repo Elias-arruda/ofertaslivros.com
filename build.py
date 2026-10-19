@@ -986,7 +986,7 @@ def header(offers, ch):
 {live(offers)}
 <nav class="acoes" aria-label="Atalhos">{"".join(nav)}</nav>
 </div>
-<div class="busca" id="busca" hidden><label class="sr" for="q">Buscar por título ou autor</label><input id="q" type="search" placeholder="Buscar por título ou autor" autocomplete="off" spellcheck="false" enterkeyhint="search"></div>
+<div class="busca" id="busca" hidden><label class="sr" for="q">Buscar por título ou autor</label><input id="q" name="busca" type="search" placeholder="Título ou autor…" autocomplete="off" spellcheck="false" enterkeyhint="search"></div>
 </header>"""
 
 

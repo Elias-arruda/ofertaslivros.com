@@ -98,7 +98,7 @@
 [data-style="manga"], [data-g="manga"] { --accent: var(--g-manga); --accent2: var(--g-manga-2); --accent-ink: var(--g-manga-ink); }
 
 *, *::before, *::after { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-behavior: smooth; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 100px; }
 body {
   margin: 0; min-height: 100vh;
   background: var(--bg); color: var(--text);
@@ -578,7 +578,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 .feed-tools select {
   height: 46px; padding: 0 44px 0 18px; border-radius: 999px; appearance: none;
   border: 1px solid var(--line); color: var(--text); font: 400 15px var(--sans);
-  background: var(--surface) url(/chevron.svg) no-repeat right 16px center / 14px;
+  background: var(--bg2) url(/chevron.svg) no-repeat right 16px center / 14px;
 }
 .vazio { margin-top: 24px; padding: 18px 22px; border-radius: var(--radius); background: var(--surface); border: 1px dashed var(--line); color: var(--muted); }
 .feed { grid-auto-flow: dense; } /* o banner de 2 colunas não deixa buraco */
@@ -769,7 +769,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 @keyframes fill { to { transform: scaleX(1); } }
 /* Modal de detalhes: caixa --bg2 de raio 30; no celular vira bottom sheet */
 .modal {
-  width: min(980px, calc(100% - 32px)); max-height: calc(100dvh - 32px); padding: 0; overflow: auto;
+  width: min(980px, calc(100% - 32px)); max-height: calc(100dvh - 32px); padding: 0; overflow: auto; overscroll-behavior: contain;
   border: 1px solid var(--line); border-radius: 30px; background: var(--bg2); color: var(--text); box-shadow: var(--shadow);
 }
 .modal::backdrop { background: #0f1729b8; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
