@@ -15,6 +15,8 @@ concurrency:
 
 jobs:
   collect:
+    # Só a main grava no price-history: dispatch em outro branch não toca nos dados publicados.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

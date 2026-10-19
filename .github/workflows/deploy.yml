@@ -19,7 +19,11 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    # Só a main publica; os secrets do Cloudflare ficam no Environment production (restrito à main).
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    environment: production
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
