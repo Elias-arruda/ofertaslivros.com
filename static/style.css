@@ -902,4 +902,9 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
   .faq-list { gap: 6px; }
   .sec { margin-top: 24px; }
   .foot { padding-bottom: 76px; } /* o FAB de 48 px fica a 20 px do fim */
+  .mais { margin-top: 12px; }
+  .intro { margin-top: 16px; }
+  .filtros { margin-top: 18px; }
+  .grid { margin-top: 10px; }
+  .sec-note { font-size: 13px; }
 }
