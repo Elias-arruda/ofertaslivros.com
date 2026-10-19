@@ -293,7 +293,7 @@ Se um dia entrar:
 - A descoberta pode não funcionar com token de app (passo 0). O `/sites/MLB/search` já dá 403, e o `/highlights` pode seguir o mesmo caminho.
 
 **Qualidade da curadoria**
-- O "mais vendido" do ML puxa didático, concurso e autoajuda. O mapeamento por nicho e o teto de 4 por nicho contêm isso, e o Elias apaga no PR.
+- O "mais vendido" do ML puxa didático, concurso e autoajuda. *(Substituído por `curadoria-automatica.md` §10.7: esses livros vão para `estudo` e `autoajuda`, com teto de 10 por gênero, sem aprovação livro a livro.)*
 - O ranking pode repetir os mesmos 20 por semanas. O `curator_seen.json` evita a repetição, e o volume cai sozinho. Isso é aceitável.
 - Link colado na entrada errada: o `ref` é opaco e não dá para conferir no código que o link é daquele produto. Mitigação: o checklist mostra a URL do produto ao lado de cada entrada, e o Elias abre o link no navegador antes do merge (sem comprar: compra própria não conta).
 
