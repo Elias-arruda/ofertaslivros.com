@@ -1,0 +1,93 @@
+name: curator
+
+# docs/produto/curator.md. Só disparo manual até o probe confirmar a fonte; o cron semanal
+# liga depois de 2 PRs bons (decisão 1). Nada de pull_request/pull_request_target.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "probe (passo 0, só diagnóstico) ou suggest (abre o PR com candidatos)"
+        type: choice
+        options: [probe, suggest]
+        default: probe
+  # schedule:
+  #   - cron: "0 12 * * 1" # segunda 09h BRT; ligar só depois de 2 PRs bons
+
+permissions: {}
+
+concurrency:
+  group: curator
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    if: github.ref == 'refs/heads/main' && inputs.mode == 'probe'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Probe das rotas de descoberta do ML (só status, chaves e contagens)
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+        run: python3 collector/curator.py probe
+
+  suggest:
+    if: >-
+      github.ref == 'refs/heads/main'
+      && (inputs.mode == 'suggest' || github.event_name == 'schedule')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write      # push só no branch curator/AAAA-MM-DD (a main é protegida pelo ruleset)
+      pull-requests: write # gh pr create
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Um PR do curator por vez
+        id: open
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          n=$(gh pr list --state open --base main --json headRefName \
+                --jq '[.[] | select(.headRefName | startswith("curator/"))] | length')
+          echo "abertos=$n" >> "$GITHUB_OUTPUT"
+          if [ "$n" != "0" ]; then echo "já existe PR do curator aberto; nada a fazer"; fi
+
+      - name: Sugerir candidatos (API do ML)
+        if: steps.open.outputs.abertos == '0'
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          ML_AFFILIATE_ID: ${{ vars.ML_AFFILIATE_ID }}
+        run: python3 collector/curator.py suggest --summary "$RUNNER_TEMP/curator.md"
+
+      - name: Abrir o PR
+        if: steps.open.outputs.abertos == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- collector/catalog.json; then
+            echo "zero candidatos: sem PR"; exit 0
+          fi
+          branch="curator/$(date -u +%F)"
+          git switch -c "$branch"
+          git add collector/catalog.json collector/curator_seen.json
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "curator: candidatos pendentes de $(date -u +%F)"
+          b64=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          echo "::add-mask::$b64"
+          export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="http.https://github.com/.extraheader" \
+                 GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $b64"
+          git push -q origin "HEAD:refs/heads/$branch"
+          gh pr create --base main --head "$branch" \
+            --title "Curadoria: candidatos de $(date -u +%F)" \
+            --body-file "$RUNNER_TEMP/curator.md"

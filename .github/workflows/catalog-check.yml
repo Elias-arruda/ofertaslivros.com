@@ -1,0 +1,32 @@
+name: catalog-check
+
+# Valida o catálogo e roda os testes em todo PR. pull_request (nunca pull_request_target):
+# código de PR roda sem secrets e com token só de leitura.
+on:
+  pull_request:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  catalog-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      # não é segredo: aparece em todo link público do ML
+      ML_AFFILIATE_ID: elias-arruda
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validar catálogo, selftest e pytest
+        run: |
+          python3 collector/collect.py export "$RUNNER_TEMP/catalog-public.json"
+          python3 -m venv .venv
+          . .venv/bin/activate
+          python -m pip install --disable-pip-version-check -r requirements-dev.txt
+          python build.py --selftest
+          pytest
