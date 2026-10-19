@@ -10,7 +10,7 @@ from decimal import Decimal
 from http.client import RemoteDisconnected
 from pathlib import Path
 from urllib.error import HTTPError
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
@@ -67,6 +67,9 @@ class FakeML:
             if pid not in self.items:
                 raise HTTPError(req.full_url, 404, "x", {}, None)
             body = self.items[pid]
+            pages = body.get("_pages") if isinstance(body, dict) else None
+            if pages is not None:
+                body = pages[int(parse_qs(u.query).get("offset", ["0"])[0])]
         elif u.path.startswith("/products/"):
             body = self.products[u.path.rsplit("/", 1)[1]]
         elif u.path.endswith("/sale_price"):
@@ -417,7 +420,7 @@ def test_sem_buy_box_usa_preco_do_items(env, capsys, status):
         del p["status"]
     env["fake"].products["MLB11"] = p
     env["fake"].sale_status = 403  # se chamasse sale_price, viraria erro
-    env["fake"].items["MLB11"] = {"paging": {"total": 7}, "results": [
+    env["fake"].items["MLB11"] = {"paging": {"total": 7, "limit": 50, "offset": 0}, "results": [
         item("MLB7001", 45, original_price=60),
         item("MLB7002", 20, cur="USD"),                # moeda diferente
         item("MLB7003", 25, status="paused"),          # não ativo
@@ -436,6 +439,32 @@ def test_sem_buy_box_usa_preco_do_items(env, capsys, status):
     out = capsys.readouterr().out
     assert "ML diag: livro-duplo /products=200 buy_box=não /items=7 novos_brl=2 caminho=items" in out
     assert "999" not in out and "MLB700" not in out  # nada de vendedor nem anúncio no log
+
+
+def test_items_pagina_todas_as_listagens_para_escolher_menor(env):
+    p = prod()
+    p["buy_box_winner"] = None
+    env["fake"].products["MLB11"] = p
+    env["fake"].items["MLB11"] = {"_pages": {
+        0: {"paging": {"total": 2, "limit": 1, "offset": 0},
+            "results": [item("MLB7001", 45)]},
+        1: {"paging": {"total": 2, "limit": 1, "offset": 1},
+            "results": [item("MLB7002", 25)]},
+    }}
+    assert env["run"]() == 0
+    assert any(r.startswith("livro-duplo,mercadolivre,2500,2500,") for r in rows(env["hist"]))
+    assert [p for p in env["fake"].paths if p.endswith("/items")] == [
+        "/products/MLB11/items", "/products/MLB11/items"]
+
+
+def test_items_total_acima_do_limite_falha_fechado(env):
+    p = prod()
+    p["buy_box_winner"] = None
+    env["fake"].products["MLB11"] = p
+    env["fake"].items["MLB11"] = {"paging": {"total": 1001, "limit": 50, "offset": 0},
+                                   "results": []}
+    assert env["run"]() == 1
+    assert not any(r.startswith("livro-duplo,mercadolivre") for r in rows(env["hist"]))
 
 
 def test_original_price_menor_ou_igual_vira_price():

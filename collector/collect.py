@@ -75,6 +75,8 @@ TIMEOUT = 10
 RETRIES = 3
 MAX_BYTES = 5_000_000
 ML_DEADLINE_S = 40  # orçamento do ML inteiro (token incluso): job abaixo de 1 min
+ITEMS_PAGE_SIZE = 50
+ITEMS_MAX_TOTAL = 1000  # falha fechada se um produto exceder o teto de coleta
 _urlopen = urlopen  # ponto de mock dos testes
 
 
@@ -388,7 +390,6 @@ def best_listing(body):
     if not isinstance(res, list):
         raise MLError("/items malformado")
     best, n = None, 0
-    # ponytail: só a 1ª página (paging); paginar se um livro tiver muitos anúncios
     for it in res:
         if not isinstance(it, dict) or it.get("condition") != "new" \
                 or it.get("currency_id") != "BRL" \
@@ -421,15 +422,45 @@ def listing_row(book_id, it, now):
 
 
 def product_items(pid, token, **kw):
-    """-> (resposta de /products/{pid}/items, nº de itens). 404 = nenhum anúncio."""
+    """-> (resposta agregada, nº de anúncios). Pagina para não perder o menor preço.
+    404 = nenhum anúncio. Falha fechada se a resposta não permitir paginação segura."""
     try:
-        body = ml_request(f"/products/{pid}/items", token, **kw)
+        body = ml_request(f"/products/{pid}/items?limit={ITEMS_PAGE_SIZE}&offset=0", token, **kw)
     except MLError as e:
         if e.code == 404:
             return {"results": []}, 0
         raise
     res = body.get("results") if isinstance(body, dict) else None
-    return body, len(res) if isinstance(res, list) else 0
+    if not isinstance(res, list):
+        raise MLError("/items malformado")
+    paging = body.get("paging")
+    if paging is None:
+        return body, len(res)
+    if not isinstance(paging, dict):
+        raise MLError("/items paging malformado")
+    total, limit, offset = paging.get("total"), paging.get("limit"), paging.get("offset")
+    if any(type(v) is not int or v < 0 for v in (total, limit, offset)) or limit == 0:
+        raise MLError("/items paging inválido")
+    if total > ITEMS_MAX_TOTAL:
+        raise MLError(f"/items tem {total} anúncios; limite seguro é {ITEMS_MAX_TOTAL}")
+    if offset != 0 or len(res) > limit or len(res) > total:
+        raise MLError("/items paging inconsistente")
+    all_results = list(res)
+    while len(all_results) < total:
+        next_offset = len(all_results)
+        page = ml_request(
+            f"/products/{pid}/items?{urlencode({'limit': limit, 'offset': next_offset})}",
+            token, **kw)
+        page_results = page.get("results") if isinstance(page, dict) else None
+        page_paging = page.get("paging") if isinstance(page, dict) else None
+        if not isinstance(page_results, list) or not isinstance(page_paging, dict) \
+                or page_paging.get("total") != total or page_paging.get("limit") != limit \
+                or page_paging.get("offset") != next_offset or not page_results \
+                or len(all_results) + len(page_results) > total:
+            raise MLError("/items pagina inconsistente")
+        all_results.extend(page_results)
+    body["results"] = all_results
+    return body, len(all_results)
 
 
 def product_image(prod):
