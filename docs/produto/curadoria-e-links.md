@@ -307,15 +307,23 @@ Ajuste barato, se o Gerador aceitar mesmo várias URLs:
 - **B4.** Aprovar os critérios de A.2, em especial o desconto mínimo (≤ 85% da mediana dos dias 8 a 90, ou ≤ o mínimo de 90 dias) e as séries (vol. 1 + o mais recente).
 - **B5.** Bíblia e Vade Mecum ficam fora do automático?
 
+### C.1 Decisões do Elias (2026-10-19)
+
+- **B1.** O Δ`sold_quantity` sai da pontuação. A popularidade vem do `/highlights`. Em paralelo, pedir ao ML autorização por escrito (cláusula 5.4). Se vier, o sinal volta.
+- **B2.** O link do ML **fica liberado** nos canais de Telegram e WhatsApp, seguindo a página "Onde compartilhar". O Elias aceitou o risco de a página "Pode compartilhar" valer. Se o painel ou o suporte disser o contrário, o canal passa a apontar para o site.
+- **B3.** Mantém `/r/<id>/mercadolivre`. O destino continua sendo o link completo do painel, sem edição, e o botão diz "Ver no Mercado Livre".
+- **B4.** Os critérios de A.2 foram aprovados como estão.
+- **B5.** Bíblia, Vade Mecum e apostilas de concurso ficam fora do automático e entram só manualmente.
+
 ## D. Próximos passos (nada executado)
 
 | # | Passo | Agent |
 |---|---|---|
-| 1 | Levar as decisões B1–B5 e as de §10.5 ao Elias, e consolidar `GENRES` e rótulos | `product-manager` |
+| 1 | Consolidar `GENRES` e os rótulos de A.4 (B1–B5 já decididas em C.1) | `product-manager` |
 | 2 | Ler os Termos do programa de afiliados no painel, logado, e registrar aqui os itens sobre canais, edição de link e automação | Elias (manual) |
 | 3 | Rodar o passo 0 (`probe` só leitura com o token de app), incluindo `/users/{seller_id}` para reputação e `/products/search?product_identifier=<ISBN>` para os 27 ISBNs a verificar | `catalog-curator` |
 | 4 | Fechar os ISBNs a verificar pelo GTIN do ML e corrigir as edições com ⚠ | `catalog-curator` |
 | 5 | Implementar descoberta, casamento por ISBN, pontuação em sombra, gates e `links-todo`/`links-apply`, com pytest para casamento, gates e validação de link (entrega 2, depois da aprovação) | `catalog-curator` |
-| 6 | Mostrar a frequência de atualização no rodapé (cláusula 5.3) e, se a B3 aprovar, o `href` direto do ML | `frontend-developer` |
-| 7 | Bloquear o link do ML nos posts de Telegram e WhatsApp até a B2 ser respondida | `alerts-engineer` |
+| 6 | Mostrar a frequência de atualização no rodapé (cláusula 5.3) | `frontend-developer` |
+| 7 | ~~Bloquear o link do ML nos posts de Telegram e WhatsApp~~ Cancelado: a B2 liberou o link do ML nos canais | — |
 | 8 | Revisar o fluxo de links em lote e o uso de dados de terceiros antes de ligar a publicação | `security-auditor` |
