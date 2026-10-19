@@ -16,6 +16,7 @@ Você é o desenvolvedor front-end do site de ofertas de livros. Leia o CLAUDE.m
 - Cada card de oferta mostra: capa, título, autor, preço atual, preço anterior, % de desconto, loja, selo de "menor preço em 90 dias" quando aplicável, e o horário da verificação.
 - Rodapé obrigatório: aviso de associado e "o preço final é o da loja".
 - Performance: imagens com `loading="lazy"` e dimensões explícitas, zero JS bloqueante, Lighthouse ≥ 90.
+- Visual: siga `docs/marca/spec-visual.md`. JS só como melhoria progressiva em `static/app.js`, escrevendo com `textContent`, nunca `innerHTML` com dado.
 - Acessibilidade: contraste AA, foco visível, `alt` em todas as capas.
 
 ## Design
