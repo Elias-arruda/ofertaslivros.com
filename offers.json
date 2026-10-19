@@ -16,7 +16,7 @@
      "list_price_cents": 14000,
      "lowest_90d_cents": 14000,
      "history_since": "2026-10-18",
-     "checked_at": "2026-10-19T13:18:18+00:00"
+     "checked_at": "2026-10-19T15:16:07+00:00"
     }
    ]
   },
@@ -35,7 +35,159 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 3992,
      "history_since": "2026-10-18",
-     "checked_at": "2026-10-19T13:18:18+00:00"
+     "checked_at": "2026-10-19T15:16:07+00:00"
+    }
+   ]
+  },
+  {
+   "id": "verity",
+   "genre": "ficcao",
+   "title": "Verity",
+   "author": "Hoover, Colleen",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_909003-MLU50881573316_072022-F.jpg",
+   "stores": [
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB19453772",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=elias-arruda&matt_tool=31781474&forceInApp=true&ref=BM%2B8keX7Rz8a6eL1cqroVP4OXj%2BKrkCCv44JQoVJLe7pjnjKPPC25MemBAZskeuChY9gzJ8RQJ6BZ8CbqHbPn5u%2BmyMJmpb%2FoTNLnzLF2QP2by74Nstou3jONp4jCIhhDTrahK7QBib%2BzHV3j7R2zVaMLWKszY%2BpbkX%2FlexoLzKdYj6dl7eL84FL1lHGTfsc0DvCJrCJ6dltGOfq7YojQF3o0cb2cELHTrN5e1LNns0%2FDBYhsL%2Bhjx5XXRqs3FwlQWuVXA%3D%3D",
+     "price_cents": 2500,
+     "list_price_cents": 2500,
+     "lowest_90d_cents": 2500,
+     "history_since": "2026-10-19",
+     "checked_at": "2026-10-19T15:16:07+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-massacre-da-familia-hope",
+   "genre": "ficcao",
+   "title": "O massacre da família Hope",
+   "author": "Sager, Riley",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_656839-MLA112270175202_062026-F.jpg",
+   "stores": [
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB39606339",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=elias-arruda&matt_tool=31781474&forceInApp=true&ref=BPUlz6HCxWbnZCpKqpYsuILS5oYwMacJyF70gut9mzzFDLbvJDwtiATjNSplIxsJf2%2FrqfFrFYQpDyfXrg2p2SkvW7MGZwOOqTuJ0R126UPvn8l0LWLDlURdwtCubotaV5OPGyzLv%2BO75Axivr72Szhjp0bKuE%2BxemT6P0C3SZWEonCgsWA90YYFxbmXXhddX3nDTgVncPGrXOcC67GqMymXy7FMFft6RUeZ7pc4EqWRWJ2tBGkwvXGk%2BJ54YsxGtzeLzg%3D%3D",
+     "price_cents": 3000,
+     "list_price_cents": 3000,
+     "lowest_90d_cents": 3000,
+     "history_since": "2026-10-19",
+     "checked_at": "2026-10-19T15:16:07+00:00"
+    }
+   ]
+  },
+  {
+   "id": "a-psicologia-financeira",
+   "genre": "negocios",
+   "title": "A psicologia financeira",
+   "author": "Housel, Morgan",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_690575-MLA112164459644_062026-F.jpg",
+   "stores": [
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB19320442",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=elias-arruda&matt_tool=31781474&forceInApp=true&ref=BIbpz4wNJOzXwgW3Q4jHhXd7ITQyC%2FV2qEssIdUUBCbzlNSjvTXLGqMmUheEspxXC3rwv4ViHjV6x3DxtbVW%2F4W3NJXy4%2Bky9Z6ib39b5NdjX2D83KqpdzIa3wHizZv%2BZKmugsnJWW0Pe2SuOZv9H01qpouayzlv%2Bi1qyMmKCYXrs6eZ7gW0pWfr%2BpyMlcSM%2BDhLmNLrVW2kdlbkRv4mqBQCmRsyDOqttuuLc2NZnsSf%2BZTE4oDof3gh3qV7HRdgm6hjkA%3D%3D",
+     "price_cents": 1990,
+     "list_price_cents": 1990,
+     "lowest_90d_cents": 1990,
+     "history_since": "2026-10-19",
+     "checked_at": "2026-10-19T15:16:07+00:00"
+    }
+   ]
+  },
+  {
+   "id": "a-hipotese-do-amor",
+   "genre": "ficcao",
+   "title": "A Hipótese Do Amor",
+   "author": "Hazelwood, Ali",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_806334-MLA118538215027_092026-F.jpg",
+   "stores": [
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB19459381",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=elias-arruda&matt_tool=31781474&forceInApp=true&ref=BHujssp5YbdZUaA4nldqDUSMlDtOBy67BmzRTXQ7y69Cd8JL2QDNWFrVBj%2BjzwWZWVdILcrHp6OmnhzR2j%2FVyn1hMdgFgzcxAieTxsqSKWggnHVJe%2Fkzv4hmaO%2FYRBU4Po9cN0s4QhM30R7cnbe8RIgkZIUUT9ObrsE9hmULFuLgdVCpQZ%2F73J6uj%2FSEs4VTQOLaILvZNchxLn0DZHb57DuuFo%2FJl5E%2BQRXG%2Bp8%2FbuWx8E3bgzYRI4yE%2B2TJUzlfBQPS7Q%3D%3D",
+     "price_cents": 3500,
+     "list_price_cents": 3500,
+     "lowest_90d_cents": 3500,
+     "history_since": "2026-10-19",
+     "checked_at": "2026-10-19T15:16:07+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-conto-da-aia",
+   "genre": "ficcao",
+   "title": "O conto da aia",
+   "author": "Margaret Atwood",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_761818-MLA113308865023_062026-F.jpg",
+   "stores": [
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB57805534",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=elias-arruda&matt_tool=31781474&forceInApp=true&ref=BIN0KA7pbuLszNxF2MMoguJd2QnmqRujCsibBBuaPyBGArxyU66Q7agmP5220LTxRsGijQ8cWyNMTu0SfXhSW9v75DFvpDm0RukHWLVMQCst9ePAxVdLAjzloTfTzpj9SI7z0GqyYQkvvIzhv0baRGMXsucv9%2ByGi4lBATQ3rqT52YB%2FWDnUa5HdXCrCo7VLpYT4hf09csNCWVRmmVDqLzCIS9aSjV6mNk7aaqFrsxjO4RjiqbXJXBPPSKusTn1k%2BwqQZw%3D%3D",
+     "price_cents": 6098,
+     "list_price_cents": 6098,
+     "lowest_90d_cents": 6098,
+     "history_since": "2026-10-19",
+     "checked_at": "2026-10-19T15:16:07+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-conto-da-aia-graphic-novel",
+   "genre": "manga",
+   "title": "O conto da aia: graphic novel",
+   "author": "Atwood, Margareth",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_671963-MLA112270670840_062026-F.jpg",
+   "stores": [
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB19414415",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=elias-arruda&matt_tool=31781474&forceInApp=true&ref=BDotGX62cwhVKK3ALK%2FMtcBVEBby0X6dpj2CiIPizv83kujUtcPxa6KTJ6n%2Fn9QnIWOebZfoUAqUK3MhwgcGoz%2F6EawDV92gmCwmqhSXVyXiMmt1QRfAeeApLFB8PGm3AaiV%2F1Tj7YLX6rE3Yl%2BJhDCFsOhdJswq06lhxsaPT1yLvwciUcusUqNYzbBV3Sk4iFxHjqSzDUbqhGmP6gegFFBPFnq%2FcrxzKt%2BtyxMiwqd3X0yEq3L1Xzr6YGVMXmJ0yASfAg%3D%3D",
+     "price_cents": 5890,
+     "list_price_cents": 5890,
+     "lowest_90d_cents": 5890,
+     "history_since": "2026-10-19",
+     "checked_at": "2026-10-19T15:16:07+00:00"
+    }
+   ]
+  },
+  {
+   "id": "bom-uso-da-tortura-o-ou-como-as-democracias-justificam",
+   "genre": "nao-ficcao",
+   "title": "Bom uso da tortura (O) - Ou como as democracias justificam o injustificável",
+   "author": "Terestchenko, Michel",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_936847-MLU50421252635_062022-F.jpg",
+   "stores": [
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB19177974",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=elias-arruda&matt_tool=31781474&forceInApp=true&ref=BO00OT2cbhpViV0P6ttiXtYcSBBOVk6t13OT9atRn5MFaJRto4IMMRA6O1YKgZoMSgw5wtdpJwIQW0y6xcuJzlZOL3XS5QS7uxWfXzQBtBifKz06TuFIolYNDRGikICtrXu9XcgykazniMtp3Kdj5QhMvOPUNNie6fyGxkccS5R2SNbnWtv6%2FgJidhx7lKcdexPk8aR6UyGGDMblbPFF3%2F6zTSGfFMwcr6RuEpzqSgIogaPCUULfIcQIufIQFiz3KqHwJg%3D%3D",
+     "price_cents": 5600,
+     "list_price_cents": 5600,
+     "lowest_90d_cents": 5600,
+     "history_since": "2026-10-19",
+     "checked_at": "2026-10-19T15:16:07+00:00"
+    }
+   ]
+  },
+  {
+   "id": "como-morrem-os-santos",
+   "genre": "nao-ficcao",
+   "title": "Como morrem os santos",
+   "author": "Sicari, Antonio María",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_847643-MLA114045381419_072026-F.jpg",
+   "stores": [
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB74863416",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=elias-arruda&matt_tool=31781474&forceInApp=true&ref=BCllQw1WaV1aIwLvzOq88FRDnRThoK9iZDw%2B2QupMDXcZ4xNqKA3fU5tiIe0D%2FSLyrkU8emNo0U5rtGv4IE39T%2FXZ5PJynwUQTG4JhZhDq8SFPyY2faZLXTsNV18PJH8hyllZCSYJOjlz02NBibfUBYg%2BXQHapajTMUTWAe863yUyzHDEjDtaNCZuzt1qkLISGR5PkXvqwaJFShGhIExo%2Bq7Mpr1miF503ai5y7l%2Bn9yw0co2wcmSdefVfgAXFa1Y7x%2FDA%3D%3D",
+     "price_cents": 8600,
+     "list_price_cents": 8600,
+     "lowest_90d_cents": 8600,
+     "history_since": "2026-10-19",
+     "checked_at": "2026-10-19T15:16:07+00:00"
     }
    ]
   }
