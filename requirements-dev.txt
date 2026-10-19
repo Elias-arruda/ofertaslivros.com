@@ -1,5 +1,5 @@
-# Só para testes (o coletor é stdlib). Versões fixas; pytest 8.4.x ainda roda no Python 3.9 local.
-pytest==8.4.2
+# Só para testes (o coletor é stdlib). Pytest 9 exige Python >=3.10.
+pytest==9.0.3
 iniconfig==2.1.0
 packaging==26.3
 pluggy==1.6.0
