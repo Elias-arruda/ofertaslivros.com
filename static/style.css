@@ -712,3 +712,26 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 .fab:hover { transform: translateY(-2px); }
 @media (max-width: 900px) { .bot { grid-template-columns: 1fr; } .mascote--big { width: 150px; } }
 @media (max-width: 640px) { .fab { width: 48px; height: 48px; padding: 0; justify-content: center; } .fab-t { display: none; } }
+
+/* ---------- 10. Rodapé (spec 9.4) ---------- */
+.foot { max-width: 1440px; margin: 0 auto; padding: 50px var(--pad) 120px; border-top: 1px solid var(--line); font-size: 13.5px; color: var(--muted); }
+.foot-grid { display: grid; grid-template-columns: minmax(200px, .8fr) 3fr; gap: 28px clamp(24px, 4vw, 56px); }
+.foot-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.brand--foot img { height: auto; width: min(240px, 100%); }
+.foot-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; }
+.foot-t { margin-bottom: 6px; font: 700 12px var(--sans); text-transform: uppercase; letter-spacing: .12em; }
+.foot-col a { display: inline-flex; align-items: center; min-height: 36px; font-weight: 600; color: var(--text); text-decoration: none; }
+.foot-col a:hover, .foot-col a[aria-current] { text-decoration: underline; text-underline-offset: 3px; }
+/* Aviso de associado e "o preço final é o da loja": obrigatório (CLAUDE.md) */
+.foot-legal { margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+.doc { max-width: 44rem; padding: clamp(20px, 3vw, 36px); border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); }
+.doc h2 { font-size: 22px; margin: 26px 0 8px; }
+.doc h2:first-child { margin-top: 0; }
+.doc p, .doc ul { margin: 0 0 12px; line-height: 1.6; }
+.doc ul { padding-left: 1.25rem; list-style: disc; }
+.doc a { text-decoration-color: var(--accent); text-underline-offset: 3px; }
+@media (max-width: 900px) {
+  .foot-grid { grid-template-columns: 1fr; }
+  .foot-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .foot-col a { min-height: 44px; }
+}

@@ -996,19 +996,35 @@ def intro(h1, text):
     return f'<div class="intro"><h1>{h1}</h1><p>{text}</p></div>'
 
 
-def foot(ch, here=""):
-    follow = ""
-    if ch:
-        links = " ou no ".join(ext(url, name) for name, url in ch)
-        follow = f'\n  <p>Siga as ofertas no {links}. {internal("/canais/", "Sobre os canais", here)}</p>'
+AFFILIATE = ("Como associado da Amazon, ganhamos com compras qualificadas. Também participamos do programa "
+             "de afiliados do Mercado Livre. Preços verificados no horário indicado; o preço final é o da loja.")
+
+
+def foot(offers, bot=None, ch=(), here=""):
+    """Rodapé: marca, colunas de links (só o que existe) e o aviso de associado na linha final."""
+    present = [g for g in GENRES if any(o["genre"] == g for o in offers)]
+    cols = [("Ofertas", [internal("/ofertas/", "Todas as ofertas", here)]
+             + [internal(f"/{g}/", e(GENRES[g]), here) for g in present])]
+    receber = ([internal("/canais/", "Canais", here)] if ch else []) + (
+        [ext(f"https://t.me/{bot}", "Alerta no Telegram")] if bot else [])
+    if receber:
+        cols.append(("Receber ofertas", receber))
+    cols.append(("Sobre", [internal("/#h-faq", "Como o site funciona", here), internal("/privacidade/", "Privacidade", here)]))
+    html_cols = "".join(f'<nav class="foot-col" aria-label="{t}"><p class="foot-t">{t}</p><ul>'
+                        + "".join(f"<li>{x}</li>" for x in links) + "</ul></nav>" for t, links in cols)
+    tg = dict(ch).get("Telegram")
+    social = (f'<a class="pill" href="{e(tg)}" rel="noopener noreferrer" target="_blank">{icon("tg")}'
+              f'@{e(tg.rsplit("/", 1)[1])} no Telegram<span class="sr"> (abre em nova aba)</span></a>' if tg else "")
     return f"""<footer class="foot">
-  {brand("brand brand--foot")}
-  <p>Como associado da Amazon, ganhamos com compras qualificadas. Também participamos do programa de afiliados do Mercado Livre. Preços verificados no horário indicado; o preço final é o da loja.</p>{follow}
-  <p>{internal("/privacidade/", "Privacidade", here)}</p>
+  <div class="foot-grid">
+    <div class="foot-brand">{brand("brand brand--foot")}<p>Livros que baixaram de preço de verdade, conferidos na loja.</p>{social}</div>
+    <div class="foot-cols">{html_cols}</div>
+  </div>
+  <p class="foot-legal">{AFFILIATE}</p>
 </footer>"""
 
 
-def shell(offers, title, desc, body, ch=(), here="", style=None):
+def shell(offers, title, desc, body, ch=(), here="", style=None, bot=None):
     """Esqueleto comum. title/desc/body já chegam escapados. style: nicho da página (acento global)."""
     ds = f' data-style="{style}"' if style in GENRES else ""
     return f"""<!doctype html>
@@ -1033,7 +1049,7 @@ def shell(offers, title, desc, body, ch=(), here="", style=None):
 <main id="conteudo">
 {body}
 </main>
-{foot(ch, here)}
+{foot(offers, bot, ch, here)}
 </body>
 </html>
 """
@@ -1053,7 +1069,7 @@ def page(all_offers, genre=None, bot=None, ch=()):
         body = intro("Livros que baixaram de verdade", LEDE) + "\n" + home_sections(offers, bot, ch)
     else:
         body = intro(e(GENRES[genre]), LEDE) + f"\n{nav(all_offers, genre)}\n{feed(offers, bot, ch, full=True)}"
-    return shell(all_offers, title, desc, body, ch, style=genre)
+    return shell(all_offers, title, desc, body, ch, style=genre, bot=bot)
 
 
 def privacy(offers, bot=None, ch=()):
@@ -1084,7 +1100,7 @@ def privacy(offers, bot=None, ch=()):
 </ul>
 </article>"""
     return shell(offers, "Privacidade: Ofertas Livros",
-                 "O que o Ofertas Livros guarda, onde, por quanto tempo e como apagar.", body, ch, "/privacidade/")
+                 "O que o Ofertas Livros guarda, onde, por quanto tempo e como apagar.", body, ch, "/privacidade/", bot=bot)
 
 
 def canais(offers, ch, bot=None):
@@ -1102,7 +1118,7 @@ def canais(offers, ch, bot=None):
 {alert}
 <p>Os links dos canais são de afiliado: ganhamos com compras qualificadas, e o preço final é o da loja.</p>
 </article>"""
-    return shell(offers, "Canais: Ofertas Livros", "Siga as ofertas de livros no Telegram e no WhatsApp.", body, ch, "/canais/")
+    return shell(offers, "Canais: Ofertas Livros", "Siga as ofertas de livros no Telegram e no WhatsApp.", body, ch, "/canais/", bot=bot)
 
 
 MAX_REDIRECTS = 2000  # limite de regras estáticas do _redirects na Cloudflare
