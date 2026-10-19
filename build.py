@@ -765,7 +765,7 @@ def home_sections(offers, bot=None, ch=()):
         feat and section("h-curadoria", "Destaques da curadoria" if curated else "Destaques de hoje",
                          f'<ol class="grid grid--feat">\n{cards(feat)}\n</ol>',
                          "" if curated else "Primeiro os que estão no menor preço do histórico, depois os maiores descontos."),
-        section("h-nichos", "Por tipo de livro", nav(offers, None)),
+        nav(offers, None, filtro=True),
         grid and section("h-ativas", "Ofertas ativas", f'<ol class="grid">\n{cards(grid)}\n</ol>'),
         join_banner(ch),
         more and section("h-mais", "Mais livros em oferta", minis(more)),
@@ -775,14 +775,36 @@ def home_sections(offers, bot=None, ch=()):
     return "\n".join(p for p in parts if p)
 
 
-def nav(offers, current):
+GENRE_DESC = {
+    "literatura-brasileira": "Clássicos e contemporâneos daqui",
+    "ficcao": "Romance, fantasia e suspense",
+    "negocios": "Carreira, gestão e dinheiro",
+    "nao-ficcao": "História, ciência e ensaio",
+    "manga": "Mangá, HQ e graphic novel",
+}
+assert set(GENRE_DESC) == set(GENRES)
+
+
+def nav(offers, current, filtro=False):
+    """Filtro por nicho: círculos com o ícone de cada nicho (o lugar do curador ilustrado).
+    São links para /<nicho>/; com filtro=True (home e /ofertas/), o app.js filtra sem recarregar."""
     present = [g for g in GENRES if any(o["genre"] == g for o in offers)]
-    items = [("/", "Todos", current is None)] + [(f"/{g}/", GENRES[g], g == current) for g in present]
-    current_attr = ' aria-current="page"'
-    links = "".join(
-        f'<li><a href="{href}"{current_attr if cur else ""}>{e(label)}</a></li>'
-        for href, label, cur in items)
-    return f'<nav class="nichos" aria-label="Nichos"><ul>{links}</ul></nav>'
+    def n(k):
+        return f'{k} {"oferta" if k == 1 else "ofertas"}'
+    spines = "".join(f'<i data-g="{g}"></i>' for g in present)
+    items = [("/", "", "Todos", "Tudo o que está em oferta", len(offers),
+              f'<span class="spines">{spines}</span>', current is None)]
+    items += [(f"/{g}/", g, GENRES[g], GENRE_DESC[g], sum(o["genre"] == g for o in offers),
+               avatar(g, "av av--lg"), g == current) for g in present]
+    lis = "".join(
+        f'<li><a class="cur" href="{href}" data-f="{g}"{f" data-g={chr(34)}{g}{chr(34)}" if g else ""}'
+        f'{" aria-current=" + chr(34) + "page" + chr(34) if cur else ""}>'
+        f'<span class="ring" aria-hidden="true">{pic}</span><span class="cur-n">{e(label)}</span>'
+        f'<span class="cur-d">{e(desc)}</span><span class="cur-c">{n(k)}</span></a></li>'
+        for href, g, label, desc, k, pic, cur in items)
+    attr = " data-filtro" if filtro else ""
+    return (f'<section class="filtros" aria-labelledby="h-filtro"><h2 id="h-filtro">Filtrar por categoria</h2>'
+            f'<nav aria-label="Nichos"><ul class="rail"{attr}>{lis}</ul></nav></section>')
 
 
 def ext(href, label):

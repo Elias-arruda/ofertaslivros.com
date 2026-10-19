@@ -529,3 +529,41 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
   .badge { font-size: 9.5px; top: 6px; left: 6px; padding: 4px 8px; }
   .card .stamp { font-size: 9.5px; padding: 3px 8px; }
 }
+
+/* ---------- 7. Filtro por categoria (spec 7) ---------- */
+.filtros { margin-top: 26px; }
+.filtros h2 { padding: 0 4px; font-size: clamp(20px, 2.2vw, 26px); }
+.rail {
+  display: flex; gap: 14px; padding-top: 14px; overflow-x: auto;
+  scroll-snap-type: x proximity; scrollbar-width: none;
+}
+.rail::-webkit-scrollbar { display: none; }
+.rail li { flex: none; scroll-snap-align: start; }
+.cur {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; width: 136px; padding: 4px 0 8px;
+  text-align: center; text-decoration: none;
+}
+.ring {
+  display: grid; place-items: center; width: 88px; height: 88px; padding: 4px; border-radius: 50%;
+  background: var(--line); transition: transform .3s var(--ease);
+}
+.av--lg { width: 80px; height: 80px; }
+.av--lg .i { width: 44%; height: 44%; }
+/* "Todos": pilha de lombadas nas cores dos nichos */
+.spines { display: flex; align-items: flex-end; justify-content: center; gap: 3px; width: 80px; height: 80px; padding: 22% 18%; border-radius: 50%; background: var(--bg2); }
+.spines i { flex: 1; height: 100%; border-radius: 3px 3px 2px 2px; background: var(--accent); box-shadow: inset 0 6px 0 -3px #ffffff59, inset 0 -6px 0 -3px #00000026; }
+.spines i:nth-child(2n) { height: 84%; }
+.spines i:nth-child(3n) { height: 92%; }
+.spines i:last-child { transform: rotate(10deg); transform-origin: bottom left; height: 88%; }
+.cur-n { margin-top: 4px; font-size: 14px; font-weight: 700; text-decoration: underline 2px transparent; text-underline-offset: 4px; transition: text-decoration-color .3s var(--ease); }
+.cur-d { font-size: 12.5px; line-height: 1.3; text-wrap: balance; }
+.cur-c { font-size: 12px; color: var(--muted); }
+.cur:hover .ring { transform: translateY(-4px) rotate(-6deg); }
+/* Ativo: anel cônico girando, imagem girando ao contrário (fica parada) */
+.cur[aria-current] .ring { background: conic-gradient(var(--accent), var(--accent2), var(--accent)); scale: 1.06; animation: spin 4s linear infinite; }
+.cur[aria-current] .ring > * { animation: spin 4s linear infinite reverse; }
+.cur[aria-current] .cur-n { text-decoration-color: var(--accent); }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 900px) {
+  .rail { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent); }
+}
