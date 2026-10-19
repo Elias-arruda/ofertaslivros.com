@@ -115,7 +115,7 @@
 
   /* Carrossel: setas, arraste, contador e barra; o tempo de cada slide é a animação da barra (CSS) */
   const hero = $('.hero');
-  if (hero) {
+  if (hero && $$('.slide', hero).length > 1) { // 1 slide: sem carrossel
     const track = $('.hero-track', hero), view = $('.hero-view', hero);
     const slides = $$('.slide', hero), segs = $$('.segs li', hero), n = slides.length;
     const cnt = $('.js-n', hero), pausar = $('#pausar');

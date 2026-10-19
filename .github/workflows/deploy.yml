@@ -31,6 +31,9 @@ jobs:
     env:
       ML_AFFILIATE_ID: ${{ vars.ML_AFFILIATE_ID }}
       AMAZON_PARTNER_TAG: ${{ vars.AMAZON_PARTNER_TAG }}
+      TELEGRAM_BOT_USERNAME: ${{ vars.TELEGRAM_BOT_USERNAME }}
+      TELEGRAM_CHANNEL_ID: ${{ vars.TELEGRAM_CHANNEL_ID }}
+      WHATSAPP_CHANNEL_ID: ${{ vars.WHATSAPP_CHANNEL_ID }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

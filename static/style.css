@@ -272,6 +272,8 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 }
 .chip--g { background: var(--accent); color: var(--accent-ink); transition: background-color .3s var(--ease); }
 .chip--novo, .badge--novo { background: #3ef08a; color: #052012; }
+/* Novidade no hero: contorno no acento, texto na cor do texto (nunca "oferta") */
+.chip--nov { background: var(--bg2); color: var(--text); box-shadow: inset 0 0 0 2px var(--accent); }
 .chip--alta, .badge--alta { background: #ff7a1a; color: #200c00; }
 /* Selo "menor preço em 90 dias": pílula cheia no vermelho carimbo (ou rosado no escuro) */
 .stamp {
@@ -432,7 +434,12 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 /* Passagem automática sem JS (WCAG 2.2.2: pausa no hover, no foco e no "Pausar").
    Tocar num segmento (:target) devolve o controle manual. Com JS (.hero.js), o app.js assume. */
 @media (prefers-reduced-motion: no-preference) {
-  .hero:not(.js) .pause { display: flex; }
+  .hero:not(.js):not(.hero--1) .pause { display: flex; }
+  @keyframes pass-2 { 0.00%, 45.00% { transform: translateX(-0%); } 50.00%, 95.00% { transform: translateX(-100%); } 100% { transform: translateX(0); } }
+  @keyframes seg-2 { 0% { transform: scaleX(0); } 50.00% { transform: scaleX(1); } 50.01%, 100% { transform: scaleX(0); } }
+  .hero--2:not(.js) .hero-track { animation: pass-2 12s var(--ease) infinite; }
+  .hero--2:not(.js) .segs i::after { animation: seg-2 12s linear infinite; }
+  .hero--2:not(.js) .segs li:nth-child(2) i::after { animation-delay: -6s; }
   @keyframes pass-3 { 0.00%, 30.00% { transform: translateX(-0%); } 33.33%, 63.33% { transform: translateX(-100%); } 66.67%, 96.67% { transform: translateX(-200%); } 100% { transform: translateX(0); } }
   @keyframes seg-3 { 0% { transform: scaleX(0); } 33.33% { transform: scaleX(1); } 33.34%, 100% { transform: scaleX(0); } }
   .hero--3:not(.js) .hero-track { animation: pass-3 18s var(--ease) infinite; }

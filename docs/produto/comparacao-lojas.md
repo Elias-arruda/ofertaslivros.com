@@ -50,6 +50,7 @@ Uma oferta passa a ser um **livro**, não um anúncio de uma loja.
    - **Origem:** os primeiros livros do curator chegaram com 0% de desconto. O Elias decidiu mostrá-los num bloco "Novidades", sem o rótulo de oferta, para não contradizer a promessa do site ("só entra livro que baixou de preço de verdade"). O limiar de 10% foi o padrão proposto e aceito. Mudar o valor é mudar este contrato.
    - **Efeito na vitrine:**
      - As ofertas ocupam o hero/carrossel, "Destaques", "Ofertas ativas", o ranking e `/ofertas/`.
+     - O hero completa com novidades marcadas como NOVIDADE quando há menos de 5 ofertas (ofertas primeiro; sem desconto nem riscado no slide de novidade).
      - As novidades ficam na seção "Novidades" da home, em `/novidades/` e na seção de novidades das páginas de nicho.
      - O card de novidade não tem sticker de desconto, preço riscado nem a palavra "oferta". Mantém o botão da loja e o alerta "Me avise se baixar".
      - `/livro/<id>/` existe para os dois.
