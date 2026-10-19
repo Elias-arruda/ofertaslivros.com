@@ -380,9 +380,10 @@ def seal_of(win, el):
 
 
 NEW_DAYS = 3  # badge "Novo": o livro entrou no histórico (history_since) nos últimos 3 dias
-# Decisão do Elias (2026-10-19): só é OFERTA quem tem desconto >= 10% sobre o list_price da vencedora,
-# ou o selo de 90 dias, ou o "menor preço desde". O resto é NOVIDADE: fica no site, nunca rotulado
-# como oferta (fora do hero, dos destaques, das ofertas ativas, do ranking, da contagem e dos canais).
+# Decisão do Elias (2026-10-19): só é OFERTA quem tem desconto >= 10% sobre o list_price da vencedora
+# ou o selo válido de 90 dias. O resto é NOVIDADE: fica no site, nunca rotulado como oferta (fora do
+# hero, dos destaques, das ofertas ativas, do ranking, da contagem e dos canais). O "menor preço desde"
+# continua aparecendo (é informação honesta), mas não promove o livro a oferta.
 OFERTA_MIN_DESCONTO = 10
 
 
@@ -398,7 +399,7 @@ def resolve(books, now):
         seal, since = seal_of(win, el)
         hs = [s["history_since"] for s in b["stores"]]
         novo = None not in hs and (now.astimezone(BRT).date() - min(hs)).days < NEW_DAYS
-        oferta = seal is not None or discount(win) >= OFERTA_MIN_DESCONTO
+        oferta = seal == "90d" or discount(win) >= OFERTA_MIN_DESCONTO
         out.append({**b, **win, "novo": novo, "oferta": oferta, "stores": el,
                     "alt": next((s for s in el if s is not win), None),
                     "seal": seal, "since": since, "now": now})  # now: relógio do build, para o "visto hoje"
@@ -1765,14 +1766,18 @@ def selftest():
     for k, v in saved.items():
         if v is not None:
             os.environ[k] = v
-    # oferta x novidade (OFERTA_MIN_DESCONTO = 10%): o limiar, o selo e o "desde" contam como oferta
+    # oferta x novidade (OFERTA_MIN_DESCONTO = 10%): o limiar e o selo de 90 dias contam; o "desde" não
     def tipo(**kw):
         return load(A(**kw))[0]["oferta"]
     assert OFERTA_MIN_DESCONTO == 10
     assert tipo(price_cents=9100, list_price_cents=10000, lowest_90d_cents=9000) is False      # 9%: novidade
     assert tipo(price_cents=9000, list_price_cents=10000, lowest_90d_cents=8000) is True       # 10%: oferta
     assert tipo(price_cents=9900, list_price_cents=9900, lowest_90d_cents=9900, history_since="2026-07-20") is True  # selo 90d
-    assert tipo(price_cents=9900, list_price_cents=9900, lowest_90d_cents=9900, history_since="2026-10-10") is True  # "desde"
+    assert tipo(price_cents=9900, list_price_cents=9900, lowest_90d_cents=9900, history_since="2026-10-10") is False  # "desde" com 0%
+    assert tipo(price_cents=9000, list_price_cents=10000, lowest_90d_cents=9000, history_since="2026-10-10") is True  # "desde" com 10%
+    desde = vis(page(load(A(price_cents=9900, list_price_cents=9900, lowest_90d_cents=9900, history_since="2026-10-10"))))
+    assert 'data-tipo="novidade"' in desde and '<p class="stamp stamp--since">Menor preço desde 10/10</p>' in desde  # selo continua
+    assert 'id="h-novidades"' in desde and "Nenhuma oferta conferida agora" in desde
     assert tipo(price_cents=9900, list_price_cents=9900, lowest_90d_cents=9000, history_since="2026-07-20") is False  # acima do mínimo
     def nov(i, hs=None, title=None, **kw):
         st = {**amz, "price_cents": 5000, "list_price_cents": 5000, "lowest_90d_cents": 4500, **kw}
