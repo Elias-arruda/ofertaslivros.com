@@ -655,3 +655,60 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
   .blk--canais { grid-template-columns: 1fr; padding: 20px; }
   .radar { display: none; }
 }
+
+/* ---------- 9. Bot, canais e FAQ (spec 9.1 a 9.3, 9.5) ---------- */
+.bot {
+  position: relative; overflow: hidden; isolation: isolate; margin-top: 70px;
+  display: grid; grid-template-columns: auto 1fr; gap: clamp(20px, 4vw, 60px); align-items: center;
+  padding: clamp(24px, 5vw, 64px); border-radius: 34px; color: var(--ivory);
+  background: radial-gradient(circle at 15% 50%, color-mix(in srgb, var(--accent) 35%, transparent), transparent 50%), var(--wine);
+  box-shadow: var(--shadow);
+}
+.bot a:not(.go) { color: inherit; }
+.bot-art { position: relative; display: grid; place-items: center; }
+.radar--big { position: absolute; width: 150%; height: auto; aspect-ratio: 1; opacity: .5; background: repeating-radial-gradient(circle, transparent 0 22px, #edf1f51f 22px 23px); }
+.radar--big::after { display: none; }
+.mascote--big { position: relative; top: auto; right: auto; width: clamp(150px, 20vw, 260px); box-shadow: 0 0 0 8px #edf1f514, 0 0 0 16px #edf1f50a; filter: drop-shadow(0 30px 40px #00000080); }
+.bot h2 { max-width: 18ch; font-size: clamp(32px, 4.6vw, 60px); }
+.bot h2 em { color: var(--rose); }
+.bot .kicker { font-size: 13px; letter-spacing: .1em; margin-bottom: 16px; }
+.passos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+.passos li { display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px 8px 8px; border-radius: 999px; background: #edf1f514; }
+.passos .n { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--rose); color: var(--wine); font-weight: 700; }
+.bot-acts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+.bot .go { --accent: var(--rose); --accent-ink: var(--wine); }
+.btn--ivory { background: #edf1f51a; border: 1px solid #edf1f533; }
+.bot-note { margin-top: 16px; max-width: 54ch; font-size: 13.5px; color: #edf1f5bf; }
+.aneis--big { width: 380px; margin-top: 0; top: auto; bottom: -150px; right: -120px; animation-duration: 22s; }
+.canais { margin-top: 70px; padding: clamp(24px, 4.5vw, 56px); border-radius: 34px; background: var(--surface); border: 1px solid var(--line); }
+.canais h2 { font-size: clamp(30px, 4vw, 52px); }
+.canais h2 em, .faq summary:hover { color: var(--accent); }
+.kicker--muted { background: none; padding: 0; margin-bottom: 12px; color: var(--muted); font-size: 13px; letter-spacing: .1em; }
+.canais-p { margin-top: 14px; max-width: 56ch; font-size: 17px; color: var(--muted); }
+.canais-acts { display: flex; flex-wrap: wrap; gap: 10px; margin: 24px 0 14px; }
+.canais .btn--tg { background: var(--surface2); border-color: var(--line); }
+.link { display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; text-decoration-color: color-mix(in srgb, var(--accent) 60%, transparent); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.faq { max-width: 860px; margin-top: 70px; }
+.faq h2 { font-size: clamp(28px, 3.6vw, 46px); }
+.faq-list { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; }
+.faq details { border-radius: 18px; background: var(--surface); border: 1px solid var(--line); transition: border-color .3s var(--ease), background-color .3s var(--ease); }
+.faq summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 56px; padding: 12px 18px; font-size: 16.5px; font-weight: 600; transition: color .3s var(--ease);
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary .i { transform: rotate(-90deg); transition: transform .3s var(--ease); }
+.faq details[open] summary .i { transform: rotate(0); }
+.faq details[open] { border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.faq details p { padding: 0 18px 16px; max-width: 68ch; line-height: 1.6; }
+.faq details a { text-decoration-color: var(--accent); text-underline-offset: 3px; }
+/* Pedir um livro: pílula marinho flutuante que abre o bot */
+.fab {
+  position: fixed; right: 20px; bottom: 20px; z-index: 38; display: inline-flex; align-items: center; gap: 8px;
+  height: 52px; padding: 0 20px; border-radius: 999px; text-decoration: none;
+  background: var(--wine); color: var(--ivory); font: 700 14.5px var(--sans);
+  border: 1px solid #edf1f533; box-shadow: 0 16px 34px -12px #000000a6; transition: transform .2s var(--ease);
+}
+.fab:hover { transform: translateY(-2px); }
+@media (max-width: 900px) { .bot { grid-template-columns: 1fr; } .mascote--big { width: 150px; } }
+@media (max-width: 640px) { .fab { width: 48px; height: 48px; padding: 0; justify-content: center; } .fab-t { display: none; } }

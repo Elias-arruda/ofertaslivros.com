@@ -776,6 +776,81 @@ def ranked(offers):
     return sorted(offers, key=lambda o: (not o["featured"], seal(o) is None, -discount(o)))
 
 
+def bot_block(bot):
+    """Capítulo marinho do alerta. "Pedir um livro" também abre o bot: não há formulário
+    (site sem backend, CSP form-action 'none')."""
+    if not bot:
+        return ""
+    url = f"https://t.me/{e(bot)}"
+    steps = ("Escolha o livro e toque no sino", "No Telegram, toque em Iniciar", "Quando o preço cair, avisamos")
+    lis = "".join(f'<li><span class="n">{k}</span>{t}</li>' for k, t in enumerate(steps, 1))
+    return f"""<section class="bot" aria-labelledby="h-bot">
+  <div class="bot-art" aria-hidden="true"><span class="radar radar--big"></span><span class="mascote mascote--big">{icon("carimbo", "i i-carimbo")}</span></div>
+  <div class="bot-text">
+    <p class="kicker">{icon("sino")}Seu alerta no Telegram</p>
+    <h2 id="h-bot">Avisamos quando o livro baixar. <em>Você só escolhe qual.</em></h2>
+    <ol class="passos">{lis}</ol>
+    <p class="bot-acts"><a class="go" href="{url}" rel="noopener noreferrer" target="_blank">Ativar no Telegram{icon("seta")}<span class="sr"> (abre o Telegram)</span></a>
+    <a class="btn btn--ivory" href="{url}" rel="noopener noreferrer" target="_blank">Pedir um livro<span class="sr"> ao bot (abre o Telegram)</span></a></p>
+    <p class="bot-note">O bot guarda só o necessário para avisar você e apaga o alerta quando ele dispara. Veja a <a href="/privacidade/">privacidade</a>.</p>
+  </div>{aneis("aneis--big")}
+</section>"""
+
+
+def channels_block(ch):
+    """Seção dos canais (cartão claro). Só com as envs dos canais."""
+    if not ch:
+        return ""
+    return f"""<section class="canais" aria-labelledby="h-canais">
+  <p class="kicker kicker--muted">Canais gratuitos</p>
+  <h2 id="h-canais">As ofertas inteiras, <em>no seu celular.</em></h2>
+  <p class="canais-p">As mesmas ofertas do site, com o preço conferido e o horário da verificação. Só leitura, sem cadastro.</p>
+  <p class="canais-acts">{ch_buttons(ch, big=True)}</p>
+  <p><a class="link" href="/canais/">Como funcionam os canais</a></p>
+</section>"""
+
+
+def faq(bot, ch):
+    """Perguntas sobre o que o site faz de verdade: curadoria, histórico, alerta, canais e afiliado."""
+    qa = [("Como vocês escolhem as ofertas?",
+           "Acompanhamos o preço de uma lista de livros na Amazon e no Mercado Livre. Só entra no site o livro "
+           "que está mais barato do que costuma ficar, e cada preço mostra o horário em que foi conferido na loja. "
+           "Quando o preço volta a subir ou fica velho, a oferta sai da lista."),
+          ("O que quer dizer “menor preço em 90 dias”?",
+           "Que o preço de agora é o menor que registramos nos últimos 90 dias, em todas as lojas em que o livro "
+           "está à venda. O selo só aparece quando temos 90 dias de histórico de verdade; com menos, mostramos "
+           "“menor preço desde” a data em que começamos a acompanhar."),
+          ("O preço do site é o mesmo da loja?",
+           "Era no horário indicado em cada oferta. Preço muda rápido, então o preço final é sempre o da loja, "
+           "na hora da compra.")]
+    if bot:
+        qa.append(("Como funciona o alerta de preço?",
+                   f'Toque no sino de um livro (ou em “Me avise se baixar”) e o bot <a href="https://t.me/{e(bot)}" '
+                   'rel="noopener noreferrer" target="_blank">@' + e(bot) + '</a> guarda o preço de hoje. Quando ele cair, '
+                   'avisamos por lá. Para parar, mande /parar ao bot.'))
+    if ch:
+        qa.append(("Onde mais recebo as ofertas?",
+                   "Nos canais " + " e ".join(n for n, _ in ch) + ', que repetem as ofertas do site. '
+                   '<a href="/canais/">Veja como funcionam</a>.'))
+    qa.append(("Vocês ganham com isso?",
+               "Sim. Os links são de afiliado: como associados da Amazon e afiliados do Mercado Livre, ganhamos uma "
+               "comissão com compras qualificadas, sem custo a mais para você. Isso não muda qual oferta entra no site."))
+    items = "".join(f'<details><summary>{q}{icon("chev")}</summary><p>{a}</p></details>' for q, a in qa)
+    return f"""<section class="faq" aria-labelledby="h-faq">
+  <p class="kicker kicker--muted">Perguntas</p>
+  <h2 id="h-faq">Como o site funciona</h2>
+  <div class="faq-list">{items}</div>
+</section>"""
+
+
+def fab(bot):
+    """Botão flutuante "Pedir um livro": abre o bot (sem formulário)."""
+    if not bot:
+        return ""
+    return (f'<a class="fab" href="https://t.me/{e(bot)}" rel="noopener noreferrer" target="_blank">{icon("busca")}'
+            '<span class="fab-t">Pedir um livro</span><span class="sr"> ao bot do Telegram (abre o Telegram)</span></a>')
+
+
 def home_sections(offers, bot=None, ch=()):
     """Hero (5), destaques (até 10, sem repetir o hero), filtro e o feed completo
     (a busca, o filtro e a ordenação do JS trabalham sobre ele)."""
@@ -791,6 +866,10 @@ def home_sections(offers, bot=None, ch=()):
                          len(feat), "" if curated else "Primeiro o menor preço do histórico, depois o maior desconto."),
         nav(offers, None, filtro=True),
         feed(offers, bot, ch),
+        bot_block(bot),
+        channels_block(ch),
+        faq(bot, ch),
+        fab(bot),
     ]
     return "\n".join(p for p in parts if p)
 
