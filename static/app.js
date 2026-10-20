@@ -27,7 +27,7 @@
     });
   }
 
-  /* Feeds (ofertas e novidades): busca, filtro de nicho e ordenação sobre os cards que já estão no HTML.
+  /* Feeds (ofertas, "Da curadoria" e /curadoria/): busca, filtro de nicho e ordenação sobre os cards que já estão no HTML.
      Na home o CSS corta a lista; com busca ou filtro (.filtrando) aparece tudo. Nas páginas completas,
      "carregar mais" de 12 em 12. */
   const grids = $$('.feed'), PAGE = 12;
@@ -61,7 +61,7 @@
       f.blocks.forEach(b => { b.hidden = filtrando; f.el.insertBefore(b, vis[+b.dataset.at] || null); });
       if (f.mais) f.mais.hidden = !f.full || hits.length <= f.limit;
       if (f.vazio) f.vazio.hidden = hits.length > 0;
-      else f.sec.hidden = filtrando && !hits.length; // novidades sem resultado: a seção some
+      else f.sec.hidden = filtrando && !hits.length; // seção sem cards de oferta (curadoria) e sem resultado: some
       if (f.count) f.count.textContent = hits.length + ' ' + (hits.length === 1 ? f.count.dataset.s : f.count.dataset.p);
     });
     if (sel) sel.addEventListener('change', () => { st.order = sel.value; render(); });

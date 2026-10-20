@@ -628,8 +628,9 @@ def card(o, bot=None, h=3):
     bdg = f'<span class="badge badge--{b[0]}">{b[1]}</span>' if b else ""
     stk = f'<span class="sticker" aria-hidden="true">−{off_}%</span>' if off_ else ""
     old = (f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>'
-           f'<span class="sr">, {off_}% de desconto</span>' if off_ else
-           "" if o["oferta"] else ' <span class="sem">Sem oferta agora</span>')
+           f'<span class="sr">, {off_}% de desconto</span>' if off_ else "")
+    if not o["oferta"]:
+        old = ' <span class="sem">Sem oferta agora</span>'
     hs = [s["history_since"] for s in o["stores"] if s["history_since"]]
     rec = f'{min(hs) if hs else "0000-00-00"}|{o["checked_at"].astimezone(timezone.utc):%Y-%m-%dT%H:%M}'
     return f"""<li class="card" data-g="{g}" data-id="{oid}" data-q="{e(fold(o["title"] + " " + o["author"]))}" data-preco="{o["price_cents"]}" data-off="{off_}" data-rec="{rec}" data-tipo="{tipo(o)}">
