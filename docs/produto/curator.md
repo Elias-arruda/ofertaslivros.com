@@ -276,6 +276,7 @@ Os critérios por livro que bloqueiam ou só pontuam estão em `curadoria-e-link
 
 - **`collector/catalog.json`:** ganha `tags` (lista de `TAGS`, até 3) e, no automático, `genre_source`. `pendente` continua, agora para o aprovado sem link. Pendente com `ml_url` ou `asin` continua `Invalid`.
 - **`collector/curator_seen.json`:** igual (`ml_product_id` → data, poda de 180 dias, público).
+- **Datas da retirada (§10.8, item 6), implementado em 2026-10-19:** `publicado`, `ultimo_anuncio` e `ultima_oferta` por livro ficam em `state.json` → `curadoria`, no branch `price-history`, e não num arquivo ao lado do `curator_seen.json`. Quem atualiza é o coletor, a cada execução (30 min), usando o `resolve` do build para saber se o livro está "em oferta". Motivo: a `main` só muda por PR, e o curator não roda enquanto houver PR dele aberto. Um arquivo na `main` perderia os dias de oferta desse intervalo e retiraria livro por engano. O curator lê esse estado com `suggest --history DIR` e põe a retirada no PR diário. Os ids retirados ficam em `catalog.json` → `retirados` e nunca são reaproveitados. Travas: sem estado fresco (mais de 2 dias) ou com mais de 25 retiradas num dia, não retira nada.
 - **`curation/AAAA-MM.jsonl`** (branch `price-history`, 24 meses): uma linha por candidato com componentes, score, confiança, gates e `would_publish` (§10.3). **Sem dado de usuário.**
 - **`collector/ml_links.tsv` e `collector/amazon_links.tsv`:** locais, no `.gitignore`, transitórios.
 - **`id`:** slug ASCII do título, estável para sempre, nunca reaproveitado (gate 9).
