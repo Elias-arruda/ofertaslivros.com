@@ -140,3 +140,5 @@ Depois do deploy, pelo `infra-engineer`, antes de dar como pronto:
    - **CSP:** `form-action` e `connect-src` passam a `https://ofertaslivros.com`. É a única mudança.
    - O "Pedir um livro" do capítulo do alerta (que abria o bot) sai. O botão flutuante é a única entrada.
    - O critério A7 continua valendo: o infra-engineer testa a detecção no deploy por zip e o envio a partir do `.com.br`.
+7. **Limite conhecido:** no `.com.br`, o fetch `no-cors` recebe uma resposta opaca, então o "Recebemos" aparece mesmo se o Netlify falhar (form não detectado, créditos pausados). Por isso o A7, a partir do `.com.br`, e a conferência da contagem em Netlify → Forms.
+8. **Dependência:** a privacidade promete apagar em 30 dias. O PR do form só entra depois do PR do infra-engineer com o step de limpeza no `deploy.yml`.

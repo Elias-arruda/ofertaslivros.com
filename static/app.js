@@ -175,12 +175,12 @@
       fetch(pedir.action, { method: 'POST', mode: 'no-cors', body: new URLSearchParams(new FormData(pedir)) })
         .then(r => {
           if (r.type !== 'opaque' && !r.ok) throw new Error(r.status);
-          pedir.reset(); ok.hidden = false;
+          pedir.reset(); ok.textContent = ok.dataset.ok;
         })
         .catch(() => pedir.submit())
         .finally(() => { btn.disabled = false; });
     });
-    pedir.addEventListener('input', () => { ok.hidden = true; });
+    pedir.addEventListener('input', () => { ok.textContent = ''; });
     box.addEventListener('keydown', e => { if (e.key === 'Escape' && box.open) { box.open = false; $('summary', box).focus(); } });
   }
 

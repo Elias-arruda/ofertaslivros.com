@@ -709,6 +709,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 .fab::-webkit-details-marker { display: none; }
 .pedir {
   position: absolute; right: 0; bottom: 64px; width: min(340px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 6px;
+  max-height: calc(100dvh - 100px); overflow: auto;  /* teclado virtual do celular */
   padding: 20px; border-radius: 26px; background: var(--ivory); color: var(--wine);
   border: 1px solid var(--line); box-shadow: 0 24px 48px -16px #000000a6;
 }
@@ -722,6 +723,8 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 .pedir input:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
 .pedir .go { margin-top: 6px; }
 .pedir-ok { font-size: 14px; }
+.pedir-ok:empty { display: none; }
+.pedido-recebido a { margin-left: 6px; color: inherit; text-underline-offset: 3px; }
 /* Sem JS: a volta do POST é /#pedido-recebido e o :target mostra o aviso */
 .pedido-recebido { display: none; }
 .pedido-recebido:target {

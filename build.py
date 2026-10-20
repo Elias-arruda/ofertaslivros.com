@@ -968,11 +968,11 @@ def fab():
 <p class="pedir-h">Qual livro você quer ver aqui?</p>
 <label for="p-titulo">Nome do livro</label><input id="p-titulo" name="titulo" required maxlength="150" autocomplete="off">
 <label for="p-autor">Autor do livro <span>(opcional)</span></label><input id="p-autor" name="autor" maxlength="100" autocomplete="off">
-<button class="go" type="submit">Enviar</button>
-<p class="pedir-ok" role="status" hidden>{PEDIDO_OK}</p>
+<button class="go" type="submit">Enviar pedido</button>
+<p class="pedir-ok" role="status" data-ok="{PEDIDO_OK}"></p>
 </form>
 </details>
-<p class="pedido-recebido" id="pedido-recebido">{PEDIDO_OK}</p>"""
+<p class="pedido-recebido" id="pedido-recebido">{PEDIDO_OK} <a href="#pedir">Fechar</a></p>"""
 
 
 def home_sections(offers, bot=None, ch=()):
@@ -1324,7 +1324,7 @@ def privacy(offers, bot=None, ch=()):
 <h2>No site</h2>
 <p>O site não tem cadastro, cookies nem ferramentas de análise. Ele tem um script próprio, servido pelo próprio site, para a busca, os filtros e o tema; a única coisa que ele guarda é a sua escolha de tema claro ou escuro, no seu navegador (localStorage), e nada disso sai do aparelho. O site é hospedado na Cloudflare e no Netlify, que recebem os dados técnicos de cada acesso (como o endereço IP) para entregar as páginas.</p>
 <h2>No pedido de livro</h2>
-<p>O formulário “Pedir um livro” pede só o nome e o autor do livro. Ele é processado pelo Netlify, que registra o endereço IP e o navegador junto com o pedido. Apagamos os pedidos em até 30 dias.</p>
+<p>O formulário “Pedir um livro” pede só o nome e o autor do livro. Ele é processado pelo Netlify, que registra o endereço IP, o navegador e a página de onde o pedido veio. O pedido chega também ao nosso e-mail. Apagamos os pedidos, no Netlify e no e-mail, em até 30 dias.</p>
 <p>Ao clicar em uma oferta, você vai para a Amazon ou para o Mercado Livre. A partir daí valem as políticas de privacidade de cada loja.</p>
 <h2>No alerta de preço do Telegram</h2>
 <p>{"Quando você pede um alerta para " + bot_name + ", guardamos" if bot else "O alerta ainda não está no ar. Em breve você poderá pedir um alerta para " + bot_name + ". Quando isso funcionar, vamos guardar"} só o necessário para avisar você:</p>
@@ -2030,7 +2030,7 @@ def selftest():
               "btn btn--tg", "btn btn--wa", "foot-soon"):
         assert k in kinds, k                                                   # header, card, hero, banner, bloco, canais, FAB, rodapé
     assert any("Canal no WhatsApp" in t for k, t in soon if k == "pill pill--wa")  # texto acessível: "Canal no WhatsApp, em breve"
-    assert not re.search(r"<(?:a|button)[^>]*\bis-soon", h) and "tabindex" not in h.split("<dialog")[0].replace('<input name="site" tabindex="-1"', "")  # só o honeypot
+    assert not re.search(r"<(?:a|button)[^>]*\bis-soon", h) and "tabindex" not in re.sub(r'<p class="sr" aria-hidden="true"><label>Não preencha .*?</p>', "", h.split("<dialog")[0])  # só o honeypot
     assert "Em breve você poderá tocar no sino" in h and "Para parar, mande /parar" not in h  # FAQ não promete o alerta
     assert "O alerta ainda não está no ar" in pages0["privacidade/index.html"]
     js = (STATIC / "app.js").read_text(encoding="utf-8")
