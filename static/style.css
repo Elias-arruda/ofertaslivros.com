@@ -314,16 +314,6 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
   background: var(--accent); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
   transition: background-color .3s var(--ease);
 }
-/* A folha que vira quando o livro "folheia" */
-.pages::after {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--paper);
-  transform-origin: left center; opacity: 0;
-}
-@keyframes folhear-lento {
-  0%, 62% { transform: perspective(600px) rotateY(0); opacity: 0; }
-  64% { opacity: .95; }
-  100% { transform: perspective(600px) rotateY(-165deg); opacity: 0; }
-}
 
 /* Seta da outra loja: <details> nativo */
 .buy { display: inline-flex; gap: 8px; align-items: center; }
@@ -390,7 +380,6 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 .hero-obj { width: 100%; max-width: 460px; justify-self: center; }
 .hero-obj .cover { top: 6%; bottom: 6%; left: 0; border-radius: 16px; transform: rotate(-4deg); box-shadow: 0 40px 70px -25px #000c; }
 .hero-obj .pages { top: 9%; bottom: 9%; left: 30%; }
-.hero-obj .pages::after { animation: folhear-lento 4.5s var(--ease) infinite; }
 .hero-obj:hover .cover { transform: rotate(-1deg) translateX(-6%); }
 .hero-obj:hover .pages { transform: translateX(8%); }
 /* Navegação: barra segmentada (links para cada slide), contador e setas (estas só com JS) */
@@ -533,7 +522,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 .buy-c:hover { transform: rotate(45deg) scale(1.1); }
 /* Seta da outra loja só onde cabe; no card estreito ela fica no modal e na página do livro */
 @container (max-width: 200px) { .card-foot .alt { display: none; } }
-/* Hover: a capa desliza e inclina, o miolo sai pela direita (sem folhear) */
+/* Hover: a capa desliza e inclina, o miolo sai pela direita */
 @media (hover: hover) {
   .card:hover { border-color: color-mix(in srgb, var(--accent) 60%, transparent); background: color-mix(in srgb, var(--accent) 8%, transparent); box-shadow: 0 24px 50px -28px var(--accent); }
   .card:hover .cover { transform: translateX(-8%) rotate(-3deg); }
@@ -785,7 +774,6 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 .m-grid { display: grid; grid-template-columns: .9fr 1.1fr; gap: 28px; align-items: center; padding: 8px clamp(18px, 4vw, 40px) 24px; }
 .m-obj { max-width: 380px; }
 .m-obj .cover { transform: rotate(-3deg); }
-.m-obj .pages::after { animation: folhear-lento 4.5s var(--ease) infinite; }
 .m-t { font-size: clamp(30px, 4vw, 52px); font-weight: 800; overflow-wrap: anywhere; }
 .m-a { font-size: 22px; }
 .m-selo { margin-top: 16px; }
