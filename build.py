@@ -398,11 +398,11 @@ MEDIANA_MAX = 85          # preço <= 85% da mediana dos dias 8 a 90
 
 def em_oferta(win, seal):
     """Loja vencedora -> é oferta? Com HIST_DIAS ou mais de histórico e a mediana: preço até 85% dela
-    ou o selo de 90 dias. Sem isso (histórico curto, sem median_90d_cents ou Amazon), o "de/por" >= 10%.
-    O "menor preço desde" nunca promove. Amazon: por ora só o "de/por", porque a série manual é esparsa
-    (cobertura de 80% em curator.md 5.7, ainda sem o dado no contrato)."""
+    ou o selo de 90 dias. Sem isso (histórico curto ou sem median_90d_cents), o "de/por" >= 10%.
+    O "menor preço desde" nunca promove. Amazon: o coletor só manda a mediana com a série manual
+    cobrindo >= 80% da janela (curator.md 5.7); abaixo disso o campo falta e vale o "de/por"."""
     hs, med = win["history_since"], win["median_90d_cents"]
-    if win["store"] != "amazon" and hs and med and (win["checked_at"].astimezone(BRT).date() - hs).days >= HIST_DIAS:
+    if hs and med and (win["checked_at"].astimezone(BRT).date() - hs).days >= HIST_DIAS:
         return seal == "90d" or win["price_cents"] * 100 <= med * MEDIANA_MAX
     return discount(win) >= OFERTA_MIN_DESCONTO
 
@@ -1848,22 +1848,19 @@ def selftest():
                   median_90d_cents=20000) is True
         assert em(st, price_cents=5000, list_price_cents=5000, lowest_90d_cents=5000, history_since=h29,
                   median_90d_cents=20000) is False                                                   # 25% da mediana, 29 dias
-    # 2. 30 dias ou mais com a mediana (ML): <= 85% dela ou selo de 90 dias; "de/por" de 40% sozinho não
+    # 2. 30 dias ou mais com a mediana: <= 85% dela ou selo de 90 dias; "de/por" de 40% sozinho não.
+    # 4. Na Amazon igual: a mediana só vem com cobertura >= 80% (o coletor confere); sem ela, critério 3.
     ml30 = {"history_since": h30, "median_90d_cents": 10000, "lowest_90d_cents": 8000}
-    assert em("mercadolivre", price_cents=8500, list_price_cents=8500, **ml30) is True               # 85%
-    assert em("mercadolivre", price_cents=8501, list_price_cents=8501, **ml30) is False
-    assert em("mercadolivre", price_cents=6000, list_price_cents=10000, history_since=h30, median_90d_cents=6500,
-              lowest_90d_cents=5000) is False                                                        # 40% no de/por, 92% da mediana
-    assert em("mercadolivre", price_cents=9900, list_price_cents=9900, lowest_90d_cents=9900, history_since=h90,
-              median_90d_cents=9900) is True                                                         # selo de 90 dias
-    # 3. 30 dias ou mais sem a mediana: volta ao "de/por" (o selo sozinho não basta)
-    assert em("mercadolivre", price_cents=6000, list_price_cents=10000, lowest_90d_cents=5000, history_since=h30) is True
-    assert em("mercadolivre", price_cents=9900, list_price_cents=9900, lowest_90d_cents=9900, history_since=h90) is False
-    # 4. Amazon: por ora só o "de/por", mesmo com mediana e selo
-    assert em("amazon", price_cents=8000, list_price_cents=8000, lowest_90d_cents=8000, history_since=h90,
-              median_90d_cents=10000) is False
-    assert em("amazon", price_cents=6000, list_price_cents=10000, lowest_90d_cents=5000, history_since=h30,
-              median_90d_cents=6500) is True
+    for st in STORES:
+        assert em(st, price_cents=8500, list_price_cents=8500, **ml30) is True                       # 85%
+        assert em(st, price_cents=8501, list_price_cents=8501, **ml30) is False
+        assert em(st, price_cents=6000, list_price_cents=10000, history_since=h30, median_90d_cents=6500,
+                  lowest_90d_cents=5000) is False                                                    # 40% no de/por, 92% da mediana
+        assert em(st, price_cents=9900, list_price_cents=9900, lowest_90d_cents=9900, history_since=h90,
+                  median_90d_cents=9900) is True                                                     # selo de 90 dias
+        # 3. 30 dias ou mais sem a mediana: volta ao "de/por" (o selo sozinho não basta)
+        assert em(st, price_cents=6000, list_price_cents=10000, lowest_90d_cents=5000, history_since=h30) is True
+        assert em(st, price_cents=9900, list_price_cents=9900, lowest_90d_cents=9900, history_since=h90) is False
     # 5. "menor preço desde" não promove; a informação continua no card
     assert em("amazon", price_cents=9900, list_price_cents=9900, lowest_90d_cents=9900, history_since="2026-10-10") is False
     assert em("amazon", price_cents=9000, list_price_cents=10000, lowest_90d_cents=9000, history_since="2026-10-10") is True
