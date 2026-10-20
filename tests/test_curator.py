@@ -818,6 +818,23 @@ def test_links_apply_ref_repetido_no_arquivo_e_replace(env, capsys):
     assert {x["id"]: x for x in env["books"]()}["p1"]["ml_url"] == _link("R7")
 
 
+def test_links_apply_livro_so_da_amazon_ganha_o_ml(env, capsys):
+    _apply_env(env, [])
+    doc = json.loads(env["cat"].read_text())
+    doc["books"] += [{"id": f"amz{n}", "isbn": isbn(n), "genre": "ficcao", "title": "A", "author": "B",
+                      "asin": cur.asin_provavel(isbn(n))} for n in (5, 6, 7)]
+    env["cat"].write_text(json.dumps(doc))
+    rows = [_row(8, _link("R8"), bid="amz5"), _row(9, _link("R9"), bid="amz6", pid="MLB1"),
+            _row(7, _link("R7"), bid="amz7", pid="X1")]
+    env["links"].write_text("\n".join("\t".join(r) for r in [cur.ML_LINKS_COLS] + rows) + "\n")
+    assert cur.links_apply(env["links"], env["cat"]) == 1
+    b = {x["id"]: x for x in env["books"]()}["amz5"]
+    assert b["ml_product_id"] == "MLB8" and b["ml_url"] == _link("R8") and b["asin"]
+    out = capsys.readouterr().out
+    assert "já é de outro livro" in out and "ml_product_id inválido" in out
+    assert c.read_catalog(env["cat"])  # nas duas lojas, com isbn: válido
+
+
 def test_links_apply_cabecalho_errado_e_sem_aff_nao_aplicam(env, monkeypatch):
     _apply_env(env, [_row(1, _link("R1"))])
     env["links"].write_text(env["links"].read_text().replace("ml_url", "link", 1))
