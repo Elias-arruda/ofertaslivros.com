@@ -702,8 +702,12 @@ def test_deadline_adia_sem_erro(env, capsys):
         clk.t += 15
     env["fake"].on_call = tick
     assert env["run"](clock=clk) == 0
-    assert "1 ok, 0 inativo, 0 gtin_divergente, 0 erro, 1 adiado" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "1 ok, 0 inativo, 0 gtin_divergente, 0 erro, 1 adiado" in out
     assert env["fake"].paths.count("/oauth/token") == 1
+    # livro adiado não foi lido: a coleta não conta como inteira para a retirada
+    assert json.loads((env["hist"] / "state.json").read_text())["curadoria_ok"] is None
+    assert "coleta não conta para a retirada" in out
 
 
 def test_deadline_nao_espera_alem_do_orcamento():

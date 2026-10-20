@@ -971,7 +971,12 @@ def run(hist_dir, now=None, catalog=None, manual=None, clock=time.monotonic):
         print("ML: " + ", ".join(f"{v} {k}" for k, v in n.items()))
         if n["erro"]:
             status = 1
-        ml_ok = bool(ml_rows) and not n["erro"]
+        # Inteira = sem erro e sem livro adiado: livro não lido não pode parecer "sem anúncio".
+        # ponytail: com catálogo maior que o prazo (ML_DEADLINE_S), sempre há adiado e a
+        # retirada fica parada; aí trocar por data de leitura por livro.
+        ml_ok = bool(ml_rows) and not n["erro"] and not n["adiado"]
+        if n["adiado"]:
+            print(f"::warning::ML: {n['adiado']} adiados; coleta não conta para a retirada")
     append_history(hist_dir, manual_rows + ml_rows)
     # 3) offers.json v2: monta, valida e só então grava (dado quebrado não sai)
     latest, low, first, daily = summarize(hist_dir, now)
