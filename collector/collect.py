@@ -594,7 +594,7 @@ def collect_ml(books, token, now, deadline, start=0, clock=time.monotonic, sleep
         k = start % len(ml)
         ml = ml[k:] + ml[:k]
     rows, images = [], {}
-    n = {"ok": 0, "inativo": 0, "gtin_divergente": 0, "erro": 0, "adiado": 0}
+    n = {"ok": 0, "inativo": 0, "gtin_divergente": 0, "erro": 0, "adiado": 0, "auth": 0}
     kw = {"deadline": deadline, "clock": clock, "sleep": sleep}
     for i, b in enumerate(ml):
         # diagnóstico (log público): só id do livro, status HTTP, contagens e caminho
@@ -645,6 +645,8 @@ def collect_ml(books, token, now, deadline, start=0, clock=time.monotonic, sleep
         except (MLError, Invalid) as e:
             print(f"ML: {b['id']}: {e}")
             n["erro"] += 1
+            if getattr(e, "code", None) == 401:  # token recusado no meio da rodada
+                n["auth"] += 1
         finally:
             print(f"ML diag: {b['id']} /products={d['http']} buy_box={d['buy_box']} "
                   f"/items={d['items']} novos_brl={d['novos_brl']} caminho={d['caminho']}")
@@ -963,7 +965,9 @@ def run(hist_dir, now=None, catalog=None, manual=None, clock=time.monotonic):
     # 1) valida a entrada manual inteira antes de qualquer request ou escrita
     text = manual.read_text(encoding="utf-8-sig") if manual.exists() else ""  # BOM do Excel
     manual_rows = only_new_manual(hist_dir, parse_manual(text, books, now))
-    # 2) ML: qualquer erro (ou ML sem coleta) deixa o job vermelho
+    # 2) ML: erro de autenticação, ML sem coleta ou erro na maioria dos livros deixa o job
+    # vermelho. Erro em poucos livros não: eles ficam com o último preço conhecido (o build
+    # só mostra se ainda estiver no frescor) e a rodada segue para os outros.
     has_ml = any("ml_product_id" in b for b in books)
     status, ml_rows, images, ml_ok = 0, [], {}, False
     deadline = clock() + ML_DEADLINE_S
@@ -980,9 +984,15 @@ def run(hist_dir, now=None, catalog=None, manual=None, clock=time.monotonic):
         ml_rows, n, images = collect_ml(books, token, now, deadline, start=run_number(),
                                         clock=clock)
         print("ML: " + ", ".join(f"{v} {k}" for k, v in n.items()))
-        if n["erro"]:
+        lidos = n["ok"] + n["inativo"] + n["gtin_divergente"] + n["erro"]
+        if n["auth"] or n["erro"] * 2 > lidos:
             status = 1
+        elif n["erro"]:
+            print(f"::warning::ML: {n['erro']} de {lidos} livros com erro; ficam com o "
+                  f"último preço conhecido")
         # Inteira = sem erro e sem livro adiado: livro não lido não pode parecer "sem anúncio".
+        # ponytail: um livro com erro em toda rodada deixa o job verde e a retirada parada (só
+        # o ::warning:: avisa); se isso acontecer, ficar vermelho após N rodadas do mesmo livro.
         # ponytail: com catálogo maior que o prazo (ML_DEADLINE_S), sempre há adiado e a
         # retirada fica parada; aí trocar por data de leitura por livro.
         ml_ok = bool(n["ok"] or n["inativo"]) and not n["erro"] and not n["adiado"]

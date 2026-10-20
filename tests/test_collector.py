@@ -5,7 +5,7 @@ import io
 import json
 import socket
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from http.client import RemoteDisconnected
 from pathlib import Path
@@ -577,7 +577,7 @@ def test_items_total_acima_do_limite_falha_fechado(env):
     env["fake"].products["MLB11"] = p
     env["fake"].items["MLB11"] = {"paging": {"total": 1001, "limit": 50, "offset": 0},
                                    "results": []}
-    assert env["run"]() == 1
+    assert env["run"]() == 0  # 1 de 2 com erro: não é maioria, a rodada segue
     assert not any(r.startswith("livro-duplo,mercadolivre") for r in rows(env["hist"]))
 
 
@@ -659,15 +659,38 @@ def test_fallback_items_sem_amazon_e_sem_token_no_log(env, capsys):
     {"prod": {"status": "active", "buy_box_winner": None}, "items": ["lista"]},
     {"prod": {"status": "active", "buy_box_winner": None}, "items": {"results": "x"}},
 ])
-def test_resposta_ruim_vira_erro_e_job_vermelho(env, bad):
+def test_resposta_ruim_vira_erro_e_so_a_maioria_derruba(env, capsys, bad):
     if "sale" in bad:
-        env["fake"].sale = bad["sale"]
+        env["fake"].sale = bad["sale"]  # vale para os 2 livros: maioria com erro
     else:
-        env["fake"].products["MLB11"] = bad["prod"]
+        env["fake"].products["MLB11"] = bad["prod"]  # só 1 de 2
     if "items" in bad:
         env["fake"].items["MLB11"] = bad["items"]
-    assert env["run"]() == 1
+    assert env["run"]() == (1 if "sale" in bad else 0)
     assert not any(r.startswith("livro-duplo,mercadolivre") for r in rows(env["hist"]))
+    if "sale" not in bad:
+        out = capsys.readouterr().out
+        assert "1 de 2 livros com erro" in out
+        assert any(r.startswith("livro-ml-2,mercadolivre") for r in rows(env["hist"]))
+
+
+def test_erro_de_um_livro_mantem_o_ultimo_preco_e_401_derruba(env, monkeypatch):
+    assert env["run"]() == 0
+    env["fake"].products["MLB11"] = {"id": "x", "status": "active", "buy_box_winner": "x"}
+    later = NOW + timedelta(days=1)  # outro dia BRT: a rodada com erro não conta para a retirada
+    assert env["run"](now=later) == 0
+    hist = sorted(r for r in rows(env["hist"]) if r.startswith("livro-duplo,mercadolivre"))
+    assert len(hist) == 1 and ",2026-10-18T12:00:00+00:00," in hist[0]  # fica o último preço
+    st = json.loads((env["hist"] / "state.json").read_text())
+    assert st["curadoria_ok"] == "2026-10-18"
+    real = c._urlopen
+
+    def unauth(req, timeout=None):
+        if urlsplit(req.full_url).path == "/products/MLB11":
+            raise HTTPError(req.full_url, 401, "x", {}, None)
+        return real(req, timeout=timeout)
+    monkeypatch.setattr(c, "_urlopen", unauth)
+    assert env["run"](now=later) == 1  # autenticação: falha mesmo com 1 livro só
 
 
 def test_falha_total_sai_com_1(env, monkeypatch):
