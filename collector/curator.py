@@ -398,6 +398,10 @@ def retire(books, cstate, today, recent=0):
         st = cu.get(b["id"])
         if b.get("pendente") or st is None:
             continue
+        if max(v or "" for v in st.values()) > today.isoformat():
+            # data futura: o track_curadoria do coletor zera o relógio na próxima coleta
+            # (a cada 30 min); até lá conta como relógio recomeçado hoje, ou seja, não sai
+            continue
         if st["ultimo_anuncio"] < limit:
             out.append((b, "sem_anuncio"))
         elif "genre_source" in b and (st["ultima_oferta"] or st["publicado"]) < limit:

@@ -636,6 +636,10 @@ def test_retirada_mista():
         "pendente": _st()}}
     got = [(b["id"], why) for b, why in cur.retire(books, st, TODAY)]
     assert got == [("auto-sem-oferta", "sem_oferta"), ("manual-sem-anuncio", "sem_anuncio")]
+    # data futura = relógio recomeçado (o coletor zera na próxima coleta): não sai hoje
+    st["curadoria"]["manual-sem-anuncio"]["ultima_oferta"] = "2099-01-01"
+    got = [(b["id"], why) for b, why in cur.retire(books, st, TODAY)]
+    assert got == [("auto-sem-oferta", "sem_oferta")]
 
 
 def test_retirada_nao_roda_com_dado_parado_ou_em_massa(capsys):
