@@ -830,3 +830,13 @@ def test_coleta_inteira_mesmo_com_todos_inativos(env):
     env["run"]()
     assert not [r for r in rows(env["hist"]) if r.endswith(",ml_api")]
     assert json.loads((env["hist"] / "state.json").read_text())["curadoria_ok"] == "2026-10-18"
+
+
+@pytest.mark.parametrize("bad", [[], "x", 1, None])
+def test_state_com_campo_de_tipo_errado_e_descartado(env, bad):
+    env["hist"].mkdir(parents=True, exist_ok=True)
+    (env["hist"] / "state.json").write_text(json.dumps(
+        {"curadoria": bad, "history_since": bad, "image_url": bad}))
+    assert env["run"]() == 0
+    assert set(json.loads((env["hist"] / "state.json").read_text())["curadoria"]) \
+        == {b["id"] for b in c.read_catalog(env["cat"])}

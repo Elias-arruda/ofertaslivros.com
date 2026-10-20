@@ -657,9 +657,11 @@ def load_state(hist_dir):
     except ValueError:
         print("::warning::state.json ilegível; recomeçando history_since/image_url")
         s = {}
-    hs = s.get("history_since") if isinstance(s, dict) else None
-    im = s.get("image_url") if isinstance(s, dict) else None
-    cu = s.get("curadoria") if isinstance(s, dict) else None
+    if not isinstance(s, dict):
+        s = {}
+    # campo com tipo estranho (lista, texto) vira vazio: o estado é descartado, nunca derruba
+    hs, im, cu = (v if isinstance(v := s.get(k), dict) else None
+                  for k in ("history_since", "image_url", "curadoria"))
     return {"history_since": {k: v for k, v in (hs or {}).items()
                               if isinstance(k, str) and isinstance(v, str)},
             "image_url": {k: v for k, v in (im or {}).items()
@@ -668,8 +670,7 @@ def load_state(hist_dir):
                           if isinstance(v, dict) and set(v) == CURADORIA_KEYS
                           and _day(v["publicado"]) and _day(v["ultimo_anuncio"])
                           and (v["ultima_oferta"] is None or _day(v["ultima_oferta"]))},
-            "curadoria_ok": ok if isinstance(s, dict) and _day(ok := s.get("curadoria_ok"))
-            else None}
+            "curadoria_ok": ok if _day(ok := s.get("curadoria_ok")) else None}
 
 
 CURADORIA_KEYS = {"publicado", "ultimo_anuncio", "ultima_oferta"}
