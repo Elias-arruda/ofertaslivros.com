@@ -37,7 +37,13 @@ SITE = "https://ofertaslivros.com"
 GENRES = {
     "literatura-brasileira": "Literatura brasileira",
     "ficcao": "Ficção",
+    "romance": "Romance",
+    "fantasia": "Fantasia e ficção científica",
+    "suspense": "Suspense e policial",
+    "mindset": "Mindset e hábitos",
     "negocios": "Negócios e finanças",
+    "politica": "Política e sociedade",
+    "historia": "História e biografias",
     "nao-ficcao": "Não ficção",
     "manga": "Mangá e HQ",
 }
@@ -1005,8 +1011,14 @@ def home_sections(offers, bot=None, ch=()):
 
 GENRE_DESC = {
     "literatura-brasileira": "Clássicos e contemporâneos daqui",
-    "ficcao": "Romance, fantasia e suspense",
+    "ficcao": "Clássicos e contemporâneos de fora",
+    "romance": "Histórias de amor, do clássico ao novo",
+    "fantasia": "Sagas, mundos mágicos e futuro",
+    "suspense": "Thriller, mistério e crime",
+    "mindset": "Foco, hábitos e desenvolvimento pessoal",
     "negocios": "Carreira, gestão e dinheiro",
+    "politica": "Democracia, poder e ideias",
+    "historia": "Do passado às vidas que marcaram",
     "nao-ficcao": "História, ciência e ensaio",
     "manga": "Mangá, HQ e graphic novel",
 }
@@ -1077,6 +1089,12 @@ ICONS = {
     "g-ficcao": '<path d="M15 4a7.5 7.5 0 1 0 5.5 11.5A6 6 0 0 1 15 4zM6 3v4M4 5h4"/>',
     "g-negocios": '<path d="M4 20h16M6 16l4.5-4.5 3 3L19 9M15 9h4v4"/>',
     "g-nao-ficcao": '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/>',
+    "g-romance": '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+    "g-fantasia": '<path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2zM19 3v4M17 5h4"/>',
+    "g-suspense": '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/>',
+    "g-mindset": '<path d="M3 20h18M6 20l5-9 3 5 2-3 3 7M11 11V4l5 2-5 2"/>',
+    "g-politica": '<path d="M3 9l9-5 9 5M5 9v9M10 9v9M14 9v9M19 9v9M3 20h18"/>',
+    "g-historia": '<path d="M6 3h12M6 21h12M7 3c0 5 5 6 5 9s-5 4-5 9M17 3c0 5-5 6-5 9s5 4 5 9"/>',
     "g-manga": '<path d="M4 4h16v12h-9l-4.5 4v-4H4z"/><path d="m13 6.5-3 4h3.5l-2.5 3.5"/>',
 }
 SPRITE = ('<svg class="sprite" hidden aria-hidden="true">'
