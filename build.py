@@ -54,7 +54,8 @@ BOOK_KEYS = {"id", "isbn", "genre", "title", "author", "image_url", "stores", "f
              "blurb"}  # blurb: opcional, proposto ao contrato (frase curta da curadoria no banner)
 BLURB_MAX = 140
 STORE_COMMON = {"store", "price_cents", "list_price_cents", "lowest_90d_cents", "history_since", "checked_at",
-                "price_points"}  # price_points: opcional, proposto ao contrato (gráfico do histórico)
+                "price_points",  # opcional, proposto ao contrato (gráfico do histórico)
+                "median_90d_cents"}  # opcional: mediana dos dias 8 a 90 (critério "em oferta", PR #21)
 # O link do ML é opaco (param ref cifrado), então vem do painel e é validado.
 STORE_KEYS = {"amazon": {"asin"}, "mercadolivre": {"ml_url", "ml_product_id"}}
 
@@ -233,6 +234,7 @@ def validate_store(s, tag, aff):
         out["ml_url"] = s.get("ml_url")  # validado em affiliate_url
     for k in ("price_cents", "list_price_cents", "lowest_90d_cents"):
         out[k] = _cents(s, k)
+    out["median_90d_cents"] = _cents(s, "median_90d_cents") if "median_90d_cents" in s else None
     if out["list_price_cents"] < out["price_cents"]:
         raise Invalid(f"{store}: list_price_cents menor que price_cents")
     ca = s.get("checked_at")
@@ -1772,6 +1774,9 @@ def selftest():
     assert load({**good, "blurb": "x" * 140})[0]["blurb"] == "x" * 140
     assert load({**good, "blurb": "  Duas irmãs.  "})[0]["blurb"] == "Duas irmãs."
     assert load(good)[0]["blurb"] is None
+    for bad in (0, -1, 1.5, "100", True, None):                                     # mediana inválida quebra o build
+        assert rejects(A(median_90d_cents=bad)), bad
+    assert load(A(median_90d_cents=1))[0]["median_90d_cents"] == 1 and load(good)[0]["median_90d_cents"] is None
     # home: seções, carrossel sem JS, fallbacks honestos
     def offers_n(n, extra=None, store=None):
         return load(*({**good, "id": f"l-{k}", "title": f"Livro {k}", **(extra or {}).get(k, {}),
