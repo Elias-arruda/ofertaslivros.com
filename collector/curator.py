@@ -507,6 +507,35 @@ def _probe_product(pid, item, token):
           f"livro: {'sim' if _name(prod, 'BOOK_TITLE') and _name(prod, 'AUTHOR') else 'nao'}")
 
 
+def _probe_isbn(token, catalog=None):
+    """Livros publicados sem isbn: procura o ISBN nos atributos da ficha e do anúncio
+    vencedor (/items/{id}). Só lê; quem grava no catálogo é um PR. ISBN de livro do
+    catálogo é público, então pode ir para o log."""
+    try:
+        books = c.read_catalog(catalog)
+    except c.Invalid as e:  # o diagnóstico das rotas acima já saiu; não derruba o probe
+        print(f"isbn: catálogo não validou ({e})")
+        return
+    for b in books:
+        if "isbn" in b or "ml_product_id" not in b:
+            continue
+        st, prod = c._probe_get(f"/products/{b['ml_product_id']}", token)
+        item = (prod.get("buy_box_winner") or {}).get("item_id") \
+            if isinstance(prod, dict) else None
+        if not isinstance(item, str):
+            _, body = c._probe_get(f"/products/{b['ml_product_id']}/items", token)
+            try:
+                it, _ = c.best_listing(body)
+            except c.MLError:
+                it = None
+            item = it and it.get("item_id")
+        sti, it = (c._probe_get(f"/items/{item}", token)
+                   if isinstance(item, str) and c.MLB_RE.fullmatch(item) else ("-", None))
+        isbns = sorted(g for g in c.product_gtins(prod) | c.product_gtins(it) if c.isbn_ok(g))
+        print(f"isbn {b['id']}: /products -> {st} /items -> {sti} "
+              f"isbn={','.join(isbns) or 'ausente'}")
+
+
 def probe(isbn=PROBE_ISBN):
     """Passo 0: status HTTP, chaves de topo e contagens de cada rota de descoberta e, para
     os 3 primeiros PRODUCT do highlights, o formato dos atributos (nunca título, vendedor,
@@ -543,6 +572,7 @@ def probe(isbn=PROBE_ISBN):
     for name, path in routes:
         st, body = c._probe_get(path, token)
         print(f"{name}: {path.split('?')[0]} -> {st} chaves={c._keys(body)} {_count(body)}")
+    _probe_isbn(token)
     return 0
 
 
