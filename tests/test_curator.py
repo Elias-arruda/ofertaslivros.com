@@ -590,6 +590,7 @@ def test_ml_links_tsv_fila_e_preserva_colado(env):
 
 def test_probe_procura_isbn_no_anuncio_dos_livros_sem_isbn(env, capsys, monkeypatch):
     monkeypatch.setattr(c, "CATALOG", env["cat"])
+    monkeypatch.delenv("ML_AFFILIATE_ID")  # como no job do probe: sem a variável
     doc = json.loads(env["cat"].read_text())
     doc["books"] += [{"id": "sem-isbn", "genre": "ficcao", "title": "T", "author": "A",
                       "ml_product_id": "MLB50", "ml_url": ML_URL.replace("ref=X", "ref=Y")},
@@ -606,3 +607,10 @@ def test_probe_procura_isbn_no_anuncio_dos_livros_sem_isbn(env, capsys, monkeypa
     assert "isbn sem-nada: /products -> 200 /items -> - isbn=ausente" in out
     assert "isbn ja-tenho" not in out  # já tem isbn
     assert {urlsplit(u).hostname for u in env["fake"].urls} == {"api.mercadolibre.com"}
+
+
+def test_probe_isbn_catalogo_ilegivel_nao_derruba(env, capsys, monkeypatch, tmp_path):
+    monkeypatch.setattr(c, "CATALOG", tmp_path / "nao-existe.json")
+    env["add"](prod(1))
+    assert cur.probe() == 0
+    assert "isbn: catálogo ilegível (FileNotFoundError)" in capsys.readouterr().out

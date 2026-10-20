@@ -49,6 +49,7 @@ SEEN_DAYS = 180    # recusado não volta antes disso
 DEADLINE_S = 300   # orçamento de rede do suggest (job tem 10 min)
 SUMMARY_MAX = 60_000
 PROBE_ISBN = "9788535914849"  # só para o probe do /products/search
+PROBE_ISBN_MAX = 20  # livros sem isbn consultados por probe (até 3 GETs cada)
 TRENDS_MAX = 5      # termos do /trends usados por execução (1 busca cada)
 SEARCH_LIMIT = 10   # produtos por termo
 TREND_POS = 100     # produto vindo do /trends ranqueia depois de todo o /highlights
@@ -510,15 +511,21 @@ def _probe_product(pid, item, token):
 def _probe_isbn(token, catalog=None):
     """Livros publicados sem isbn: procura o ISBN nos atributos da ficha e do anúncio
     vencedor (/items/{id}). Só lê; quem grava no catálogo é um PR. ISBN de livro do
-    catálogo é público, então pode ir para o log."""
+    catálogo é público, então pode ir para o log. Lê o JSON cru (sem validar ml_url: o job
+    do probe não tem ML_AFFILIATE_ID); o id do produto passa pelo MLB_RE antes da URL."""
     try:
-        books = c.read_catalog(catalog)
-    except c.Invalid as e:  # o diagnóstico das rotas acima já saiu; não derruba o probe
-        print(f"isbn: catálogo não validou ({e})")
+        doc = json.loads((catalog or c.CATALOG).read_text(encoding="utf-8"))
+        books = [b for b in doc["books"] if isinstance(b, dict)]
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        print(f"isbn: catálogo ilegível ({type(e).__name__})")
         return
-    for b in books:
-        if "isbn" in b or "ml_product_id" not in b:
-            continue
+    todo = [b for b in books if "isbn" not in b and not b.get("pendente")
+            and isinstance(b.get("id"), str) and c.ID_RE.fullmatch(b["id"])
+            and isinstance(b.get("ml_product_id"), str)
+            and c.MLB_RE.fullmatch(b["ml_product_id"])]
+    if len(todo) > PROBE_ISBN_MAX:
+        print(f"isbn: {len(todo) - PROBE_ISBN_MAX} livros não consultados (teto {PROBE_ISBN_MAX})")
+    for b in todo[:PROBE_ISBN_MAX]:
         st, prod = c._probe_get(f"/products/{b['ml_product_id']}", token)
         item = (prod.get("buy_box_winner") or {}).get("item_id") \
             if isinstance(prod, dict) else None
