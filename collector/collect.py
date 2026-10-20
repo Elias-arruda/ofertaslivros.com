@@ -28,7 +28,8 @@ Saída em DIR (branch price-history):
   price_history/AAAA-MM.csv  append-only, nunca reescreve linha
   offers.json                contrato v2: um livro com stores[]; o build escolhe a vencedora
                              (median_90d_cents por loja: mediana dos dias 8 a 90, §10.8)
-  state.json                 history_since e image_url por livro (metadado, sobrescrito)
+  state.json                 history_since, image_url e as datas da retirada (curadoria)
+                             por livro (metadado, sobrescrito)
   amazon_queue.csv           ordem de conferência manual
 """
 import argparse
@@ -51,6 +52,7 @@ from urllib.request import Request, urlopen
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 # build.py só define constantes e funções (o build roda sob __main__): importar é seguro.
+import build  # noqa: E402
 from build import (ASIN_RE, BRT, GENRES, ID_RE, MLB_RE, STORE_COMMON, Invalid, _text,  # noqa: E402
                    check_url, ml_affiliate, ml_url)
 
@@ -60,7 +62,10 @@ MANUAL_CSV = HERE / "amazon_prices.csv"
 ID_MAX = 57  # deep link do Telegram aceita 64; folga para prefixo futuro
 STORES = ("amazon", "mercadolivre")
 BOOK_FIELDS = {"id", "isbn", "genre", "title", "author", "asin", "ml_product_id", "ml_url",
-               "pendente"}
+               "pendente", "genre_source"}
+# genre_source: só o curator grava. Com ele, o livro é automático e pode sair por 30 dias sem
+# oferta (curadoria-automatica.md §10.8, item 6); sem ele, é manual e fica isento.
+GENRE_SOURCES = {"ml_book_genre", "padrao_lgbtqia"}
 PUBLIC_FIELDS = ("id", "title", "author", "genre")  # export: sem ids de loja nem URL
 ISBN_RE = re.compile(r"97[89][0-9]{10}")
 # Só o CDN de imagem do ML (é o que a CSP libera em img-src); sem query, aspas ou espaço.
@@ -125,6 +130,10 @@ def load_catalog(doc, include_pending=False):
                 raise Invalid(f"genre inválido: {b.get('genre')!r} (use um de {sorted(GENRES)})")
             out = {"id": bid, "genre": b["genre"],
                    "title": _text(b, "title"), "author": _text(b, "author")}
+            if "genre_source" in b:
+                if b["genre_source"] not in GENRE_SOURCES:
+                    raise Invalid(f"genre_source inválido: {b['genre_source']!r}")
+                out["genre_source"] = b["genre_source"]
             if "isbn" in b:
                 if not isbn_ok(b["isbn"]):
                     raise Invalid(f"isbn precisa ser ISBN-13 válido, só dígitos: {b['isbn']!r}")
@@ -644,10 +653,39 @@ def load_state(hist_dir):
         s = {}
     hs = s.get("history_since") if isinstance(s, dict) else None
     im = s.get("image_url") if isinstance(s, dict) else None
+    cu = s.get("curadoria") if isinstance(s, dict) else None
     return {"history_since": {k: v for k, v in (hs or {}).items()
                               if isinstance(k, str) and isinstance(v, str)},
             "image_url": {k: v for k, v in (im or {}).items()
-                          if isinstance(v, str) and IMG_RE.fullmatch(v)}}
+                          if isinstance(v, str) and IMG_RE.fullmatch(v)},
+            "curadoria": {k: v for k, v in (cu or {}).items()
+                          if isinstance(v, dict) and set(v) == CURADORIA_KEYS}}
+
+
+CURADORIA_KEYS = {"publicado", "ultimo_anuncio", "ultima_oferta"}
+
+
+def track_curadoria(state, books, latest, offers, now):
+    """Datas (BRT) que a retirada do curator lê (§10.8, item 6), a cada execução do coletor:
+    publicado (1ª vez no catálogo publicado), ultimo_anuncio (último preço gravado, ou seja,
+    anúncio ativo, em qualquer loja) e ultima_oferta (pelo resolve do build: o mesmo critério
+    "em oferta" do site). Fica no price-history, e não num PR, para não perder dia."""
+    today = now.astimezone(BRT).date().isoformat()
+    try:
+        em_oferta = {o["id"] for o in build.load_offers(offers, now) if o["oferta"]}
+    except Invalid:  # nenhuma loja fresca agora (ou offers que o build recusaria)
+        em_oferta = set()
+    cur = state["curadoria"]
+    for b in books:
+        st = cur.setdefault(b["id"], {"publicado": today, "ultimo_anuncio": today,
+                                      "ultima_oferta": None})
+        seen = [datetime.fromisoformat(r["checked_at"]).astimezone(BRT).date().isoformat()
+                for (bid, _), r in latest.items() if bid == b["id"]]
+        st["ultimo_anuncio"] = max([st["ultimo_anuncio"], *seen])
+        if b["id"] in em_oferta:
+            st["ultima_oferta"] = today
+    for k in set(cur) - {b["id"] for b in books}:
+        del cur[k]  # saiu do catálogo (ou voltou a pendente)
 
 
 def summarize(hist_dir, now):
@@ -918,6 +956,7 @@ def run(hist_dir, now=None, catalog=None, manual=None, clock=time.monotonic):
     state["image_url"].update(images)
     offers = validate_offers(build_offers(books, latest, low, state, daily,
                                           now.astimezone(BRT).date()))
+    track_curadoria(state, books, latest, offers, now)
     _write_json(Path(hist_dir) / "state.json", state)
     _write_json(Path(hist_dir) / "offers.json", offers)
     write_queue(hist_dir, books, latest)
