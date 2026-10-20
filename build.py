@@ -149,10 +149,14 @@ def ml_affiliate():
 
 
 ML_PARAMS = {"matt_word", "matt_tool", "forceInApp", "ref"}
+# Etiquetas do painel aceitas além do próprio ML_AFFILIATE_ID (decisão do Elias, 2026-10-20:
+# links novos saem com a etiqueta da marca). Quem prende o link à conta é o /social/<aff>.
+ML_LABELS = {"ofertaslivros"}
 
 
 def ml_url(raw, aff):
-    """Aceita só o link completo do painel, preso à nossa conta (matt_word)."""
+    """Aceita só o link completo do painel, preso à nossa conta (/social/<aff>) e com uma
+    etiqueta nossa (matt_word = aff ou uma de ML_LABELS)."""
     if not isinstance(raw, str) or len(raw) > 1000:  # limite por regra do _redirects
         raise Invalid("ml_url precisa ser texto até 1000 chars")
     _ascii(raw)
@@ -169,9 +173,10 @@ def ml_url(raw, aff):
     if ((p.scheme, p.netloc, p.path) != ("https", "www.mercadolivre.com.br", f"/social/{aff}")
             or p.fragment or params is None or not set(keys) <= ML_PARAMS
             or len({k.lower() for k in keys}) != len(keys)
-            or dict(params).get("matt_word") != aff):
+            or dict(params).get("matt_word") not in {aff} | ML_LABELS):
         raise Invalid(f"ml_url precisa ser o link completo do painel "
-                      f"(/social/{aff}?matt_word={aff}...), não meli.la: {raw!r}")
+                      f"(/social/{aff}?matt_word={aff}|{'|'.join(sorted(ML_LABELS))}...), "
+                      f"não meli.la: {raw!r}")
     return raw
 
 
@@ -1504,6 +1509,9 @@ def selftest():
     o = load(good, ml)
     assert o[0]["url"] == "https://www.amazon.com.br/dp/B0ABCDEFGH?tag=" + partner_tag()
     assert o[1]["url"] == ml_link
+    marca = ml_link.replace(f"matt_word={aff}", "matt_word=ofertaslivros")
+    assert load(M(ml_url=marca))[0]["url"] == marca  # etiqueta da marca, mesma conta
+    assert rejects(M(ml_url=marca.replace(f"/social/{aff}", "/social/evil")))
     # link do ML: só o completo do painel, preso ao nosso matt_word
     for bad in ("https://meli.la/2NDbdvz",
                 ml_link.replace("https://", "http://"),
