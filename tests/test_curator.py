@@ -799,8 +799,13 @@ def test_links_apply_recusa_e_mantem_a_linha(env, capsys, row, why):
 
 def test_links_apply_ref_repetido_no_arquivo_e_replace(env, capsys):
     _apply_env(env, [_row(1, _link("R1")), _row(2, _link("R1"))])
+    before = env["cat"].read_text()
     assert cur.links_apply(env["links"], env["cat"]) == 1
-    assert "ref repetido (já é de 'p1')" in capsys.readouterr().out
+    assert env["cat"].read_text() == before  # nenhuma das duas: não dá para saber a certa
+    assert capsys.readouterr().out.count("ref repetido no arquivo") == 2
+    _apply_env2 = [_row(1, _link("R1"))]
+    env["links"].write_text("\n".join("\t".join(r) for r in [cur.ML_LINKS_COLS] + _apply_env2) + "\n")
+    assert cur.links_apply(env["links"], env["cat"]) == 0
     # p1 já tem ml_url: sem --replace recusa, com --replace troca
     _apply_env2 = [_row(1, _link("R7"))]
     env["links"].write_text("\n".join("\t".join(r) for r in [cur.ML_LINKS_COLS] + _apply_env2) + "\n")
@@ -818,3 +823,18 @@ def test_links_apply_cabecalho_errado_e_sem_aff_nao_aplicam(env, monkeypatch):
     monkeypatch.delenv("ML_AFFILIATE_ID")
     with pytest.raises(c.Invalid, match="ML_AFFILIATE_ID"):
         cur.links_apply(env["links"], env["cat"])
+
+
+def test_links_apply_bom_crlf_linha_em_branco_e_tudo_vazio(env):
+    _apply_env(env, [_row(1), _row(2)])
+    raw = env["links"].read_text()
+    env["links"].write_bytes(("\ufeff" + raw.replace("\n", "\r\n") + "\r\n").encode())
+    before = env["cat"].read_text()
+    assert cur.links_apply(env["links"], env["cat"]) == 0  # vazias e em branco não são erro
+    assert env["cat"].read_text() == before
+    assert env["links"].read_text().splitlines() == [
+        "\t".join(cur.ML_LINKS_COLS), "\t".join(_row(1)), "\t".join(_row(2))]
+    env["links"].write_bytes(("\ufeff" + "\t".join(cur.ML_LINKS_COLS) + "\r\n"
+                              + "\t".join(_row(3, _link("R3"))) + "\r\n").encode())
+    assert cur.links_apply(env["links"], env["cat"]) == 0
+    assert {x["id"]: x for x in env["books"]()}["p3"]["ml_url"] == _link("R3")

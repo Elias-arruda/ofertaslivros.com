@@ -14,7 +14,8 @@ o nicho sai só do BOOK_GENRE da ficha do produto.
 Só fala com api.mercadolibre.com, pelo cliente do collect.py (token de app, timeout,
 backoff, User-Agent). Nenhuma request para a Amazon: sem a Creators API não há descoberta
 lá. Nada de HTML: resposta que não é application/json aborta (collect.ml_request).
-O curator nunca escreve ml_url nem asin: o link vem do painel, colado pelo Elias no PR.
+O curator nunca escreve ml_url nem asin por conta própria: só o links-apply/amazon-apply, a
+partir de uma linha preenchida pelo Elias e validada (curator.md §11, critério 3).
 """
 import argparse
 import csv
@@ -447,7 +448,14 @@ def _read_tsv(path, cols):
         rows = list(csv.reader(f, delimiter="\t", quoting=csv.QUOTE_NONE))
     if not rows or rows[0] != cols:
         raise c.Invalid(f"{path.name}: cabeçalho precisa ser exatamente {chr(9).join(cols)!r}")
-    return rows[1:]
+    return [r for r in rows[1:] if r]  # linha em branco (sobra de editor) não conta
+
+
+def _write_tsv(path, cols, rows):
+    """Atômico: os links já colados que ficam na fila não podem se perder no meio."""
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text("".join("\t".join(r) + "\n" for r in [cols] + rows), encoding="utf-8")
+    tmp.replace(path)
 
 
 def links_apply(path=None, catalog=None, replace=False):
@@ -464,7 +472,13 @@ def links_apply(path=None, catalog=None, replace=False):
     by_id = {b["id"]: b for b in doc["books"]}
     refs = {_ref(b["ml_url"]): b["id"] for b in doc["books"] if "ml_url" in b}
     keep, done, bad = [], [], 0
-    for n, r in enumerate(_read_tsv(path, ML_LINKS_COLS), 2):
+    rows = _read_tsv(path, ML_LINKS_COLS)
+    # ref repetido no arquivo = colagem errada, e não dá para saber qual linha está certa:
+    # nenhuma delas é aplicada
+    twice = {k for k, v in Counter(_ref(r[4].strip()) for r in rows
+                                   if len(r) == len(ML_LINKS_COLS) and r[4].strip()).items()
+             if v > 1}
+    for n, r in enumerate(rows, 2):
         if len(r) != len(ML_LINKS_COLS):
             print(f"linha {n}: precisa de {len(ML_LINKS_COLS)} colunas, tem {len(r)}")
             keep.append(r)
@@ -487,6 +501,8 @@ def links_apply(path=None, catalog=None, replace=False):
             ref = _ref(raw)
             if not ref:
                 raise c.Invalid("link sem ref: não é o gerado no painel")
+            if ref in twice:
+                raise c.Invalid("ref repetido no arquivo: nenhuma das linhas é aplicada")
             if refs.get(ref, bid) != bid:
                 raise c.Invalid(f"ref repetido (já é de {refs[ref]!r}): colagem na linha errada?")
         except c.Invalid as e:
@@ -510,8 +526,7 @@ def links_apply(path=None, catalog=None, replace=False):
         doc = {**doc, "books": [by_id[b["id"]] for b in doc["books"]]}
         c.load_catalog(doc, include_pending=True)  # o build confere tudo de novo no deploy
         write_catalog(catalog, doc)
-    path.write_text("".join("\t".join(r) + "\n" for r in [ML_LINKS_COLS] + keep),
-                    encoding="utf-8")
+    _write_tsv(path, ML_LINKS_COLS, keep)
     for b in done:
         print(f"aplicado: {b['id']} <- {PRODUCT_URL.format(b['ml_product_id'])} ({b['title']})")
     print(f"links-apply: {len(done)} aplicados, {bad} inválidos, "
