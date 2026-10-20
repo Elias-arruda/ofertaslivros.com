@@ -166,12 +166,18 @@
   /* Pedir um livro: no próprio domínio do form (o .com), envia por fetch e o aviso aparece no painel.
      De outra origem (o .com.br) a resposta não seria legível: fica o envio normal, e quem confirma é o
      servidor (volta em /#pedido-recebido). Erro ou falha de rede também caem no envio normal. */
-  const pedir = $('.pedir');
+  const pedir = $('.pedir'), px = $('.js-px');
+  if (pedir && px) {  // X e Esc fecham o painel nos dois domínios
+    const box = pedir.closest('details'), fechar = () => { box.open = false; $('summary', box).focus(); };
+    px.hidden = false;
+    px.addEventListener('click', fechar);
+    box.addEventListener('keydown', e => { if (e.key === 'Escape' && box.open) fechar(); });
+  }
   if (pedir && new URL(pedir.action).origin === location.origin) {
-    const box = pedir.closest('details'), ok = $('.pedir-ok', pedir);
+    const ok = $('.pedir-ok', pedir);
     pedir.addEventListener('submit', e => {
       e.preventDefault();
-      const btn = $('button', pedir);
+      const btn = $('.go', pedir);
       btn.disabled = true;
       fetch(pedir.action, { method: 'POST', body: new URLSearchParams(new FormData(pedir)) })
         .then(r => {
@@ -182,7 +188,6 @@
         .finally(() => { btn.disabled = false; });
     });
     pedir.addEventListener('input', () => { ok.textContent = ''; });
-    box.addEventListener('keydown', e => { if (e.key === 'Escape' && box.open) { box.open = false; $('summary', box).focus(); } });
   }
 
   /* Modal de detalhes: o link é a página real /livro/<id>/; aqui ele abre num <dialog> e entra no histórico */
