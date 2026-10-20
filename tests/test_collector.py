@@ -786,3 +786,22 @@ def test_fila_no_disco(env):
     q = (env["hist"] / "amazon_queue.csv").read_text().splitlines()
     assert q[1].startswith("livro-duplo,B0ABCDEFGH,Livro 1,2026-10-18T11:00:00+00:00,")
     assert "tag=" not in q[1]
+
+
+def test_datas_da_retirada_no_state(env):
+    """curadoria-automatica.md §10.8, item 6: o coletor mantém as datas que o curator lê."""
+    env["run"]()
+    cu = json.loads((env["hist"] / "state.json").read_text())["curadoria"]
+    raw = json.loads((env["hist"] / "offers.json").read_text())
+    o = {x["id"]: x for x in c.build.load_offers(raw, NOW)}
+    assert set(cu) == {b["id"] for b in c.read_catalog(env["cat"])}
+    for bid, st in cu.items():
+        assert st["publicado"] == "2026-10-18"
+        assert st["ultima_oferta"] == ("2026-10-18" if o.get(bid, {}).get("oferta") else None)
+    assert any(st["ultima_oferta"] for st in cu.values())
+    # 3 dias depois, sem preço fresco: nada avança, e quem sai do catálogo sai do estado
+    later = datetime(2026, 10, 21, 23, 0, tzinfo=timezone.utc)
+    books = c.read_catalog(env["cat"])
+    st = c.load_state(env["hist"])
+    c.track_curadoria(st, books[:1], {}, raw, later)
+    assert st["curadoria"] == {books[0]["id"]: cu[books[0]["id"]]}

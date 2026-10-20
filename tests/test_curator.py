@@ -142,7 +142,8 @@ def test_candidato_bom_vira_pendente_sem_link(env):
     env["add"](prod(1, orig=50))
     assert env["suggest"]() == 0
     b = env["books"]()[-1]
-    assert b == {"id": "livro-1", "isbn": isbn(1), "genre": "manga", "title": "Livro 1",
+    assert b == {"id": "livro-1", "isbn": isbn(1), "genre": "manga",
+                 "genre_source": "ml_book_genre", "title": "Livro 1",
                  "author": "Autora", "ml_product_id": "MLB1", "pendente": True}
     assert "ml_url" not in env["cat"].read_text().split("ja-tenho")[1].split("livro-1")[1]
     assert json.loads(env["seen"].read_text()) == {"MLB1": "2026-10-19"}
@@ -411,7 +412,8 @@ def no_gtin(n, **kw):
 def test_livro_sem_isbn_passa(env):
     env["add"](no_gtin(1, orig=50))
     assert env["suggest"]() == 0
-    assert env["books"]()[-1] == {"id": "livro-1", "genre": "manga", "title": "Livro 1",
+    assert env["books"]()[-1] == {"id": "livro-1", "genre": "manga",
+                                  "genre_source": "ml_book_genre", "title": "Livro 1",
                                   "author": "Autora", "ml_product_id": "MLB1",
                                   "pendente": True}
     row = next(ln for ln in env["md"].read_text().splitlines() if ln.startswith("| 1 |"))
@@ -571,3 +573,68 @@ def test_ml_links_tsv_fila_e_preserva_colado(env):
     rows = [ln.split("\t") for ln in env["links"].read_text().splitlines()[1:]]
     assert [(r[1], r[4]) for r in rows] == [("MLB1", ""), ("MLB2", ML_URL), ("MLB3", "")]
     assert "ja-tenho" not in env["links"].read_text()  # já tem ml_url
+
+
+# ---- retirada (critério 14; §10.8, item 6) ----
+
+def _st(pub="2026-08-01", anuncio="2026-10-19", oferta=None):
+    return {"publicado": pub, "ultimo_anuncio": anuncio, "ultima_oferta": oferta}
+
+
+def test_retirada_mista():
+    auto = {"genre_source": "ml_book_genre"}
+    books = [{"id": "manual-sem-oferta"}, {"id": "auto-sem-oferta", **auto},
+             {"id": "auto-oferta-recente", **auto}, {"id": "auto-novo", **auto},
+             {"id": "manual-sem-anuncio"}, {"id": "auto-30-dias", **auto},
+             {"id": "pendente", "pendente": True, **auto}, {"id": "sem-estado", **auto}]
+    st = {"curadoria": {
+        "manual-sem-oferta": _st(), "auto-sem-oferta": _st(oferta="2026-09-18"),
+        "auto-oferta-recente": _st(oferta="2026-09-25"), "auto-novo": _st(pub="2026-10-01"),
+        "manual-sem-anuncio": _st(anuncio="2026-09-18"), "auto-30-dias": _st(pub="2026-09-19"),
+        "pendente": _st()}}
+    got = [(b["id"], why) for b, why in cur.retire(books, st, TODAY)]
+    assert got == [("auto-sem-oferta", "sem_oferta"), ("manual-sem-anuncio", "sem_anuncio")]
+
+
+def test_retirada_nao_roda_com_dado_parado_ou_em_massa(capsys):
+    books = [{"id": f"l{n}"} for n in range(30)]
+    old = {"curadoria": {b["id"]: _st(anuncio="2026-09-01") for b in books}}
+    assert cur.retire(books, old, TODAY) == []  # coletor parado: tudo pareceria sem anúncio
+    assert cur.retire(books, {"curadoria": {}}, TODAY) == []
+    many = {"curadoria": {**old["curadoria"], "l0": _st()}}
+    assert cur.retire(books, many, TODAY) == []  # 29 > RETIRE_MAX
+    out = capsys.readouterr().out
+    assert "retirada pulada" in out and "teto 25" in out
+
+
+def test_retirada_no_pr_e_id_nunca_volta(env, tmp_path):
+    doc = json.loads(env["cat"].read_text())
+    doc["books"].append({"id": "livro-1", "genre": "manga", "genre_source": "ml_book_genre",
+                         "title": "Livro 1", "author": "A", "ml_product_id": "MLB777",
+                         "ml_url": ML_URL.replace("ref=X", "ref=Y")})
+    env["cat"].write_text(json.dumps(doc))
+    hist = tmp_path / "hist"
+    hist.mkdir()
+    (hist / "state.json").write_text(json.dumps({"curadoria": {
+        "ja-tenho": _st(), "livro-1": _st(oferta="2026-09-01")}}))
+    env["add"](prod(1))  # mesmo título: o slug não pode reaproveitar livro-1
+    assert env["suggest"](history=hist) == 0
+    d = json.loads(env["cat"].read_text())
+    assert [b["id"] for b in d["books"]] == ["ja-tenho", "livro-1-2"]
+    assert d["retirados"] == {"livro-1": "2026-10-19"}
+    assert json.loads(env["seen"].read_text())["MLB777"] == "2026-10-19"
+    assert "1 retirados" in env["md"].read_text() and "`livro-1`" in env["md"].read_text()
+
+
+def test_so_retirada_ja_grava_o_pr(env, tmp_path):
+    doc = json.loads(env["cat"].read_text())
+    doc["books"][0]["genre_source"] = "ml_book_genre"
+    doc["books"].append({"id": "outro", "genre": "ficcao", "title": "O", "author": "A",
+                         "asin": "B0ABCDEFGH"})
+    env["cat"].write_text(json.dumps(doc))
+    hist = tmp_path / "hist"
+    hist.mkdir()
+    (hist / "state.json").write_text(json.dumps({"curadoria": {
+        "ja-tenho": _st(oferta="2026-09-01"), "outro": _st()}}))
+    assert env["suggest"](history=hist) == 0  # nenhum candidato na descoberta
+    assert [b["id"] for b in env["books"]()] == ["outro"]
