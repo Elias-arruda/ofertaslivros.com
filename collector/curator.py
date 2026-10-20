@@ -6,6 +6,7 @@
         # retirada (§10.8, item 6) + até 50 pendentes no catalog.json + ml_links.tsv
     python3 collector/curator.py amazon-todo            # fila local amazon_links.tsv (§10.5)
     python3 collector/curator.py links-apply [--replace] [TSV]  # grava os ml_url colados (§10.4)
+    python3 collector/curator.py amazon-apply [--confirm-asin ID ...] [TSV]  # grava os asin (§10.5)
 
 Fontes: /highlights geral da categoria e, em segundo, os termos do /trends resolvidos pelo
 /products/search?q=. O /highlights filtrado por BOOK_GENRE dá 400 (probe 39258219518):
@@ -541,6 +542,122 @@ def links_apply(path=None, catalog=None, replace=False):
     return 1 if bad else 0
 
 
+AMAZON_HOSTS = {"www.amazon.com.br", "amazon.com.br"}
+# /dp/<ASIN>, /<slug>/dp/<ASIN> ou /gp/product/<ASIN>, com resto opcional (/ref=...)
+AMAZON_PATH_RE = re.compile(r"(?:/[^/]+)?/dp/([A-Z0-9]{10})(?:/.*)?|/gp/product/([A-Z0-9]{10})(?:/.*)?")
+
+
+def amazon_asin(raw, tag):
+    """ASIN do link de texto do SiteStripe colado pelo Elias, sem nenhuma request (regra 1).
+    O link é o comprovante de que ele estava na página logado na nossa conta: a tag tem de
+    ser a nossa, uma vez só. Só o ASIN é guardado; a URL é descartada."""
+    if not isinstance(raw, str) or len(raw) > 1000 or not re.fullmatch(r"[\x21-\x7e]+", raw):
+        raise c.Invalid("amazon_url precisa ser ASCII imprimível, até 1000 chars")
+    p = urlsplit(raw)
+    if p.scheme != "https" or p.hostname not in AMAZON_HOSTS or p.username or p.password \
+            or p.port or p.fragment or p.netloc != p.hostname:
+        raise c.Invalid("amazon_url precisa ser https em www.amazon.com.br (nada de amzn.to)")
+    m = AMAZON_PATH_RE.fullmatch(p.path)
+    if not m:
+        raise c.Invalid("amazon_url sem /dp/<ASIN> ou /gp/product/<ASIN> no caminho")
+    asin = m.group(1) or m.group(2)
+    if not c.ASIN_RE.fullmatch(asin):
+        raise c.Invalid(f"ASIN inválido: {asin!r}")
+    try:
+        tags = [v for k, v in parse_qsl(p.query, keep_blank_values=True, strict_parsing=True)
+                if k.lower() == "tag"]
+    except ValueError:
+        raise c.Invalid("amazon_url com query malformada") from None
+    if tags != [tag]:
+        raise c.Invalid("tag ausente, repetida ou de outra conta: gere o link logado na nossa")
+    return asin
+
+
+def amazon_apply(path=None, catalog=None, confirm=()):
+    """§10.5, item 3: grava o asin (e o isbn, se faltava) a partir da amazon_links.tsv
+    preenchida pelo Elias. Linha válida grava e sai do arquivo; inválida fica, com o motivo;
+    sem amazon_url, continua na fila. Nenhuma request, nem à Amazon nem ao ML.
+    -> 0 sem linha inválida."""
+    path, catalog = path or AMAZON_LINKS, catalog or c.CATALOG
+    _require_id("AMAZON_PARTNER_TAG")
+    tag, aff = partner_tag(), ml_affiliate()
+    doc = json.loads(catalog.read_text(encoding="utf-8"))
+    c.load_catalog(doc, include_pending=True)
+    by_id = {b["id"]: b for b in doc["books"]}
+    asins = {b["asin"] for b in doc["books"] if "asin" in b}
+    keep, done, bad = [], [], 0
+    rows = _read_tsv(path, AMAZON_LINKS_COLS)
+    # mesmo ASIN ou ISBN em duas linhas = colagem errada, sem saber qual: nenhuma é aplicada
+    seen = Counter()
+    for r in rows:
+        if len(r) == len(AMAZON_LINKS_COLS) and r[8].strip():
+            try:
+                seen[("asin", amazon_asin(r[8].strip(), tag))] += 1
+            except c.Invalid:
+                pass
+            seen[("isbn", r[7].strip())] += 1
+    twice = {k for k, v in seen.items() if v > 1}
+    for n, r in enumerate(rows, 2):
+        if len(r) != len(AMAZON_LINKS_COLS):
+            print(f"linha {n}: precisa de {len(AMAZON_LINKS_COLS)} colunas, tem {len(r)}")
+            keep.append(r)
+            bad += 1
+            continue
+        row = dict(zip(AMAZON_LINKS_COLS, (x.strip() for x in r)))
+        bid = row["book_id"]
+        if not row["amazon_url"]:
+            keep.append(r)
+            continue
+        b = by_id.get(bid)
+        try:
+            if b is None:
+                raise c.Invalid(f"book_id {bid!r} não está no catálogo")
+            if b.get("ml_product_id", "") != row["ml_product_id"]:
+                raise c.Invalid(f"ml_product_id {row['ml_product_id']!r} não é o de {bid!r}")
+            if b.get("pendente"):
+                raise c.Invalid(f"{bid!r} ainda é pendente: aplique o ml_url antes")
+            if "asin" in b:
+                raise c.Invalid(f"{bid!r} já tem asin")
+            asin = amazon_asin(row["amazon_url"], tag)
+            isbn = row["isbn_confirmado"]
+            if ("asin", asin) in twice or ("isbn", isbn) in twice:
+                raise c.Invalid("ASIN ou isbn repetido no arquivo: nenhuma das linhas é aplicada")
+            if not c.isbn_ok(isbn):
+                raise c.Invalid("isbn_confirmado precisa ser ISBN-13 válido, só dígitos")
+            if "isbn" in b and b["isbn"] != isbn:
+                raise c.Invalid(f"edição diferente: catálogo tem {b['isbn']}, a página {isbn}")
+            if any(x is not b and x.get("isbn") == isbn for x in by_id.values()):
+                raise c.Invalid(f"isbn {isbn} já é de outro livro do catálogo")
+            if asin in asins:
+                raise c.Invalid(f"ASIN {asin} já está no catálogo")
+            match = "isbn10" if asin == asin_provavel(isbn) else "manual"
+            if match == "manual" and bid not in confirm:
+                raise c.Invalid(f"ASIN {asin} não é o ISBN-10 do isbn_confirmado "
+                                f"(Kindle?); se conferiu, use --confirm-asin {bid}")
+            affiliate_url({"store": "amazon", "asin": asin}, tag, aff)  # o link que o build gera
+        except c.Invalid as e:
+            print(f"linha {n} ({bid}): {e}")
+            keep.append(r)
+            bad += 1
+            continue
+        asins.add(asin)
+        new = {**b, "isbn": b.get("isbn", isbn), "asin": asin}
+        if "isbn" not in b:  # isbn logo depois do id, como no resto do catálogo
+            new = {"id": b["id"], "isbn": isbn, **{k: v for k, v in new.items() if k != "id"}}
+        by_id[bid] = new
+        done.append((new, "manual" if "isbn" not in b else match))
+    if done:
+        doc = {**doc, "books": [by_id[b["id"]] for b in doc["books"]]}
+        c.load_catalog(doc, include_pending=True)  # duas lojas exigem isbn: conferido aqui
+        write_catalog(catalog, doc)
+    _write_tsv(path, AMAZON_LINKS_COLS, keep)
+    for b, match in done:
+        print(f"aplicado: {b['id']} <- ASIN {b['asin']} isbn {b['isbn']} amazon_match={match}")
+    print(f"amazon-apply: {len(done)} aplicados, {bad} inválidos, "
+          f"{len(keep) - bad} sem link ficam na fila. Lance o 1º preço em amazon_prices.csv")
+    return 1 if bad else 0
+
+
 def write_catalog(path, doc):
     """Um livro por linha: o PR do curator mostra só linhas novas no diff."""
     head = "".join(f" {json.dumps(k)}: {json.dumps(v, ensure_ascii=False)},\n"
@@ -840,6 +957,10 @@ def main(argv=None):
     la = sub.add_parser("links-apply")
     la.add_argument("tsv", nargs="?", type=Path, default=ML_LINKS)
     la.add_argument("--replace", action="store_true", help="troca um ml_url que já existe")
+    aa = sub.add_parser("amazon-apply")
+    aa.add_argument("tsv", nargs="?", type=Path, default=AMAZON_LINKS)
+    aa.add_argument("--confirm-asin", action="append", default=[], metavar="BOOK_ID",
+                    help="aceita ASIN diferente do ISBN-10 para este livro (conferido à mão)")
     a = ap.parse_args(argv)
     try:
         if a.cmd == "probe":
@@ -848,6 +969,8 @@ def main(argv=None):
             return amazon_todo()
         if a.cmd == "links-apply":
             return links_apply(a.tsv, replace=a.replace)
+        if a.cmd == "amazon-apply":
+            return amazon_apply(a.tsv, confirm=a.confirm_asin)
         return suggest(summary_path=a.summary, history=a.history)
     except c.Invalid as e:
         sys.exit(f"curator falhou: {e}")

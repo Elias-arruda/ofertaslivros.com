@@ -281,9 +281,12 @@ def test_so_api_do_ml_e_nenhum_html(env):
     cur.probe()
     assert {urlsplit(u).hostname for u in env["fake"].urls} == {"api.mercadolibre.com"}
     src = (ROOT / "collector" / "curator.py").read_text()
-    # Amazon só como texto montado para a TSV (critério 1): nas duas constantes, nunca chamado
-    assert [ln.split("=")[0].strip() for ln in src.splitlines() if "amazon." in ln.lower()
-            and not ln.lstrip().startswith("#")] == ["AMAZON_DP", "AMAZON_SEARCH"]
+    # Amazon só como texto (critério 1): URLs montadas para a TSV, a allowlist do amazon-apply
+    # e mensagens de erro; nunca passada ao urlopen (o teste de hosts acima garante)
+    lines = [ln.strip() for ln in src.splitlines() if "amazon." in ln.lower()
+             and not ln.lstrip().startswith("#")]
+    assert all(ln.startswith(("AMAZON_DP =", "AMAZON_SEARCH =", "AMAZON_HOSTS =", "raise c.Invalid("))
+               for ln in lines), lines
     for bad in ("html.parser", "bs4", "BeautifulSoup", "playwright", "selenium"):
         assert bad not in src
     for b in env["books"]()[1:]:
@@ -841,3 +844,96 @@ def test_links_apply_bom_crlf_linha_em_branco_e_tudo_vazio(env):
                               + "\t".join(_row(3, _link("R3"))) + "\r\n").encode())
     assert cur.links_apply(env["links"], env["cat"]) == 0
     assert {x["id"]: x for x in env["books"]()}["p3"]["ml_url"] == _link("R3")
+
+
+
+# ---- amazon-apply (§10.5, item 3) ----
+
+TAG = "nossa-20"
+
+
+def _amz_env(env, monkeypatch, rows, books=None):
+    monkeypatch.setenv("AMAZON_PARTNER_TAG", TAG)
+    doc = json.loads(env["cat"].read_text())
+    doc["books"] += books or [_pub(1), _pub(2, isbn=isbn(2)), _pub(3)]
+    env["cat"].write_text(json.dumps(doc))
+    tsv = env["cat"].parent / "amazon_links.tsv"
+    tsv.write_text("\n".join("\t".join(r) for r in [cur.AMAZON_LINKS_COLS] + rows) + "\n")
+    return tsv
+
+
+def _arow(n, url="", isbn_c="", pid=None, bid=None):
+    return [bid or f"pub-{n}", "", pid or f"MLB{n}", f"T{n}", "-", "-", "-", isbn_c, url]
+
+
+def _sitestripe(asin, tag=TAG, path="/Livro-Qualquer/dp/{}/ref=sr_1_1"):
+    return f"https://www.amazon.com.br{path.format(asin)}?crid=X&tag={tag}&linkCode=ll1"
+
+
+def test_amazon_apply_valido_isbn10_e_manual(env, monkeypatch, capsys):
+    a1 = cur.asin_provavel(isbn(1))
+    tsv = _amz_env(env, monkeypatch, [_arow(1, _sitestripe(a1), isbn(1)), _arow(3)])
+    assert cur.amazon_apply(tsv, env["cat"]) == 0
+    b = {x["id"]: x for x in env["books"]()}["pub-1"]
+    assert b["asin"] == a1 and b["isbn"] == isbn(1) and list(b)[:2] == ["id", "isbn"]
+    out = capsys.readouterr().out
+    assert f"aplicado: pub-1 <- ASIN {a1}" in out and "amazon_match=manual" in out  # sem isbn no ML
+    assert tsv.read_text().splitlines()[1].startswith("pub-3\t")  # sem link fica
+    assert not any("amazon" in u for u in env["fake"].urls)       # regra 1: nenhuma request
+
+
+def test_amazon_apply_isbn_do_ml_bate_e_match_isbn10(env, monkeypatch, capsys):
+    a2 = cur.asin_provavel(isbn(2))
+    tsv = _amz_env(env, monkeypatch, [_arow(2, _sitestripe(a2, path="/dp/{}"), isbn(2))])
+    assert cur.amazon_apply(tsv, env["cat"]) == 0
+    assert "amazon_match=isbn10" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("row,why", [
+    (_arow(1, "https://amzn.to/abc", isbn(1)), "amzn.to"),
+    (_arow(1, _sitestripe("8535914846", tag="outra-20"), isbn(1)), "outra conta"),
+    (_arow(1, _sitestripe("8535914846") + f"&tag={TAG}", isbn(1)), "repetida"),
+    (_arow(1, _sitestripe("8535914846").replace("&tag=" + TAG, ""), isbn(1)), "ausente"),
+    (_arow(1, _sitestripe("8535914846").replace("www.amazon.com.br", "www.amazon.com"), isbn(1)), "https em www.amazon.com.br"),
+    (_arow(1, _sitestripe("8535914846").replace("https://", "https://x@"), isbn(1)), "https em www.amazon.com.br"),
+    (_arow(1, _sitestripe("8535914846", path="/s?k={}"), isbn(1)), "/dp/"),
+    (_arow(1, _sitestripe("B0ABCDEFGH"), isbn(1)), "--confirm-asin pub-1"),   # Kindle?
+    (_arow(2, _sitestripe("8535914846"), isbn(5)), "edição diferente"),       # ML tem isbn(2)
+    (_arow(1, _sitestripe("8535914846"), "123"), "ISBN-13"),
+    (_arow(1, _sitestripe("8535914846"), isbn(1), pid="MLB9"), "não é o de"),
+    (_arow(1, _sitestripe("8535914846"), isbn(1), bid="nao-existe"), "não está no catálogo"),
+])
+def test_amazon_apply_recusa_e_mantem_a_linha(env, monkeypatch, capsys, row, why):
+    tsv = _amz_env(env, monkeypatch, [row])
+    before = env["cat"].read_text()
+    assert cur.amazon_apply(tsv, env["cat"]) == 1
+    assert env["cat"].read_text() == before
+    assert tsv.read_text().splitlines()[1] == "\t".join(row)
+    assert why in capsys.readouterr().out
+
+
+def test_amazon_apply_confirm_asin_e_repetidos(env, monkeypatch, capsys):
+    tsv = _amz_env(env, monkeypatch, [_arow(1, _sitestripe("B0ABCDEFGH"), isbn(1)),
+                                      _arow(3, _sitestripe("B0ABCDEFGH"), isbn(3))])
+    before = env["cat"].read_text()
+    assert cur.amazon_apply(tsv, env["cat"], confirm=["pub-1", "pub-3"]) == 1
+    assert env["cat"].read_text() == before  # mesmo ASIN em duas linhas: nenhuma
+    assert capsys.readouterr().out.count("repetido no arquivo") == 2
+    tsv.write_text("\n".join("\t".join(r) for r in [cur.AMAZON_LINKS_COLS,
+                   _arow(1, _sitestripe("B0ABCDEFGH"), isbn(1))]) + "\n")
+    assert cur.amazon_apply(tsv, env["cat"], confirm=["pub-1"]) == 0
+    assert {x["id"]: x for x in env["books"]()}["pub-1"]["asin"] == "B0ABCDEFGH"
+    tsv.write_text("\n".join("\t".join(r) for r in [cur.AMAZON_LINKS_COLS,
+                   _arow(3, _sitestripe("B0ABCDEFGH"), isbn(3))]) + "\n")
+    assert cur.amazon_apply(tsv, env["cat"], confirm=["pub-3"]) == 1
+    assert "ASIN B0ABCDEFGH já está no catálogo" in capsys.readouterr().out
+
+
+def test_amazon_apply_sem_tag_no_ambiente_nao_aplica(env, monkeypatch):
+    tsv = _amz_env(env, monkeypatch, [_arow(1, _sitestripe("8535914846"), isbn(1))])
+    monkeypatch.delenv("AMAZON_PARTNER_TAG")
+    with pytest.raises(c.Invalid, match="AMAZON_PARTNER_TAG"):
+        cur.amazon_apply(tsv, env["cat"])
+    monkeypatch.setenv("AMAZON_PARTNER_TAG", "exemplo-20")
+    with pytest.raises(c.Invalid, match="de exemplo"):
+        cur.amazon_apply(tsv, env["cat"])
