@@ -822,3 +822,11 @@ def test_state_curadoria_estranho_nao_derruba_e_marca_coleta_ok(env):
     st = json.loads((hist / "state.json").read_text())
     assert st["curadoria_ok"] == "2026-10-18"  # ML rodou inteiro
     assert {v["publicado"] for v in st["curadoria"].values()} == {"2026-10-18"}
+
+
+def test_coleta_inteira_mesmo_com_todos_inativos(env):
+    for pid in list(env["fake"].products):  # sem vencedor e sem anúncio: todos inativos
+        env["fake"].products[pid] = {"id": "x", "status": "active", "buy_box_winner": None}
+    env["run"]()
+    assert not [r for r in rows(env["hist"]) if r.endswith(",ml_api")]
+    assert json.loads((env["hist"] / "state.json").read_text())["curadoria_ok"] == "2026-10-18"
