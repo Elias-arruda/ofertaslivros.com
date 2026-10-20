@@ -16,7 +16,7 @@
      "list_price_cents": 14000,
      "lowest_90d_cents": 14000,
      "history_since": "2026-10-18",
-     "checked_at": "2026-10-20T13:31:00+00:00"
+     "checked_at": "2026-10-20T14:00:58+00:00"
     }
    ]
   },
@@ -54,7 +54,7 @@
      "list_price_cents": 2500,
      "lowest_90d_cents": 2500,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T13:31:00+00:00"
+     "checked_at": "2026-10-20T14:00:58+00:00"
     }
    ]
   },
@@ -73,7 +73,7 @@
      "list_price_cents": 3000,
      "lowest_90d_cents": 3000,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T13:31:00+00:00"
+     "checked_at": "2026-10-20T14:00:58+00:00"
     }
    ]
   },
@@ -92,7 +92,7 @@
      "list_price_cents": 1990,
      "lowest_90d_cents": 1990,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T13:31:00+00:00"
+     "checked_at": "2026-10-20T14:00:58+00:00"
     }
    ]
   },
@@ -107,11 +107,11 @@
      "store": "mercadolivre",
      "ml_product_id": "MLB19459381",
      "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=elias-arruda&matt_tool=31781474&forceInApp=true&ref=BHujssp5YbdZUaA4nldqDUSMlDtOBy67BmzRTXQ7y69Cd8JL2QDNWFrVBj%2BjzwWZWVdILcrHp6OmnhzR2j%2FVyn1hMdgFgzcxAieTxsqSKWggnHVJe%2Fkzv4hmaO%2FYRBU4Po9cN0s4QhM30R7cnbe8RIgkZIUUT9ObrsE9hmULFuLgdVCpQZ%2F73J6uj%2FSEs4VTQOLaILvZNchxLn0DZHb57DuuFo%2FJl5E%2BQRXG%2Bp8%2FbuWx8E3bgzYRI4yE%2B2TJUzlfBQPS7Q%3D%3D",
-     "price_cents": 3473,
-     "list_price_cents": 3473,
-     "lowest_90d_cents": 3473,
+     "price_cents": 3310,
+     "list_price_cents": 3310,
+     "lowest_90d_cents": 3310,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T13:31:00+00:00"
+     "checked_at": "2026-10-20T14:00:58+00:00"
     }
    ]
   },
@@ -130,7 +130,7 @@
      "list_price_cents": 7490,
      "lowest_90d_cents": 5320,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T13:31:00+00:00"
+     "checked_at": "2026-10-20T14:00:58+00:00"
     }
    ]
   },
@@ -149,7 +149,7 @@
      "list_price_cents": 5890,
      "lowest_90d_cents": 5890,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T13:31:00+00:00"
+     "checked_at": "2026-10-20T14:00:58+00:00"
     }
    ]
   },
@@ -168,7 +168,7 @@
      "list_price_cents": 5600,
      "lowest_90d_cents": 5600,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T13:31:00+00:00"
+     "checked_at": "2026-10-20T14:00:58+00:00"
     }
    ]
   },
@@ -187,7 +187,121 @@
      "list_price_cents": 8600,
      "lowest_90d_cents": 8600,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T13:31:00+00:00"
+     "checked_at": "2026-10-20T14:00:58+00:00"
+    }
+   ]
+  },
+  {
+   "id": "cartas-de-um-diabo-a-seu-aprendiz",
+   "genre": "ficcao",
+   "title": "Cartas de um diabo a seu aprendiz",
+   "author": "Lewis, C. S.",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_753389-MLA113421179343_062026-F.jpg",
+   "stores": [
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB19438138",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=elias-arruda&matt_tool=31781474&forceInApp=true&ref=BLPXRMmDLA4qVE040eEJEhJ81kUbGm%2BuZqfMpSi0H1ngiaFxMAEYbJE4J9St%2B8usyPKHJq6n6B792lIEfCby2W%2Ff1ru6fu1sQ2%2BZ1cdEON%2F4GvlC0035%2BghVqCyM%2FqrYpSjFaZH23SaGvHEFuLzppYGrfzq0pmyYnYwooPmwF44CU64ZWpM%2FRoP0RtDBQTU4HL9DzjV76lXGVsUEckNRgsYUrRt7RtMVt0ALywfuZcJFpSyUiJcWKcGQK2yVhuaquoak3A%3D%3D",
+     "price_cents": 2947,
+     "list_price_cents": 2947,
+     "lowest_90d_cents": 2947,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T14:00:58+00:00"
+    }
+   ]
+  },
+  {
+   "id": "a-hora-da-estrela",
+   "genre": "ficcao",
+   "title": "A hora da estrela",
+   "author": "Clarice Lispector",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_757956-MLA112165365346_062026-F.jpg",
+   "stores": [
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB19300318",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=elias-arruda&matt_tool=31781474&forceInApp=true&ref=BI3kwThxs72efJWfw3moqpSKS0FtzqhA1lsJSjSEnYRy8%2F20bfTYqanVek0xsn3WT3jEcINGTe9bVO4%2BypdxbZQ%2FxRfCr0gOH%2FpWZJN74F5GeFkY2Ih9EfD2y6Jw3Oyxgqbqvc%2Ft90u35nCPIRj5XfkziqVBQBQZNHIxyS3PVtJomcbrtfTY%2BFi%2FLNf%2Fb%2B1WzhbklxcyC87lMGTPuxv%2F52GtfZUAaq5sMKf8y7unrGnMRPuMU%2FADZMcBjnLBfL1TnO05Fg%3D%3D",
+     "price_cents": 2355,
+     "list_price_cents": 2355,
+     "lowest_90d_cents": 2355,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T14:00:58+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-conto-da-aia-2",
+   "genre": "ficcao",
+   "title": "O conto da aia",
+   "author": "Atwood, Margaret",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_721322-MLA112270185564_062026-F.jpg",
+   "stores": [
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB19301887",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=elias-arruda&matt_tool=31781474&forceInApp=true&ref=BNXNenKbYU%2F54VRsafNiIqJ2fPxIjP%2FQaLUKDuMiP%2BYmHOafZ53i2Fe5PRd%2BLYScuMityVznWtY%2FwIoSYKLVTAcbh59So8DpjlCIdahjasoJAOjys8vkXmuoBkfkCxdyGGrzI39L%2BGiJUs2v%2BuCdDhX12ezAUrB6MF%2Bw1ewfIfX2dTB2BMRZyaHd2Pd%2BK72cEQPZyFAmOngWLDIgMxX009Kf6jQtFIFKV1jQlwBWvowNE6xMhyQakif7iYl1etQk6jBbRw%3D%3D",
+     "price_cents": 5990,
+     "list_price_cents": 5990,
+     "lowest_90d_cents": 5990,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T14:00:58+00:00"
+    }
+   ]
+  },
+  {
+   "id": "como-as-democracias-morrem",
+   "genre": "nao-ficcao",
+   "title": "Como as democracias morrem",
+   "author": "Levitsky, Steven",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_983118-MLA112164581612_062026-F.jpg",
+   "stores": [
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB19400635",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=elias-arruda&matt_tool=31781474&forceInApp=true&ref=BCAwVjmnKWvGgm1LELUNiFncb3ntjpYlrvUNpgxkIAQUjtjveSorD3RsJHdygNLY1SFR72kGlYBBBhCuFF%2BAixlFzUKkmVygSGnX5dhRQl6Kr5z6G3gWJaQVWOEbPt1Gr3pM%2BJZhKfNXOxYC78P6bGUVENML2TVtMQyMFbzFyZD9iPIDL0L02iiWT0YqPSXpJYa69oGZdtxRPOxb542lTsRAPGHjaSnwptD4j8gYxZJx%2FnZQYkj6xgyb34qvPtU0Sybuug%3D%3D",
+     "price_cents": 5290,
+     "list_price_cents": 5290,
+     "lowest_90d_cents": 5290,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T14:00:58+00:00"
+    }
+   ]
+  },
+  {
+   "id": "como-morrem-os-nossos-escritores",
+   "genre": "ficcao",
+   "title": "Como Morrem Os Nossos Escritores",
+   "author": "Hélio Pólvora",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_739186-MLA111614143086_062026-F.jpg",
+   "stores": [
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB71935426",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=elias-arruda&matt_tool=31781474&forceInApp=true&ref=BPnYBi8pMFTBP%2Fk2lQYAm8KFqgf4wwRjzrFEGMN9XS%2BxazfT9yD0gCu8IwEx3n%2BAzjn8w7PzEtw98VViIFsCmy%2FY1ZqPASuR%2FzMbs22%2FWu%2By8VBVcQaT9OhbmYJ%2FMDClinBKCNZqcGSgt2T7K0B0k5oTQ4bEGoYKWOygNDhZ%2BiFmrmavAEbeEy8D%2BkHxwqKYa3xPHajT%2Fus%2BDFCX7So64T%2B5OZt0qNslawQ%2FfAduagWscq4DF5fwqailUd7KUwDRdTozMQ%3D%3D",
+     "price_cents": 6400,
+     "list_price_cents": 6400,
+     "lowest_90d_cents": 6400,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T14:00:58+00:00"
+    }
+   ]
+  },
+  {
+   "id": "pre-sal",
+   "genre": "nao-ficcao",
+   "title": "Pre - Sal",
+   "author": "Reis, Nando",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_962864-MLA82193779764_022025-F.jpg",
+   "stores": [
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB40641057",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=elias-arruda&matt_tool=31781474&forceInApp=true&ref=BEZoJW3WC%2FwALZZ0YYe%2BhAEjX9akSTdSIcVy1CUFBJ9VsnhzXDmU8YsRgKrg68NM3%2FjK8D9mDhEmZIgkAdATwNEqm5Mlwx4rOdSD1nSLFIOhRSdRT3EQntBjhuNvcjvCKj7ajMJTDX3zXqh5kJzEqX8yIZNxHnRWa4D1llAoSAyY4qcn6WmHHc644suzsUQKM%2BMORSW7ZSRwcTcZqAnNPDzdd53J3GtCLOJPbYAkOsjbAYN%2B5r0Ux0bDtLN%2FcVnmQOoaCg%3D%3D",
+     "price_cents": 6000,
+     "list_price_cents": 6000,
+     "lowest_90d_cents": 6000,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T14:00:58+00:00"
     }
    ]
   }
