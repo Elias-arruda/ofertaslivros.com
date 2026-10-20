@@ -44,7 +44,6 @@ GENRES = {
     "negocios": "Negócios e finanças",
     "politica": "Política e sociedade",
     "historia": "História e biografias",
-    "nao-ficcao": "Não ficção",
     "manga": "Mangá e HQ",
 }
 # Rotas de dist/ que nenhum slug de nicho pode ocupar.
@@ -1024,7 +1023,6 @@ GENRE_DESC = {
     "negocios": "Carreira, gestão e dinheiro",
     "politica": "Democracia, poder e ideias",
     "historia": "Do passado às vidas que marcaram",
-    "nao-ficcao": "História, ciência e ensaio",
     "manga": "Mangá, HQ e graphic novel",
 }
 assert set(GENRE_DESC) == set(GENRES)
@@ -1093,7 +1091,6 @@ ICONS = {
     "g-literatura-brasileira": '<path d="M5 19C5 10 11 5 19 5c0 8-5 14-14 14zM5 19l8-8M9 15h4M11 13V9"/>',
     "g-ficcao": '<path d="M15 4a7.5 7.5 0 1 0 5.5 11.5A6 6 0 0 1 15 4zM6 3v4M4 5h4"/>',
     "g-negocios": '<path d="M4 20h16M6 16l4.5-4.5 3 3L19 9M15 9h4v4"/>',
-    "g-nao-ficcao": '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/>',
     "g-romance": '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
     "g-fantasia": '<path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2zM19 3v4M17 5h4"/>',
     "g-suspense": '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/>',

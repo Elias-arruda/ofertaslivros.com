@@ -43,9 +43,9 @@ GENRE_MAP = {
     "13061816": "manga",       # Mangás e HQs
     "13061825": "negocios",    # Negócios
     "7538039": "ficcao",       # Literatura
-    "13611960": "nao-ficcao",  # Biografias
-    "13464376": "nao-ficcao",  # História
-    "76624759": "nao-ficcao",  # Ciência
+    "13611960": "historia",    # Biografias
+    "13464376": "historia",    # História
+    "76624759": "historia",    # Ciência
 }
 DAY_MAX = 50       # livros novos por execução diária: meta e teto (§10.8, item 5)
 GENRE_MAX = 10     # por gênero, por execução (tag não conta)

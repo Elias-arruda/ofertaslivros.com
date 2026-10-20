@@ -141,7 +141,7 @@ Ids do `BOOK_GENRE`: os 25 valores e o slug de cada um estão na tabela de `cura
 
 ### 5.2 Nichos e tags
 - Os 10 gêneros de `curadoria-automatica.md` §10.1, com o mapa `BOOK_GENRE → slug` de lá: `literatura-brasileira` (só manual), `ficcao`, `nao-ficcao`, `negocios`, `manga`, `autoajuda`, `infantojuvenil`, `religiao`, `estudo`, `estilo-de-vida`. **Autoajuda entra.**
-- Desde 2026-10-20 (decisão do Elias, PR #49) também `romance`, `fantasia`, `suspense`, `mindset`, `politica` e `historia`, só pela curadoria manual até o mapa `BOOK_GENRE → slug` ser revisto.
+- Desde 2026-10-20 (decisão do Elias, PR #49) também `romance`, `fantasia`, `suspense`, `mindset`, `politica` e `historia`, só pela curadoria manual até o mapa `BOOK_GENRE → slug` ser revisto. `nao-ficcao` sai do site depois do #45: no `GENRE_MAP`, Biografias, História e Ciência passam a ir para `historia`.
 - `BOOK_GENRE` = LGBTQ+ (76624760) → `genre: "ficcao"`, `tags: ["lgbtqia"]`, `genre_source: "padrao_lgbtqia"` (§10.1.1). O Elias corrige o gênero à mão quando for não ficção.
 - Livro já publicado mantém o gênero manual (decisão 4).
 - **Exclusões B5 (aprovadas na rodada 5):** Bíblia, Vade Mecum e apostila de concurso ficam fora do automático. Critério:
