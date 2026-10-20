@@ -714,7 +714,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
   border: 1px solid var(--line); box-shadow: 0 24px 48px -16px #000000a6;
 }
 .pedir-h { font: 700 19px/1.2 var(--serif); margin-bottom: 6px; padding-right: 36px; }
-.pedir-x {
+.pedir-x {  /* sai com hidden até o JS ligar; o [hidden] global usa !important e vence o display: grid */
   position: absolute; top: 12px; right: 12px; display: grid; place-items: center; width: 36px; height: 36px;
   border-radius: 50%; color: inherit; background: transparent; border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
   transition: background-color .3s var(--ease);
