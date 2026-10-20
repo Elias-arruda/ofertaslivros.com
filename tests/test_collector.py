@@ -840,3 +840,9 @@ def test_state_com_campo_de_tipo_errado_e_descartado(env, bad):
     assert env["run"]() == 0
     assert set(json.loads((env["hist"] / "state.json").read_text())["curadoria"]) \
         == {b["id"] for b in c.read_catalog(env["cat"])}
+
+
+@pytest.mark.parametrize("v", ["2026-W42-1", "20261018", "2026-10-18T00:00", "2026-1-8", " 2026-10-18"])
+def test_dia_so_na_forma_canonica(v):
+    assert not c._day(v)
+    assert c._day("2026-10-18")

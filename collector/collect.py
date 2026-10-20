@@ -678,8 +678,8 @@ CURADORIA_KEYS = {"publicado", "ultimo_anuncio", "ultima_oferta"}
 
 def _day(v):
     """AAAA-MM-DD válido (entrada estranha no state.json é descartada, nunca derruba)."""
-    try:
-        return isinstance(v, str) and len(v) == 10 and bool(date.fromisoformat(v))
+    try:  # só a forma canônica: fromisoformat aceita "2026-W42-1", que quebra a comparação
+        return isinstance(v, str) and date.fromisoformat(v).isoformat() == v
     except ValueError:
         return False
 
