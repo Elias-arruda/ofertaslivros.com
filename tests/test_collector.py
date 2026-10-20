@@ -785,6 +785,20 @@ def test_fila_ordem():
     assert [b["id"] for b in c.amazon_queue(books, last)] == ["c", "b", "a"]
 
 
+def test_fila_teto_amazon_active_max(monkeypatch):
+    monkeypatch.setattr(c, "AMAZON_ACTIVE_MAX", 2)
+    books = [{"id": i, "asin": "B0ABCDEFGH", "title": i} for i in "abcd"]
+    since = {"d": "2026-01-01", "b": "2026-02-01"}  # d e b já estão em conferência
+    assert [b["id"] for b in c.amazon_queue(books, {}, since)] == ["b", "d"]
+    assert [b["id"] for b in c.amazon_queue(books[:1] + books[2:3], {}, since)] == ["a", "c"]
+
+
+def test_fila_no_disco_respeita_o_teto(env, monkeypatch):
+    monkeypatch.setattr(c, "AMAZON_ACTIVE_MAX", 0)
+    env["run"]()
+    assert len((env["hist"] / "amazon_queue.csv").read_text().splitlines()) == 1  # só cabeçalho
+
+
 def test_fila_no_disco(env):
     env["run"]()
     q = (env["hist"] / "amazon_queue.csv").read_text().splitlines()
