@@ -31,7 +31,7 @@ ALLOWED_HOSTS = {
     "mercadolivre.com",
 }
 STORES = {"amazon": "Amazon", "mercadolivre": "Mercado Livre"}
-# Domínio do <link rel="canonical"> (o site responde em .com e .com.br). Provisório até o Elias confirmar.
+# Domínio do <link rel="canonical"> (o site responde em .com e .com.br): o .com, decisão do Elias em 2026-10-20.
 SITE = "https://ofertaslivros.com"
 # Conjunto fechado: o slug vira diretório em dist/, então nunca vem do JSON livre.
 GENRES = {
