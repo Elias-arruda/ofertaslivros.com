@@ -242,6 +242,8 @@ def validate_store(s, tag, aff):
     for k in ("price_cents", "list_price_cents", "lowest_90d_cents"):
         out[k] = _cents(s, k)
     out["median_90d_cents"] = _cents(s, "median_90d_cents") if "median_90d_cents" in s else None
+    if out["median_90d_cents"] is not None and out["median_90d_cents"] < out["lowest_90d_cents"]:
+        raise Invalid(f"{store}: median_90d_cents abaixo do lowest_90d_cents")  # mínimo de 0-90 <= mediana de 8-90
     if out["list_price_cents"] < out["price_cents"]:
         raise Invalid(f"{store}: list_price_cents menor que price_cents")
     ca = s.get("checked_at")
@@ -1869,9 +1871,9 @@ def selftest():
     desde = vis(page(load(A(price_cents=9900, list_price_cents=9900, lowest_90d_cents=9900, history_since="2026-10-10"))))
     assert 'data-tipo="sem-oferta"' in desde and '<p class="stamp stamp--since">Menor preço desde 10/10</p>' in desde
     assert 'id="h-da-curadoria"' in desde and "Nenhuma oferta conferida agora" in desde
-    for bad in (0, -1, 1.5, "100", True, None):                                     # mediana inválida quebra o build
-        assert rejects(A(median_90d_cents=bad)), bad
-    assert load(A(median_90d_cents=1))[0]["median_90d_cents"] == 1 and load(good)[0]["median_90d_cents"] is None
+    for bad in (0, -1, 1.5, "100", True, None, 1989):                               # mediana inválida quebra o build
+        assert rejects(A(median_90d_cents=bad)), bad                                # 1989 < lowest_90d_cents (1990)
+    assert load(A(median_90d_cents=1990))[0]["median_90d_cents"] == 1990 and load(good)[0]["median_90d_cents"] is None
     assert {"curadoria", "novidades"} <= RESERVED and not set(GENRES) & RESERVED   # slugs reservados
     def nov(i, hs=None, title=None, **kw):
         st = {**amz, "price_cents": 5000, "list_price_cents": 5000, "lowest_90d_cents": 4500, **kw}
