@@ -885,8 +885,7 @@ def ranked(offers):
 
 
 def bot_block(bot):
-    """Capítulo marinho do alerta. "Pedir um livro" também abre o bot: não há formulário
-    (site sem backend, CSP form-action 'none'). Sem o bot, os botões saem "em breve"."""
+    """Capítulo marinho do alerta. Sem o bot, o botão sai "em breve". O pedido de livro é o form do fab."""
     url = bot and f"https://t.me/{bot}"
     steps = ("Escolha o livro e toque no sino", "No Telegram, toque em Iniciar", "Quando o preço cair, avisamos")
     lis = "".join(f'<li><span class="n">{k}</span>{t}</li>' for k, t in enumerate(steps, 1))
@@ -896,8 +895,7 @@ def bot_block(bot):
     <p class="kicker">{icon("sino")}Seu alerta no Telegram</p>
     <h2 id="h-bot">Avisamos quando o livro baixar. <em>Você só escolhe qual.</em></h2>
     <ol class="passos">{lis}</ol>
-    <p class="bot-acts">{cta(url, f'Ativar no Telegram{icon("seta")}', "go", '<span class="sr"> (abre o Telegram)</span>')}
-    {cta(url, "Pedir um livro", "btn btn--ivory", '<span class="sr"> ao bot (abre o Telegram)</span>')}</p>
+    <p class="bot-acts">{cta(url, f'Ativar no Telegram{icon("seta")}', "go", '<span class="sr"> (abre o Telegram)</span>')}</p>
     <p class="bot-note">{"O bot guarda" if bot else "Quando estiver no ar, o bot vai guardar"} só o necessário para avisar você e {"apaga" if bot else "apagar"} o alerta quando ele disparar. Veja a <a href="/privacidade/">privacidade</a>.</p>
   </div>{aneis("aneis--big")}
 </section>"""
@@ -954,10 +952,27 @@ def faq(bot, ch):
 </section>"""
 
 
-def fab(bot):
-    """Botão flutuante "Pedir um livro": abre o bot (sem formulário); sem o bot, "em breve"."""
-    return cta(bot and f"https://t.me/{bot}", f'{icon("busca")}<span class="fab-t">Pedir um livro</span>', "fab",
-               '<span class="sr"> ao bot do Telegram (abre o Telegram)</span>')
+PEDIDO_OK = "Recebemos seu pedido. Obrigado! Se o livro entrar em oferta, ele aparece aqui e nos canais."
+
+
+def fab():
+    """Botão flutuante "Pedir um livro": <details> que abre o form sem JS (docs/produto/pedido-de-livro.md).
+    Netlify Forms (form "pedido", honeypot "site") recebe o POST no SITE, também vindo do .com.br; o e-mail
+    de destino fica só no painel do Netlify. Sem JS, a volta é SITE/#pedido-recebido e o :target mostra o
+    aviso; com JS (app.js), o envio é por fetch e o aviso aparece no próprio painel."""
+    return f"""<details class="fab-box" id="pedir">
+<summary class="fab">{icon("busca")}<span class="fab-t">Pedir um livro</span></summary>
+<form class="pedir" name="pedido" method="POST" action="{SITE}/#pedido-recebido" data-netlify="true" netlify-honeypot="site" accept-charset="utf-8">
+<input type="hidden" name="form-name" value="pedido">
+<p class="sr" aria-hidden="true"><label>Não preencha <input name="site" tabindex="-1" autocomplete="off"></label></p>
+<p class="pedir-h">Qual livro você quer ver aqui?</p>
+<label for="p-titulo">Nome do livro</label><input id="p-titulo" name="titulo" required maxlength="150" autocomplete="off">
+<label for="p-autor">Autor do livro <span>(opcional)</span></label><input id="p-autor" name="autor" maxlength="100" autocomplete="off">
+<button class="go" type="submit">Enviar pedido</button>
+<p class="pedir-ok" role="status" data-ok="{PEDIDO_OK}"></p>
+</form>
+</details>
+<p class="pedido-recebido" id="pedido-recebido">{PEDIDO_OK} <a href="#pedir">Fechar</a></p>"""
 
 
 def home_sections(offers, bot=None, ch=()):
@@ -982,7 +997,7 @@ def home_sections(offers, bot=None, ch=()):
         bot_block(bot),
         channels_block(ch),
         faq(bot, ch),
-        fab(bot),
+        fab(),
     ]
     return "\n".join(p for p in parts if p)
 
@@ -1307,7 +1322,9 @@ def privacy(offers, bot=None, ch=()):
     body = f"""<h1 class="page-h1">Privacidade</h1>
 <article class="doc">
 <h2>No site</h2>
-<p>O site não tem cadastro, cookies nem ferramentas de análise. Ele tem um script próprio, servido pelo próprio site, para a busca, os filtros e o tema; a única coisa que ele guarda é a sua escolha de tema claro ou escuro, no seu navegador (localStorage), e nada disso sai do aparelho. O site é hospedado na Cloudflare, que recebe os dados técnicos de cada acesso (como o endereço IP) para entregar as páginas.</p>
+<p>O site não tem cadastro, cookies nem ferramentas de análise. Ele tem um script próprio, servido pelo próprio site, para a busca, os filtros e o tema; a única coisa que ele guarda é a sua escolha de tema claro ou escuro, no seu navegador (localStorage), e nada disso sai do aparelho. O site é hospedado na Cloudflare e no Netlify, que recebem os dados técnicos de cada acesso (como o endereço IP) para entregar as páginas.</p>
+<h2>No pedido de livro</h2>
+<p>O formulário “Pedir um livro” pede só o nome e o autor do livro. Ele é processado pelo Netlify, que registra o endereço IP, o navegador e a página de onde o pedido veio. O pedido chega também ao nosso e-mail. Apagamos os pedidos, no Netlify e no e-mail, em até 30 dias.</p>
 <p>Ao clicar em uma oferta, você vai para a Amazon ou para o Mercado Livre. A partir daí valem as políticas de privacidade de cada loja.</p>
 <h2>No alerta de preço do Telegram</h2>
 <p>{"Quando você pede um alerta para " + bot_name + ", guardamos" if bot else "O alerta ainda não está no ar. Em breve você poderá pedir um alerta para " + bot_name + ". Quando isso funcionar, vamos guardar"} só o necessário para avisar você:</p>
@@ -1370,8 +1387,9 @@ def redirects(offers):
     return "".join(lines)
 
 
-HEADERS = """/*
-  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://http2.mlstatic.com; font-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+# form-action e connect-src: só o POST do pedido de livro para o Netlify Forms no SITE (fab).
+HEADERS = f"""/*
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://http2.mlstatic.com; font-src 'self'; connect-src {SITE}; base-uri 'none'; form-action {SITE}; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
@@ -1625,6 +1643,7 @@ def selftest():
     assert '<a href="/privacidade/">Privacidade</a>' in page(o)
     assert '<a href="/privacidade/" aria-current="page">' in privacy(o)
     pv = privacy(o, "ofertaslivros_bot")
+    assert all(w in pv for w in ("No pedido de livro", "Netlify", "endereço IP", "30 dias"))  # pedido de livro
     assert all(w in pv for w in ("chat_id", "Cloudflare D1", "90 dias", "/parar", "bloquear o bot",
                                  "https://t.me/ofertaslivros_bot"))
     # _redirects: /novidades/ -> /curadoria/ (interno), 4 linhas por livro de uma loja + curinga; tag por canal
@@ -1810,7 +1829,7 @@ def selftest():
     assert "Destaques de hoje" in h and "Destaques da curadoria" not in h
     assert "Em alta" not in h and 'class="badge' not in h and 'class="chip chip--' not in h.replace("chip--g", "")
     assert 'href="/manga/"' in h and "data-filtro" in h
-    for cls in ('blk--bot', 'blk--canais', 'class="bot"', 'class="canais"', 'fab is-soon'):
+    for cls in ('blk--bot', 'blk--canais', 'class="bot"', 'class="canais"', 'class="fab-box"'):
         assert cls in h, cls                                               # sem bot nem canais: tudo "em breve"
     assert "t.me" not in h and "whatsapp.com" not in h
     hero_ids = re.findall(r'<div class="slide" id="d-([a-z0-9-]+)"', h)
@@ -1833,7 +1852,16 @@ def selftest():
     for cls in ('blk--bot', 'blk--canais', 'class="bot"', 'class="canais"', 'class="fab"'):
         assert cls in h, cls
     assert 'href="https://t.me/ofertaslivros_bot" rel="noopener noreferrer"' in h  # bloco do alerta, sem start
-    assert "Pedir um livro" in h and "<form" not in h and "<input" in h  # pedir = bot; só o input da busca
+    # pedir um livro: um form só (Netlify Forms, no SITE), título e autor, honeypot; nada de dado do visitante
+    forms = re.findall(r"<form[^>]*>", h)
+    assert forms == [f'<form class="pedir" name="pedido" method="POST" action="{SITE}/#pedido-recebido" data-netlify="true" '
+                     'netlify-honeypot="site" accept-charset="utf-8">']
+    pf = h[h.index('<form class="pedir"'):h.index("</form>")]
+    assert re.findall(r'<input[^>]*name="([^"]+)"', pf) == ["form-name", "site", "titulo", "autor"]
+    assert ('<input type="hidden" name="form-name" value="pedido">' in pf
+            and 'name="titulo" required maxlength="150"' in pf and 'name="autor" maxlength="100"' in pf
+            and '<input name="site" tabindex="-1"' in pf and not re.search(r'type="(email|tel)"|name="(nome|email|tel)', pf))
+    assert '<details class="fab-box" id="pedir">' in h and 'id="pedido-recebido"' in h and "Recebemos seu pedido" in h
     g = vis(page(offers_n(4), "manga"))
     assert "carrossel" not in g and re.search(r'href="/manga/"[^>]*aria-current="page"', g)
     assert '<html lang="pt-BR" data-style="manga">' in page(offers_n(4), "manga")
@@ -1998,11 +2026,11 @@ def selftest():
     h = pages0["index.html"]
     soon = re.findall(r'<span class="([^"]*) is-soon" aria-disabled="true">(.*?)<span class="sr">, </span><span class="soon">em breve</span></span>', h)
     kinds = [k for k, _ in soon]
-    for k in ("pill pill--tg", "pill pill--wa", "bell", "btn btn--ghost alert", "go", "btn btn--ivory",
-              "btn btn--tg", "btn btn--wa", "fab", "foot-soon"):
+    for k in ("pill pill--tg", "pill pill--wa", "bell", "btn btn--ghost alert", "go",
+              "btn btn--tg", "btn btn--wa", "foot-soon"):
         assert k in kinds, k                                                   # header, card, hero, banner, bloco, canais, FAB, rodapé
     assert any("Canal no WhatsApp" in t for k, t in soon if k == "pill pill--wa")  # texto acessível: "Canal no WhatsApp, em breve"
-    assert not re.search(r"<(?:a|button)[^>]*\bis-soon", h) and "tabindex" not in h.split("<dialog")[0]
+    assert not re.search(r"<(?:a|button)[^>]*\bis-soon", h) and "tabindex" not in re.sub(r'<p class="sr" aria-hidden="true"><label>Não preencha .*?</p>', "", h.split("<dialog")[0])  # só o honeypot
     assert "Em breve você poderá tocar no sino" in h and "Para parar, mande /parar" not in h  # FAQ não promete o alerta
     assert "O alerta ainda não está no ar" in pages0["privacidade/index.html"]
     js = (STATIC / "app.js").read_text(encoding="utf-8")
@@ -2012,7 +2040,7 @@ def selftest():
     h = hb["index.html"]
     assert "is-soon" not in h and 'class="soon"' not in h and "canais/index.html" in hb  # com as envs: tudo link real
     assert '<a class="pill pill--wa" href="https://whatsapp.com/channel/0029VaAbCdEfGhIjKlMnOp12"' in h
-    assert '<a class="bell" href="https://t.me/ofertaslivros_bot?start=o-0"' in h and '<a class="fab" href="https://t.me/ofertaslivros_bot"' in h
+    assert '<a class="bell" href="https://t.me/ofertaslivros_bot?start=o-0"' in h and '<summary class="fab">' in h  # o fab não depende do bot
     for k, v in saved.items():
         os.environ.pop(k, None)
         if v is not None:
@@ -2156,7 +2184,8 @@ def selftest():
     # CSP: só a foto do ML entra além do próprio site
     csp = HEADERS.split("Content-Security-Policy: ")[1].splitlines()[0]
     assert csp == ("default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://http2.mlstatic.com; "
-                   "font-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+                   "font-src 'self'; connect-src https://ofertaslivros.com; base-uri 'none'; form-action https://ofertaslivros.com; "
+                   "frame-ancestors 'none'")                                 # só o POST do pedido de livro
     # JS: só o nosso arquivo, sem script inline executável; o JSON embutido não fecha o <script> antes da hora
     evil = '</script><script>alert(1)</script><!--'
     h = page(load({**good, "title": evil, "author": "</SCRIPT>"}), bot="ofertaslivros_bot")

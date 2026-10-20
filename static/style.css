@@ -697,16 +697,43 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 .faq details[open] { border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 5%, transparent); }
 .faq details p { padding: 0 18px 16px; max-width: 68ch; line-height: 1.6; }
 .faq details a { text-decoration-color: var(--accent); text-underline-offset: 3px; }
-/* Pedir um livro: pílula marinho flutuante que abre o bot */
+/* Pedir um livro: pílula marinho flutuante; o <details> abre o painel do form (sem JS) */
+.fab-box { position: fixed; right: 20px; bottom: 20px; z-index: 38; }
 .fab {
-  position: fixed; right: 20px; bottom: 20px; z-index: 38; display: inline-flex; align-items: center; gap: 8px;
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer; list-style: none;
   height: 52px; padding: 0 20px; border-radius: 999px; text-decoration: none;
   background: var(--wine); color: var(--ivory); font: 700 14.5px var(--sans);
   border: 1px solid #edf1f533; box-shadow: 0 16px 34px -12px #000000a6; transition: transform .2s var(--ease);
 }
 .fab:hover { transform: translateY(-2px); }
+.fab::-webkit-details-marker { display: none; }
+.pedir {
+  position: absolute; right: 0; bottom: 64px; width: min(340px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 6px;
+  max-height: calc(100dvh - 100px); overflow: auto;  /* teclado virtual do celular */
+  padding: 20px; border-radius: 26px; background: var(--ivory); color: var(--wine);
+  border: 1px solid var(--line); box-shadow: 0 24px 48px -16px #000000a6;
+}
+.pedir-h { font: 700 19px/1.2 var(--serif); margin-bottom: 6px; }
+.pedir label { font: 600 13px var(--sans); }
+.pedir label span { font-weight: 400; opacity: .75; }
+.pedir input {
+  height: 44px; padding: 0 14px; border-radius: 14px; border: 1px solid #0f172940; background: #ffffff; color: #0f1729;
+  font: 400 16px var(--sans); margin-bottom: 6px;
+}
+.pedir input:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+.pedir .go { margin-top: 6px; }
+.pedir-ok { font-size: 14px; }
+.pedir-ok:empty { display: none; }
+.pedido-recebido a { margin-left: 6px; color: inherit; text-underline-offset: 3px; }
+/* Sem JS: a volta do POST é /#pedido-recebido e o :target mostra o aviso */
+.pedido-recebido { display: none; }
+.pedido-recebido:target {
+  display: block; position: fixed; left: 50%; bottom: 88px; z-index: 39; transform: translateX(-50%);
+  width: min(420px, calc(100vw - 32px)); padding: 14px 18px; border-radius: 18px;
+  background: var(--ivory); color: var(--wine); font: 600 14px var(--sans); box-shadow: 0 24px 48px -16px #000000a6;
+}
 @media (max-width: 900px) { .bot { grid-template-columns: 1fr; } .mascote--big { width: 150px; } }
-@media (max-width: 640px) { .fab { width: 48px; height: 48px; padding: 0; justify-content: center; } .fab-t { display: none; } }
+@media (max-width: 640px) { .fab { width: 48px; height: 48px; padding: 0; justify-content: center; } .fab-t { display: none; } .fab-box { right: 16px; } .pedir { bottom: 58px; } }
 
 /* ---------- 10. Rodapé (spec 9.4) ---------- */
 .foot { max-width: 1440px; margin: 0 auto; padding: 50px var(--pad) 120px; border-top: 1px solid var(--line); font-size: 13.5px; color: var(--muted); }

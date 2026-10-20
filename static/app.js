@@ -163,6 +163,28 @@
     go(0);
   }
 
+  /* Pedir um livro: no próprio domínio do form (o .com), envia por fetch e o aviso aparece no painel.
+     De outra origem (o .com.br) a resposta não seria legível: fica o envio normal, e quem confirma é o
+     servidor (volta em /#pedido-recebido). Erro ou falha de rede também caem no envio normal. */
+  const pedir = $('.pedir');
+  if (pedir && new URL(pedir.action).origin === location.origin) {
+    const box = pedir.closest('details'), ok = $('.pedir-ok', pedir);
+    pedir.addEventListener('submit', e => {
+      e.preventDefault();
+      const btn = $('button', pedir);
+      btn.disabled = true;
+      fetch(pedir.action, { method: 'POST', body: new URLSearchParams(new FormData(pedir)) })
+        .then(r => {
+          if (!r.ok) throw new Error(r.status);
+          pedir.reset(); ok.textContent = ok.dataset.ok;
+        })
+        .catch(() => pedir.submit())
+        .finally(() => { btn.disabled = false; });
+    });
+    pedir.addEventListener('input', () => { ok.textContent = ''; });
+    box.addEventListener('keydown', e => { if (e.key === 'Escape' && box.open) { box.open = false; $('summary', box).focus(); } });
+  }
+
   /* Modal de detalhes: o link é a página real /livro/<id>/; aqui ele abre num <dialog> e entra no histórico */
   const dlg = $('#detalhe'), dataEl = $('#ofertas');
   if (dlg && dataEl && typeof dlg.showModal === 'function') {
