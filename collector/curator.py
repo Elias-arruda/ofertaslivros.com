@@ -48,8 +48,9 @@ ACTIVE_MAX = 500   # ativos + pendentes (§10.7, decisão 4)
 PRICE_MIN, PRICE_MAX = 1500, 40000  # centavos: R$ 15 a R$ 400 (decisão 3)
 SEEN_DAYS = 180    # recusado não volta antes disso
 RETIRE_DAYS = 30   # §10.8, item 6: sem anúncio (todos) ou sem oferta (automáticos)
-RETIRE_MAX = 25    # mais que isso num dia é sinal de dado quebrado: não retira
-STATE_STALE = timedelta(days=2)  # state.json do coletor mais velho que isso: não retira
+RETIRE_MAX = 25        # mais que isso num dia é sinal de dado quebrado: não retira
+RETIRE_MAX_7D = 100    # nem em 7 dias seguidos (falha parcial que dura semanas)
+STATE_STALE = timedelta(days=2)  # coleta do ML ok há mais que isso: não retira
 DEADLINE_S = 300   # orçamento de rede do suggest (job tem 10 min)
 SUMMARY_MAX = 60_000
 PROBE_ISBN = "9788535914849"  # só para o probe do /products/search
@@ -298,6 +299,9 @@ def write_ml_links(path, books):
 def summary(picked, today, revisar=(), retired=()):
     lines = [f"## Curadoria {today.isoformat()}: {len(picked)} candidatos"
              + (f", {len(retired)} retirados" if retired else ""),
+             *([f"> **PR sensível:** apaga {len(retired)} livro(s) do catálogo. Merge só "
+                "depois do \"aprovado, pode seguir\" do Elias na sessão (CLAUDE.md, PR e merge).",
+                ""] if retired else []),
              "",
              f"Fonte: `/highlights` da categoria `{CATEGORY}` e termos do `/trends` "
              f"(posição acima de {TREND_POS}), via API do ML, filtrada por ficha de livro "
@@ -375,15 +379,16 @@ def write_catalog(path, doc):
     tmp.replace(path)
 
 
-def retire(books, cstate, today):
+def retire(books, cstate, today, recent=0):
     """-> [(livro, motivo)] pela §10.8, item 6, com as datas que o coletor mantém em
     price-history/state.json (curadoria): (a) 31+ dias sem anúncio ativo, todos;
     (b) 31+ dias sem oferta (desde a última ou, se nunca, desde a publicação), só os
-    automáticos (com genre_source). Sem dado fresco do coletor, ou acima de RETIRE_MAX
-    num dia, não retira nada: pipeline parado não pode esvaziar o catálogo."""
+    automáticos (com genre_source). Não retira nada sem coleta do ML inteira recente
+    (curadoria_ok), acima de RETIRE_MAX no dia ou de RETIRE_MAX_7D na semana (recent = já
+    retirados nos últimos 7 dias), nem se fosse esvaziar o catálogo."""
     cu = cstate.get("curadoria") or {}
-    if not cu or max(v["ultimo_anuncio"] for v in cu.values()) < (today - STATE_STALE).isoformat():
-        print("::warning::curator: state.json do coletor ausente ou parado; retirada pulada")
+    if (cstate.get("curadoria_ok") or "") < (today - STATE_STALE).isoformat():
+        print("::warning::curator: coleta do ML sem execução completa recente; retirada pulada")
         return []
     limit = (today - timedelta(days=RETIRE_DAYS)).isoformat()
     out = []
@@ -395,9 +400,10 @@ def retire(books, cstate, today):
             out.append((b, "sem_anuncio"))
         elif "genre_source" in b and (st["ultima_oferta"] or st["publicado"]) < limit:
             out.append((b, "sem_oferta"))
-    if len(out) > RETIRE_MAX:
-        print(f"::warning::curator: {len(out)} retiradas num dia (teto {RETIRE_MAX}); "
-              "nada retirado, conferir à mão")
+    if len(out) > RETIRE_MAX or recent + len(out) > RETIRE_MAX_7D \
+            or len(out) >= sum(not b.get("pendente") for b in books):
+        print(f"::warning::curator: {len(out)} retiradas hoje e {recent} na semana (tetos "
+              f"{RETIRE_MAX}/{RETIRE_MAX_7D}); nada retirado, conferir à mão")
         return []
     return out
 
@@ -470,12 +476,14 @@ def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
             clock=time.monotonic, links_path=None, history=None):
     """Retirada (com o price-history do coletor) e descoberta; grava o PR do dia."""
     catalog, seen_path, links_path = catalog or c.CATALOG, seen_path or SEEN, links_path or ML_LINKS
-    today = today or datetime.now(timezone.utc).date()
+    today = today or datetime.now(c.BRT).date()  # mesmo dia BRT do coletor
     doc = json.loads(catalog.read_text(encoding="utf-8"))
     books = c.load_catalog(doc, include_pending=True)  # catálogo quebrado: nem começa
     seen = load_seen(seen_path, today)
-    gone = load_retired(doc)
-    retired = retire(books, c.load_state(history), today) if history else []
+    gone = dict(doc.get("retirados", {}))  # validado no load_catalog
+    week = (today - timedelta(days=7)).isoformat()
+    retired = retire(books, c.load_state(history), today,
+                     sum(d >= week for d in gone.values())) if history else []
     if retired:
         ids = {b["id"] for b, _ in retired}
         books = [b for b in books if b["id"] not in ids]
@@ -510,15 +518,6 @@ def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
     if summary_path:
         summary_path.write_text(text, encoding="utf-8")
     return rc
-
-
-def load_retired(doc):
-    """{id: AAAA-MM-DD} dos retirados, guardado no próprio catalog.json."""
-    r = doc.get("retirados", {})
-    if not isinstance(r, dict) or not all(isinstance(k, str) and c.ID_RE.fullmatch(k)
-                                          and isinstance(v, str) for k, v in r.items()):
-        raise c.Invalid("catalog.json: retirados precisa ser {id: data}")
-    return dict(r)
 
 
 def _count(body):
