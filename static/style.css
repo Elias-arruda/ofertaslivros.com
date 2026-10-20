@@ -319,10 +319,6 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
   content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--paper);
   transform-origin: left center; opacity: 0;
 }
-@keyframes folhear {
-  0% { transform: perspective(600px) rotateY(0); opacity: .95; }
-  100% { transform: perspective(600px) rotateY(-165deg); opacity: 0; }
-}
 @keyframes folhear-lento {
   0%, 62% { transform: perspective(600px) rotateY(0); opacity: 0; }
   64% { opacity: .95; }
@@ -537,12 +533,11 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 .buy-c:hover { transform: rotate(45deg) scale(1.1); }
 /* Seta da outra loja só onde cabe; no card estreito ela fica no modal e na página do livro */
 @container (max-width: 200px) { .card-foot .alt { display: none; } }
-/* Hover: a capa desliza e inclina, o miolo sai pela direita e folheia */
+/* Hover: a capa desliza e inclina, o miolo sai pela direita (sem folhear) */
 @media (hover: hover) {
   .card:hover { border-color: color-mix(in srgb, var(--accent) 60%, transparent); background: color-mix(in srgb, var(--accent) 8%, transparent); box-shadow: 0 24px 50px -28px var(--accent); }
   .card:hover .cover { transform: translateX(-8%) rotate(-3deg); }
   .card:hover .pages { transform: translateX(22%); }
-  .card:hover .pages::after { animation: folhear 1.1s var(--ease) infinite; }
   .card:hover .sticker { transform: rotate(-8deg) scale(1.1); }
 }
 @media (max-width: 640px) {
