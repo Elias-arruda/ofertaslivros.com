@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   deploy:
-    # Só a main publica; os secrets do Cloudflare ficam no Environment production (restrito à main).
+    # Só a main publica; os secrets do Cloudflare e do Netlify ficam no Environment production (restrito à main).
     if: >-
       github.ref == 'refs/heads/main' &&
       (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
@@ -87,3 +87,20 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: "4.151.1"
           command: deploy --config cron/wrangler.jsonc
+
+      # ofertaslivros.com fica no Netlify: a Vivo bloqueia os IPs da zona no Cloudflare (2026-10-20).
+      # Por último: se o Netlify falhar, o site no Cloudflare e o agendador já saíram.
+      # Mesmo dist/ (_headers e _redirects valem igual). Zip na API do Netlify: sem CLI de terceiros.
+      # ponytail: não espera o deploy ficar "ready"; se o Netlify rejeitar no processamento, o job fica verde.
+      - name: Publicar no Netlify (ofertaslivros.com)
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+        run: |
+          : "${NETLIFY_AUTH_TOKEN:?segredo NETLIFY_AUTH_TOKEN ausente}" "${NETLIFY_SITE_ID:?variável NETLIFY_SITE_ID ausente}"
+          (cd dist && zip -qr "$RUNNER_TEMP/site.zip" .)
+          curl -sS --fail-with-body -o "$RUNNER_TEMP/netlify.json" -X POST \
+            -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" -H "Content-Type: application/zip" \
+            --data-binary @"$RUNNER_TEMP/site.zip" \
+            "https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID/deploys" \
+            || { cat "$RUNNER_TEMP/netlify.json"; exit 1; } # erro da API (sem o token)
