@@ -95,17 +95,68 @@ jobs:
       # ofertaslivros.com fica no Netlify: a Vivo bloqueia os IPs da zona no Cloudflare (2026-10-20).
       # Por último: se o Netlify falhar, o site no Cloudflare e o agendador já saíram.
       # Mesmo dist/ (_headers e _redirects valem igual). Zip na API do Netlify: sem CLI de terceiros.
-      - name: Publicar no Netlify (ofertaslivros.com)
+      # Cada deploy no Netlify custa 15 créditos (plano Personal: 1.000/mês). Push e dispatch publicam sempre.
+      # A coleta (workflow_run) só publica se o conteúdo mudou e se o mês ainda está dentro da cota
+      # acumulada (dia do mês × DEPLOYS_POR_DIA, contando todos os deploys, inclusive os de merge).
+      - name: Decidir se publica no Netlify
+        id: netlify_gate
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+          EVENTO: ${{ github.event_name }}
+          DEPLOYS_POR_DIA: "2" # 62 × 15 = 930 créditos no mês de 31 dias; o resto fica para tráfego
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import subprocess
+          import urllib.request
+          from datetime import datetime, timezone
+
+          doc = json.loads(open("data/offers.json", encoding="utf-8").read())
+          for offer in doc["offers"]:
+              for store in offer["stores"]:
+                  store.pop("checked_at", None)  # muda a cada coleta; preço igual não republica
+          head = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout
+          sig = hashlib.sha256((json.dumps(doc, sort_keys=True) + head).encode()).hexdigest()[:16]
+
+          req = urllib.request.Request(
+              f"https://api.netlify.com/api/v1/sites/{os.environ['NETLIFY_SITE_ID']}/deploys?per_page=100",
+              headers={"Authorization": "Bearer " + os.environ["NETLIFY_AUTH_TOKEN"]})
+          with urllib.request.urlopen(req, timeout=30) as r:
+              deploys = json.load(r)  # mais novo primeiro; a cota do mês cabe numa página de 100
+          now = datetime.now(timezone.utc)
+          ultimo = next((d for d in deploys if d["state"] == "ready"), {})
+          no_mes = sum(d["created_at"].startswith(now.strftime("%Y-%m")) for d in deploys)
+          cota = now.day * int(os.environ["DEPLOYS_POR_DIA"])
+
+          if os.environ["EVENTO"] != "workflow_run":
+              publicar, motivo = True, "push ou dispatch publica sempre"
+          elif ultimo.get("title") == f"sig-{sig}":
+              publicar, motivo = False, "conteúdo igual ao último deploy"
+          elif no_mes >= cota:
+              publicar, motivo = False, f"cota do mês: {no_mes} deploys, limite até hoje {cota}"
+          else:
+              publicar, motivo = True, f"conteúdo novo ({no_mes + 1}/{cota} no mês)"
+          print(f"netlify: {'publica' if publicar else 'pula'}: {motivo}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"publicar={str(publicar).lower()}\nsig={sig}\n")
+          PY
+
+      - name: Publicar no Netlify (ofertaslivros.com)
+        if: steps.netlify_gate.outputs.publicar == 'true'
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+          SIG: ${{ steps.netlify_gate.outputs.sig }}
         run: |
           : "${NETLIFY_AUTH_TOKEN:?segredo NETLIFY_AUTH_TOKEN ausente}" "${NETLIFY_SITE_ID:?variável NETLIFY_SITE_ID ausente}"
           (cd dist && zip -qr "$RUNNER_TEMP/site.zip" .)
           curl -sS --fail-with-body -o "$RUNNER_TEMP/netlify.json" -X POST \
             -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" -H "Content-Type: application/zip" \
             --data-binary @"$RUNNER_TEMP/site.zip" \
-            "https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID/deploys" \
+            "https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID/deploys?title=sig-$SIG" \
             || { cat "$RUNNER_TEMP/netlify.json"; exit 1; } # erro da API (sem o token)
           # O POST só cria o deploy; espera o Netlify processar (até ~3 min) para o job refletir o resultado.
           id=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["id"])' "$RUNNER_TEMP/netlify.json")
