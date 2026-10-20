@@ -4,6 +4,7 @@ import json
 import re
 import socket
 import sys
+from collections import Counter
 from datetime import date
 from pathlib import Path
 from urllib.error import HTTPError
@@ -114,8 +115,11 @@ def env(tmp_path, monkeypatch):
     seen = tmp_path / "curator_seen.json"
     md = tmp_path / "pr.md"
 
+    links = tmp_path / "ml_links.tsv"
+
     def suggest(**kw):
-        return cur.suggest(catalog=cat, seen_path=seen, summary_path=md, today=TODAY, **kw)
+        return cur.suggest(catalog=cat, seen_path=seen, summary_path=md, today=TODAY,
+                           links_path=links, **kw)
 
     def books():
         return json.loads(cat.read_text())["books"]
@@ -124,7 +128,7 @@ def env(tmp_path, monkeypatch):
         for p in prods:
             fake.products[p["id"]] = p
         fake.rank(*(p["id"] for p in prods))
-    return {"fake": fake, "cat": cat, "seen": seen, "md": md, "suggest": suggest,
+    return {"fake": fake, "cat": cat, "seen": seen, "md": md, "suggest": suggest, "links": links,
             "books": books, "add": add}
 
 
@@ -199,14 +203,29 @@ def test_so_product_entra(env):
 def test_limite_por_nicho(env):
     env["add"](*(prod(n) for n in range(1, 21)))  # 20 mangás
     env["suggest"]()
-    assert new_ids(env) == ["MLB1", "MLB2", "MLB3", "MLB4"]
+    assert new_ids(env) == [f"MLB{n}" for n in range(1, 11)]
 
 
-def test_limite_semanal_e_ordem(env):
+def test_limite_diario_e_ordem(env, monkeypatch):
+    monkeypatch.setattr(cur, "DAY_MAX", 7)
     gens = [MANGA, NEG, LIT, BIO]
     env["add"](*(prod(n, genre=gens[n % 4]) for n in range(1, 21)))
     env["suggest"]()
-    assert new_ids(env) == [f"MLB{n}" for n in range(1, 11)]
+    assert new_ids(env) == [f"MLB{n}" for n in range(1, 8)]
+
+
+def _cands(n, genres=25):
+    return [{"genre": f"g{i % genres}", "ml_product_id": f"MLB{i}", "pos": i, "off": 0}
+            for i in range(1, n + 1)]
+
+
+def test_volume_criterio_5():
+    got = cur.select(_cands(200), 0)
+    assert len(got) == 50 and max(Counter(g["genre"] for g in got).values()) <= 10
+    assert len(cur.select(_cands(200, genres=3), 0)) == 30  # 10 por gênero
+    assert len(cur.select(_cands(12), 0)) == 12              # meta, não força
+    assert len(cur.select(_cands(200), cur.ACTIVE_MAX - 5)) == 5
+    assert cur.select(_cands(200), cur.ACTIVE_MAX) == []
 
 
 def test_desconto_nao_ordena_nem_filtra():
@@ -220,17 +239,19 @@ def test_desconto_nao_ordena_nem_filtra():
 def test_teto_do_catalogo(env):
     doc = json.loads(env["cat"].read_text())
     doc["books"] += [{"id": f"p-{n}", "ml_product_id": f"MLB5{n:03d}", "pendente": True,
-                      "title": "t", "author": "a", "genre": "ficcao"} for n in range(146)]
+                      "title": "t", "author": "a", "genre": "ficcao"}
+                     for n in range(cur.ACTIVE_MAX - 5)]
     env["cat"].write_text(json.dumps(doc))
     env["add"](*(prod(n, genre=[MANGA, NEG][n % 2]) for n in range(1, 21)))
     env["suggest"]()
-    assert len(env["books"]()) == cur.CATALOG_MAX
+    assert len(env["books"]()) == cur.ACTIVE_MAX
 
 
 def test_catalogo_no_teto_nem_chama_a_rede(env):
     doc = json.loads(env["cat"].read_text())
     doc["books"] += [{"id": f"p-{n}", "ml_product_id": f"MLB5{n:03d}", "pendente": True,
-                      "title": "t", "author": "a", "genre": "ficcao"} for n in range(149)]
+                      "title": "t", "author": "a", "genre": "ficcao"}
+                     for n in range(cur.ACTIVE_MAX - 1)]
     env["cat"].write_text(json.dumps(doc))
     assert env["suggest"]() == 0 and env["fake"].urls == []
 
@@ -503,3 +524,56 @@ def test_probe_formato_dos_atributos_sem_valor(env, capsys):
     assert "products/search q (1º termo do trends): /products/search -> 200" in out
     for leak in ("Secret", "secreto", isbn(1), isbn(1)[3:8], isbn10(1), "MLB91", "sentinela"):
         assert leak not in out
+
+
+# ---- B5 (critério 15) ----
+
+def test_b5_exclui_por_titulo_forte_e_subgenero(env, capsys):
+    p3 = prod(3)
+    p3["attributes"].append({"id": "BOOK_SUBGENRES", "values": [{"id": "76494427", "name": "x"}]})
+    env["add"](prod(1, title="Bíblia Sagrada"), prod(2, title="VADE MECUM 2026"), p3,
+               prod(4, title="Apostilas de Inglês"), prod(5, title="Bibliografia comentada"))
+    env["suggest"]()
+    # 1 a 4 saem (plural conta); "bibliografia" não é a palavra inteira
+    assert new_ids(env) == ["MLB5"]
+    assert "4 b5" in capsys.readouterr().out
+
+
+def test_b5_fraca_vai_para_revisao(env, capsys):
+    env["add"](prod(1, title="Guia do Concurso Público"), prod(2),
+               prod(3, title="Concurso", lang="Inglês"))  # já cai no idioma: não vai à revisão
+    env["suggest"]()
+    assert new_ids(env) == ["MLB2"]
+    out = capsys.readouterr().out
+    assert "1 revisar_b5" in out and "1 idioma" in out and "revisar_b5 (catalog-curator confere): MLB1" in out
+    assert "Concurso" not in out  # título da API fora do log
+    assert "https://www.mercadolivre.com.br/p/MLB1" in env["md"].read_text()
+    assert "MLB1" not in json.loads(env["seen"].read_text())  # volta se a lista mudar
+
+
+def test_so_revisar_b5_ainda_grava_o_resumo(env):
+    env["add"](prod(1, title="Edital comentado"))
+    assert env["suggest"]() == 0 and new_ids(env) == []
+    assert "https://www.mercadolivre.com.br/p/MLB1" in env["md"].read_text()
+
+
+# ---- ml_links.tsv (§10.4, fila) ----
+
+def test_ml_links_tsv_fila_e_preserva_colado(env):
+    env["add"](prod(1, title="=SOMA(1;2) Livro"), prod(2))
+    env["suggest"]()
+    lines = env["links"].read_text().splitlines()
+    assert lines[0] == "\t".join(cur.ML_LINKS_COLS)
+    rows = [ln.split("\t") for ln in lines[1:]]
+    assert [r[1] for r in rows] == ["MLB1", "MLB2"] and all(len(r) == 5 for r in rows)
+    assert rows[0][2] == "SOMA(1;2) Livro" and rows[0][3].endswith("/p/MLB1")
+    assert rows[0][4] == ""
+    # o Elias cola o link na linha do MLB2; a próxima execução preserva
+    rows[1][4] = ML_URL
+    env["links"].write_text("\n".join(["\t".join(cur.ML_LINKS_COLS)]
+                                      + ["\t".join(r) for r in rows]) + "\n")
+    env["add"](prod(3))
+    env["suggest"]()
+    rows = [ln.split("\t") for ln in env["links"].read_text().splitlines()[1:]]
+    assert [(r[1], r[4]) for r in rows] == [("MLB1", ""), ("MLB2", ML_URL), ("MLB3", "")]
+    assert "ja-tenho" not in env["links"].read_text()  # já tem ml_url

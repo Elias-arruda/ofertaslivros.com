@@ -2,7 +2,7 @@
 """Curadoria automática do catálogo: docs/produto/curator.md. Só stdlib.
 
     python3 collector/curator.py probe [--isbn ISBN]     # passo 0: as rotas de descoberta respondem?
-    python3 collector/curator.py suggest [--summary MD]  # até 10 candidatos pendentes no catalog.json
+    python3 collector/curator.py suggest [--summary MD]  # até 50 pendentes no catalog.json + ml_links.tsv
 
 Fontes: /highlights geral da categoria e, em segundo, os termos do /trends resolvidos pelo
 /products/search?q=. O /highlights filtrado por BOOK_GENRE dá 400 (probe 39258219518):
@@ -14,6 +14,7 @@ lá. Nada de HTML: resposta que não é application/json aborta (collect.ml_requ
 O curator nunca escreve ml_url nem asin: o link vem do painel, colado pelo Elias no PR.
 """
 import argparse
+import csv
 import json
 import re
 import sys
@@ -40,9 +41,9 @@ GENRE_MAP = {
     "13464376": "nao-ficcao",  # História
     "76624759": "nao-ficcao",  # Ciência
 }
-WEEK_MAX = 10      # candidatos por execução (decisão 2)
-GENRE_MAX = 4      # por nicho, por execução
-CATALOG_MAX = 150  # ativos + pendentes
+DAY_MAX = 50       # livros novos por execução diária: meta e teto (§10.8, item 5)
+GENRE_MAX = 10     # por gênero, por execução (tag não conta)
+ACTIVE_MAX = 500   # ativos + pendentes (§10.7, decisão 4)
 PRICE_MIN, PRICE_MAX = 1500, 40000  # centavos: R$ 15 a R$ 400 (decisão 3)
 SEEN_DAYS = 180    # recusado não volta antes disso
 DEADLINE_S = 300   # orçamento de rede do suggest (job tem 10 min)
@@ -53,6 +54,15 @@ SEARCH_LIMIT = 10   # produtos por termo
 TREND_POS = 100     # produto vindo do /trends ranqueia depois de todo o /highlights
 LOOKUP_MAX = 60     # fichas lidas por execução (1 a 3 requests cada); o resto fica adiado
 SEEN = HERE / "curator_seen.json"
+ML_LINKS = HERE / "ml_links.tsv"  # vai no PR diário; o Elias cola o ml_url na linha (§10.4)
+ML_LINKS_COLS = ["book_id", "ml_product_id", "title", "product_url", "ml_url"]
+# B5 (curator.md 5.2): Bíblia, Vade Mecum e apostila de concurso ficam fora do automático.
+# Filtro de exclusão, nunca identidade. Ids de BOOK_SUBGENRES/BOOK_GENRE de MLB437616
+# (GET /categories/MLB437616/attributes, público, 2026-10-19).
+B5_SUBGENRES = {"7538165",   # Bíblias
+                "76494427"}  # Provas e exames
+B5_FORTE = ("biblia", "vade mecum", "apostila")     # exclui
+B5_FRACA = ("concurso", "edital", "oab", "enem")    # revisar_b5: não publica, catalog-curator revisa
 PRODUCT_URL = "https://www.mercadolivre.com.br/p/{}"  # só texto no PR; nunca é chamado
 # Dentro de code span nada vira link nem menção; estes trocam por equivalentes de largura
 # total para não fechar o span, quebrar a tabela nem parecer markdown.
@@ -144,6 +154,22 @@ def _name(prod, aid):
                  if isinstance(v, str) and v.strip()), "")
 
 
+def _plain(s):
+    """Minúsculas, sem acento: só para o filtro B5."""
+    return unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode().lower()
+
+
+def _has_word(text, words):
+    return any(re.search(rf"\b{re.escape(w)}s?\b", text) for w in words)  # plural também
+
+
+def b5(prod, title):
+    """Exclusão B5: subgênero do ML ou palavra forte no título."""
+    ids = {str(v) for aid in ("BOOK_SUBGENRES", "BOOK_GENRE")
+           for v in _values(_attr(prod, aid), "value_id", "id") if v}
+    return bool(ids & B5_SUBGENRES) or _has_word(_plain(title), B5_FORTE)
+
+
 def portugues(prod):
     return any(isinstance(n, str) and n.strip().casefold().startswith("portugu")
                for n in _values(_attr(prod, "LANGUAGE"), "value_name", "name"))
@@ -173,6 +199,8 @@ def candidate(pid, pos, token, known_isbns, **kw):
     title, author = _name(prod, "BOOK_TITLE"), _name(prod, "AUTHOR")
     if not title or not author:
         return None, "nao_livro"
+    if b5(prod, title):
+        return None, "b5"
     isbn, why = isbn_of(prod)
     if why:
         return None, why
@@ -196,6 +224,8 @@ def candidate(pid, pos, token, known_isbns, **kw):
     price, lst = pr
     if not PRICE_MIN <= price <= PRICE_MAX:
         return None, "preco"
+    if _has_word(_plain(title), B5_FRACA):  # por último: só revisa quem passaria
+        return None, "revisar_b5"
     return {"ml_product_id": pid, "pos": pos, "isbn": isbn, "genre": genre, "title": title,
             "author": author, "price": price, "list_price": lst,
             "off": (lst - price) * 100 // lst}, None
@@ -204,7 +234,7 @@ def candidate(pid, pos, token, known_isbns, **kw):
 def select(cands, n_catalog):
     """Ranking (menor posição; empate: ml_product_id) com os tetos de volume. Desconto não
     entra na escolha nem na ordem (curadoria-automatica.md §10.8, item 1): só no resumo."""
-    slots = max(0, min(WEEK_MAX, CATALOG_MAX - n_catalog))
+    slots = max(0, min(DAY_MAX, ACTIVE_MAX - n_catalog))
     per, out = Counter(), []
     for x in sorted(cands, key=lambda x: (x["pos"], x["ml_product_id"])):
         if len(out) >= slots:
@@ -239,7 +269,29 @@ def md(s):
     return "`" + " ".join(s.translate(MD_SAFE).split()) + "`"
 
 
-def summary(picked, today):
+def _tsv_cell(s):
+    """Sem TAB/quebra de linha e sem fórmula de planilha (=, +, -, @ no começo)."""
+    return " ".join(s.split()).lstrip("=+-@ ")
+
+
+def write_ml_links(path, books):
+    """Fila do §10.4: uma linha por livro com ml_product_id e sem ml_url. O ml_url já
+    colado numa linha (mesmo book_id e ml_product_id) é preservado; quem valida e aplica
+    é o links-apply do affiliate-linker. product_url é montada aqui, nunca vem da API."""
+    kept = {}
+    if path.exists():
+        with path.open(newline="", encoding="utf-8-sig") as f:  # BOM de planilha
+            for r in csv.DictReader(f, delimiter="\t", quoting=csv.QUOTE_NONE):
+                if r.get("ml_url"):
+                    kept[(r.get("book_id"), r.get("ml_product_id"))] = r["ml_url"].strip()
+    rows = [ML_LINKS_COLS] + [
+        [b["id"], b["ml_product_id"], _tsv_cell(b["title"]),
+         PRODUCT_URL.format(b["ml_product_id"]), _tsv_cell(kept.get((b["id"], b["ml_product_id"]), ""))]
+        for b in books if "ml_product_id" in b and "ml_url" not in b]  # load_catalog já validou o MLB
+    path.write_text("".join("\t".join(r) + "\n" for r in rows), encoding="utf-8")
+
+
+def summary(picked, today, revisar=()):
     lines = [f"## Curadoria {today.isoformat()}: {len(picked)} candidatos",
              "",
              f"Fonte: `/highlights` da categoria `{CATEGORY}` e termos do `/trends` "
@@ -257,10 +309,14 @@ def summary(picked, today):
                      f"{brl(x['price'])} | {x['off']}% | {x['pos']} | {x['isbn'] or '-'} | "
                      f"{asin_provavel(x['isbn'])} | {PRODUCT_URL.format(x['ml_product_id'])} |")
     lines += ["", "### URLs para o Gerador de links do painel", "", "```text",
-              *(PRODUCT_URL.format(x["ml_product_id"]) for x in picked), "```", "",
-              "### Checklist", "",
+              *(PRODUCT_URL.format(x["ml_product_id"]) for x in picked), "```", ""]
+    if revisar:
+        lines += ["### Para revisar (B5: palavra da lista fraca no título; não entraram)", "",
+                  *(f"- {PRODUCT_URL.format(pid)}" for pid in revisar), ""]
+    lines += ["### Checklist", "",
               "- [ ] Gerei o link de cada livro no painel e troquei `\"pendente\": true` por "
-              "`\"ml_url\": \"<link do painel>\"`",
+              "`\"ml_url\": \"<link do painel>\"` (ou colei na coluna `ml_url` da mesma linha "
+              "de `collector/ml_links.tsv`, quando ela vier no PR, e passei ao `affiliate-linker`)",
               "- [ ] Abri cada link no navegador (sem comprar) e conferi que é o livro certo",
               "- [ ] Ajustei o `genre` onde precisava (ex.: `literatura-brasileira`)",
               "- [ ] Apaguei as entradas que não quero (ficam no `curator_seen.json` e não "
@@ -310,14 +366,14 @@ def write_catalog(path, doc):
 
 
 def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
-            clock=time.monotonic):
-    catalog, seen_path = catalog or c.CATALOG, seen_path or SEEN
+            clock=time.monotonic, links_path=None):
+    catalog, seen_path, links_path = catalog or c.CATALOG, seen_path or SEEN, links_path or ML_LINKS
     today = today or datetime.now(timezone.utc).date()
     doc = json.loads(catalog.read_text(encoding="utf-8"))
     books = c.load_catalog(doc, include_pending=True)  # catálogo quebrado: nem começa
     seen = load_seen(seen_path, today)
-    if CATALOG_MAX - len(books) <= 0:
-        print(f"curator: catálogo no teto ({len(books)}/{CATALOG_MAX}); nada a sugerir")
+    if ACTIVE_MAX - len(books) <= 0:
+        print(f"curator: catálogo no teto ({len(books)}/{ACTIVE_MAX}); nada a sugerir")
         return 0
     known_pids = {b["ml_product_id"] for b in books if "ml_product_id" in b} | set(seen)
     known_isbns = {b["isbn"] for b in books if "isbn" in b}
@@ -349,7 +405,7 @@ def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
         print("::error::curator: nem /highlights nem /trends responderam (ver o probe)")
         return 1
 
-    why, cands, isbns = Counter(), [], set(known_isbns)
+    why, cands, isbns, revisar = Counter(), [], set(known_isbns), []
     order = sorted(ranks.items(), key=lambda kv: (kv[1], kv[0]))
     if len(order) > LOOKUP_MAX:
         why["adiado"] += len(order) - LOOKUP_MAX
@@ -366,6 +422,8 @@ def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
             continue
         if x is None:
             why[reason] += 1
+            if reason == "revisar_b5":
+                revisar.append(pid)
             continue
         if x["isbn"]:
             isbns.add(x["isbn"])  # dois produtos com o mesmo ISBN: fica o primeiro
@@ -374,7 +432,11 @@ def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
     print(f"curator: {len(ranks)} produtos novos nas listas, {len(cands)} passaram nos "
           f"filtros, {len(picked)} sugeridos; descartes: "
           + (", ".join(f"{v} {k}" for k, v in sorted(why.items())) or "nenhum"))
+    if revisar:  # só o id (MLB_RE): título da API não vai para o log
+        print("curator: revisar_b5 (catalog-curator confere): " + " ".join(revisar))
     if not picked:
+        if revisar and summary_path:  # registro da revisão mesmo sem PR (o workflow pode publicar)
+            summary_path.write_text(summary([], today, revisar), encoding="utf-8")
         return 1 if why["erro"] and not cands else 0
 
     taken = {b["id"] for b in books}
@@ -383,8 +445,9 @@ def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
             "ml_product_id": x["ml_product_id"], "pendente": True} for x in picked]
     doc = {**doc, "books": doc["books"] + new}
     c.load_catalog(doc, include_pending=True)  # valida antes de gravar
-    text = summary(picked, today)
+    text = summary(picked, today, revisar)
     write_catalog(catalog, doc)
+    write_ml_links(links_path, doc["books"])
     seen.update({x["ml_product_id"]: today.isoformat() for x in picked})
     seen_path.write_text(json.dumps(dict(sorted(seen.items())), indent=1) + "\n",
                          encoding="utf-8")
