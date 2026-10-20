@@ -272,9 +272,8 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 }
 .chip--g { background: var(--accent); color: var(--accent-ink); transition: background-color .3s var(--ease); }
 .chip--novo, .badge--novo { background: #3ef08a; color: #052012; }
-/* Novidade no hero: contorno no acento, texto na cor do texto (nunca "oferta") */
+/* Livro sem oferta no hero ("Da curadoria"): contorno no acento, texto na cor do texto (nunca "oferta") */
 .chip--nov { background: var(--bg2); color: var(--text); box-shadow: inset 0 0 0 2px var(--accent); }
-.chip--alta, .badge--alta { background: #ff7a1a; color: #200c00; }
 /* Selo "menor preço em 90 dias": pílula cheia no vermelho carimbo (ou rosado no escuro) */
 .stamp {
   display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px;
@@ -285,7 +284,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 .price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; font-variant-numeric: tabular-nums lining-nums; }
 .price > * { white-space: nowrap; }
 .price strong { font: 700 22px/1.05 var(--sans); letter-spacing: -.02em; }
-.old { font-size: 13px; color: var(--muted); }
+.old, .sem { font-size: 13px; color: var(--muted); }
 .meta { font-size: 13px; color: var(--muted); }
 .store { font-weight: 600; color: var(--text); }
 .drop { font-weight: 600; color: var(--text); }
@@ -659,20 +658,6 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mascote { color: #b3262f; } }
 .i-carimbo { width: 74%; height: 74%; transform: rotate(-10deg); }
 @keyframes float { 50% { transform: translateY(-14px) rotate(3deg); } }
-/* Ranking "Em alta agora": número em Fraunces itálico na cor do nicho */
-.blk--rank { grid-column: 1 / -1; padding: 22px; color: var(--text); background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 20%, var(--bg2)), var(--bg2)); border: 1px solid var(--line); box-shadow: none; }
-.rank-head { display: flex; align-items: center; gap: 10px; }
-.rank { display: flex; gap: 12px; margin-top: 16px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
-.rank-i {
-  flex: 0 0 280px; scroll-snap-align: start; display: flex; align-items: center; gap: 12px;
-  padding: 10px 10px 10px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line);
-  transition: transform .2s var(--ease);
-}
-.rank-i:hover { transform: translateY(-3px); }
-.rank-n { font: italic 800 46px/1 var(--serif); font-variation-settings: "SOFT" 100, "WONK" 1; color: var(--accent); min-width: 1.1em; }
-.rank-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.rank-t a { font-weight: 700; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rank-a { font: italic 14px var(--serif); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 900px) { .blk--canais { grid-template-columns: auto 1fr; } .blk-acts { grid-column: 1 / -1; } }
 @media (max-width: 640px) {
   .grid--feat > li:nth-child(n+9) { display: none; }
@@ -830,24 +815,26 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
   .hero.js .segs li.on i::after { animation: none !important; transform: scaleX(1); }
 }
 
-/* ---------- 14. Novidades e home curta ---------- */
+/* ---------- 14. Curadoria e home curta ---------- */
+.ancoras ul { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; padding: 0 4px; }
+.ancoras .pill { padding-left: 6px; }
+.sec-head h2 { scroll-margin-top: 100px; } /* âncora de /curadoria/#nicho sob o header fixo */
 .nov-nota { margin-top: 12px; max-width: 46ch; font-size: 15px; color: var(--muted); }
 .vazio--fixo a { font-weight: 600; color: var(--text); text-decoration-color: var(--accent); text-underline-offset: 3px; }
 /* Home: o CSS corta a lista e o "Ver todas" leva à página completa. Buscando ou filtrando (.filtrando,
    posta pelo app.js), aparece tudo e o link some. */
 .feed--home:not(.filtrando) > .card:nth-child(n+25 of .card) { display: none; }
-.feed--nov.feed--home:not(.filtrando) > .card:nth-child(n+13 of .card) { display: none; }
 .mais--m, .feed.filtrando ~ .mais { display: none; }
 @media (max-width: 640px) {
   .mais--m { display: flex; }
   .feed--home:not(.filtrando) > .card:nth-child(n+5 of .card) { display: none; }
   .grid--feat > li:nth-child(n+5) { display: none; }
-  /* Destaques e novidades viram trilho horizontal: uma linha de cards em vez de duas */
-  .grid--feat, .feed--nov.feed--home:not(.filtrando) {
+  /* Destaques e "Da curadoria" viram trilho horizontal: uma linha de cards em vez de duas */
+  .grid--feat, .feed--cur.feed--home:not(.filtrando) {
     display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
     margin: 6px calc(-1 * var(--pad)) 0; padding: 18px var(--pad) 6px; scroll-padding-inline: var(--pad);
   }
-  .grid--feat > li, .feed--nov.feed--home:not(.filtrando) > li { flex: 0 0 44%; scroll-snap-align: start; }
+  .grid--feat > li, .feed--cur.feed--home:not(.filtrando) > li { flex: 0 0 44%; scroll-snap-align: start; }
   /* Card mais baixo: capa num quadro 5:4 */
   .card .obj { aspect-ratio: 5 / 4; }
   .card-body { padding-top: 10px; }
