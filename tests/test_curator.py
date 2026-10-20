@@ -884,7 +884,8 @@ def test_amazon_apply_valido_isbn10_e_manual(env, monkeypatch, capsys):
 
 def test_amazon_apply_isbn_do_ml_bate_e_match_isbn10(env, monkeypatch, capsys):
     a2 = cur.asin_provavel(isbn(2))
-    tsv = _amz_env(env, monkeypatch, [_arow(2, _sitestripe(a2, path="/dp/{}"), isbn(2))])
+    real = f"https://www.amazon.com.br/dp/{a2}?&linkCode=ll2&tag={TAG}&linkId=d49f&ref_=as_li_ss_tl"
+    tsv = _amz_env(env, monkeypatch, [_arow(2, real, isbn(2))])  # formato do SiteStripe real
     assert cur.amazon_apply(tsv, env["cat"]) == 0
     assert "amazon_match=isbn10" in capsys.readouterr().out
 
@@ -893,6 +894,8 @@ def test_amazon_apply_isbn_do_ml_bate_e_match_isbn10(env, monkeypatch, capsys):
     (_arow(1, "https://amzn.to/abc", isbn(1)), "amzn.to"),
     (_arow(1, _sitestripe("8535914846", tag="outra-20"), isbn(1)), "outra conta"),
     (_arow(1, _sitestripe("8535914846") + f"&tag={TAG}", isbn(1)), "repetida"),
+    (_arow(1, _sitestripe("8535914846") + "&&tag=outra-20", isbn(1)), "repetida"),  # vazio não esconde
+    (_arow(1, _sitestripe("8535914846") + "&tag+=outra-20", isbn(1)), "repetida"),
     (_arow(1, _sitestripe("8535914846").replace("&tag=" + TAG, ""), isbn(1)), "ausente"),
     (_arow(1, _sitestripe("8535914846").replace("www.amazon.com.br", "www.amazon.com"), isbn(1)), "https em www.amazon.com.br"),
     (_arow(1, _sitestripe("8535914846").replace("https://", "https://x@"), isbn(1)), "https em www.amazon.com.br"),
