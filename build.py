@@ -31,6 +31,8 @@ ALLOWED_HOSTS = {
     "mercadolivre.com",
 }
 STORES = {"amazon": "Amazon", "mercadolivre": "Mercado Livre"}
+# Domínio do <link rel="canonical"> (o site responde em .com e .com.br): o .com, decisão do Elias em 2026-10-20.
+SITE = "https://ofertaslivros.com"
 # Conjunto fechado: o slug vira diretório em dist/, então nunca vem do JSON livre.
 GENRES = {
     "literatura-brasileira": "Literatura brasileira",
@@ -1402,7 +1404,9 @@ def render_pages(offers, bot=None, ch=()):
         pages["canais/index.html"] = canais(offers, ch, bot)
     for o in offers:  # id validado por ID_RE: seguro como diretório
         pages[f"livro/{o['id']}/index.html"] = book_page(o, offers, bot, ch)
-    return pages
+    # canonical pelo caminho em dist/ (slugs de GENRES e ids de ID_RE), num lugar só para todas as páginas
+    return {k: v.replace('<link rel="icon"', f'<link rel="canonical" href="{e(SITE + "/" + k.removesuffix("index.html"))}">\n'
+                         '<link rel="icon"', 1) for k, v in pages.items()}
 
 
 def build(dev=False):
@@ -2191,6 +2195,10 @@ def selftest():
     assert set(pg) == {"index.html", "privacidade/index.html", "ofertas/index.html", "curadoria/index.html", "manga/index.html",
                        "ficcao/index.html", "livro/livro-1/index.html", "livro/livro-2/index.html"}
     assert "canais/index.html" in render_pages(load(good), ch=[("Telegram", "https://t.me/ofertaslivros")])
+    for path, h in pg.items():                                                 # canonical absoluto, um por página
+        assert re.findall(r'<link rel="canonical" href="([^"]+)">', h) == [SITE + "/" + path.removesuffix("index.html")], path
+    assert '<link rel="canonical" href="https://ofertaslivros.com/livro/livro-1/">' in pg["livro/livro-1/index.html"]
+    assert '<link rel="canonical" href="https://ofertaslivros.com/">' in pg["index.html"]
     lv = pg["livro/livro-1/index.html"]
     assert "<h1 class=\"livro-h1\">T</h1>" in lv and '<html lang="pt-BR" data-style="manga">' in lv
     assert 'href="/r/livro-1" rel="sponsored noopener noreferrer" target="_blank"' in lv
