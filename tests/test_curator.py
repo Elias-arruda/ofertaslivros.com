@@ -740,3 +740,81 @@ def test_amazon_todo(env, tmp_path):
     os.utime(tsv, (0, 0))
     cur.amazon_todo(env["cat"], tsv, TODAY)
     assert len(tsv.read_text().splitlines()) == 1 + 14
+
+
+# ---- links-apply (§10.4, item 3) ----
+
+def _link(ref, aff="teste-aff", **extra):
+    q = {"matt_word": aff, "matt_tool": "1", "ref": ref, **extra}
+    return f"https://www.mercadolivre.com.br/social/{aff}?" + "&".join(f"{k}={v}" for k, v in q.items())
+
+
+def _apply_env(env, rows):
+    doc = json.loads(env["cat"].read_text())
+    doc["books"] += [{"id": f"p{n}", "genre": "ficcao", "title": f"T{n}", "author": "A",
+                      "ml_product_id": f"MLB{n}", "pendente": True} for n in (1, 2, 3)]
+    env["cat"].write_text(json.dumps(doc))
+    env["links"].write_text("\n".join("\t".join(r) for r in [cur.ML_LINKS_COLS] + rows) + "\n")
+
+
+def _row(n, url="", bid=None, pid=None):
+    return [bid or f"p{n}", pid or f"MLB{n}", f"T{n}", f"https://www.mercadolivre.com.br/p/MLB{n}", url]
+
+
+def test_links_apply_valido_grava_e_sai_da_fila(env, capsys):
+    _apply_env(env, [_row(1, _link("R1")), _row(2)])
+    assert cur.links_apply(env["links"], env["cat"]) == 0
+    b = {x["id"]: x for x in env["books"]()}
+    assert b["p1"] == {"id": "p1", "genre": "ficcao", "title": "T1", "author": "A",
+                       "ml_product_id": "MLB1", "ml_url": _link("R1")}
+    assert b["p2"]["pendente"] is True
+    rest = env["links"].read_text().splitlines()
+    assert len(rest) == 2 and rest[1].startswith("p2\t")  # vazia fica
+    assert "aplicado: p1 <- https://www.mercadolivre.com.br/p/MLB1" in capsys.readouterr().out
+    assert c.read_catalog(env["cat"])  # p1 publicado entra na coleta
+
+
+@pytest.mark.parametrize("row,why", [
+    (_row(1, "https://meli.la/abc"), "meli.la"),
+    (_row(1, _link("R1", aff="outra-conta")), "matt_word"),
+    (_row(1, _link("R1", go="x")), "painel"),                      # chave fora da allowlist
+    (_row(1, _link("R1") + "&ref=R9"), "painel"),                  # chave repetida
+    (_row(1, _link("R1"), bid="nao-existe"), "não está no catálogo"),
+    (_row(1, _link("R1"), pid="MLB2"), "não é o de"),              # book_id x ml_product_id
+    (_row(1, _link("R1").replace("&ref=R1", "")), "sem ref"),
+    (_row(1, _link("R1") + "\textra"), "colunas"),
+    (_row(1, _link("ja-tenho")), "ref repetido"),                   # ref de outro livro do catálogo
+])
+def test_links_apply_recusa_e_mantem_a_linha(env, capsys, row, why):
+    doc_ja = json.loads(env["cat"].read_text())
+    doc_ja["books"][0]["ml_url"] = _link("ja-tenho")
+    env["cat"].write_text(json.dumps(doc_ja))
+    _apply_env(env, [row])
+    before = env["cat"].read_text()
+    assert cur.links_apply(env["links"], env["cat"]) == 1
+    assert env["cat"].read_text() == before
+    assert env["links"].read_text().splitlines()[1] == "\t".join(row)
+    assert why in capsys.readouterr().out
+
+
+def test_links_apply_ref_repetido_no_arquivo_e_replace(env, capsys):
+    _apply_env(env, [_row(1, _link("R1")), _row(2, _link("R1"))])
+    assert cur.links_apply(env["links"], env["cat"]) == 1
+    assert "ref repetido (já é de 'p1')" in capsys.readouterr().out
+    # p1 já tem ml_url: sem --replace recusa, com --replace troca
+    _apply_env2 = [_row(1, _link("R7"))]
+    env["links"].write_text("\n".join("\t".join(r) for r in [cur.ML_LINKS_COLS] + _apply_env2) + "\n")
+    assert cur.links_apply(env["links"], env["cat"]) == 1
+    assert "já tem ml_url" in capsys.readouterr().out
+    assert cur.links_apply(env["links"], env["cat"], replace=True) == 0
+    assert {x["id"]: x for x in env["books"]()}["p1"]["ml_url"] == _link("R7")
+
+
+def test_links_apply_cabecalho_errado_e_sem_aff_nao_aplicam(env, monkeypatch):
+    _apply_env(env, [_row(1, _link("R1"))])
+    env["links"].write_text(env["links"].read_text().replace("ml_url", "link", 1))
+    with pytest.raises(c.Invalid, match="cabeçalho"):
+        cur.links_apply(env["links"], env["cat"])
+    monkeypatch.delenv("ML_AFFILIATE_ID")
+    with pytest.raises(c.Invalid, match="ML_AFFILIATE_ID"):
+        cur.links_apply(env["links"], env["cat"])
