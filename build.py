@@ -964,6 +964,7 @@ def fab():
 <summary class="fab">{icon("busca")}<span class="fab-t">Pedir um livro</span></summary>
 <form class="pedir" name="pedido" method="POST" action="{SITE}/#pedido-recebido" data-netlify="true" netlify-honeypot="site" accept-charset="utf-8">
 <input type="hidden" name="form-name" value="pedido">
+<button class="pedir-x js-px" type="button" hidden>{icon("x")}<span class="sr">Fechar</span></button>
 <p class="sr" aria-hidden="true"><label>Não preencha <input name="site" tabindex="-1" autocomplete="off"></label></p>
 <p class="pedir-h">Qual livro você quer ver aqui?</p>
 <label for="p-titulo">Nome do livro</label><input id="p-titulo" name="titulo" required maxlength="150" autocomplete="off">
@@ -1861,6 +1862,7 @@ def selftest():
     assert ('<input type="hidden" name="form-name" value="pedido">' in pf
             and 'name="titulo" required maxlength="150"' in pf and 'name="autor" maxlength="100"' in pf
             and '<input name="site" tabindex="-1"' in pf and not re.search(r'type="(email|tel)"|name="(nome|email|tel)', pf))
+    assert '<button class="pedir-x js-px" type="button" hidden>' in pf  # X só com JS: sem JS o <summary> fecha
     assert '<details class="fab-box" id="pedir">' in h and 'id="pedido-recebido"' in h and "Recebemos seu pedido" in h
     g = vis(page(offers_n(4), "manga"))
     assert "carrossel" not in g and re.search(r'href="/manga/"[^>]*aria-current="page"', g)
