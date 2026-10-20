@@ -702,8 +702,12 @@ def test_deadline_adia_sem_erro(env, capsys):
         clk.t += 15
     env["fake"].on_call = tick
     assert env["run"](clock=clk) == 0
-    assert "1 ok, 0 inativo, 0 gtin_divergente, 0 erro, 1 adiado" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "1 ok, 0 inativo, 0 gtin_divergente, 0 erro, 1 adiado" in out
     assert env["fake"].paths.count("/oauth/token") == 1
+    # livro adiado não foi lido: a coleta não conta como inteira para a retirada
+    assert json.loads((env["hist"] / "state.json").read_text())["curadoria_ok"] is None
+    assert "coleta não conta para a retirada" in out
 
 
 def test_deadline_nao_espera_alem_do_orcamento():
@@ -786,3 +790,59 @@ def test_fila_no_disco(env):
     q = (env["hist"] / "amazon_queue.csv").read_text().splitlines()
     assert q[1].startswith("livro-duplo,B0ABCDEFGH,Livro 1,2026-10-18T11:00:00+00:00,")
     assert "tag=" not in q[1]
+
+
+def test_datas_da_retirada_no_state(env):
+    """curadoria-automatica.md §10.8, item 6: o coletor mantém as datas que o curator lê."""
+    env["run"]()
+    cu = json.loads((env["hist"] / "state.json").read_text())["curadoria"]
+    raw = json.loads((env["hist"] / "offers.json").read_text())
+    o = {x["id"]: x for x in c.build.load_offers(raw, NOW)}
+    assert set(cu) == {b["id"] for b in c.read_catalog(env["cat"])}
+    for bid, st in cu.items():
+        assert st["publicado"] == "2026-10-18"
+        assert st["ultima_oferta"] == ("2026-10-18" if o.get(bid, {}).get("oferta") else None)
+    assert any(st["ultima_oferta"] for st in cu.values())
+    # 3 dias depois, sem preço fresco: nada avança, e quem sai do catálogo sai do estado
+    later = datetime(2026, 10, 21, 23, 0, tzinfo=timezone.utc)
+    books = c.read_catalog(env["cat"])
+    st = c.load_state(env["hist"])
+    c.track_curadoria(st, books[:1], {}, raw, later)
+    assert st["curadoria"] == {books[0]["id"]: cu[books[0]["id"]]}
+
+
+def test_state_curadoria_estranho_nao_derruba_e_marca_coleta_ok(env):
+    hist = env["hist"]
+    hist.mkdir(parents=True, exist_ok=True)
+    (hist / "state.json").write_text(json.dumps({"curadoria_ok": 5, "curadoria": {
+        "livro-duplo": {"publicado": 1, "ultimo_anuncio": "x", "ultima_oferta": None},
+        "livro-ml-2": {"publicado": "9999-12-31", "ultimo_anuncio": "9999-12-31",
+                       "ultima_oferta": None}}}))
+    assert env["run"]() == 0
+    st = json.loads((hist / "state.json").read_text())
+    assert st["curadoria_ok"] == "2026-10-18"  # ML rodou inteiro
+    assert {v["publicado"] for v in st["curadoria"].values()} == {"2026-10-18"}
+
+
+def test_coleta_inteira_mesmo_com_todos_inativos(env):
+    for pid in list(env["fake"].products):  # sem vencedor e sem anúncio: todos inativos
+        env["fake"].products[pid] = {"id": "x", "status": "active", "buy_box_winner": None}
+    env["run"]()
+    assert not [r for r in rows(env["hist"]) if r.endswith(",ml_api")]
+    assert json.loads((env["hist"] / "state.json").read_text())["curadoria_ok"] == "2026-10-18"
+
+
+@pytest.mark.parametrize("bad", [[], "x", 1, None])
+def test_state_com_campo_de_tipo_errado_e_descartado(env, bad):
+    env["hist"].mkdir(parents=True, exist_ok=True)
+    (env["hist"] / "state.json").write_text(json.dumps(
+        {"curadoria": bad, "history_since": bad, "image_url": bad}))
+    assert env["run"]() == 0
+    assert set(json.loads((env["hist"] / "state.json").read_text())["curadoria"]) \
+        == {b["id"] for b in c.read_catalog(env["cat"])}
+
+
+@pytest.mark.parametrize("v", ["2026-W42-1", "20261018", "2026-10-18T00:00", "2026-1-8", " 2026-10-18"])
+def test_dia_so_na_forma_canonica(v):
+    assert not c._day(v)
+    assert c._day("2026-10-18")

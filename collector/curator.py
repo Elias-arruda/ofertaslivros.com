@@ -2,7 +2,8 @@
 """Curadoria automática do catálogo: docs/produto/curator.md. Só stdlib.
 
     python3 collector/curator.py probe [--isbn ISBN]     # passo 0: as rotas de descoberta respondem?
-    python3 collector/curator.py suggest [--summary MD]  # até 50 pendentes no catalog.json + ml_links.tsv
+    python3 collector/curator.py suggest [--summary MD] [--history DIR]
+        # retirada (§10.8, item 6) + até 50 pendentes no catalog.json + ml_links.tsv
 
 Fontes: /highlights geral da categoria e, em segundo, os termos do /trends resolvidos pelo
 /products/search?q=. O /highlights filtrado por BOOK_GENRE dá 400 (probe 39258219518):
@@ -46,6 +47,10 @@ GENRE_MAX = 10     # por gênero, por execução (tag não conta)
 ACTIVE_MAX = 500   # ativos + pendentes (§10.7, decisão 4)
 PRICE_MIN, PRICE_MAX = 1500, 40000  # centavos: R$ 15 a R$ 400 (decisão 3)
 SEEN_DAYS = 180    # recusado não volta antes disso
+RETIRE_DAYS = 30   # §10.8, item 6: sem anúncio (todos) ou sem oferta (automáticos)
+RETIRE_MAX = 25        # mais que isso num dia é sinal de dado quebrado: não retira
+RETIRE_MAX_7D = 100    # nem em 7 dias seguidos (falha parcial que dura semanas)
+STATE_STALE = timedelta(days=2)  # coleta do ML ok há mais que isso: não retira
 DEADLINE_S = 300   # orçamento de rede do suggest (job tem 10 min)
 SUMMARY_MAX = 60_000
 PROBE_ISBN = "9788535914849"  # só para o probe do /products/search
@@ -292,8 +297,12 @@ def write_ml_links(path, books):
     path.write_text("".join("\t".join(r) + "\n" for r in rows), encoding="utf-8")
 
 
-def summary(picked, today, revisar=()):
-    lines = [f"## Curadoria {today.isoformat()}: {len(picked)} candidatos",
+def summary(picked, today, revisar=(), retired=()):
+    lines = [f"## Curadoria {today.isoformat()}: {len(picked)} candidatos"
+             + (f", {len(retired)} retirados" if retired else ""),
+             *([f"> **PR sensível:** apaga {len(retired)} livro(s) do catálogo. Merge só "
+                "depois do \"aprovado, pode seguir\" do Elias na sessão (CLAUDE.md, PR e merge).",
+                ""] if retired else []),
              "",
              f"Fonte: `/highlights` da categoria `{CATEGORY}` e termos do `/trends` "
              f"(posição acima de {TREND_POS}), via API do ML, filtrada por ficha de livro "
@@ -311,6 +320,11 @@ def summary(picked, today, revisar=()):
                      f"{asin_provavel(x['isbn'])} | {PRODUCT_URL.format(x['ml_product_id'])} |")
     lines += ["", "### URLs para o Gerador de links do painel", "", "```text",
               *(PRODUCT_URL.format(x["ml_product_id"]) for x in picked), "```", ""]
+    if retired:
+        lines += ["### Retirados (§10.8, item 6; o id não volta a ser usado)", "",
+                  *(f"- `{b['id']}` {md(b['title'])}: "
+                    + ("31+ dias sem anúncio ativo" if why == "sem_anuncio"
+                       else "31+ dias sem oferta (automático)") for b, why in retired), ""]
     if revisar:
         lines += ["### Para revisar (B5: palavra da lista fraca no título; não entraram)", "",
                   *(f"- {PRODUCT_URL.format(pid)}" for pid in revisar), ""]
@@ -366,16 +380,42 @@ def write_catalog(path, doc):
     tmp.replace(path)
 
 
-def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
-            clock=time.monotonic, links_path=None):
-    catalog, seen_path, links_path = catalog or c.CATALOG, seen_path or SEEN, links_path or ML_LINKS
-    today = today or datetime.now(timezone.utc).date()
-    doc = json.loads(catalog.read_text(encoding="utf-8"))
-    books = c.load_catalog(doc, include_pending=True)  # catálogo quebrado: nem começa
-    seen = load_seen(seen_path, today)
-    if ACTIVE_MAX - len(books) <= 0:
-        print(f"curator: catálogo no teto ({len(books)}/{ACTIVE_MAX}); nada a sugerir")
-        return 0
+def retire(books, cstate, today, recent=0):
+    """-> [(livro, motivo)] pela §10.8, item 6, com as datas que o coletor mantém em
+    price-history/state.json (curadoria): (a) 31+ dias sem anúncio ativo, todos;
+    (b) 31+ dias sem oferta (desde a última ou, se nunca, desde a publicação), só os
+    automáticos (com genre_source). Não retira nada sem coleta do ML inteira recente
+    (curadoria_ok), acima de RETIRE_MAX no dia ou de RETIRE_MAX_7D na semana (recent = já
+    retirados nos últimos 7 dias), nem se fosse esvaziar o catálogo."""
+    cu = cstate.get("curadoria") or {}
+    ok = cstate.get("curadoria_ok") or ""
+    if not (today - STATE_STALE).isoformat() <= ok <= today.isoformat():  # futura também não
+        print("::warning::curator: coleta do ML sem execução completa recente; retirada pulada")
+        return []
+    limit = (today - timedelta(days=RETIRE_DAYS)).isoformat()
+    out = []
+    for b in books:
+        st = cu.get(b["id"])
+        if b.get("pendente") or st is None:
+            continue
+        if max(v or "" for v in st.values()) > today.isoformat():
+            # data futura: o track_curadoria do coletor zera o relógio na próxima coleta
+            # (a cada 30 min); até lá conta como relógio recomeçado hoje, ou seja, não sai
+            continue
+        if st["ultimo_anuncio"] < limit:
+            out.append((b, "sem_anuncio"))
+        elif "genre_source" in b and (st["ultima_oferta"] or st["publicado"]) < limit:
+            out.append((b, "sem_oferta"))
+    if len(out) > RETIRE_MAX or recent + len(out) > RETIRE_MAX_7D \
+            or len(out) >= sum(not b.get("pendente") for b in books):
+        print(f"::warning::curator: {len(out)} retiradas hoje e {recent} na semana (tetos "
+              f"{RETIRE_MAX}/{RETIRE_MAX_7D}); nada retirado, conferir à mão")
+        return []
+    return out
+
+
+def discover(books, seen, clock):
+    """-> (escolhidos, revisar_b5, código de saída). Rede só aqui."""
     known_pids = {b["ml_product_id"] for b in books if "ml_product_id" in b} | set(seen)
     known_isbns = {b["isbn"] for b in books if "isbn" in b}
     deadline = clock() + DEADLINE_S
@@ -384,10 +424,10 @@ def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
         token = c.ml_token(deadline, clock)
     except c.MLError as e:
         print(f"::error::curator: token falhou ({e})")
-        return 1
+        return [], [], 1
     if token is None:
         print("::error::curator: ML_CLIENT_ID/ML_CLIENT_SECRET ausentes no ambiente")
-        return 1
+        return [], [], 1
 
     ranks, ok = {}, 0  # pid -> melhor posição
     for name, src in (("highlights", highlights), ("trends", trends)):
@@ -404,7 +444,7 @@ def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
                 ranks[pid] = min(ranks.get(pid, pos), pos)
     if not ok:
         print("::error::curator: nem /highlights nem /trends responderam (ver o probe)")
-        return 1
+        return [], [], 1
 
     why, cands, isbns, revisar = Counter(), [], set(known_isbns), []
     order = sorted(ranks.items(), key=lambda kv: (kv[1], kv[0]))
@@ -435,18 +475,49 @@ def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
           + (", ".join(f"{v} {k}" for k, v in sorted(why.items())) or "nenhum"))
     if revisar:  # só o id (MLB_RE): título da API não vai para o log
         print("curator: revisar_b5 (catalog-curator confere): " + " ".join(revisar))
-    if not picked:
+    return picked, revisar, 1 if why["erro"] and not cands else 0
+
+
+def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
+            clock=time.monotonic, links_path=None, history=None):
+    """Retirada (com o price-history do coletor) e descoberta; grava o PR do dia."""
+    catalog, seen_path, links_path = catalog or c.CATALOG, seen_path or SEEN, links_path or ML_LINKS
+    today = today or datetime.now(c.BRT).date()  # mesmo dia BRT do coletor
+    doc = json.loads(catalog.read_text(encoding="utf-8"))
+    books = c.load_catalog(doc, include_pending=True)  # catálogo quebrado: nem começa
+    seen = load_seen(seen_path, today)
+    gone = dict(doc.get("retirados", {}))  # validado no load_catalog
+    week = (today - timedelta(days=7)).isoformat()
+    retired = retire(books, c.load_state(history), today,
+                     sum(d >= week for d in gone.values())) if history else []
+    if retired:
+        ids = {b["id"] for b, _ in retired}
+        books = [b for b in books if b["id"] not in ids]
+        gone.update({i: today.isoformat() for i in ids})
+        seen.update({b["ml_product_id"]: today.isoformat() for b, _ in retired
+                     if "ml_product_id" in b})  # não volta pela descoberta por SEEN_DAYS
+        print("curator: retirados " + ", ".join(f"{b['id']} ({why})" for b, why in retired))
+    picked, revisar, rc = [], [], 0
+    if ACTIVE_MAX - len(books) <= 0:
+        print(f"curator: catálogo no teto ({len(books)}/{ACTIVE_MAX}); nada a sugerir")
+    else:
+        picked, revisar, rc = discover(books, seen, clock)
+    if not picked and not retired:
         if revisar and summary_path:  # registro da revisão mesmo sem PR (o workflow pode publicar)
             summary_path.write_text(summary([], today, revisar), encoding="utf-8")
-        return 1 if why["erro"] and not cands else 0
+        return rc
 
-    taken = {b["id"] for b in books}
+    taken = {b["id"] for b in books} | set(gone)  # id retirado nunca volta (gate 9)
     new = [{"id": slug(x["title"], taken), **({"isbn": x["isbn"]} if x["isbn"] else {}),
-            "genre": x["genre"], "title": x["title"], "author": x["author"],
-            "ml_product_id": x["ml_product_id"], "pendente": True} for x in picked]
-    doc = {**doc, "books": doc["books"] + new}
+            "genre": x["genre"], "genre_source": "ml_book_genre", "title": x["title"],
+            "author": x["author"], "ml_product_id": x["ml_product_id"], "pendente": True}
+           for x in picked]
+    keep = {b["id"] for b in books}
+    doc = {**doc, "books": [b for b in doc["books"] if b.get("id") in keep] + new}
+    if gone:
+        doc["retirados"] = dict(sorted(gone.items()))
     c.load_catalog(doc, include_pending=True)  # valida antes de gravar
-    text = summary(picked, today, revisar)
+    text = summary(picked, today, revisar, retired)
     write_catalog(catalog, doc)
     write_ml_links(links_path, doc["books"])
     seen.update({x["ml_product_id"]: today.isoformat() for x in picked})
@@ -454,7 +525,7 @@ def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
                          encoding="utf-8")
     if summary_path:
         summary_path.write_text(text, encoding="utf-8")
-    return 0
+    return rc
 
 
 def _count(body):
@@ -590,11 +661,13 @@ def main(argv=None):
     p.add_argument("--isbn", default=PROBE_ISBN)
     s = sub.add_parser("suggest")
     s.add_argument("--summary", type=Path, help="markdown para o corpo do PR")
+    s.add_argument("--history", type=Path,
+                   help="checkout do branch price-history (lê o state.json); sem ele, não retira")
     a = ap.parse_args(argv)
     try:
         if a.cmd == "probe":
             return probe(a.isbn)
-        return suggest(summary_path=a.summary)
+        return suggest(summary_path=a.summary, history=a.history)
     except c.Invalid as e:
         sys.exit(f"curator falhou: {e}")
 
