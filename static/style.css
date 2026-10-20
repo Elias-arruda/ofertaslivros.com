@@ -818,7 +818,6 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 /* ---------- 14. Curadoria e home curta ---------- */
 .ancoras ul { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; padding: 0 4px; }
 .ancoras .pill { padding-left: 6px; }
-.sec-head h2 { scroll-margin-top: 100px; } /* âncora de /curadoria/#nicho sob o header fixo */
 .nov-nota { margin-top: 12px; max-width: 46ch; font-size: 15px; color: var(--muted); }
 .vazio--fixo a { font-weight: 600; color: var(--text); text-decoration-color: var(--accent); text-underline-offset: 3px; }
 /* Home: o CSS corta a lista e o "Ver todas" leva à página completa. Buscando ou filtrando (.filtrando,
