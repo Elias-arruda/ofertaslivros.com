@@ -551,6 +551,12 @@ def test_b5_fraca_vai_para_revisao(env, capsys):
     assert "MLB1" not in json.loads(env["seen"].read_text())  # volta se a lista mudar
 
 
+def test_so_revisar_b5_ainda_grava_o_resumo(env):
+    env["add"](prod(1, title="Edital comentado"))
+    assert env["suggest"]() == 0 and new_ids(env) == []
+    assert "https://www.mercadolivre.com.br/p/MLB1" in env["md"].read_text()
+
+
 # ---- ml_links.tsv (§10.4, fila) ----
 
 def test_ml_links_tsv_fila_e_preserva_colado(env):

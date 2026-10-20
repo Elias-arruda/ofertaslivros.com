@@ -435,6 +435,8 @@ def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
     if revisar:  # só o id (MLB_RE): título da API não vai para o log
         print("curator: revisar_b5 (catalog-curator confere): " + " ".join(revisar))
     if not picked:
+        if revisar and summary_path:  # registro da revisão mesmo sem PR (o workflow pode publicar)
+            summary_path.write_text(summary([], today, revisar), encoding="utf-8")
         return 1 if why["erro"] and not cands else 0
 
     taken = {b["id"] for b in books}
