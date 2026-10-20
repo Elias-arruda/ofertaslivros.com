@@ -58,6 +58,7 @@ class FakeML:
         self.search = {}           # q -> [ml_product_id]
         self.products = {}
         self.items = {}
+        self.item_detail = {}      # item_id -> corpo do /items/{id}
         self.ctype = "application/json;charset=UTF-8"
 
     def rank(self, *pids):
@@ -75,6 +76,11 @@ class FakeML:
             if "attributeValue" in q:  # como na produção (probe 39258219518)
                 raise HTTPError(req.full_url, 400, "x", {}, None)
             return Resp({"query_data": {}, "content": self.hl}, self.ctype)
+        if u.path.startswith("/items/"):
+            iid = u.path.split("/")[2]
+            if iid not in self.item_detail:
+                raise HTTPError(req.full_url, 404, "x", {}, None)
+            return Resp(self.item_detail[iid])
         if u.path.endswith("/items"):
             pid = u.path.split("/")[2]
             if pid not in self.items:
@@ -92,7 +98,10 @@ class FakeML:
             return Resp([{"keyword": k, "url": "https://lista.mercadolivre.com.br/x"}
                          for k in self.trends], self.ctype)
         if u.path.startswith("/products/"):
-            return Resp(self.products[u.path.rsplit("/", 1)[1]])
+            pid = u.path.rsplit("/", 1)[1]
+            if pid not in self.products:
+                raise HTTPError(req.full_url, 404, "x", {}, None)
+            return Resp(self.products[pid])
         raise AssertionError(f"rota inesperada {u.path}")
 
 
@@ -577,3 +586,31 @@ def test_ml_links_tsv_fila_e_preserva_colado(env):
     rows = [ln.split("\t") for ln in env["links"].read_text().splitlines()[1:]]
     assert [(r[1], r[4]) for r in rows] == [("MLB1", ""), ("MLB2", ML_URL), ("MLB3", "")]
     assert "ja-tenho" not in env["links"].read_text()  # já tem ml_url
+
+
+def test_probe_procura_isbn_no_anuncio_dos_livros_sem_isbn(env, capsys, monkeypatch):
+    monkeypatch.setattr(c, "CATALOG", env["cat"])
+    monkeypatch.delenv("ML_AFFILIATE_ID")  # como no job do probe: sem a variável
+    doc = json.loads(env["cat"].read_text())
+    doc["books"] += [{"id": "sem-isbn", "genre": "ficcao", "title": "T", "author": "A",
+                      "ml_product_id": "MLB50", "ml_url": ML_URL.replace("ref=X", "ref=Y")},
+                     {"id": "sem-nada", "genre": "ficcao", "title": "U", "author": "A",
+                      "ml_product_id": "MLB60", "ml_url": ML_URL.replace("ref=X", "ref=Z")}]
+    env["cat"].write_text(json.dumps(doc))
+    p50 = prod(50)
+    p50["attributes"] = [a for a in p50["attributes"] if a["id"] != "GTIN"]
+    env["fake"].products.update({"MLB50": p50, "MLB60": {**p50, "buy_box_winner": None}})
+    env["fake"].item_detail["MLB950"] = {"attributes": [{"id": "GTIN", "value_name": isbn(50)}]}
+    assert cur.probe() == 0
+    out = capsys.readouterr().out
+    assert f"isbn sem-isbn: /products -> 200 /items -> 200 isbn={isbn(50)}" in out
+    assert "isbn sem-nada: /products -> 200 /items -> - isbn=ausente" in out
+    assert "isbn ja-tenho" not in out  # já tem isbn
+    assert {urlsplit(u).hostname for u in env["fake"].urls} == {"api.mercadolibre.com"}
+
+
+def test_probe_isbn_catalogo_ilegivel_nao_derruba(env, capsys, monkeypatch, tmp_path):
+    monkeypatch.setattr(c, "CATALOG", tmp_path / "nao-existe.json")
+    env["add"](prod(1))
+    assert cur.probe() == 0
+    assert "isbn: catálogo ilegível (FileNotFoundError)" in capsys.readouterr().out
