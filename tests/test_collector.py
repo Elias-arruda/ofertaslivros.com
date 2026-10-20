@@ -392,10 +392,28 @@ def test_mediana_dias_8_a_90(env, monkeypatch):
     assert "median_90d_cents" not in offers(hist)["livro-duplo"]["stores"][1]  # sem histórico
 
 
-def test_mediana_so_sai_se_o_build_aceita(env):
-    assert c.EMIT_MEDIAN == ("median_90d_cents" in c.STORE_COMMON)
+def test_mediana_fora_enquanto_o_build_nao_aceita(env, monkeypatch):
+    monkeypatch.setattr(c, "EMIT_MEDIAN", False)
+    hist = env["hist"]
+    (hist / "price_history").mkdir(parents=True)
+    (hist / "price_history" / "2026-09.csv").write_text(
+        ",".join(c.HISTORY_COLS) + "\n"
+        "livro-ml-2,mercadolivre,3500,5990,2026-09-01T12:00:00+00:00,ml_api\n")
     env["run"]()
-    assert "median_90d_cents" in json.dumps(offers(env["hist"])) or not c.EMIT_MEDIAN
+    assert "median_90d_cents" not in json.dumps(offers(hist))
+
+
+def test_mediana_le_o_shard_do_dia_90(env, monkeypatch):
+    """01/03 01h UTC = 28/02 BRT: o dia 90 é 30/11, no 5º mês UTC para trás."""
+    monkeypatch.setattr(c, "EMIT_MEDIAN", True)
+    now = datetime(2027, 3, 1, 1, 0, tzinfo=timezone.utc)
+    hist = env["hist"]
+    (hist / "price_history").mkdir(parents=True)
+    (hist / "price_history" / "2026-11.csv").write_text(
+        ",".join(c.HISTORY_COLS) + "\n"
+        "livro-ml-2,mercadolivre,3500,5990,2026-11-30T12:00:00+00:00,ml_api\n")
+    _, _, _, daily = c.summarize(hist, now)
+    assert list(daily[("livro-ml-2", "mercadolivre")]) == [c.date(2026, 11, 30)]
 
 
 def test_mediana_amazon_exige_cobertura():

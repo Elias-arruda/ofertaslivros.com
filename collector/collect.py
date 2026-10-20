@@ -657,7 +657,8 @@ def summarize(hist_dir, now):
     today = now.astimezone(BRT).date()
     lo, hi = (today - timedelta(days=n) for n in reversed(MEDIAN_DAYS))
     latest, low, first, daily = {}, {}, {}, {}
-    for h in read_history(hist_dir, recent_months(now)):
+    # 5 meses UTC: 4 não cobrem o dia 90 BRT em todo começo de mês (ex.: 1º/05)
+    for h in read_history(hist_dir, recent_months(now, 5)):
         k = (h["book_id"], h["store"])
         p = int(h["price_cents"])
         if k not in latest or h["checked_at"] >= latest[k]["checked_at"]:  # empate: a última gravada
