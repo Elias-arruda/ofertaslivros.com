@@ -38,6 +38,24 @@
   --g-nao-ficcao: #2b8fd6;
   --g-nao-ficcao-2: #8cc8f2;
   --g-nao-ficcao-ink: #03111f;
+  --g-romance: #e3526b;
+  --g-romance-2: #eda9b5;
+  --g-romance-ink: #26070c;
+  --g-fantasia: #119590;
+  --g-fantasia-2: #2cd1cb;
+  --g-fantasia-ink: #041514;
+  --g-suspense: #df5d12;
+  --g-suspense-2: #e7af8f;
+  --g-suspense-ink: #1e0e05;
+  --g-mindset: #689215;
+  --g-mindset-2: #97cc2b;
+  --g-mindset-ink: #0e1303;
+  --g-politica: #6689a3;
+  --g-politica-2: #abbecd;
+  --g-politica-ink: #05131e;
+  --g-historia: #bd743f;
+  --g-historia-2: #dcb496;
+  --g-historia-ink: #1c0f05;
   --g-manga: #e5468f;
   --g-manga-2: #ff9cc6;
   --g-manga-ink: #22040f;
@@ -95,6 +113,12 @@
 [data-style="ficcao"], [data-g="ficcao"] { --accent: var(--g-ficcao); --accent2: var(--g-ficcao-2); --accent-ink: var(--g-ficcao-ink); }
 [data-style="negocios"], [data-g="negocios"] { --accent: var(--g-negocios); --accent2: var(--g-negocios-2); --accent-ink: var(--g-negocios-ink); }
 [data-style="nao-ficcao"], [data-g="nao-ficcao"] { --accent: var(--g-nao-ficcao); --accent2: var(--g-nao-ficcao-2); --accent-ink: var(--g-nao-ficcao-ink); }
+[data-style="romance"], [data-g="romance"] { --accent: var(--g-romance); --accent2: var(--g-romance-2); --accent-ink: var(--g-romance-ink); }
+[data-style="fantasia"], [data-g="fantasia"] { --accent: var(--g-fantasia); --accent2: var(--g-fantasia-2); --accent-ink: var(--g-fantasia-ink); }
+[data-style="suspense"], [data-g="suspense"] { --accent: var(--g-suspense); --accent2: var(--g-suspense-2); --accent-ink: var(--g-suspense-ink); }
+[data-style="mindset"], [data-g="mindset"] { --accent: var(--g-mindset); --accent2: var(--g-mindset-2); --accent-ink: var(--g-mindset-ink); }
+[data-style="politica"], [data-g="politica"] { --accent: var(--g-politica); --accent2: var(--g-politica-2); --accent-ink: var(--g-politica-ink); }
+[data-style="historia"], [data-g="historia"] { --accent: var(--g-historia); --accent2: var(--g-historia-2); --accent-ink: var(--g-historia-ink); }
 [data-style="manga"], [data-g="manga"] { --accent: var(--g-manga); --accent2: var(--g-manga-2); --accent-ink: var(--g-manga-ink); }
 
 *, *::before, *::after { box-sizing: border-box; }
