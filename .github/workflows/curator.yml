@@ -1,7 +1,7 @@
 name: curator
 
-# docs/produto/curator.md. Só disparo manual até o probe confirmar a fonte; o cron semanal
-# liga depois de 2 PRs bons (decisão 1). Nada de pull_request/pull_request_target.
+# docs/produto/curator.md. Um PR de curadoria por dia (até 50 candidatos e retirada).
+# Nada de pull_request/pull_request_target.
 on:
   workflow_dispatch:
     inputs:
@@ -11,7 +11,7 @@ on:
         options: [probe, suggest]
         default: probe
   schedule:
-    - cron: "0 12 * * 1" # segunda 09h BRT (ligado em 2026-10-19, decisão do Elias)
+    - cron: "0 12 * * *" # todo dia 09h BRT
 
 permissions: {}
 
@@ -61,25 +61,37 @@ jobs:
           echo "abertos=$n" >> "$GITHUB_OUTPUT"
           if [ "$n" != "0" ]; then echo "já existe PR do curator aberto; nada a fazer"; fi
 
+      - name: Estado do coletor (price-history/state.json), usado na retirada
+        if: steps.open.outputs.abertos == '0'
+        # Sem credencial (persist-credentials: false): funciona porque o repo é público, como no deploy.yml.
+        run: |
+          git fetch --no-tags --depth=1 origin \
+            refs/heads/price-history:refs/remotes/origin/price-history
+          mkdir -p "$RUNNER_TEMP/history"
+          git show origin/price-history:state.json > "$RUNNER_TEMP/history/state.json"
+
       - name: Sugerir candidatos (API do ML)
         if: steps.open.outputs.abertos == '0'
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
           ML_AFFILIATE_ID: ${{ vars.ML_AFFILIATE_ID }}
-        run: python3 collector/curator.py suggest --summary "$RUNNER_TEMP/curator.md"
+        run: |
+          python3 collector/curator.py suggest --summary "$RUNNER_TEMP/curator.md" \
+            --history "$RUNNER_TEMP/history"
 
       - name: Abrir o PR
         if: steps.open.outputs.abertos == '0'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if git diff --quiet -- collector/catalog.json; then
-            echo "zero candidatos: sem PR"; exit 0
+          files="collector/catalog.json collector/curator_seen.json collector/ml_links.tsv"
+          if [ -z "$(git status --porcelain -- $files)" ]; then
+            echo "nada novo nem retirado: sem PR"; exit 0
           fi
           branch="curator/$(date -u +%F)"
           git switch -c "$branch"
-          git add collector/catalog.json collector/curator_seen.json
+          git add -- $files # com candidato ou retirada, o suggest grava os três; arquivo faltando falha aqui (fail closed)
           git -c user.name="github-actions[bot]" \
               -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
               commit -q -m "curator: candidatos pendentes de $(date -u +%F)"
