@@ -805,3 +805,16 @@ def test_datas_da_retirada_no_state(env):
     st = c.load_state(env["hist"])
     c.track_curadoria(st, books[:1], {}, raw, later)
     assert st["curadoria"] == {books[0]["id"]: cu[books[0]["id"]]}
+
+
+def test_state_curadoria_estranho_nao_derruba_e_marca_coleta_ok(env):
+    hist = env["hist"]
+    hist.mkdir(parents=True, exist_ok=True)
+    (hist / "state.json").write_text(json.dumps({"curadoria_ok": 5, "curadoria": {
+        "livro-duplo": {"publicado": 1, "ultimo_anuncio": "x", "ultima_oferta": None},
+        "livro-ml-2": {"publicado": "9999-12-31", "ultimo_anuncio": "9999-12-31",
+                       "ultima_oferta": None}}}))
+    assert env["run"]() == 0
+    st = json.loads((hist / "state.json").read_text())
+    assert st["curadoria_ok"] == "2026-10-18"  # ML rodou inteiro
+    assert {v["publicado"] for v in st["curadoria"].values()} == {"2026-10-18"}

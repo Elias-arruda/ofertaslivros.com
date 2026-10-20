@@ -593,7 +593,7 @@ def test_retirada_mista():
              {"id": "auto-oferta-recente", **auto}, {"id": "auto-novo", **auto},
              {"id": "manual-sem-anuncio"}, {"id": "auto-30-dias", **auto},
              {"id": "pendente", "pendente": True, **auto}, {"id": "sem-estado", **auto}]
-    st = {"curadoria": {
+    st = {"curadoria_ok": "2026-10-19", "curadoria": {
         "manual-sem-oferta": _st(), "auto-sem-oferta": _st(oferta="2026-09-18"),
         "auto-oferta-recente": _st(oferta="2026-09-25"), "auto-novo": _st(pub="2026-10-01"),
         "manual-sem-anuncio": _st(anuncio="2026-09-18"), "auto-30-dias": _st(pub="2026-09-19"),
@@ -604,13 +604,17 @@ def test_retirada_mista():
 
 def test_retirada_nao_roda_com_dado_parado_ou_em_massa(capsys):
     books = [{"id": f"l{n}"} for n in range(30)]
-    old = {"curadoria": {b["id"]: _st(anuncio="2026-09-01") for b in books}}
-    assert cur.retire(books, old, TODAY) == []  # coletor parado: tudo pareceria sem anúncio
-    assert cur.retire(books, {"curadoria": {}}, TODAY) == []
-    many = {"curadoria": {**old["curadoria"], "l0": _st()}}
-    assert cur.retire(books, many, TODAY) == []  # 29 > RETIRE_MAX
+    cu = {b["id"]: _st(anuncio="2026-09-01") for b in books}
+    cu["l0"] = _st()  # livro novo com data de hoje não conta como coleta ok
+    assert cur.retire(books, {"curadoria": cu}, TODAY) == []
+    assert cur.retire(books, {"curadoria": cu, "curadoria_ok": "2026-10-16"}, TODAY) == []
+    ok = {"curadoria": cu, "curadoria_ok": "2026-10-18"}
+    assert cur.retire(books, ok, TODAY) == []                       # 29 > RETIRE_MAX
+    assert len(cur.retire(books[:21], ok, TODAY)) == 20
+    assert cur.retire(books[:21], ok, TODAY, recent=81) == []       # 81 + 20 > 100 na semana
+    assert cur.retire(books[1:3], ok, TODAY) == []                  # esvaziaria o catálogo
     out = capsys.readouterr().out
-    assert "retirada pulada" in out and "teto 25" in out
+    assert "retirada pulada" in out and "tetos 25/100" in out
 
 
 def test_retirada_no_pr_e_id_nunca_volta(env, tmp_path):
@@ -621,7 +625,7 @@ def test_retirada_no_pr_e_id_nunca_volta(env, tmp_path):
     env["cat"].write_text(json.dumps(doc))
     hist = tmp_path / "hist"
     hist.mkdir()
-    (hist / "state.json").write_text(json.dumps({"curadoria": {
+    (hist / "state.json").write_text(json.dumps({"curadoria_ok": "2026-10-19", "curadoria": {
         "ja-tenho": _st(), "livro-1": _st(oferta="2026-09-01")}}))
     env["add"](prod(1))  # mesmo título: o slug não pode reaproveitar livro-1
     assert env["suggest"](history=hist) == 0
@@ -629,7 +633,13 @@ def test_retirada_no_pr_e_id_nunca_volta(env, tmp_path):
     assert [b["id"] for b in d["books"]] == ["ja-tenho", "livro-1-2"]
     assert d["retirados"] == {"livro-1": "2026-10-19"}
     assert json.loads(env["seen"].read_text())["MLB777"] == "2026-10-19"
-    assert "1 retirados" in env["md"].read_text() and "`livro-1`" in env["md"].read_text()
+    md = env["md"].read_text()
+    assert "1 retirados" in md and "`livro-1`" in md and "PR sensível" in md
+    # gate 9 também à mão: livro com id retirado não passa no load_catalog
+    d["books"].append({**d["books"][0], "id": "livro-1", "isbn": isbn(5), "ml_product_id": "MLB5",
+                       "ml_url": ML_URL.replace("ref=X", "ref=Z")})
+    with pytest.raises(c.Invalid, match="retirado"):
+        c.load_catalog(d)
 
 
 def test_so_retirada_ja_grava_o_pr(env, tmp_path):
@@ -640,7 +650,7 @@ def test_so_retirada_ja_grava_o_pr(env, tmp_path):
     env["cat"].write_text(json.dumps(doc))
     hist = tmp_path / "hist"
     hist.mkdir()
-    (hist / "state.json").write_text(json.dumps({"curadoria": {
+    (hist / "state.json").write_text(json.dumps({"curadoria_ok": "2026-10-19", "curadoria": {
         "ja-tenho": _st(oferta="2026-09-01"), "outro": _st()}}))
     assert env["suggest"](history=hist) == 0  # nenhum candidato na descoberta
     assert [b["id"] for b in env["books"]()] == ["outro"]
