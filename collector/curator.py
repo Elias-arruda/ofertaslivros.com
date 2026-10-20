@@ -4,6 +4,7 @@
     python3 collector/curator.py probe [--isbn ISBN]     # passo 0: as rotas de descoberta respondem?
     python3 collector/curator.py suggest [--summary MD] [--history DIR]
         # retirada (§10.8, item 6) + até 50 pendentes no catalog.json + ml_links.tsv
+    python3 collector/curator.py amazon-todo            # fila local amazon_links.tsv (§10.5)
 
 Fontes: /highlights geral da categoria e, em segundo, os termos do /trends resolvidos pelo
 /products/search?q=. O /highlights filtrado por BOOK_GENRE dá 400 (probe 39258219518):
@@ -61,6 +62,14 @@ LOOKUP_MAX = 60     # fichas lidas por execução (1 a 3 requests cada); o resto
 SEEN = HERE / "curator_seen.json"
 ML_LINKS = HERE / "ml_links.tsv"  # vai no PR diário; o Elias cola o ml_url na linha (§10.4)
 ML_LINKS_COLS = ["book_id", "ml_product_id", "title", "product_url", "ml_url"]
+# Fila manual da Amazon (§10.5): local, o Elias abre cada URL no navegador. O código só monta
+# o texto; nenhuma URL da Amazon é chamada (regra 1).
+AMAZON_LINKS = HERE / "amazon_links.tsv"
+AMAZON_LINKS_COLS = ["book_id", "isbn", "ml_product_id", "title", "editora_edicao",
+                     "asin_provavel", "product_url", "isbn_confirmado", "amazon_url"]
+AMAZON_QUEUE_DAY = 10  # linhas novas por dia (decisão do Elias, rodada 5)
+AMAZON_DP = "https://www.amazon.com.br/dp/{}"
+AMAZON_SEARCH = "https://www.amazon.com.br/s?{}"
 # B5 (curator.md 5.2): Bíblia, Vade Mecum e apostila de concurso ficam fora do automático.
 # Filtro de exclusão, nunca identidade. Ids de BOOK_SUBGENRES/BOOK_GENRE de MLB437616
 # (GET /categories/MLB437616/attributes, público, 2026-10-19).
@@ -294,6 +303,60 @@ def write_ml_links(path, books):
          PRODUCT_URL.format(b["ml_product_id"]), _tsv_cell(kept.get((b["id"], b["ml_product_id"]), ""))]
         for b in books if "ml_product_id" in b and "ml_url" not in b]  # load_catalog já validou o MLB
     path.write_text("".join("\t".join(r) + "\n" for r in rows), encoding="utf-8")
+
+
+def amazon_product_url(b):
+    """Texto para o navegador do Elias: /dp/<ASIN provável>, senão busca pelo ISBN ou por
+    título e autor. Nunca é chamado pelo código."""
+    ap = asin_provavel(b.get("isbn"))
+    if ap != "-":
+        return AMAZON_DP.format(ap)
+    return AMAZON_SEARCH.format(urlencode({"k": b.get("isbn") or f"{b['title']} {b['author']}"}))
+
+
+def _editora(pid, token):
+    """BOOK_PUBLISHER / BOOK_EDITION da ficha (gate 7: ajuda a bater a edição). "-" sem dado."""
+    if not token:
+        return "-"
+    try:
+        prod = c.ml_request(f"/products/{pid}", token)
+    except c.MLError:
+        return "-"
+    parts = [_name(prod, a) for a in ("BOOK_PUBLISHER", "BOOK_EDITION")] \
+        if isinstance(prod, dict) else []
+    return " / ".join(x for x in parts if x) or "-"
+
+
+def amazon_todo(catalog=None, path=None, today=None):
+    """Reescreve a amazon_links.tsv: livros publicados sem asin. Linhas já na fila ficam
+    como estão (com o que o Elias preencheu); entram até AMAZON_QUEUE_DAY novas por dia.
+    ponytail: "por dia" = o arquivo não foi gravado hoje (mtime); sem score, a ordem é a do
+    catálogo. Trocar pela ordem do score quando ele sair da sombra."""
+    path = path or AMAZON_LINKS
+    today = today or date.today()
+    books = [b for b in c.read_catalog(catalog) if "asin" not in b]
+    ids = {b["id"] for b in books}
+    old = []
+    if path.exists():
+        with path.open(newline="", encoding="utf-8-sig") as f:
+            old = [r for r in csv.DictReader(f, delimiter="\t", quoting=csv.QUOTE_NONE)
+                   if r.get("book_id") in ids]
+    room = 0 if path.exists() and date.fromtimestamp(path.stat().st_mtime) == today \
+        else AMAZON_QUEUE_DAY
+    queued = {r["book_id"] for r in old}
+    new = [b for b in books if b["id"] not in queued][:room]
+    try:
+        token = c.ml_token() if new else None
+    except c.MLError:
+        token = None
+    rows = [[_tsv_cell(r.get(k) or "") for k in AMAZON_LINKS_COLS] for r in old]
+    rows += [[b["id"], b.get("isbn", ""), b.get("ml_product_id", ""), _tsv_cell(b["title"]),
+              _tsv_cell(_editora(b["ml_product_id"], token)) if "ml_product_id" in b else "-",
+              asin_provavel(b.get("isbn")), amazon_product_url(b), "", ""] for b in new]
+    path.write_text("".join("\t".join(r) + "\n" for r in [AMAZON_LINKS_COLS] + rows),
+                    encoding="utf-8")
+    print(f"amazon-todo: {len(new)} novas, {len(old)} já na fila -> {path.name}")
+    return 0
 
 
 def summary(picked, today, revisar=(), retired=()):
@@ -621,10 +684,13 @@ def main(argv=None):
     s.add_argument("--summary", type=Path, help="markdown para o corpo do PR")
     s.add_argument("--history", type=Path,
                    help="checkout do branch price-history (lê o state.json); sem ele, não retira")
+    sub.add_parser("amazon-todo")
     a = ap.parse_args(argv)
     try:
         if a.cmd == "probe":
             return probe(a.isbn)
+        if a.cmd == "amazon-todo":
+            return amazon_todo()
         return suggest(summary_path=a.summary, history=a.history)
     except c.Invalid as e:
         sys.exit(f"curator falhou: {e}")

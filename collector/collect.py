@@ -75,6 +75,7 @@ MANUAL_COLS = ["asin", "price_cents", "list_price_cents", "checked_at"]
 CENTS_RE = re.compile(r"[1-9][0-9]{0,8}")  # inteiro positivo, sem sinal/ponto/expoente
 MAX_CENTS = 1_000_000  # R$ 10.000: acima disso é erro de digitação ou dado quebrado
 MANUAL_MAX_AGE = timedelta(days=7)
+AMAZON_ACTIVE_MAX = 30  # provisório (curator.md 5.7): livros em conferência manual diária
 WINDOW = timedelta(days=90)
 MEDIAN_DAYS = (8, 90)  # dias BRT antes da coleta: alta recente não infla a mediana (§10.8, item 3)
 AMAZON_COVERAGE_MIN = 0.8  # provisório (curator.md 5.7): série manual esparsa não dá mediana
@@ -330,21 +331,29 @@ def only_new_manual(hist_dir, rows):
     return out
 
 
-def amazon_queue(books, last_checked):
+def amazon_queue(books, last_checked, since=None):
     """Ordem de conferência: nunca conferido primeiro, depois o mais antigo.
+    Só AMAZON_ACTIVE_MAX livros (curator.md 5.7): quem já está em conferência fica (o mais
+    antigo pelo history_since da Amazon) e o novo entra quando sobra vaga. O que não cabe
+    mantém o asin no catálogo e segue pelo ML.
+    ponytail: sem score ainda; quando houver, o de menor score cede a vaga.
     Etapa 2: ordenar por número de alertas ativos antes da data (só mudar esta chave)."""
-    am = [b for b in books if "asin" in b]
+    since = since or {}
+    am = sorted((b for b in books if "asin" in b),
+                key=lambda b: (since.get(b["id"], "9999"), b["id"]))[:AMAZON_ACTIVE_MAX]
     return sorted(am, key=lambda b: (last_checked.get(b["id"], ""), b["id"]))
 
 
-def write_queue(hist_dir, books, latest):
+def write_queue(hist_dir, books, latest, history_since=None):
     path = Path(hist_dir) / "amazon_queue.csv"
     path.parent.mkdir(parents=True, exist_ok=True)
     last = {bid: r["checked_at"] for (bid, s), r in latest.items() if s == "amazon"}
     with path.open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f, lineterminator="\n")
         w.writerow(["id", "asin", "title", "last_checked_at", "conferir_em"])
-        for b in amazon_queue(books, last):
+        since = {k.split("|")[0]: v for k, v in (history_since or {}).items()
+                 if k.endswith("|amazon")}
+        for b in amazon_queue(books, last, since):
             # link sem tag de propósito: clique do próprio associado não pode levar a tag
             w.writerow([b["id"], b["asin"], b["title"], last.get(b["id"], ""),
                         f"https://www.amazon.com.br/dp/{b['asin']}"])
@@ -984,7 +993,7 @@ def run(hist_dir, now=None, catalog=None, manual=None, clock=time.monotonic):
     track_curadoria(state, books, latest, offers, now, ml_ok)
     _write_json(Path(hist_dir) / "state.json", state)
     _write_json(Path(hist_dir) / "offers.json", offers)
-    write_queue(hist_dir, books, latest)
+    write_queue(hist_dir, books, latest, state["history_since"])
     print(f"ok: {len(manual_rows)} manuais novos, {len(ml_rows)} do ML gravados, "
           f"{len(offers['offers'])} livros no offers.json")
     return status

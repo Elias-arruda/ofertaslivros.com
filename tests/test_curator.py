@@ -272,7 +272,9 @@ def test_so_api_do_ml_e_nenhum_html(env):
     cur.probe()
     assert {urlsplit(u).hostname for u in env["fake"].urls} == {"api.mercadolibre.com"}
     src = (ROOT / "collector" / "curator.py").read_text()
-    assert "amazon." not in src.lower()
+    # Amazon só como texto montado para a TSV (critério 1): nas duas constantes, nunca chamado
+    assert [ln.split("=")[0].strip() for ln in src.splitlines() if "amazon." in ln.lower()
+            and not ln.lstrip().startswith("#")] == ["AMAZON_DP", "AMAZON_SEARCH"]
     for bad in ("html.parser", "bs4", "BeautifulSoup", "playwright", "selenium"):
         assert bad not in src
     for b in env["books"]()[1:]:
@@ -654,3 +656,44 @@ def test_so_retirada_ja_grava_o_pr(env, tmp_path):
         "ja-tenho": _st(oferta="2026-09-01"), "outro": _st()}}))
     assert env["suggest"](history=hist) == 0  # nenhum candidato na descoberta
     assert [b["id"] for b in env["books"]()] == ["outro"]
+
+
+# ---- fila manual da Amazon (§10.5; critério 11) ----
+
+def _pub(n, **kw):
+    return {"id": f"pub-{n}", "genre": "ficcao", "title": f"Título {n}", "author": "Fulana",
+            "ml_product_id": f"MLB{n}", "ml_url": ML_URL.replace("ref=X", f"ref=R{n}"), **kw}
+
+
+def test_amazon_todo(env, tmp_path):
+    import os
+    books = [_pub(1, isbn=isbn(1)), _pub(2), _pub(3, isbn="9791234567896"),
+             {**_pub(4, isbn=isbn(4)), "asin": "B0ABCDEFGH"}] + [_pub(n) for n in range(5, 16)]
+    env["cat"].write_text(json.dumps({"books": books}))
+    p1 = prod(1)
+    p1["attributes"] += [{"id": "BOOK_PUBLISHER", "value_name": "Editora\tX"},
+                         {"id": "BOOK_EDITION", "value_name": "2ª"}]
+    for n in range(2, 16):
+        env["fake"].products[f"MLB{n}"] = prod(n)
+    env["fake"].products["MLB1"] = p1
+    tsv = tmp_path / "amazon_links.tsv"
+    assert cur.amazon_todo(env["cat"], tsv, TODAY) == 0
+    lines = tsv.read_text().splitlines()
+    assert lines[0].split("\t") == cur.AMAZON_LINKS_COLS
+    rows = [ln.split("\t") for ln in lines[1:]]
+    assert len(rows) == cur.AMAZON_QUEUE_DAY and all(len(r) == 9 for r in rows)
+    assert "pub-4" not in tsv.read_text()  # já tem asin
+    r1, r2, r3 = rows[:3]
+    assert r1[4] == "Editora X / 2ª" and r1[6] == f"https://www.amazon.com.br/dp/{r1[5]}"
+    assert r2[5] == "-" and r2[6] == "https://www.amazon.com.br/s?k=T%C3%ADtulo+2+Fulana"
+    assert r3[6] == "https://www.amazon.com.br/s?k=9791234567896"
+    assert not any("amazon" in u for u in env["fake"].urls)  # regra 1: só texto
+    # mesmo dia: nada novo; o que o Elias preencheu fica
+    rows[0][7] = isbn(1)
+    tsv.write_text("\n".join("\t".join(r) for r in [cur.AMAZON_LINKS_COLS] + rows) + "\n")
+    cur.amazon_todo(env["cat"], tsv, date.fromtimestamp(tsv.stat().st_mtime))
+    assert len(tsv.read_text().splitlines()) == 11 and isbn(1) in tsv.read_text()
+    # dia seguinte: entram as que faltam (4 restantes, abaixo do teto)
+    os.utime(tsv, (0, 0))
+    cur.amazon_todo(env["cat"], tsv, TODAY)
+    assert len(tsv.read_text().splitlines()) == 1 + 14
