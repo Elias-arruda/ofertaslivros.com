@@ -118,7 +118,7 @@ Existe outra versão desta spec no branch `worktree-agent-a26264a6033900af8` (co
 |---|---|---|---|
 | `literatura-brasileira` | Literatura brasileira | `/literatura-brasileira/` | Nenhum. O ML não tem esse valor, nem em `BOOK_SUBGENRES`, onde procurei "brasil" e "nacional". Entra à mão ou, quando a Creators API for liberada, por browse node (abaixo) |
 | `ficcao` | Ficção | `/ficcao/` | Literatura (7538039), Humor (25743212). Também LGBTQ+ (76624760), como gênero padrão, sempre com a tag `lgbtqia` (§10.1.1) |
-| `nao-ficcao` | Não ficção | `/nao-ficcao/` | História (13464376), Biografias (13611960), Ciência (76624759) |
+| `historia` (era `nao-ficcao` até 2026-10-20, PR #52) | História e biografias | `/historia/` | História (13464376), Biografias (13611960), Ciência (76624759) |
 | `negocios` | Negócios e finanças | `/negocios/` | Negócios (13061825) |
 | `manga` | Mangá e HQ | `/manga/` | Mangas e HQs (13061816) |
 | `autoajuda` **novo** | Autoajuda | `/autoajuda/` | Autoajuda (7538148) |
@@ -147,6 +147,8 @@ Os 25 valores estão cobertos, e cada um vai para um slug só. Os mapeamentos de
 +    "estilo-de-vida": "Saúde, hobbies e estilo de vida",
  }
 ```
+
+Proposta de 2026-10-19, mantida como histórico. O `GENRES` em vigor está no `build.py`: `nao-ficcao` saiu em 2026-10-20 (PR #52), e os seus valores do `BOOK_GENRE` vão para `historia`.
 
 A ordem do dict é a ordem do menu (`nav`), e o menu só mostra gênero com oferta. Gênero vazio não gera link quebrado no menu, mas cada slug vira diretório em `dist/`. Os slugs passam no `ID_RE`. O mapa `BOOK_GENRE id → slug` fica no curador, não no `build.py`.
 
