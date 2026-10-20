@@ -163,6 +163,27 @@
     go(0);
   }
 
+  /* Pedir um livro: envia por fetch e o aviso aparece no painel, sem sair da página. Do .com.br o POST
+     vai para o .com sem CORS (no-cors: resposta opaca); se a rede falhar, cai no envio normal do form. */
+  const pedir = $('.pedir');
+  if (pedir) {
+    const box = pedir.closest('details'), ok = $('.pedir-ok', pedir);
+    pedir.addEventListener('submit', e => {
+      e.preventDefault();
+      const btn = $('button', pedir);
+      btn.disabled = true;
+      fetch(pedir.action, { method: 'POST', mode: 'no-cors', body: new URLSearchParams(new FormData(pedir)) })
+        .then(r => {
+          if (r.type !== 'opaque' && !r.ok) throw new Error(r.status);
+          pedir.reset(); ok.hidden = false;
+        })
+        .catch(() => pedir.submit())
+        .finally(() => { btn.disabled = false; });
+    });
+    pedir.addEventListener('input', () => { ok.hidden = true; });
+    box.addEventListener('keydown', e => { if (e.key === 'Escape' && box.open) { box.open = false; $('summary', box).focus(); } });
+  }
+
   /* Modal de detalhes: o link é a página real /livro/<id>/; aqui ele abre num <dialog> e entra no histórico */
   const dlg = $('#detalhe'), dataEl = $('#ofertas');
   if (dlg && dataEl && typeof dlg.showModal === 'function') {
