@@ -4,7 +4,7 @@
   {
    "id": "senhor-dos-aneis-box-trilogia",
    "isbn": "9788595086357",
-   "genre": "ficcao",
+   "genre": "fantasia",
    "title": "Box O Senhor dos Anéis (trilogia)",
    "author": "J.R.R. Tolkien",
    "image_url": "https://http2.mlstatic.com/D_NQ_NP_887410-MLA113308708807_062026-F.jpg",
@@ -26,7 +26,7 @@
      "list_price_cents": 14000,
      "lowest_90d_cents": 14000,
      "history_since": "2026-10-18",
-     "checked_at": "2026-10-20T20:00:59+00:00"
+     "checked_at": "2026-10-20T20:30:59+00:00"
     }
    ]
   },
@@ -55,14 +55,14 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 3992,
      "history_since": "2026-10-18",
-     "checked_at": "2026-10-20T20:00:59+00:00"
+     "checked_at": "2026-10-20T20:30:59+00:00"
     }
    ]
   },
   {
    "id": "verity",
    "isbn": "9788501117847",
-   "genre": "ficcao",
+   "genre": "suspense",
    "title": "Verity",
    "author": "Hoover, Colleen",
    "image_url": "https://http2.mlstatic.com/D_NQ_NP_909003-MLU50881573316_072022-F.jpg",
@@ -84,14 +84,14 @@
      "list_price_cents": 2500,
      "lowest_90d_cents": 2500,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T20:00:59+00:00"
+     "checked_at": "2026-10-20T20:30:59+00:00"
     }
    ]
   },
   {
    "id": "o-massacre-da-familia-hope",
    "isbn": "9788551009833",
-   "genre": "ficcao",
+   "genre": "suspense",
    "title": "O massacre da família Hope",
    "author": "Sager, Riley",
    "image_url": "https://http2.mlstatic.com/D_NQ_NP_656839-MLA112270175202_062026-F.jpg",
@@ -113,7 +113,7 @@
      "list_price_cents": 3000,
      "lowest_90d_cents": 3000,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T20:00:59+00:00"
+     "checked_at": "2026-10-20T20:30:59+00:00"
     }
    ]
   },
@@ -142,14 +142,14 @@
      "list_price_cents": 1990,
      "lowest_90d_cents": 1990,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T20:00:59+00:00"
+     "checked_at": "2026-10-20T20:30:59+00:00"
     }
    ]
   },
   {
    "id": "a-hipotese-do-amor",
    "isbn": "9786555653304",
-   "genre": "ficcao",
+   "genre": "romance",
    "title": "A Hipótese Do Amor",
    "author": "Hazelwood, Ali",
    "image_url": "https://http2.mlstatic.com/D_NQ_NP_806334-MLA118538215027_092026-F.jpg",
@@ -171,7 +171,7 @@
      "list_price_cents": 3310,
      "lowest_90d_cents": 3310,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T19:31:00+00:00"
+     "checked_at": "2026-10-20T20:30:59+00:00"
     }
    ]
   },
@@ -190,7 +190,7 @@
      "list_price_cents": 7490,
      "lowest_90d_cents": 5320,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T20:00:59+00:00"
+     "checked_at": "2026-10-20T20:30:59+00:00"
     }
    ]
   },
@@ -219,14 +219,14 @@
      "list_price_cents": 5890,
      "lowest_90d_cents": 5890,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T20:00:59+00:00"
+     "checked_at": "2026-10-20T20:30:59+00:00"
     }
    ]
   },
   {
    "id": "bom-uso-da-tortura-o-ou-como-as-democracias-justificam",
    "isbn": "9788515038602",
-   "genre": "nao-ficcao",
+   "genre": "politica",
    "title": "Bom uso da tortura (O) - Ou como as democracias justificam o injustificável",
    "author": "Terestchenko, Michel",
    "image_url": "https://http2.mlstatic.com/D_NQ_NP_936847-MLU50421252635_062022-F.jpg",
@@ -248,13 +248,13 @@
      "list_price_cents": 5600,
      "lowest_90d_cents": 5600,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T20:00:59+00:00"
+     "checked_at": "2026-10-20T20:30:59+00:00"
     }
    ]
   },
   {
    "id": "como-morrem-os-santos",
-   "genre": "nao-ficcao",
+   "genre": "historia",
    "title": "Como morrem os santos",
    "author": "Sicari, Antonio María",
    "image_url": "https://http2.mlstatic.com/D_NQ_NP_847643-MLA114045381419_072026-F.jpg",
@@ -267,7 +267,7 @@
      "list_price_cents": 8600,
      "lowest_90d_cents": 8600,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T20:00:59+00:00"
+     "checked_at": "2026-10-20T20:30:59+00:00"
     }
    ]
   },
@@ -286,13 +286,13 @@
      "list_price_cents": 2947,
      "lowest_90d_cents": 2947,
      "history_since": "2026-10-20",
-     "checked_at": "2026-10-20T20:00:59+00:00"
+     "checked_at": "2026-10-20T20:30:59+00:00"
     }
    ]
   },
   {
    "id": "a-hora-da-estrela",
-   "genre": "ficcao",
+   "genre": "literatura-brasileira",
    "title": "A hora da estrela",
    "author": "Clarice Lispector",
    "image_url": "https://http2.mlstatic.com/D_NQ_NP_757956-MLA112165365346_062026-F.jpg",
@@ -305,7 +305,7 @@
      "list_price_cents": 2490,
      "lowest_90d_cents": 2355,
      "history_since": "2026-10-20",
-     "checked_at": "2026-10-20T20:00:59+00:00"
+     "checked_at": "2026-10-20T20:30:59+00:00"
     }
    ]
   },
@@ -324,17 +324,27 @@
      "list_price_cents": 5990,
      "lowest_90d_cents": 5990,
      "history_since": "2026-10-20",
-     "checked_at": "2026-10-20T20:00:59+00:00"
+     "checked_at": "2026-10-20T20:30:59+00:00"
     }
    ]
   },
   {
    "id": "como-as-democracias-morrem",
-   "genre": "nao-ficcao",
+   "isbn": "9788537818008",
+   "genre": "politica",
    "title": "Como as democracias morrem",
    "author": "Levitsky, Steven",
    "image_url": "https://http2.mlstatic.com/D_NQ_NP_983118-MLA112164581612_062026-F.jpg",
    "stores": [
+    {
+     "store": "amazon",
+     "asin": "8537818003",
+     "price_cents": 5993,
+     "list_price_cents": 7990,
+     "lowest_90d_cents": 5993,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:32:59+00:00"
+    },
     {
      "store": "mercadolivre",
      "ml_product_id": "MLB19400635",
@@ -343,7 +353,7 @@
      "list_price_cents": 5290,
      "lowest_90d_cents": 5290,
      "history_since": "2026-10-20",
-     "checked_at": "2026-10-20T20:00:59+00:00"
+     "checked_at": "2026-10-20T20:30:59+00:00"
     }
    ]
   },
@@ -362,13 +372,13 @@
      "list_price_cents": 6400,
      "lowest_90d_cents": 6400,
      "history_since": "2026-10-20",
-     "checked_at": "2026-10-20T20:00:59+00:00"
+     "checked_at": "2026-10-20T20:30:59+00:00"
     }
    ]
   },
   {
    "id": "pre-sal",
-   "genre": "nao-ficcao",
+   "genre": "ficcao",
    "title": "Pre - Sal",
    "author": "Reis, Nando",
    "image_url": "https://http2.mlstatic.com/D_NQ_NP_962864-MLA82193779764_022025-F.jpg",
@@ -381,7 +391,1573 @@
      "list_price_cents": 6000,
      "lowest_90d_cents": 6000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-10-20T20:00:59+00:00"
+     "checked_at": "2026-10-20T20:30:59+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-poder-do-habito",
+   "isbn": "9788539004119",
+   "genre": "mindset",
+   "title": "O poder do hábito",
+   "author": "Charles Duhigg",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8539004119",
+     "price_cents": 5310,
+     "list_price_cents": 7990,
+     "lowest_90d_cents": 5310,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:28:38+00:00"
+    }
+   ]
+  },
+  {
+   "id": "habitos-atomicos",
+   "isbn": "9788550807560",
+   "genre": "mindset",
+   "title": "Hábitos atômicos",
+   "author": "James Clear",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8550807567",
+     "price_cents": 3746,
+     "list_price_cents": 6090,
+     "lowest_90d_cents": 3746,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:28:38+00:00"
+    }
+   ]
+  },
+  {
+   "id": "mindset-a-nova-psicologia-do-sucesso",
+   "isbn": "9788547000240",
+   "genre": "mindset",
+   "title": "Mindset: a nova psicologia do sucesso",
+   "author": "Carol S. Dweck",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8547000240",
+     "price_cents": 3200,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 3200,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:28:38+00:00"
+    }
+   ]
+  },
+  {
+   "id": "essencialismo",
+   "isbn": "9788543102146",
+   "genre": "mindset",
+   "title": "Essencialismo",
+   "author": "Greg McKeown",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8543102146",
+     "price_cents": 4563,
+     "list_price_cents": 6490,
+     "lowest_90d_cents": 4563,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:29:39+00:00"
+    }
+   ]
+  },
+  {
+   "id": "como-fazer-amigos-e-influenciar-pessoas",
+   "isbn": "9788543108681",
+   "genre": "mindset",
+   "title": "Como fazer amigos e influenciar pessoas",
+   "author": "Dale Carnegie",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8543108683",
+     "price_cents": 4626,
+     "list_price_cents": 6490,
+     "lowest_90d_cents": 4626,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:29:39+00:00"
+    }
+   ]
+  },
+  {
+   "id": "a-coragem-de-nao-agradar",
+   "isbn": "9788543105697",
+   "genre": "mindset",
+   "title": "A coragem de não agradar",
+   "author": "Ichiro Kishimi, Fumitake Koga",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8543105692",
+     "price_cents": 3914,
+     "list_price_cents": 5490,
+     "lowest_90d_cents": 3914,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:29:39+00:00"
+    }
+   ]
+  },
+  {
+   "id": "a-sutil-arte-de-ligar-o-f-da-se",
+   "isbn": "9788551002490",
+   "genre": "mindset",
+   "title": "A sutil arte de ligar o f*da-se",
+   "author": "Mark Manson",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "855100249X",
+     "price_cents": 3383,
+     "list_price_cents": 5990,
+     "lowest_90d_cents": 3383,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:29:39+00:00"
+    }
+   ]
+  },
+  {
+   "id": "rapido-e-devagar",
+   "isbn": "9788539003839",
+   "genre": "mindset",
+   "title": "Rápido e devagar",
+   "author": "Daniel Kahneman",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "853900383X",
+     "price_cents": 5975,
+     "list_price_cents": 8990,
+     "lowest_90d_cents": 5975,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:29:39+00:00"
+    }
+   ]
+  },
+  {
+   "id": "garra",
+   "isbn": "9788551000021",
+   "genre": "mindset",
+   "title": "Garra: o poder da paixão e da perseverança",
+   "author": "Angela Duckworth",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8551000020",
+     "price_cents": 4645,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 4645,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:29:39+00:00"
+    }
+   ]
+  },
+  {
+   "id": "inteligencia-emocional",
+   "isbn": "9788573020809",
+   "genre": "mindset",
+   "title": "Inteligência emocional",
+   "author": "Daniel Goleman",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8573020806",
+     "price_cents": 5310,
+     "list_price_cents": 7990,
+     "lowest_90d_cents": 5310,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:31:04+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-milagre-da-manha",
+   "isbn": "9788576849940",
+   "genre": "mindset",
+   "title": "O milagre da manhã",
+   "author": "Hal Elrod",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8576849941",
+     "price_cents": 3648,
+     "list_price_cents": 5490,
+     "lowest_90d_cents": 3648,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:31:04+00:00"
+    }
+   ]
+  },
+  {
+   "id": "mais-esperto-que-o-diabo",
+   "isbn": "9788568014004",
+   "genre": "mindset",
+   "title": "Mais esperto que o diabo",
+   "author": "Napoleon Hill",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8568014003",
+     "price_cents": 2763,
+     "list_price_cents": 4990,
+     "lowest_90d_cents": 2763,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:31:04+00:00"
+    }
+   ]
+  },
+  {
+   "id": "comece-pelo-porque",
+   "isbn": "9788543106632",
+   "genre": "mindset",
+   "title": "Comece pelo porquê",
+   "author": "Simon Sinek",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "854310663X",
+     "price_cents": 3039,
+     "list_price_cents": 3999,
+     "lowest_90d_cents": 3039,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:31:04+00:00"
+    }
+   ]
+  },
+  {
+   "id": "trabalho-focado",
+   "isbn": "9788550802329",
+   "genre": "mindset",
+   "title": "Trabalho focado",
+   "author": "Cal Newport",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8550802328",
+     "price_cents": 6633,
+     "list_price_cents": 10350,
+     "lowest_90d_cents": 6633,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:31:04+00:00"
+    }
+   ]
+  },
+  {
+   "id": "pai-rico-pai-pobre",
+   "isbn": "9788550801483",
+   "genre": "negocios",
+   "title": "Pai rico, pai pobre",
+   "author": "Robert T. Kiyosaki",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8550801488",
+     "price_cents": 4418,
+     "list_price_cents": 7990,
+     "lowest_90d_cents": 4418,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:31:04+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-homem-mais-rico-da-babilonia",
+   "isbn": "9788595081536",
+   "genre": "negocios",
+   "title": "O homem mais rico da Babilônia",
+   "author": "George S. Clason",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8595081530",
+     "price_cents": 2298,
+     "list_price_cents": 3990,
+     "lowest_90d_cents": 2298,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:32:03+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-investidor-inteligente",
+   "isbn": "9788595080805",
+   "genre": "negocios",
+   "title": "O investidor inteligente",
+   "author": "Benjamin Graham",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8595080801",
+     "price_cents": 5776,
+     "list_price_cents": 8990,
+     "lowest_90d_cents": 5776,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:32:03+00:00"
+    }
+   ]
+  },
+  {
+   "id": "de-zero-a-um",
+   "isbn": "9788539006205",
+   "genre": "negocios",
+   "title": "De zero a um",
+   "author": "Peter Thiel, Blake Masters",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8539006200",
+     "price_cents": 5010,
+     "list_price_cents": 8490,
+     "lowest_90d_cents": 5010,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:32:03+00:00"
+    }
+   ]
+  },
+  {
+   "id": "do-mil-ao-milhao",
+   "isbn": "9788595083271",
+   "genre": "negocios",
+   "title": "Do mil ao milhão",
+   "author": "Thiago Nigro",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8595083274",
+     "price_cents": 2762,
+     "list_price_cents": 4990,
+     "lowest_90d_cents": 2762,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:32:03+00:00"
+    }
+   ]
+  },
+  {
+   "id": "me-poupe",
+   "isbn": "9786555640786",
+   "genre": "negocios",
+   "title": "Me poupe!",
+   "author": "Nathalia Arcuri",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6555640782",
+     "price_cents": 4674,
+     "list_price_cents": 5990,
+     "lowest_90d_cents": 4674,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:32:03+00:00"
+    }
+   ]
+  },
+  {
+   "id": "como-salvar-a-democracia",
+   "isbn": "9786559791514",
+   "genre": "politica",
+   "title": "Como salvar a democracia",
+   "author": "Steven Levitsky, Daniel Ziblatt",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6559791513",
+     "price_cents": 5939,
+     "list_price_cents": 8490,
+     "lowest_90d_cents": 5939,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:32:59+00:00"
+    }
+   ]
+  },
+  {
+   "id": "a-elite-do-atraso",
+   "isbn": "9786558021872",
+   "genre": "politica",
+   "title": "A elite do atraso",
+   "author": "Jessé Souza",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6558021870",
+     "price_cents": 5592,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 5592,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:32:59+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-pobre-de-direita",
+   "isbn": "9786558021551",
+   "genre": "politica",
+   "title": "O pobre de direita",
+   "author": "Jessé Souza",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6558021552",
+     "price_cents": 4275,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 4275,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:32:59+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-principe",
+   "isbn": "9788572839044",
+   "genre": "politica",
+   "title": "O príncipe",
+   "author": "Nicolau Maquiavel",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8572839046",
+     "price_cents": 1914,
+     "list_price_cents": 2690,
+     "lowest_90d_cents": 1914,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:32:59+00:00"
+    }
+   ]
+  },
+  {
+   "id": "pequeno-manual-antirracista",
+   "isbn": "9788535932874",
+   "genre": "politica",
+   "title": "Pequeno manual antirracista",
+   "author": "Djamila Ribeiro",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8535932879",
+     "price_cents": 3980,
+     "list_price_cents": 5990,
+     "lowest_90d_cents": 3980,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:32:59+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-caminho-da-servidao",
+   "isbn": "9786586029727",
+   "genre": "politica",
+   "title": "O caminho da servidão",
+   "author": "F. A. Hayek",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6586029724",
+     "price_cents": 6305,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 6305,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:33:54+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-povo-contra-a-democracia",
+   "isbn": "9788535932089",
+   "genre": "politica",
+   "title": "O povo contra a democracia",
+   "author": "Yascha Mounk",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8535932089",
+     "price_cents": 9678,
+     "list_price_cents": 11790,
+     "lowest_90d_cents": 9678,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:33:54+00:00"
+    }
+   ]
+  },
+  {
+   "id": "sapiens",
+   "isbn": "9788535933925",
+   "genre": "historia",
+   "title": "Sapiens: uma breve história da humanidade",
+   "author": "Yuval Noah Harari",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8535933921",
+     "price_cents": 6098,
+     "list_price_cents": 9990,
+     "lowest_90d_cents": 6098,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:33:54+00:00"
+    }
+   ]
+  },
+  {
+   "id": "1808",
+   "isbn": "9788525057518",
+   "genre": "historia",
+   "title": "1808",
+   "author": "Laurentino Gomes",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8525057517",
+     "price_cents": 5955,
+     "list_price_cents": 9490,
+     "lowest_90d_cents": 5955,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:33:54+00:00"
+    }
+   ]
+  },
+  {
+   "id": "escravidao-volume-1",
+   "isbn": "9786580634019",
+   "genre": "historia",
+   "title": "Escravidão: volume 1",
+   "author": "Laurentino Gomes",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6580634014",
+     "price_cents": 5152,
+     "list_price_cents": 9490,
+     "lowest_90d_cents": 5152,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:33:54+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-diario-de-anne-frank",
+   "isbn": "9788501044457",
+   "genre": "historia",
+   "title": "O diário de Anne Frank",
+   "author": "Anne Frank",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8501044458",
+     "price_cents": 3317,
+     "list_price_cents": 4990,
+     "lowest_90d_cents": 3317,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:33:54+00:00"
+    }
+   ]
+  },
+  {
+   "id": "eu-sou-malala",
+   "isbn": "9788535923438",
+   "genre": "historia",
+   "title": "Eu sou Malala",
+   "author": "Malala Yousafzai, Christina Lamb",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8535923438",
+     "price_cents": 6250,
+     "list_price_cents": 8290,
+     "lowest_90d_cents": 6250,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:34:49+00:00"
+    }
+   ]
+  },
+  {
+   "id": "steve-jobs",
+   "isbn": "9786555603323",
+   "genre": "historia",
+   "title": "Steve Jobs",
+   "author": "Walter Isaacson",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6555603321",
+     "price_cents": 8721,
+     "list_price_cents": 9690,
+     "lowest_90d_cents": 8721,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:34:49+00:00"
+    }
+   ]
+  },
+  {
+   "id": "uma-breve-historia-do-tempo",
+   "isbn": "9788580576467",
+   "genre": "historia",
+   "title": "Uma breve história do tempo",
+   "author": "Stephen Hawking",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8580576466",
+     "price_cents": 4207,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 4207,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:34:49+00:00"
+    }
+   ]
+  },
+  {
+   "id": "armas-germes-e-aco",
+   "isbn": "9788501110015",
+   "genre": "historia",
+   "title": "Armas, germes e aço",
+   "author": "Jared Diamond",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8501110019",
+     "price_cents": 5705,
+     "list_price_cents": 9990,
+     "lowest_90d_cents": 5705,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:34:49+00:00"
+    }
+   ]
+  },
+  {
+   "id": "e-assim-que-acaba",
+   "isbn": "9788501112514",
+   "genre": "romance",
+   "title": "É assim que acaba",
+   "author": "Colleen Hoover",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8501112518",
+     "price_cents": 3700,
+     "list_price_cents": 5990,
+     "lowest_90d_cents": 3700,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:34:49+00:00"
+    }
+   ]
+  },
+  {
+   "id": "e-assim-que-comeca",
+   "isbn": "9786559811397",
+   "genre": "romance",
+   "title": "É assim que começa",
+   "author": "Colleen Hoover",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6559811395",
+     "price_cents": 3700,
+     "list_price_cents": 6490,
+     "lowest_90d_cents": 3700,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:34:49+00:00"
+    }
+   ]
+  },
+  {
+   "id": "todas-as-suas-im-perfeicoes",
+   "isbn": "9788501117687",
+   "genre": "romance",
+   "title": "Todas as suas (im)perfeições",
+   "author": "Colleen Hoover",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8501117684",
+     "price_cents": 3896,
+     "list_price_cents": 6490,
+     "lowest_90d_cents": 3896,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:36:00+00:00"
+    }
+   ]
+  },
+  {
+   "id": "os-sete-maridos-de-evelyn-hugo",
+   "isbn": "9788584391509",
+   "genre": "romance",
+   "title": "Os sete maridos de Evelyn Hugo",
+   "author": "Taylor Jenkins Reid",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8584391509",
+     "price_cents": 3890,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 3890,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:36:00+00:00"
+    }
+   ]
+  },
+  {
+   "id": "vermelho-branco-e-sangue-azul",
+   "isbn": "9788555340949",
+   "genre": "romance",
+   "title": "Vermelho, branco e sangue azul",
+   "author": "Casey McQuiston",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8555340942",
+     "price_cents": 5061,
+     "list_price_cents": 7490,
+     "lowest_90d_cents": 5061,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:36:00+00:00"
+    }
+   ]
+  },
+  {
+   "id": "teto-para-dois",
+   "isbn": "9788551005415",
+   "genre": "romance",
+   "title": "Teto para dois",
+   "author": "Beth O'Leary",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8551005413",
+     "price_cents": 4645,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 4645,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:36:00+00:00"
+    }
+   ]
+  },
+  {
+   "id": "orgulho-e-preconceito",
+   "isbn": "9788503013734",
+   "genre": "romance",
+   "title": "Orgulho e preconceito",
+   "author": "Jane Austen",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8503013738",
+     "price_cents": 3912,
+     "list_price_cents": 6490,
+     "lowest_90d_cents": 3912,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:36:00+00:00"
+    }
+   ]
+  },
+  {
+   "id": "como-eu-era-antes-de-voce",
+   "isbn": "9788580573299",
+   "genre": "romance",
+   "title": "Como eu era antes de você",
+   "author": "Jojo Moyes",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8580573297",
+     "price_cents": 4718,
+     "list_price_cents": 7990,
+     "lowest_90d_cents": 4718,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:36:00+00:00"
+    }
+   ]
+  },
+  {
+   "id": "amor-teoricamente",
+   "isbn": "9786555655254",
+   "genre": "romance",
+   "title": "Amor, teoricamente",
+   "author": "Ali Hazelwood",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6555655259",
+     "price_cents": 4626,
+     "list_price_cents": 6490,
+     "lowest_90d_cents": 4626,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:37:06+00:00"
+    }
+   ]
+  },
+  {
+   "id": "um-dia",
+   "isbn": "9788580570458",
+   "genre": "romance",
+   "title": "Um dia",
+   "author": "David Nicholls",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "858057045X",
+     "price_cents": 5011,
+     "list_price_cents": 7990,
+     "lowest_90d_cents": 5011,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:37:06+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-hobbit",
+   "isbn": "9788595084742",
+   "genre": "fantasia",
+   "title": "O Hobbit",
+   "author": "J.R.R. Tolkien",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8595084742",
+     "price_cents": 4608,
+     "list_price_cents": 7490,
+     "lowest_90d_cents": 4608,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:37:06+00:00"
+    }
+   ]
+  },
+  {
+   "id": "harry-potter-e-a-pedra-filosofal",
+   "isbn": "9788532511010",
+   "genre": "fantasia",
+   "title": "Harry Potter e a pedra filosofal",
+   "author": "J. K. Rowling",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8532511015",
+     "price_cents": 3362,
+     "list_price_cents": 5490,
+     "lowest_90d_cents": 3362,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:37:06+00:00"
+    }
+   ]
+  },
+  {
+   "id": "duna",
+   "isbn": "9788576573135",
+   "genre": "fantasia",
+   "title": "Duna: livro 1",
+   "author": "Frank Herbert",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "857657313X",
+     "price_cents": 6403,
+     "list_price_cents": 10990,
+     "lowest_90d_cents": 6403,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:37:06+00:00"
+    }
+   ]
+  },
+  {
+   "id": "quarta-asa",
+   "isbn": "9788542225853",
+   "genre": "fantasia",
+   "title": "Quarta asa",
+   "author": "Rebecca Yarros",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8542225856",
+     "price_cents": 6905,
+     "list_price_cents": 10990,
+     "lowest_90d_cents": 6905,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:38:05+00:00"
+    }
+   ]
+  },
+  {
+   "id": "box-corte-de-espinhos-e-rosas",
+   "isbn": "9786559815364",
+   "genre": "fantasia",
+   "title": "Box Corte de espinhos e rosas",
+   "author": "Sarah J. Maas",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6559815366",
+     "price_cents": 18085,
+     "list_price_cents": 28990,
+     "lowest_90d_cents": 18085,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:38:05+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-nome-do-vento",
+   "isbn": "9788599296493",
+   "genre": "fantasia",
+   "title": "O nome do vento",
+   "author": "Patrick Rothfuss",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8599296493",
+     "price_cents": 5641,
+     "list_price_cents": 8990,
+     "lowest_90d_cents": 5641,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:38:05+00:00"
+    }
+   ]
+  },
+  {
+   "id": "a-guerra-dos-tronos",
+   "isbn": "9788556510785",
+   "genre": "fantasia",
+   "title": "A guerra dos tronos: As crônicas de gelo e fogo, volume 1",
+   "author": "George R. R. Martin",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8556510787",
+     "price_cents": 6752,
+     "list_price_cents": 11990,
+     "lowest_90d_cents": 6752,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:38:05+00:00"
+    }
+   ]
+  },
+  {
+   "id": "percy-jackson-o-ladrao-de-raios",
+   "isbn": "9786555606539",
+   "genre": "fantasia",
+   "title": "O ladrão de raios (Percy Jackson e os olimpianos)",
+   "author": "Rick Riordan",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6555606533",
+     "price_cents": 4382,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 4382,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:38:05+00:00"
+    }
+   ]
+  },
+  {
+   "id": "as-cronicas-de-narnia",
+   "isbn": "9786555118070",
+   "genre": "fantasia",
+   "title": "As crônicas de Nárnia: edição comemorativa de 75 anos",
+   "author": "C. S. Lewis",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6555118075",
+     "price_cents": 13020,
+     "list_price_cents": 19990,
+     "lowest_90d_cents": 13020,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:38:05+00:00"
+    }
+   ]
+  },
+  {
+   "id": "fundacao",
+   "isbn": "9788576574835",
+   "genre": "fantasia",
+   "title": "Fundação",
+   "author": "Isaac Asimov",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8576574837",
+     "price_cents": 5003,
+     "list_price_cents": 7990,
+     "lowest_90d_cents": 5003,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:39:08+00:00"
+    }
+   ]
+  },
+  {
+   "id": "a-paciente-silenciosa",
+   "isbn": "9788501116437",
+   "genre": "suspense",
+   "title": "A paciente silenciosa",
+   "author": "Alex Michaelides",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8501116432",
+     "price_cents": 3990,
+     "list_price_cents": 6490,
+     "lowest_90d_cents": 3990,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:39:08+00:00"
+    }
+   ]
+  },
+  {
+   "id": "a-empregada",
+   "isbn": "9786555655063",
+   "genre": "suspense",
+   "title": "A empregada",
+   "author": "Freida McFadden",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6555655062",
+     "price_cents": 3200,
+     "list_price_cents": 5990,
+     "lowest_90d_cents": 3200,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:39:08+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-segredo-da-empregada",
+   "isbn": "9786555655940",
+   "genre": "suspense",
+   "title": "O segredo da empregada",
+   "author": "Freida McFadden",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6555655941",
+     "price_cents": 3675,
+     "list_price_cents": 5990,
+     "lowest_90d_cents": 3675,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:39:08+00:00"
+    }
+   ]
+  },
+  {
+   "id": "garota-exemplar",
+   "isbn": "9788580572902",
+   "genre": "suspense",
+   "title": "Garota exemplar",
+   "author": "Gillian Flynn",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8580572908",
+     "price_cents": 5014,
+     "list_price_cents": 7990,
+     "lowest_90d_cents": 5014,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:39:08+00:00"
+    }
+   ]
+  },
+  {
+   "id": "e-nao-sobrou-nenhum",
+   "isbn": "9788525057013",
+   "genre": "suspense",
+   "title": "E não sobrou nenhum",
+   "author": "Agatha Christie",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8525057010",
+     "price_cents": 4645,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 4645,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:39:08+00:00"
+    }
+   ]
+  },
+  {
+   "id": "assassinato-no-expresso-do-oriente",
+   "isbn": "9788595086784",
+   "genre": "suspense",
+   "title": "Assassinato no Expresso do Oriente",
+   "author": "Agatha Christie",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8595086788",
+     "price_cents": 3992,
+     "list_price_cents": 6490,
+     "lowest_90d_cents": 3992,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:39:08+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-codigo-da-vinci",
+   "isbn": "9786555658118",
+   "genre": "suspense",
+   "title": "O código Da Vinci",
+   "author": "Dan Brown",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6555658118",
+     "price_cents": 5310,
+     "list_price_cents": 7990,
+     "lowest_90d_cents": 5310,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:40:05+00:00"
+    }
+   ]
+  },
+  {
+   "id": "os-homens-que-nao-amavam-as-mulheres",
+   "isbn": "9788535926163",
+   "genre": "suspense",
+   "title": "Os homens que não amavam as mulheres",
+   "author": "Stieg Larsson",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "853592616X",
+     "price_cents": 7687,
+     "list_price_cents": 10490,
+     "lowest_90d_cents": 7687,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:40:05+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-silencio-dos-inocentes",
+   "isbn": "9788501113627",
+   "genre": "suspense",
+   "title": "O silêncio dos inocentes",
+   "author": "Thomas Harris",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "850111362X",
+     "price_cents": 5690,
+     "list_price_cents": 7990,
+     "lowest_90d_cents": 5690,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:40:05+00:00"
+    }
+   ]
+  },
+  {
+   "id": "jantar-secreto",
+   "isbn": "9788535928358",
+   "genre": "suspense",
+   "title": "Jantar secreto",
+   "author": "Raphael Montes",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8535928359",
+     "price_cents": 4014,
+     "list_price_cents": 7490,
+     "lowest_90d_cents": 4014,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:40:05+00:00"
+    }
+   ]
+  },
+  {
+   "id": "1984",
+   "isbn": "9786555522266",
+   "genre": "ficcao",
+   "title": "1984",
+   "author": "George Orwell",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6555522267",
+     "price_cents": 1900,
+     "list_price_cents": 3490,
+     "lowest_90d_cents": 1900,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:40:05+00:00"
+    }
+   ]
+  },
+  {
+   "id": "a-revolucao-dos-bichos",
+   "isbn": "9788535909555",
+   "genre": "ficcao",
+   "title": "A revolução dos bichos",
+   "author": "George Orwell",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8535909559",
+     "price_cents": 2948,
+     "list_price_cents": 4990,
+     "lowest_90d_cents": 2948,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:41:04+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-pequeno-principe",
+   "isbn": "9788595081512",
+   "genre": "ficcao",
+   "title": "O pequeno príncipe",
+   "author": "Antoine de Saint-Exupéry",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8595081514",
+     "price_cents": 1165,
+     "list_price_cents": 2190,
+     "lowest_90d_cents": 1165,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:41:04+00:00"
+    }
+   ]
+  },
+  {
+   "id": "a-biblioteca-da-meia-noite",
+   "isbn": "9786558380542",
+   "genre": "ficcao",
+   "title": "A biblioteca da meia-noite",
+   "author": "Matt Haig",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6558380544",
+     "price_cents": 4314,
+     "list_price_cents": 6490,
+     "lowest_90d_cents": 4314,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:41:04+00:00"
+    }
+   ]
+  },
+  {
+   "id": "ensaio-sobre-a-cegueira",
+   "isbn": "9788535930313",
+   "genre": "ficcao",
+   "title": "Ensaio sobre a cegueira",
+   "author": "José Saramago",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8535930310",
+     "price_cents": 7147,
+     "list_price_cents": 9490,
+     "lowest_90d_cents": 7147,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:41:04+00:00"
+    }
+   ]
+  },
+  {
+   "id": "cem-anos-de-solidao",
+   "isbn": "9788501012074",
+   "genre": "ficcao",
+   "title": "Cem anos de solidão",
+   "author": "Gabriel García Márquez",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8501012076",
+     "price_cents": 3861,
+     "list_price_cents": 7990,
+     "lowest_90d_cents": 3861,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:41:04+00:00"
+    }
+   ]
+  },
+  {
+   "id": "torto-arado",
+   "isbn": "9786580309313",
+   "genre": "literatura-brasileira",
+   "title": "Torto arado",
+   "author": "Itamar Vieira Junior",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6580309318",
+     "price_cents": 4878,
+     "list_price_cents": 8990,
+     "lowest_90d_cents": 4878,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:41:04+00:00"
+    }
+   ]
+  },
+  {
+   "id": "tudo-e-rio",
+   "isbn": "9786555871784",
+   "genre": "literatura-brasileira",
+   "title": "Tudo é rio",
+   "author": "Carla Madeira",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6555871784",
+     "price_cents": 4712,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 4712,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:42:30+00:00"
+    }
+   ]
+  },
+  {
+   "id": "dom-casmurro",
+   "isbn": "9788594318602",
+   "genre": "literatura-brasileira",
+   "title": "Dom Casmurro",
+   "author": "Machado de Assis",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "859431860X",
+     "price_cents": 1743,
+     "list_price_cents": 2490,
+     "lowest_90d_cents": 1743,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:42:30+00:00"
+    }
+   ]
+  },
+  {
+   "id": "memorias-postumas-de-bras-cubas",
+   "isbn": "9788582850015",
+   "genre": "literatura-brasileira",
+   "title": "Memórias póstumas de Brás Cubas",
+   "author": "Machado de Assis",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8582850018",
+     "price_cents": 4299,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 4299,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:42:30+00:00"
+    }
+   ]
+  },
+  {
+   "id": "capitaes-da-areia",
+   "isbn": "9788535914061",
+   "genre": "literatura-brasileira",
+   "title": "Capitães da areia",
+   "author": "Jorge Amado",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8535914064",
+     "price_cents": 3912,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 3912,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:42:30+00:00"
+    }
+   ]
+  },
+  {
+   "id": "vidas-secas",
+   "isbn": "9788501114785",
+   "genre": "literatura-brasileira",
+   "title": "Vidas secas",
+   "author": "Graciliano Ramos",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8501114782",
+     "price_cents": 3648,
+     "list_price_cents": 5490,
+     "lowest_90d_cents": 3648,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:42:30+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-alquimista",
+   "isbn": "9788584390670",
+   "genre": "literatura-brasileira",
+   "title": "O alquimista",
+   "author": "Paulo Coelho",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8584390677",
+     "price_cents": 4476,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 4476,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:42:30+00:00"
+    }
+   ]
+  },
+  {
+   "id": "maus",
+   "isbn": "9788535906288",
+   "genre": "manga",
+   "title": "Maus",
+   "author": "Art Spiegelman",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8535906282",
+     "price_cents": 6418,
+     "list_price_cents": 10490,
+     "lowest_90d_cents": 6418,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:44:00+00:00"
+    }
+   ]
+  },
+  {
+   "id": "one-piece-vol-1",
+   "isbn": "9788573516975",
+   "genre": "manga",
+   "title": "One Piece vol. 1",
+   "author": "Eiichiro Oda",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8573516976",
+     "price_cents": 3700,
+     "list_price_cents": 4190,
+     "lowest_90d_cents": 3700,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:44:00+00:00"
+    }
+   ]
+  },
+  {
+   "id": "persepolis",
+   "isbn": "9788535911626",
+   "genre": "manga",
+   "title": "Persépolis: completo",
+   "author": "Marjane Satrapi",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8535911626",
+     "price_cents": 6976,
+     "list_price_cents": 10990,
+     "lowest_90d_cents": 6976,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:44:00+00:00"
+    }
+   ]
+  },
+  {
+   "id": "chainsaw-man-vol-1",
+   "isbn": "9786555127331",
+   "genre": "manga",
+   "title": "Chainsaw Man vol. 1",
+   "author": "Tatsuki Fujimoto",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6555127333",
+     "price_cents": 3344,
+     "list_price_cents": 4690,
+     "lowest_90d_cents": 3344,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:44:00+00:00"
+    }
+   ]
+  },
+  {
+   "id": "a-garota-do-lago",
+   "isbn": "9788562409882",
+   "genre": "suspense",
+   "title": "A garota do lago",
+   "author": "Charlie Donlea",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "856240988X",
+     "price_cents": 1900,
+     "list_price_cents": 2990,
+     "lowest_90d_cents": 1900,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:44:00+00:00"
+    }
+   ]
+  },
+  {
+   "id": "quem-pensa-enriquece",
+   "isbn": "9788568014547",
+   "genre": "mindset",
+   "title": "Quem pensa enriquece: o legado",
+   "author": "Napoleon Hill",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8568014542",
+     "price_cents": 3193,
+     "list_price_cents": 5190,
+     "lowest_90d_cents": 3193,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:46:00+00:00"
+    }
+   ]
+  },
+  {
+   "id": "naruto-gold-vol-1",
+   "isbn": "9788542602418",
+   "genre": "manga",
+   "title": "Naruto Gold vol. 1",
+   "author": "Masashi Kishimoto",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8542602412",
+     "price_cents": 3292,
+     "list_price_cents": 4390,
+     "lowest_90d_cents": 3292,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:46:00+00:00"
+    }
+   ]
+  },
+  {
+   "id": "a-arte-da-guerra",
+   "isbn": "9788594318596",
+   "genre": "mindset",
+   "title": "A arte da guerra",
+   "author": "Sun Tzu",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8594318596",
+     "price_cents": 1022,
+     "list_price_cents": 2490,
+     "lowest_90d_cents": 1022,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:46:00+00:00"
+    }
+   ]
+  },
+  {
+   "id": "bom-dia-veronica",
+   "isbn": "9786559211043",
+   "genre": "suspense",
+   "title": "Bom dia, Verônica",
+   "author": "Raphael Montes, Ilana Casoy",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6559211045",
+     "price_cents": 4978,
+     "list_price_cents": 7490,
+     "lowest_90d_cents": 4978,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:46:00+00:00"
     }
    ]
   }
