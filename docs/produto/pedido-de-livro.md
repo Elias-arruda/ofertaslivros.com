@@ -136,9 +136,9 @@ Depois do deploy, pelo `infra-engineer`, antes de dar como pronto:
 5. **Remoção:** sem contato de remoção, porque não pedimos dado de ninguém. A privacidade só diz que o Netlify registra IP e navegador e que os pedidos somem em 30 dias.
 6. **Sem página nova:** o form fica no próprio botão flutuante, um `<details>` que abre sem JS. Isso substitui `/pedir/` e `/pedir/recebido/` dos §3 e §4.
    - **Sem JS:** o POST vai para `SITE/#pedido-recebido`. O Netlify devolve a home e o `:target` mostra "Recebemos seu pedido".
-   - **Com JS** (`app.js`): `fetch` `no-cors` para o `SITE`, e o aviso aparece no painel, sem sair da página. Do `.com.br`, a resposta é opaca. Se a rede falhar, cai no envio normal.
+   - **Com JS** (`app.js`), só no `.com`: `fetch` para o `SITE`, e o aviso aparece no painel, sem sair da página. Com erro ou falha de rede, cai no envio normal (item 7).
    - **CSP:** `form-action` e `connect-src` passam a `https://ofertaslivros.com`. É a única mudança.
    - O "Pedir um livro" do capítulo do alerta (que abria o bot) sai. O botão flutuante é a única entrada.
    - O critério A7 continua valendo: o infra-engineer testa a detecção no deploy por zip e o envio a partir do `.com.br`.
-7. **Limite conhecido:** no `.com.br`, o fetch `no-cors` recebe uma resposta opaca, então o "Recebemos" aparece mesmo se o Netlify falhar (form não detectado, créditos pausados). Por isso o A7, a partir do `.com.br`, e a conferência da contagem em Netlify → Forms.
+7. **JS só no `.com`:** de outra origem (o `.com.br`), a resposta do fetch seria opaca, e o "Recebemos" apareceria mesmo com falha. Por isso, no `.com.br` vale o envio normal do form: o visitante volta em `ofertaslivros.com/#pedido-recebido`, e quem confirma é a resposta do Netlify. O `connect-src` continua sendo o `SITE`, porque o fetch roda só no próprio `.com`.
 8. **Dependência:** a privacidade promete apagar em 30 dias. O PR do form só entra depois do PR do infra-engineer com o step de limpeza no `deploy.yml`.
