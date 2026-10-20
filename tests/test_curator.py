@@ -823,6 +823,9 @@ def test_links_apply_cabecalho_errado_e_sem_aff_nao_aplicam(env, monkeypatch):
     monkeypatch.delenv("ML_AFFILIATE_ID")
     with pytest.raises(c.Invalid, match="ML_AFFILIATE_ID"):
         cur.links_apply(env["links"], env["cat"])
+    monkeypatch.setenv("ML_AFFILIATE_ID", "exemplo")
+    with pytest.raises(c.Invalid, match="de exemplo"):
+        cur.links_apply(env["links"], env["cat"])
 
 
 def test_links_apply_bom_crlf_linha_em_branco_e_tudo_vazio(env):

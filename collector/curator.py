@@ -458,14 +458,21 @@ def _write_tsv(path, cols, rows):
     tmp.replace(path)
 
 
+def _require_id(name):
+    """ID de afiliado real no ambiente: ausente ou de exemplo, nada é aplicado (como o
+    build.require_prod)."""
+    v = os.environ.get(name, "")
+    if not v or "exemplo" in v:
+        raise c.Invalid(f"{name} ausente ou de exemplo: sem ele não dá para conferir o link")
+
+
 def links_apply(path=None, catalog=None, replace=False):
     """§10.4, item 3: grava no catalog.json o ml_url colado pelo Elias na ml_links.tsv,
     linha a linha. O par livro <-> link é a linha (book_id + ml_product_id), nunca a ordem.
     Válida: grava ml_url, tira o pendente e sai do arquivo. Inválida: fica no arquivo, com o
     motivo no log, e não grava nada. Vazia: continua pendente. -> 0 sem linha inválida."""
     path, catalog = path or ML_LINKS, catalog or c.CATALOG
-    if not os.environ.get("ML_AFFILIATE_ID"):
-        raise c.Invalid("ML_AFFILIATE_ID ausente: sem ele não dá para conferir o matt_word")
+    _require_id("ML_AFFILIATE_ID")
     aff, tag = ml_affiliate(), partner_tag()
     doc = json.loads(catalog.read_text(encoding="utf-8"))
     c.load_catalog(doc, include_pending=True)  # catálogo quebrado: nem começa
