@@ -370,6 +370,47 @@ def test_offers_menor_90d_e_history_since(env):
     assert ml["history_since"] == "2026-07-10"  # fixo no state.json
 
 
+def test_mediana_dias_8_a_90(env, monkeypatch):
+    """aba-curadoria.md, critério 14: alta nos últimos 7 dias não muda a mediana."""
+    monkeypatch.setattr(c, "EMIT_MEDIAN", True)
+    hist = env["hist"]
+    (hist / "price_history").mkdir(parents=True)
+    head = ",".join(c.HISTORY_COLS) + "\n"
+    (hist / "price_history" / "2026-07.csv").write_text(
+        head + "livro-ml-2,mercadolivre,1000,1000,2026-07-10T12:00:00+00:00,ml_api\n")  # > 90 dias
+    (hist / "price_history" / "2026-09.csv").write_text(head + "".join(
+        f"livro-ml-2,mercadolivre,{p},9990,2026-09-{d}T12:00:00+00:00,ml_api\n"
+        for d, p in [("01", 5000), ("01", 4500), ("02", 5100), ("03", 4000), ("04", 6000),
+                     ("05", 5500)]))  # dia 01: vale o menor do dia
+    (hist / "price_history" / "2026-10.csv").write_text(
+        head + "livro-ml-2,mercadolivre,4000,9990,2026-10-11T02:00:00+00:00,ml_api\n"  # 10/10 BRT: dia 8
+        + "".join(f"livro-ml-2,mercadolivre,9000,9990,2026-10-{d}T12:00:00+00:00,ml_api\n"
+                  for d in ("12", "15", "17")))  # alta nos últimos 7 dias: fora
+    env["run"]()
+    ml = offers(hist)["livro-ml-2"]["stores"][0]
+    assert ml["median_90d_cents"] == 4500  # 4000 4000 4500 5100 5500 6000 -> median_low
+    assert "median_90d_cents" not in offers(hist)["livro-duplo"]["stores"][1]  # sem histórico
+
+
+def test_mediana_so_sai_se_o_build_aceita(env):
+    assert c.EMIT_MEDIAN == ("median_90d_cents" in c.STORE_COMMON)
+    env["run"]()
+    assert "median_90d_cents" in json.dumps(offers(env["hist"])) or not c.EMIT_MEDIAN
+
+
+def test_mediana_amazon_exige_cobertura():
+    from datetime import date, timedelta
+    today = date(2026, 10, 18)
+    window = [today - timedelta(days=n) for n in range(8, 91)]  # 83 dias; 80% = 66,4
+    assert c.median_90d({d: 3000 for d in window[:66]}, "2026-01-01", today, "amazon") is None
+    assert c.median_90d({d: 3000 for d in window[:67]}, "2026-01-01", today, "amazon") == 3000
+    assert c.median_90d({d: 3000 for d in window[:10]}, "2026-01-01", today, "mercadolivre") == 3000
+    # janela limitada ao history_since: 10 dias de série, 10 amostras = 100%
+    since = (today - timedelta(days=17)).isoformat()
+    assert c.median_90d({d: 3000 for d in window[:10]}, since, today, "amazon") == 3000
+    assert c.median_90d({}, since, today, "mercadolivre") is None
+
+
 def test_gtin_divergente_descarta_preco_do_ml(env, capsys):
     env["fake"].products["MLB11"] = prod(gtin="9780306406157")
     assert env["run"]() == 0
@@ -430,6 +471,8 @@ def _good_offer():
     lambda o: o["stores"][0].update(url="https://evil.com"),
     lambda o: o["stores"][1].update(ml_url="https://meli.la/x"),
     lambda o: o.update(stores=["amazon"]),
+    lambda o: o["stores"][0].update(median_90d_cents=0),
+    lambda o: o["stores"][0].update(median_90d_cents="3000"),
 ])
 def test_validate_offers_rejeita(mut, monkeypatch):
     monkeypatch.setenv("ML_AFFILIATE_ID", "teste-aff")

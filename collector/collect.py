@@ -27,6 +27,7 @@ Token de app via client_credentials (ML_CLIENT_ID/ML_CLIENT_SECRET), nunca logad
 Saída em DIR (branch price-history):
   price_history/AAAA-MM.csv  append-only, nunca reescreve linha
   offers.json                contrato v2: um livro com stores[]; o build escolhe a vencedora
+                             (median_90d_cents por loja: mediana dos dias 8 a 90, §10.8)
   state.json                 history_since e image_url por livro (metadado, sobrescrito)
   amazon_queue.csv           ordem de conferência manual
 """
@@ -42,6 +43,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from http.client import HTTPException
 from pathlib import Path
+from statistics import median_low
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -49,7 +51,7 @@ from urllib.request import Request, urlopen
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 # build.py só define constantes e funções (o build roda sob __main__): importar é seguro.
-from build import (ASIN_RE, GENRES, ID_RE, MLB_RE, Invalid, _text,  # noqa: E402
+from build import (ASIN_RE, BRT, GENRES, ID_RE, MLB_RE, STORE_COMMON, Invalid, _text,  # noqa: E402
                    check_url, ml_affiliate, ml_url)
 
 CATALOG = HERE / "catalog.json"
@@ -69,6 +71,11 @@ CENTS_RE = re.compile(r"[1-9][0-9]{0,8}")  # inteiro positivo, sem sinal/ponto/e
 MAX_CENTS = 1_000_000  # R$ 10.000: acima disso é erro de digitação ou dado quebrado
 MANUAL_MAX_AGE = timedelta(days=7)
 WINDOW = timedelta(days=90)
+MEDIAN_DAYS = (8, 90)  # dias BRT antes da coleta: alta recente não infla a mediana (§10.8, item 3)
+AMAZON_COVERAGE_MIN = 0.8  # provisório (curator.md 5.7): série manual esparsa não dá mediana
+# O build rejeita campo de loja desconhecido: só emite a mediana quando ele já a aceita.
+# ponytail: tirar o teste quando o build com median_90d_cents estiver na main.
+EMIT_MEDIAN = "median_90d_cents" in STORE_COMMON
 
 ML_HOST = "api.mercadolibre.com"  # único host que o coletor chama
 UA = "ofertaslivros-coletor/0.1 (+https://ofertaslivros.com)"
@@ -644,9 +651,12 @@ def load_state(hist_dir):
 
 
 def summarize(hist_dir, now):
-    """Última linha, menor preço em 90 dias e primeira data vista por (livro, loja)."""
+    """Por (livro, loja): última linha, menor preço em 90 dias, primeira data vista e o
+    menor preço de cada dia BRT da janela da mediana ({date: cents})."""
     since = utc_iso(now - WINDOW)
-    latest, low, first = {}, {}, {}
+    today = now.astimezone(BRT).date()
+    lo, hi = (today - timedelta(days=n) for n in reversed(MEDIAN_DAYS))
+    latest, low, first, daily = {}, {}, {}, {}
     for h in read_history(hist_dir, recent_months(now)):
         k = (h["book_id"], h["store"])
         p = int(h["price_cents"])
@@ -655,10 +665,27 @@ def summarize(hist_dir, now):
         if h["checked_at"] >= since:
             low[k] = min(low.get(k, p), p)
         first[k] = min(first.get(k, h["checked_at"]), h["checked_at"])
-    return latest, low, first
+        d = datetime.fromisoformat(h["checked_at"]).astimezone(BRT).date()
+        if lo <= d <= hi:
+            days = daily.setdefault(k, {})
+            days[d] = min(days.get(d, p), p)
+    return latest, low, first, daily
 
 
-def build_offers(books, latest, low, state):
+def median_90d(days, history_since, today, store):
+    """Mediana (median_low: inteira e conservadora) do menor preço diário nos dias 8 a 90
+    antes de hoje (BRT), limitada ao history_since. None sem amostra ou, na Amazon, com
+    amostra em menos de AMAZON_COVERAGE_MIN dos dias da janela: aí o build cai no "de/por"."""
+    lo = max(today - timedelta(days=MEDIAN_DAYS[1]), date.fromisoformat(history_since))
+    hi = today - timedelta(days=MEDIAN_DAYS[0])
+    vals = [p for d, p in days.items() if lo <= d <= hi]
+    if not vals or (store == "amazon"
+                    and len(vals) < AMAZON_COVERAGE_MIN * ((hi - lo).days + 1)):
+        return None
+    return median_low(vals)
+
+
+def build_offers(books, latest, low, state, daily, today):
     hs = state["history_since"]
     offers = []
     for b in books:
@@ -676,6 +703,10 @@ def build_offers(books, latest, low, state):
                      lowest_90d_cents=min(low.get(k, price), price),
                      history_since=hs[f"{b['id']}|{store}"],
                      checked_at=r["checked_at"])
+            med = median_90d(daily.get(k, {}), s["history_since"], today, store) \
+                if EMIT_MEDIAN else None
+            if med is not None:
+                s["median_90d_cents"] = med
             stores.append(s)
         if stores:
             o = {"id": b["id"]}
@@ -708,6 +739,7 @@ def _int_cents(s, k):
 
 STORE_OUT = {"amazon": {"store", "asin"}, "mercadolivre": {"store", "ml_product_id", "ml_url"}}
 STORE_NUM = {"price_cents", "list_price_cents", "lowest_90d_cents", "history_since", "checked_at"}
+STORE_OPT = {"median_90d_cents"}
 OFFER_KEYS = {"id", "isbn", "genre", "title", "author", "image_url", "stores"}
 
 
@@ -739,7 +771,9 @@ def validate_offers(doc):
                     or len({s.get("store") for s in st if isinstance(s, dict)}) != len(st):
                 raise Invalid("stores precisa ter 1 ou 2 lojas distintas")
             for s in st:
-                if not isinstance(s, dict) or s.get("store") not in STORE_OUT or set(s) != STORE_OUT[s["store"]] | STORE_NUM:
+                if not isinstance(s, dict) or s.get("store") not in STORE_OUT \
+                        or not STORE_OUT[s["store"]] | STORE_NUM <= set(s) \
+                        <= STORE_OUT[s["store"]] | STORE_NUM | STORE_OPT:
                     raise Invalid(f"campos da loja fora do contrato: {sorted(s)}")
                 if s["store"] == "amazon":
                     if not isinstance(s["asin"], str) or not ASIN_RE.fullmatch(s["asin"]):
@@ -753,6 +787,8 @@ def validate_offers(doc):
                               ("price_cents", "list_price_cents", "lowest_90d_cents"))
                 if lst < p or lo > p:
                     raise Invalid("precisa list >= price >= lowest_90d")
+                if "median_90d_cents" in s:
+                    _int_cents(s, "median_90d_cents")
                 ca = _dt(s["checked_at"], "checked_at")
                 try:
                     since = date.fromisoformat(s["history_since"])
@@ -874,12 +910,13 @@ def run(hist_dir, now=None, catalog=None, manual=None, clock=time.monotonic):
             status = 1
     append_history(hist_dir, manual_rows + ml_rows)
     # 3) offers.json v2: monta, valida e só então grava (dado quebrado não sai)
-    latest, low, first = summarize(hist_dir, now)
+    latest, low, first, daily = summarize(hist_dir, now)
     state = load_state(hist_dir)
     for (bid, store), ts in first.items():
         state["history_since"].setdefault(f"{bid}|{store}", ts[:10])  # fixa na 1ª vez vista
     state["image_url"].update(images)
-    offers = validate_offers(build_offers(books, latest, low, state))
+    offers = validate_offers(build_offers(books, latest, low, state, daily,
+                                          now.astimezone(BRT).date()))
     _write_json(Path(hist_dir) / "state.json", state)
     _write_json(Path(hist_dir) / "offers.json", offers)
     write_queue(hist_dir, books, latest)

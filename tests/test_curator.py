@@ -209,10 +209,12 @@ def test_limite_semanal_e_ordem(env):
     assert new_ids(env) == [f"MLB{n}" for n in range(1, 11)]
 
 
-def test_empate_de_posicao_maior_desconto():
+def test_desconto_nao_ordena_nem_filtra():
+    """curator.md §15, item 5: sem desconto como critério; livro com 0% entra."""
     x = {"genre": "manga", "ml_product_id": "MLB1", "pos": 1}
-    got = cur.select([{**x, "off": 10}, {**x, "ml_product_id": "MLB2", "off": 30}], 0)
-    assert [g["ml_product_id"] for g in got] == ["MLB2", "MLB1"]
+    got = cur.select([{**x, "off": 0}, {**x, "ml_product_id": "MLB2", "off": 30},
+                      {**x, "ml_product_id": "MLB0", "pos": 2, "off": 90}], 0)
+    assert [g["ml_product_id"] for g in got] == ["MLB1", "MLB2", "MLB0"]
 
 
 def test_teto_do_catalogo(env):
