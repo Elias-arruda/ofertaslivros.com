@@ -164,13 +164,10 @@ def _has_word(text, words):
 
 
 def b5(prod, title):
-    """-> "b5" (exclui), "revisar_b5" (dúvida) ou None."""
+    """Exclusão B5: subgênero do ML ou palavra forte no título."""
     ids = {str(v) for aid in ("BOOK_SUBGENRES", "BOOK_GENRE")
            for v in _values(_attr(prod, aid), "value_id", "id") if v}
-    t = _plain(title)
-    if ids & B5_SUBGENRES or _has_word(t, B5_FORTE):
-        return "b5"
-    return "revisar_b5" if _has_word(t, B5_FRACA) else None
+    return bool(ids & B5_SUBGENRES) or _has_word(_plain(title), B5_FORTE)
 
 
 def portugues(prod):
@@ -202,9 +199,8 @@ def candidate(pid, pos, token, known_isbns, **kw):
     title, author = _name(prod, "BOOK_TITLE"), _name(prod, "AUTHOR")
     if not title or not author:
         return None, "nao_livro"
-    excl = b5(prod, title)
-    if excl:
-        return None, excl
+    if b5(prod, title):
+        return None, "b5"
     isbn, why = isbn_of(prod)
     if why:
         return None, why
@@ -228,6 +224,8 @@ def candidate(pid, pos, token, known_isbns, **kw):
     price, lst = pr
     if not PRICE_MIN <= price <= PRICE_MAX:
         return None, "preco"
+    if _has_word(_plain(title), B5_FRACA):  # por último: só revisa quem passaria
+        return None, "revisar_b5"
     return {"ml_product_id": pid, "pos": pos, "isbn": isbn, "genre": genre, "title": title,
             "author": author, "price": price, "list_price": lst,
             "off": (lst - price) * 100 // lst}, None
@@ -273,7 +271,7 @@ def md(s):
 
 def _tsv_cell(s):
     """Sem TAB/quebra de linha e sem fórmula de planilha (=, +, -, @ no começo)."""
-    return " ".join(s.split()).lstrip("=+-@")
+    return " ".join(s.split()).lstrip("=+-@ ")
 
 
 def write_ml_links(path, books):
@@ -282,7 +280,7 @@ def write_ml_links(path, books):
     é o links-apply do affiliate-linker. product_url é montada aqui, nunca vem da API."""
     kept = {}
     if path.exists():
-        with path.open(newline="", encoding="utf-8") as f:
+        with path.open(newline="", encoding="utf-8-sig") as f:  # BOM de planilha
             for r in csv.DictReader(f, delimiter="\t", quoting=csv.QUOTE_NONE):
                 if r.get("ml_url"):
                     kept[(r.get("book_id"), r.get("ml_product_id"))] = r["ml_url"].strip()
@@ -316,8 +314,9 @@ def summary(picked, today, revisar=()):
         lines += ["### Para revisar (B5: palavra da lista fraca no título; não entraram)", "",
                   *(f"- {PRODUCT_URL.format(pid)}" for pid in revisar), ""]
     lines += ["### Checklist", "",
-              "- [ ] Gerei o link de cada livro no painel e colei na coluna `ml_url` da mesma "
-              "linha de `collector/ml_links.tsv` (ou passei a lista ao `affiliate-linker`)",
+              "- [ ] Gerei o link de cada livro no painel e troquei `\"pendente\": true` por "
+              "`\"ml_url\": \"<link do painel>\"` (ou colei na coluna `ml_url` da mesma linha "
+              "de `collector/ml_links.tsv`, quando ela vier no PR, e passei ao `affiliate-linker`)",
               "- [ ] Abri cada link no navegador (sem comprar) e conferi que é o livro certo",
               "- [ ] Ajustei o `genre` onde precisava (ex.: `literatura-brasileira`)",
               "- [ ] Apaguei as entradas que não quero (ficam no `curator_seen.json` e não "

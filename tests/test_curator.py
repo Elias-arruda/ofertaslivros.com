@@ -2,9 +2,9 @@
 import io
 import json
 import re
-from collections import Counter
 import socket
 import sys
+from collections import Counter
 from datetime import date
 from pathlib import Path
 from urllib.error import HTTPError
@@ -540,11 +540,12 @@ def test_b5_exclui_por_titulo_forte_e_subgenero(env, capsys):
 
 
 def test_b5_fraca_vai_para_revisao(env, capsys):
-    env["add"](prod(1, title="Guia do Concurso Público"), prod(2))
+    env["add"](prod(1, title="Guia do Concurso Público"), prod(2),
+               prod(3, title="Concurso", lang="Inglês"))  # já cai no idioma: não vai à revisão
     env["suggest"]()
     assert new_ids(env) == ["MLB2"]
     out = capsys.readouterr().out
-    assert "1 revisar_b5" in out and "revisar_b5 (catalog-curator confere): MLB1" in out
+    assert "1 revisar_b5" in out and "1 idioma" in out and "revisar_b5 (catalog-curator confere): MLB1" in out
     assert "Concurso" not in out  # título da API fora do log
     assert "https://www.mercadolivre.com.br/p/MLB1" in env["md"].read_text()
     assert "MLB1" not in json.loads(env["seen"].read_text())  # volta se a lista mudar
