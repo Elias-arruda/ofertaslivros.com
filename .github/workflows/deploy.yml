@@ -91,7 +91,6 @@ jobs:
       # ofertaslivros.com fica no Netlify: a Vivo bloqueia os IPs da zona no Cloudflare (2026-10-20).
       # Por último: se o Netlify falhar, o site no Cloudflare e o agendador já saíram.
       # Mesmo dist/ (_headers e _redirects valem igual). Zip na API do Netlify: sem CLI de terceiros.
-      # ponytail: não espera o deploy ficar "ready"; se o Netlify rejeitar no processamento, o job fica verde.
       - name: Publicar no Netlify (ofertaslivros.com)
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
@@ -104,3 +103,13 @@ jobs:
             --data-binary @"$RUNNER_TEMP/site.zip" \
             "https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID/deploys" \
             || { cat "$RUNNER_TEMP/netlify.json"; exit 1; } # erro da API (sem o token)
+          # O POST só cria o deploy; espera o Netlify processar (até ~3 min) para o job refletir o resultado.
+          id=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["id"])' "$RUNNER_TEMP/netlify.json")
+          for _ in $(seq 36); do
+            state=$(curl -fsS -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
+              "https://api.netlify.com/api/v1/deploys/$id" | python3 -c 'import json,sys; print(json.load(sys.stdin)["state"])')
+            echo "netlify: $state"
+            case "$state" in ready) exit 0 ;; error|rejected) exit 1 ;; esac
+            sleep 5
+          done
+          echo "netlify: deploy não ficou pronto a tempo"; exit 1
