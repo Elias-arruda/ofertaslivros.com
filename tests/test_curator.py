@@ -644,6 +644,7 @@ def test_retirada_nao_roda_com_dado_parado_ou_em_massa(capsys):
     cu["l0"] = _st()  # livro novo com data de hoje não conta como coleta ok
     assert cur.retire(books, {"curadoria": cu}, TODAY) == []
     assert cur.retire(books, {"curadoria": cu, "curadoria_ok": "2026-10-16"}, TODAY) == []
+    assert cur.retire(books, {"curadoria": cu, "curadoria_ok": "2099-01-01"}, TODAY) == []
     ok = {"curadoria": cu, "curadoria_ok": "2026-10-18"}
     assert cur.retire(books, ok, TODAY) == []                       # 29 > RETIRE_MAX
     assert len(cur.retire(books[:21], ok, TODAY)) == 20

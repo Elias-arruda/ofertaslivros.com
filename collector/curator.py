@@ -388,7 +388,8 @@ def retire(books, cstate, today, recent=0):
     (curadoria_ok), acima de RETIRE_MAX no dia ou de RETIRE_MAX_7D na semana (recent = já
     retirados nos últimos 7 dias), nem se fosse esvaziar o catálogo."""
     cu = cstate.get("curadoria") or {}
-    if (cstate.get("curadoria_ok") or "") < (today - STATE_STALE).isoformat():
+    ok = cstate.get("curadoria_ok") or ""
+    if not (today - STATE_STALE).isoformat() <= ok <= today.isoformat():  # futura também não
         print("::warning::curator: coleta do ML sem execução completa recente; retirada pulada")
         return []
     limit = (today - timedelta(days=RETIRE_DAYS)).isoformat()
