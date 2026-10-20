@@ -121,24 +121,40 @@ jobs:
           head = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout
           sig = hashlib.sha256((json.dumps(doc, sort_keys=True) + head).encode()).hexdigest()[:16]
 
-          req = urllib.request.Request(
-              f"https://api.netlify.com/api/v1/sites/{os.environ['NETLIFY_SITE_ID']}/deploys?per_page=100",
-              headers={"Authorization": "Bearer " + os.environ["NETLIFY_AUTH_TOKEN"]})
-          with urllib.request.urlopen(req, timeout=30) as r:
-              deploys = json.load(r)  # mais novo primeiro; a cota do mês cabe numa página de 100
-          now = datetime.now(timezone.utc)
-          ultimo = next((d for d in deploys if d["state"] == "ready"), {})
-          no_mes = sum(d["created_at"].startswith(now.strftime("%Y-%m")) for d in deploys)
-          cota = now.day * int(os.environ["DEPLOYS_POR_DIA"])
+          def deploys():  # mais novo primeiro; para no primeiro deploy de mês anterior
+              page = 1
+              while True:
+                  req = urllib.request.Request(
+                      f"https://api.netlify.com/api/v1/sites/{os.environ['NETLIFY_SITE_ID']}/deploys"
+                      f"?per_page=100&page={page}",
+                      headers={"Authorization": "Bearer " + os.environ["NETLIFY_AUTH_TOKEN"]})
+                  with urllib.request.urlopen(req, timeout=30) as r:
+                      lote = json.load(r)
+                  if not lote:
+                      return
+                  yield from lote
+                  page += 1
 
           if os.environ["EVENTO"] != "workflow_run":
+              # sem consultar a API: falha do Netlify aqui não pode barrar merge nem dispatch
               publicar, motivo = True, "push ou dispatch publica sempre"
-          elif ultimo.get("title") == f"sig-{sig}":
-              publicar, motivo = False, "conteúdo igual ao último deploy"
-          elif no_mes >= cota:
-              publicar, motivo = False, f"cota do mês: {no_mes} deploys, limite até hoje {cota}"
           else:
-              publicar, motivo = True, f"conteúdo novo ({no_mes + 1}/{cota} no mês)"
+              now = datetime.now(timezone.utc)
+              mes = now.strftime("%Y-%m")
+              ultimo, no_mes = None, 0
+              for d in deploys():
+                  if ultimo is None and d["state"] == "ready":
+                      ultimo = d
+                  if not d["created_at"].startswith(mes):
+                      break
+                  no_mes += 1  # todo estado conta: erro também pode ter gasto crédito
+              cota = now.day * int(os.environ["DEPLOYS_POR_DIA"])
+              if ultimo and ultimo.get("title") == f"sig-{sig}":
+                  publicar, motivo = False, "conteúdo igual ao último deploy"
+              elif no_mes >= cota:
+                  publicar, motivo = False, f"cota do mês: {no_mes} deploys, limite até hoje {cota}"
+              else:
+                  publicar, motivo = True, f"conteúdo novo ({no_mes + 1}/{cota} no mês)"
           print(f"netlify: {'publica' if publicar else 'pula'}: {motivo}")
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
               out.write(f"publicar={str(publicar).lower()}\nsig={sig}\n")
