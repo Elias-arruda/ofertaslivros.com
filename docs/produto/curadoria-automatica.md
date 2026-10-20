@@ -581,6 +581,17 @@ O Elias quer o fluxo da Amazon automatizado e aceitou o risco: os termos dos Ass
 
 **Ritmo:** só os livros da fila e os que já estão em conferência (`AMAZON_ACTIVE_MAX = 30`), uma página por vez, sem varrer listas, Mais Vendidos ou buscas em massa.
 
+**Carga inicial de 2026-10-20 (decisão do Elias: "popular o site hoje", pelo menos 100 títulos).** Uma vez só, fora do teto de 10 por dia e do `amazon-apply`:
+- 87 livros novos entraram direto no `catalog.json`, só com a Amazon (`asin` + `isbn`), nas novas categorias.
+- Cada livro saiu de uma página de busca da Amazon no Chrome do Elias, com edição brasileira impressa e sem Kindle ou kit. O ISBN-13 é derivado do ASIN (ISBN-10), com o dígito verificador conferido.
+- O 1º preço de cada um foi lido na mesma página.
+- O link do SiteStripe não foi gerado: o catálogo guarda só o ASIN, e o build monta o link com a tag.
+- Daqui em diante, livro novo volta a seguir a fila.
+
+O ML desses livros entra pelo `links-apply` (o produto do ML é achado pela busca por ISBN, e o link vem do painel).
+
+O `AMAZON_ACTIVE_MAX = 30` só ordena a fila de conferência. Com cerca de 96 livros com Amazon, a rodada de preço de duas vezes por dia precisa cobrir todos, ou os que ficarem de fora perdem o preço da Amazon depois de 12 h. Decisão pendente do Elias: rodada completa ou só os 30 primeiros.
+
 **Pendências de implementação:**
 - `amazon_prices.csv` está na `main`: cada rodada de preço vira um PR. Se ficar pesado com duas rodadas por dia, a alternativa é o coletor ler o arquivo do `price-history` (exige mudança no `collect.py` e decisão sobre push local nesse branch).
 - Livro novo só da Amazon (passo 5).
