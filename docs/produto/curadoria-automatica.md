@@ -106,6 +106,8 @@ Existe outra versão desta spec no branch `worktree-agent-a26264a6033900af8` (co
 
 ### 10.1 Gêneros: cobrir todas as áreas
 
+> **Decisão do Elias (2026-10-20), PR #49:** entram também `romance`, `fantasia`, `suspense`, `mindset`, `politica` e `historia`, pedidos pela curadoria manual (#45). Eles revogam o "nenhum outro gênero" desta seção. Por ora só a curadoria manual os preenche: o mapa `BOOK_GENRE → slug` abaixo não muda até o `catalog-curator` propor a nova versão.
+
 **Fato:** a categoria de livro físico do ML é `MLB437616` ("Livros Físicos", filha de `MLB1196`). Ela é **folha**, sem subcategorias, e tem `catalog_domain: MLB-BOOKS` (`GET https://api.mercadolibre.com/categories/MLB437616`). Por isso não dá para descobrir livros por nicho usando subcategorias.
 
 **Fato:** o gênero vem como atributo. `GET /categories/MLB437616/attributes` traz `BOOK_GENRE`, uma lista fechada de 25 valores, e `BOOK_SUBGENRES`, com 208 valores, `hidden` e multivalorado. Traz também `PUBLICATION_YEAR` e `GTIN` (rótulo "ISBN").
