@@ -501,7 +501,12 @@ def links_apply(path=None, catalog=None, replace=False):
         try:
             if b is None:
                 raise c.Invalid(f"book_id {bid!r} não está no catálogo")
-            if b.get("ml_product_id") != pid:
+            if "ml_product_id" not in b:  # livro só da Amazon (§10.9): a linha traz o produto
+                if not c.MLB_RE.fullmatch(pid):
+                    raise c.Invalid(f"ml_product_id inválido: {pid!r}")
+                if any(x.get("ml_product_id") == pid for x in by_id.values()):
+                    raise c.Invalid(f"ml_product_id {pid!r} já é de outro livro")
+            elif b["ml_product_id"] != pid:
                 raise c.Invalid(f"ml_product_id {pid!r} não é o de {bid!r}")
             if "ml_url" in b and not replace:
                 raise c.Invalid(f"{bid!r} já tem ml_url (use --replace)")
@@ -528,6 +533,8 @@ def links_apply(path=None, catalog=None, replace=False):
                 new[k] = v
             if k == "ml_product_id":
                 new["ml_url"] = raw
+        if "ml_url" not in new:  # só Amazon: ganha o produto e o link do ML no fim
+            new.update(ml_product_id=pid, ml_url=raw)
         by_id[bid] = new
         done.append(new)
     if done:
