@@ -41,11 +41,9 @@ Você é o engenheiro de infraestrutura do Ofertas Livros. Leia o CLAUDE.md ante
 
 ## Estado em 2026-10-19 (handoff da sessão do front)
 - **Site no ar:** Worker `ofertaslivros` em `https://ofertaslivros.mkt-eliasarruda.workers.dev`, publicado pelo `deploy.yml` (após o `pipeline` ou push na `main`). O token do Cloudflare e o account id estão no Environment `production`.
-- **Agendador:** o Worker `ofertaslivros-cron` (pasta `cron/`, PR #17) dispara o `pipeline` a cada 30 min. **Falta** o segredo `GH_DISPATCH_TOKEN` no Worker, com estes passos:
-  1. o Elias cria um fine-grained PAT, só deste repo, com permissão Actions: Read and write;
-  2. ele cadastra o token em Worker → Settings → Variables and Secrets;
-  3. sem o segredo, o Worker só loga "ausente".
-- **O cron do GitHub do `pipeline`** continua ligado como reserva (atrasa até ~6h). O `concurrency` evita execução dupla.
+- **Agendador:** o Worker `ofertaslivros-cron` (pasta `cron/`, PR #17) dispara o `pipeline` a cada 30 min. Funciona desde 2026-10-20 02:00 UTC (log `dispatch pipeline: 204`). Workers Logs está ligado no Worker.
+  - Segredo `GH_DISPATCH_TOKEN`: fine-grained PAT `ofertaslivros-cron`, só deste repo, Actions: Read and write. **Vence em 2027-01-17**; o Elias renova antes e regrava o segredo no Worker.
+  - O `schedule` do `pipeline` ficou como reserva a cada 3h. O `concurrency` evita execução dupla.
 - **Domínio `ofertaslivros.com`:**
   - a zona já está no Cloudflare (nameservers `priscilla`/`jobs.ns.cloudflare.com`);
   - o Elias **apagou** o A da raiz (`162.240.81.81`, a hospedagem da HostGator) e o CNAME `www` → raiz;

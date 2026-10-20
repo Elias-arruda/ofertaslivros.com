@@ -1,9 +1,11 @@
 name: pipeline
 
-# Só cron e disparo manual: nada de pull_request/pull_request_target (fork não roda isto).
+# O agendador é o Worker ofertaslivros-cron (cron/), que chama o dispatch a cada 30 min com o segredo
+# GH_DISPATCH_TOKEN. O schedule do GitHub fica só como reserva, para o caso de o Worker ou o token
+# pararem; o concurrency evita rodar em dobro. Nada de pull_request/pull_request_target.
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "17 */3 * * *" # reserva: preço parado no máximo ~3h (+ atraso do GitHub) se o Worker falhar
   workflow_dispatch:
 
 permissions: {}
