@@ -3,11 +3,21 @@
  "offers": [
   {
    "id": "senhor-dos-aneis-box-trilogia",
+   "isbn": "9788595086357",
    "genre": "ficcao",
    "title": "Box O Senhor dos Anéis (trilogia)",
    "author": "J.R.R. Tolkien",
    "image_url": "https://http2.mlstatic.com/D_NQ_NP_887410-MLA113308708807_062026-F.jpg",
    "stores": [
+    {
+     "store": "amazon",
+     "asin": "8595086354",
+     "price_cents": 14368,
+     "list_price_cents": 24490,
+     "lowest_90d_cents": 14368,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T18:58:01+00:00"
+    },
     {
      "store": "mercadolivre",
      "ml_product_id": "MLB19698440",
@@ -16,17 +26,27 @@
      "list_price_cents": 14000,
      "lowest_90d_cents": 14000,
      "history_since": "2026-10-18",
-     "checked_at": "2026-10-20T19:15:34+00:00"
+     "checked_at": "2026-10-20T19:31:00+00:00"
     }
    ]
   },
   {
    "id": "irmao-do-jorel",
+   "isbn": "9786555111620",
    "genre": "ficcao",
    "title": "Irmão do Jorel (capa dura)",
    "author": "Juliano Enrico",
    "image_url": "https://http2.mlstatic.com/D_NQ_NP_948056-MLA113307591683_062026-F.jpg",
    "stores": [
+    {
+     "store": "amazon",
+     "asin": "6555111623",
+     "price_cents": 3992,
+     "list_price_cents": 6490,
+     "lowest_90d_cents": 3992,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T18:32:36+00:00"
+    },
     {
      "store": "mercadolivre",
      "ml_product_id": "MLB19446507",
@@ -35,17 +55,27 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 3992,
      "history_since": "2026-10-18",
-     "checked_at": "2026-10-20T19:15:34+00:00"
+     "checked_at": "2026-10-20T19:31:00+00:00"
     }
    ]
   },
   {
    "id": "verity",
+   "isbn": "9788501117847",
    "genre": "ficcao",
    "title": "Verity",
    "author": "Hoover, Colleen",
    "image_url": "https://http2.mlstatic.com/D_NQ_NP_909003-MLU50881573316_072022-F.jpg",
    "stores": [
+    {
+     "store": "amazon",
+     "asin": "8501117846",
+     "price_cents": 3873,
+     "list_price_cents": 6490,
+     "lowest_90d_cents": 3873,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T18:58:35+00:00"
+    },
     {
      "store": "mercadolivre",
      "ml_product_id": "MLB19453772",
@@ -54,17 +84,27 @@
      "list_price_cents": 2500,
      "lowest_90d_cents": 2500,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T19:15:34+00:00"
+     "checked_at": "2026-10-20T19:31:00+00:00"
     }
    ]
   },
   {
    "id": "o-massacre-da-familia-hope",
+   "isbn": "9788551009833",
    "genre": "ficcao",
    "title": "O massacre da família Hope",
    "author": "Sager, Riley",
    "image_url": "https://http2.mlstatic.com/D_NQ_NP_656839-MLA112270175202_062026-F.jpg",
    "stores": [
+    {
+     "store": "amazon",
+     "asin": "8551009834",
+     "price_cents": 4386,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 4386,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T18:59:08+00:00"
+    },
     {
      "store": "mercadolivre",
      "ml_product_id": "MLB39606339",
@@ -73,17 +113,27 @@
      "list_price_cents": 3000,
      "lowest_90d_cents": 3000,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T19:15:34+00:00"
+     "checked_at": "2026-10-20T19:31:00+00:00"
     }
    ]
   },
   {
    "id": "a-psicologia-financeira",
+   "isbn": "9786555111101",
    "genre": "negocios",
    "title": "A psicologia financeira",
    "author": "Housel, Morgan",
    "image_url": "https://http2.mlstatic.com/D_NQ_NP_690575-MLA112164459644_062026-F.jpg",
    "stores": [
+    {
+     "store": "amazon",
+     "asin": "6555111100",
+     "price_cents": 3199,
+     "list_price_cents": 5990,
+     "lowest_90d_cents": 3199,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:00:03+00:00"
+    },
     {
      "store": "mercadolivre",
      "ml_product_id": "MLB19320442",
@@ -92,17 +142,27 @@
      "list_price_cents": 1990,
      "lowest_90d_cents": 1990,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T19:15:34+00:00"
+     "checked_at": "2026-10-20T19:31:00+00:00"
     }
    ]
   },
   {
    "id": "a-hipotese-do-amor",
+   "isbn": "9786555653304",
    "genre": "ficcao",
    "title": "A Hipótese Do Amor",
    "author": "Hazelwood, Ali",
    "image_url": "https://http2.mlstatic.com/D_NQ_NP_806334-MLA118538215027_092026-F.jpg",
    "stores": [
+    {
+     "store": "amazon",
+     "asin": "6555653302",
+     "price_cents": 4072,
+     "list_price_cents": 6490,
+     "lowest_90d_cents": 4072,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:00:43+00:00"
+    },
     {
      "store": "mercadolivre",
      "ml_product_id": "MLB19459381",
@@ -111,7 +171,7 @@
      "list_price_cents": 3310,
      "lowest_90d_cents": 3310,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T19:15:34+00:00"
+     "checked_at": "2026-10-20T19:31:00+00:00"
     }
    ]
   },
@@ -130,17 +190,27 @@
      "list_price_cents": 7490,
      "lowest_90d_cents": 5320,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T19:15:34+00:00"
+     "checked_at": "2026-10-20T19:31:00+00:00"
     }
    ]
   },
   {
    "id": "o-conto-da-aia-graphic-novel",
+   "isbn": "9788532531520",
    "genre": "manga",
    "title": "O conto da aia: graphic novel",
    "author": "Atwood, Margareth",
    "image_url": "https://http2.mlstatic.com/D_NQ_NP_671963-MLA112270670840_062026-F.jpg",
    "stores": [
+    {
+     "store": "amazon",
+     "asin": "8532531520",
+     "price_cents": 5193,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 5193,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:01:37+00:00"
+    },
     {
      "store": "mercadolivre",
      "ml_product_id": "MLB19414415",
@@ -149,17 +219,27 @@
      "list_price_cents": 5890,
      "lowest_90d_cents": 5890,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T19:15:34+00:00"
+     "checked_at": "2026-10-20T19:31:00+00:00"
     }
    ]
   },
   {
    "id": "bom-uso-da-tortura-o-ou-como-as-democracias-justificam",
+   "isbn": "9788515038602",
    "genre": "nao-ficcao",
    "title": "Bom uso da tortura (O) - Ou como as democracias justificam o injustificável",
    "author": "Terestchenko, Michel",
    "image_url": "https://http2.mlstatic.com/D_NQ_NP_936847-MLU50421252635_062022-F.jpg",
    "stores": [
+    {
+     "store": "amazon",
+     "asin": "8515038609",
+     "price_cents": 4438,
+     "list_price_cents": 5000,
+     "lowest_90d_cents": 4438,
+     "history_since": "2026-10-20",
+     "checked_at": "2026-10-20T19:02:09+00:00"
+    },
     {
      "store": "mercadolivre",
      "ml_product_id": "MLB19177974",
@@ -168,7 +248,7 @@
      "list_price_cents": 5600,
      "lowest_90d_cents": 5600,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T19:15:34+00:00"
+     "checked_at": "2026-10-20T19:31:00+00:00"
     }
    ]
   },
@@ -187,7 +267,7 @@
      "list_price_cents": 8600,
      "lowest_90d_cents": 8600,
      "history_since": "2026-10-19",
-     "checked_at": "2026-10-20T19:15:34+00:00"
+     "checked_at": "2026-10-20T19:31:00+00:00"
     }
    ]
   },
@@ -206,7 +286,7 @@
      "list_price_cents": 2947,
      "lowest_90d_cents": 2947,
      "history_since": "2026-10-20",
-     "checked_at": "2026-10-20T19:15:34+00:00"
+     "checked_at": "2026-10-20T19:31:00+00:00"
     }
    ]
   },
@@ -225,7 +305,7 @@
      "list_price_cents": 2490,
      "lowest_90d_cents": 2355,
      "history_since": "2026-10-20",
-     "checked_at": "2026-10-20T19:15:34+00:00"
+     "checked_at": "2026-10-20T19:31:00+00:00"
     }
    ]
   },
@@ -244,7 +324,7 @@
      "list_price_cents": 5990,
      "lowest_90d_cents": 5990,
      "history_since": "2026-10-20",
-     "checked_at": "2026-10-20T19:15:34+00:00"
+     "checked_at": "2026-10-20T19:31:00+00:00"
     }
    ]
   },
@@ -263,7 +343,7 @@
      "list_price_cents": 5290,
      "lowest_90d_cents": 5290,
      "history_since": "2026-10-20",
-     "checked_at": "2026-10-20T19:15:34+00:00"
+     "checked_at": "2026-10-20T19:31:00+00:00"
     }
    ]
   },
@@ -282,7 +362,7 @@
      "list_price_cents": 6400,
      "lowest_90d_cents": 6400,
      "history_since": "2026-10-20",
-     "checked_at": "2026-10-20T19:15:34+00:00"
+     "checked_at": "2026-10-20T19:31:00+00:00"
     }
    ]
   },
@@ -301,7 +381,7 @@
      "list_price_cents": 6000,
      "lowest_90d_cents": 6000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-10-20T19:15:34+00:00"
+     "checked_at": "2026-10-20T19:31:00+00:00"
     }
    ]
   }
