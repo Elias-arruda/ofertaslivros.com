@@ -568,8 +568,10 @@ def amazon_asin(raw, tag):
     if not c.ASIN_RE.fullmatch(asin):
         raise c.Invalid(f"ASIN inválido: {asin!r}")
     try:
-        tags = [v for k, v in parse_qsl(p.query, keep_blank_values=True, strict_parsing=True)
-                if k.lower() == "tag"]
+        # o SiteStripe real gera "?&linkCode=...": segmento vazio não é malformado
+        q = "&".join(x for x in p.query.split("&") if x)
+        tags = [v for k, v in parse_qsl(q, keep_blank_values=True, strict_parsing=True)
+                if k.strip().lower() == "tag"]
     except ValueError:
         raise c.Invalid("amazon_url com query malformada") from None
     if tags != [tag]:
