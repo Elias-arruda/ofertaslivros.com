@@ -553,9 +553,13 @@ def amazon_asin(raw, tag):
     ser a nossa, uma vez só. Só o ASIN é guardado; a URL é descartada."""
     if not isinstance(raw, str) or len(raw) > 1000 or not re.fullmatch(r"[\x21-\x7e]+", raw):
         raise c.Invalid("amazon_url precisa ser ASCII imprimível, até 1000 chars")
-    p = urlsplit(raw)
-    if p.scheme != "https" or p.hostname not in AMAZON_HOSTS or p.username or p.password \
-            or p.port or p.fragment or p.netloc != p.hostname:
+    try:  # porta não numérica ou IPv6 malformado dão ValueError: recusa só esta linha
+        p = urlsplit(raw)
+        bad = p.scheme != "https" or p.hostname not in AMAZON_HOSTS or p.username \
+            or p.password or p.port or p.fragment or p.netloc != p.hostname
+    except ValueError:
+        bad = True
+    if bad:
         raise c.Invalid("amazon_url precisa ser https em www.amazon.com.br (nada de amzn.to)")
     m = AMAZON_PATH_RE.fullmatch(p.path)
     if not m:
@@ -587,7 +591,7 @@ def amazon_apply(path=None, catalog=None, confirm=()):
     asins = {b["asin"] for b in doc["books"] if "asin" in b}
     keep, done, bad = [], [], 0
     rows = _read_tsv(path, AMAZON_LINKS_COLS)
-    # mesmo ASIN ou ISBN em duas linhas = colagem errada, sem saber qual: nenhuma é aplicada
+    # mesmo ASIN, ISBN ou livro em duas linhas = colagem errada, sem saber qual: nenhuma vale
     seen = Counter()
     for r in rows:
         if len(r) == len(AMAZON_LINKS_COLS) and r[8].strip():
@@ -595,7 +599,9 @@ def amazon_apply(path=None, catalog=None, confirm=()):
                 seen[("asin", amazon_asin(r[8].strip(), tag))] += 1
             except c.Invalid:
                 pass
-            seen[("isbn", r[7].strip())] += 1
+            seen[("book", r[0].strip())] += 1
+            if r[7].strip():
+                seen[("isbn", r[7].strip())] += 1
     twice = {k for k, v in seen.items() if v > 1}
     for n, r in enumerate(rows, 2):
         if len(r) != len(AMAZON_LINKS_COLS):
@@ -620,8 +626,9 @@ def amazon_apply(path=None, catalog=None, confirm=()):
                 raise c.Invalid(f"{bid!r} já tem asin")
             asin = amazon_asin(row["amazon_url"], tag)
             isbn = row["isbn_confirmado"]
-            if ("asin", asin) in twice or ("isbn", isbn) in twice:
-                raise c.Invalid("ASIN ou isbn repetido no arquivo: nenhuma das linhas é aplicada")
+            if {("asin", asin), ("isbn", isbn), ("book", bid)} & twice:
+                raise c.Invalid("ASIN, isbn ou livro repetido no arquivo: nenhuma das linhas "
+                                "é aplicada")
             if not c.isbn_ok(isbn):
                 raise c.Invalid("isbn_confirmado precisa ser ISBN-13 válido, só dígitos")
             if "isbn" in b and b["isbn"] != isbn:

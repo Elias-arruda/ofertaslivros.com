@@ -897,6 +897,9 @@ def test_amazon_apply_isbn_do_ml_bate_e_match_isbn10(env, monkeypatch, capsys):
     (_arow(1, _sitestripe("8535914846").replace("www.amazon.com.br", "www.amazon.com"), isbn(1)), "https em www.amazon.com.br"),
     (_arow(1, _sitestripe("8535914846").replace("https://", "https://x@"), isbn(1)), "https em www.amazon.com.br"),
     (_arow(1, _sitestripe("8535914846", path="/s?k={}"), isbn(1)), "/dp/"),
+    (_arow(1, "https://www.amazon.com.br:abc/dp/8535914846?tag=" + TAG, isbn(1)), "https em"),
+    (_arow(1, "https://[x/dp/8535914846?tag=" + TAG, isbn(1)), "https em"),
+    (_arow(1, "https://www.amazon.com.br:99999/dp/8535914846?tag=" + TAG, isbn(1)), "https em"),
     (_arow(1, _sitestripe("B0ABCDEFGH"), isbn(1)), "--confirm-asin pub-1"),   # Kindle?
     (_arow(2, _sitestripe("8535914846"), isbn(5)), "edição diferente"),       # ML tem isbn(2)
     (_arow(1, _sitestripe("8535914846"), "123"), "ISBN-13"),
@@ -937,3 +940,16 @@ def test_amazon_apply_sem_tag_no_ambiente_nao_aplica(env, monkeypatch):
     monkeypatch.setenv("AMAZON_PARTNER_TAG", "exemplo-20")
     with pytest.raises(c.Invalid, match="de exemplo"):
         cur.amazon_apply(tsv, env["cat"])
+
+
+def test_amazon_apply_mesmo_livro_duas_vezes_e_isbn_vazio(env, monkeypatch, capsys):
+    a1 = cur.asin_provavel(isbn(1))
+    tsv = _amz_env(env, monkeypatch, [_arow(1, _sitestripe(a1), isbn(1)),
+                                      _arow(1, _sitestripe("B0ABCDEFGH"), isbn(7))])
+    assert cur.amazon_apply(tsv, env["cat"], confirm=["pub-1"]) == 1
+    assert capsys.readouterr().out.count("repetido no arquivo") == 2
+    tsv.write_text("\n".join("\t".join(r) for r in [cur.AMAZON_LINKS_COLS,
+                   _arow(1, _sitestripe(a1)), _arow(3, _sitestripe("B0ABCDEFGH"))]) + "\n")
+    assert cur.amazon_apply(tsv, env["cat"]) == 1
+    out = capsys.readouterr().out
+    assert "ISBN-13" in out and "repetido" not in out  # isbn vazio não conta como repetido
