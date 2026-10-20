@@ -560,3 +560,25 @@ Prevalece sobre todo o resto desta spec e sobre `curadoria-e-links.md`, `curator
 5. **Texto do CLAUDE.md** de `aba-curadoria.md` §13 aprovado. Fica na spec; a edição do CLAUDE.md sai em outro PR.
 6. **Fila diária da Amazon:** `AMAZON_QUEUE_DAY = 10`. Sobre a cobertura mínima ele não respondeu: **80% fica como padrão provisório**, explícito no item 3 e em `curator.md` 5.7.
 7. **B5 aprovada:** Bíblia, Vade Mecum e apostila de concurso saem do automático pela categoria do ML mais uma lista de palavras no título; o `catalog-curator` revisa os casos de dúvida. Regra em `curator.md` 5.2. A lista de palavras é filtro de exclusão, não casamento de identidade: a regra "nunca casar por título" continua valendo.
+
+### 10.9 Amazon pelo navegador do Elias (decisão do Elias, 2026-10-20)
+
+O Elias quer o fluxo da Amazon automatizado e aceitou o risco: os termos dos Associados proíbem acesso automatizado ao site e preço que não veio da API, e a punição é fechar a conta. Esta seção **substitui** o passo 2 do §10.5 (navegador manual) e a digitação do preço. O resto do §10.5 continua: fila, `amazon-apply` e validações.
+
+**O que muda:** quem abre a Amazon é o Claude, pelo Claude in Chrome, no Chrome do Elias, logado na conta de associado. O código continua sem nenhuma request à Amazon, e o teste que garante isso continua.
+
+**Rodada (sob demanda ou agendada na máquina do Elias, nunca no GitHub Actions):**
+1. `curator amazon-todo` gera a fila, até 10 livros novos por dia (`AMAZON_QUEUE_DAY`).
+2. Para cada livro, o Claude busca na Amazon por título e autor (ou abre a `product_url`) e confere título, autor e formato contra o anúncio do ML (capa dura × brochura, volume, box; Kindle não).
+3. Mesma edição: o Claude preenche `isbn_confirmado` com o ISBN-13 da página e `amazon_url` com o link de texto completo do SiteStripe ("Obter link" → "Texto"). Também anota o preço e o preço "De:" da página, com o horário da leitura, em `collector/amazon_prices.csv`.
+4. `curator amazon-apply` grava `asin` e `isbn`. O catálogo e os preços vão num PR, no fluxo normal.
+5. **Edição diferente** (decisão do Elias: "via de mão dupla"): a edição da Amazon entra como livro novo só com a Amazon (`asin` + `isbn`, sem ML; o catálogo já aceita). Depois, a busca procura no ML a mesma edição pelo ISBN e, se achar, junta as lojas. *Ainda não implementado:* o `amazon-apply` hoje só completa um livro que já existe.
+6. Na dúvida (não acha, título ambíguo, só Kindle), a linha fica em branco e o livro segue só pelo ML.
+
+**Preço:** o site mostra o preço da Amazon (decisão do Elias: o visitante precisa ver que é oferta), com o "verificado às HH:MM" e o aviso de que o preço final é o da loja. O frescor continua **12 h** (`FRESH["amazon"]`): para o preço não sumir, a rodada de preço roda duas vezes por dia nos livros que já têm `asin`. Sem rodada, a Amazon sai da comparação e o livro segue pelo ML. Os livros só na Amazon somem do site 18 h depois da última leitura (§10.5, Retirada).
+
+**Ritmo:** só os livros da fila e os que já estão em conferência (`AMAZON_ACTIVE_MAX = 30`), uma página por vez, sem varrer listas, Mais Vendidos ou buscas em massa.
+
+**Pendências de implementação:**
+- `amazon_prices.csv` está na `main`: cada rodada de preço vira um PR. Se ficar pesado com duas rodadas por dia, a alternativa é o coletor ler o arquivo do `price-history` (exige mudança no `collect.py` e decisão sobre push local nesse branch).
+- Livro novo só da Amazon (passo 5).

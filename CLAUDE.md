@@ -21,9 +21,10 @@ Domínio comprado na HostGator. A HostGator é usada SÓ para o domínio (DNS).
 - **Fase 2:** canal no Telegram alimentado pelo mesmo pipeline. Depois, um bot com lista de desejos.
 
 ## Regras inegociáveis
-1. **NUNCA fazer scraping da Amazon.** Isso viola os termos do programa de Associados e leva a banimento.
+1. **NUNCA fazer scraping da Amazon em código.** Nenhum script, coletor ou workflow faz request a domínio da Amazon.
    - Amazon: usar a **Creators API**. A PA-API foi descontinuada em 2026.
-   - Até a API ser liberada para a conta, o fluxo é semi-automático: o coletor monitora uma lista de ASIN/ISBN e um humano aprova e gera o link.
+   - Até a API ser liberada para a conta, o fluxo é semi-automático: o coletor monitora uma lista de ASIN/ISBN, e o link e o preço vêm do navegador do Elias.
+   - **Exceção decidida pelo Elias em 2026-10-20, com o risco aceito:** o Claude pode usar o Chrome do Elias (Claude in Chrome, logado na conta de associado) para buscar o livro na Amazon, gerar o link no SiteStripe e ler o preço. O ritmo é de humano, só para os livros da fila. Os termos dos Associados proíbem acesso automatizado e preço que não veio da API; o risco é banimento da conta. Fluxo em `docs/produto/curadoria-automatica.md` §10.9.
 2. **Mercado Livre:** o preço vem da API pública de itens. O link de afiliado é gerado no painel de afiliados, salvo se houver um caminho oficial documentado.
 3. **Credenciais:** chaves ficam só em GitHub Secrets ou `.env` local, que está no `.gitignore`. Nunca no código, nunca em JSON público.
 4. **Transparência:** o rodapé deve ter o aviso de associado ("ganhamos com compras qualificadas") e dizer que o preço final é o da loja.
