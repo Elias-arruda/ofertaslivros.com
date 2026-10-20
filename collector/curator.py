@@ -5,6 +5,7 @@
     python3 collector/curator.py suggest [--summary MD] [--history DIR]
         # retirada (§10.8, item 6) + até 50 pendentes no catalog.json + ml_links.tsv
     python3 collector/curator.py amazon-todo            # fila local amazon_links.tsv (§10.5)
+    python3 collector/curator.py links-apply [--replace] [TSV]  # grava os ml_url colados (§10.4)
 
 Fontes: /highlights geral da categoria e, em segundo, os termos do /trends resolvidos pelo
 /products/search?q=. O /highlights filtrado por BOOK_GENRE dá 400 (probe 39258219518):
@@ -13,11 +14,13 @@ o nicho sai só do BOOK_GENRE da ficha do produto.
 Só fala com api.mercadolibre.com, pelo cliente do collect.py (token de app, timeout,
 backoff, User-Agent). Nenhuma request para a Amazon: sem a Creators API não há descoberta
 lá. Nada de HTML: resposta que não é application/json aborta (collect.ml_request).
-O curator nunca escreve ml_url nem asin: o link vem do painel, colado pelo Elias no PR.
+O curator nunca escreve ml_url nem asin por conta própria: só o links-apply/amazon-apply, a
+partir de uma linha preenchida pelo Elias e validada (curator.md §11, critério 3).
 """
 import argparse
 import csv
 import json
+import os
 import re
 import sys
 import time
@@ -25,12 +28,12 @@ import unicodedata
 from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode, urlsplit
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 from collector import collect as c  # noqa: E402  (mesmo módulo que os testes mockam)
-from build import brl  # noqa: E402
+from build import affiliate_url, brl, ml_affiliate, partner_tag  # noqa: E402
 
 CATEGORY = "MLB437616"  # "Livros Físicos": folha de MLB1196 (o /highlights exige folha)
 # BOOK_GENRE do ML -> GENRES (decisão 4). Autoajuda (7538148) fica fora; literatura-brasileira
@@ -435,6 +438,109 @@ def load_seen(path, today):
     return out
 
 
+def _ref(url):
+    return dict(parse_qsl(urlsplit(url).query)).get("ref")
+
+
+def _read_tsv(path, cols):
+    """Linhas cruas (sem aspas: QUOTE_NONE). Cabeçalho diferente: Invalid, nada é aplicado."""
+    with path.open(newline="", encoding="utf-8-sig") as f:  # BOM de planilha
+        rows = list(csv.reader(f, delimiter="\t", quoting=csv.QUOTE_NONE))
+    if not rows or rows[0] != cols:
+        raise c.Invalid(f"{path.name}: cabeçalho precisa ser exatamente {chr(9).join(cols)!r}")
+    return [r for r in rows[1:] if r]  # linha em branco (sobra de editor) não conta
+
+
+def _write_tsv(path, cols, rows):
+    """Atômico: os links já colados que ficam na fila não podem se perder no meio."""
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text("".join("\t".join(r) + "\n" for r in [cols] + rows), encoding="utf-8")
+    tmp.replace(path)
+
+
+def _require_id(name):
+    """ID de afiliado real no ambiente: ausente ou de exemplo, nada é aplicado (como o
+    build.require_prod)."""
+    v = os.environ.get(name, "")
+    if not v or "exemplo" in v:
+        raise c.Invalid(f"{name} ausente ou de exemplo: sem ele não dá para conferir o link")
+
+
+def links_apply(path=None, catalog=None, replace=False):
+    """§10.4, item 3: grava no catalog.json o ml_url colado pelo Elias na ml_links.tsv,
+    linha a linha. O par livro <-> link é a linha (book_id + ml_product_id), nunca a ordem.
+    Válida: grava ml_url, tira o pendente e sai do arquivo. Inválida: fica no arquivo, com o
+    motivo no log, e não grava nada. Vazia: continua pendente. -> 0 sem linha inválida."""
+    path, catalog = path or ML_LINKS, catalog or c.CATALOG
+    _require_id("ML_AFFILIATE_ID")
+    aff, tag = ml_affiliate(), partner_tag()
+    doc = json.loads(catalog.read_text(encoding="utf-8"))
+    c.load_catalog(doc, include_pending=True)  # catálogo quebrado: nem começa
+    by_id = {b["id"]: b for b in doc["books"]}
+    refs = {_ref(b["ml_url"]): b["id"] for b in doc["books"] if "ml_url" in b}
+    keep, done, bad = [], [], 0
+    rows = _read_tsv(path, ML_LINKS_COLS)
+    # ref repetido no arquivo = colagem errada, e não dá para saber qual linha está certa:
+    # nenhuma delas é aplicada
+    twice = {k for k, v in Counter(_ref(r[4].strip()) for r in rows
+                                   if len(r) == len(ML_LINKS_COLS) and r[4].strip()).items()
+             if v > 1}
+    for n, r in enumerate(rows, 2):
+        if len(r) != len(ML_LINKS_COLS):
+            print(f"linha {n}: precisa de {len(ML_LINKS_COLS)} colunas, tem {len(r)}")
+            keep.append(r)
+            bad += 1
+            continue
+        bid, pid, _, _, raw = r
+        raw = raw.strip()
+        if not raw:
+            keep.append(r)
+            continue
+        b = by_id.get(bid)
+        try:
+            if b is None:
+                raise c.Invalid(f"book_id {bid!r} não está no catálogo")
+            if b.get("ml_product_id") != pid:
+                raise c.Invalid(f"ml_product_id {pid!r} não é o de {bid!r}")
+            if "ml_url" in b and not replace:
+                raise c.Invalid(f"{bid!r} já tem ml_url (use --replace)")
+            affiliate_url({"store": "mercadolivre", "ml_url": raw}, tag, aff)
+            ref = _ref(raw)
+            if not ref:
+                raise c.Invalid("link sem ref: não é o gerado no painel")
+            if ref in twice:
+                raise c.Invalid("ref repetido no arquivo: nenhuma das linhas é aplicada")
+            if refs.get(ref, bid) != bid:
+                raise c.Invalid(f"ref repetido (já é de {refs[ref]!r}): colagem na linha errada?")
+        except c.Invalid as e:
+            print(f"linha {n} ({bid}): {e}")
+            keep.append(r)
+            bad += 1
+            continue
+        refs = {k: v for k, v in refs.items() if v != bid}
+        refs[ref] = bid
+        new = {}
+        for k, v in b.items():  # ml_url no lugar do pendente, sem mexer na ordem das chaves
+            if k == "pendente":
+                continue
+            if k != "ml_url":
+                new[k] = v
+            if k == "ml_product_id":
+                new["ml_url"] = raw
+        by_id[bid] = new
+        done.append(new)
+    if done:
+        doc = {**doc, "books": [by_id[b["id"]] for b in doc["books"]]}
+        c.load_catalog(doc, include_pending=True)  # o build confere tudo de novo no deploy
+        write_catalog(catalog, doc)
+    _write_tsv(path, ML_LINKS_COLS, keep)
+    for b in done:
+        print(f"aplicado: {b['id']} <- {PRODUCT_URL.format(b['ml_product_id'])} ({b['title']})")
+    print(f"links-apply: {len(done)} aplicados, {bad} inválidos, "
+          f"{len(keep) - bad} vazios ficam na fila")
+    return 1 if bad else 0
+
+
 def write_catalog(path, doc):
     """Um livro por linha: o PR do curator mostra só linhas novas no diff."""
     head = "".join(f" {json.dumps(k)}: {json.dumps(v, ensure_ascii=False)},\n"
@@ -731,12 +837,17 @@ def main(argv=None):
     s.add_argument("--history", type=Path,
                    help="checkout do branch price-history (lê o state.json); sem ele, não retira")
     sub.add_parser("amazon-todo")
+    la = sub.add_parser("links-apply")
+    la.add_argument("tsv", nargs="?", type=Path, default=ML_LINKS)
+    la.add_argument("--replace", action="store_true", help="troca um ml_url que já existe")
     a = ap.parse_args(argv)
     try:
         if a.cmd == "probe":
             return probe(a.isbn)
         if a.cmd == "amazon-todo":
             return amazon_todo()
+        if a.cmd == "links-apply":
+            return links_apply(a.tsv, replace=a.replace)
         return suggest(summary_path=a.summary, history=a.history)
     except c.Invalid as e:
         sys.exit(f"curator falhou: {e}")
