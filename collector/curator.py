@@ -202,10 +202,11 @@ def candidate(pid, pos, token, known_isbns, **kw):
 
 
 def select(cands, n_catalog):
-    """Ranking (menor posição; empate: maior desconto) com os tetos de volume."""
+    """Ranking (menor posição; empate: ml_product_id) com os tetos de volume. Desconto não
+    entra na escolha nem na ordem (curadoria-automatica.md §10.8, item 1): só no resumo."""
     slots = max(0, min(WEEK_MAX, CATALOG_MAX - n_catalog))
     per, out = Counter(), []
-    for x in sorted(cands, key=lambda x: (x["pos"], -x["off"], x["ml_product_id"])):
+    for x in sorted(cands, key=lambda x: (x["pos"], x["ml_product_id"])):
         if len(out) >= slots:
             break
         if per[x["genre"]] < GENRE_MAX:
