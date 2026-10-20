@@ -215,6 +215,10 @@ O destino é sempre um caminho interno que começa com `/r/`, então não vira `
 - `AMAZON_ACTIVE_MAX = 30` (padrão provisório; o Elias não respondeu sobre ele, e com 10 por dia enche em 3 dias): no máximo 30 livros com a Amazon em conferência manual de preço. A `amazon_queue.csv`, que já existe, lista só esses 30, por score. A uns 30 s por livro, dá ~15 min por dia, acima dos ~10 min previstos em `distribuicao-canais.md`; com 20, fica em ~10 min.
 - Acima do teto, um livro novo só entra na Amazon no lugar do de menor score. O que sai mantém o `asin` no catálogo (não precisa refazer o SiteStripe se voltar), só sai da conferência diária, e o livro segue pelo ML quando a Amazon perde o frescor.
 - Quando a Creators API sair, os dois tetos somem: `GetItems` traz preço, ASIN e ISBN.
+- **Enquanto o score não existe** (o score em sombra da §5.3 ainda não foi implementado), vale esta ordem provisória, implementada em 2026-10-20:
+  - `amazon-todo`: as 10 linhas novas do dia saem na ordem do catálogo. O curator acrescenta os livros de cada dia na ordem da posição no `/highlights` e depois no `/trends`, então essa ordem é o sinal de demanda disponível;
+  - `amazon_queue.csv`: acima de `AMAZON_ACTIVE_MAX`, fica quem entrou primeiro na conferência (`history_since` da Amazon mais antigo), para não trocar a série de preço que já está sendo montada.
+  - Quando o score sair da sombra, as duas ordens passam a ser pelo score (no empate, pela demanda), como descrito acima.
 
 **Cobertura de 80% para o selo de 90 dias e para o critério "em oferta" da Amazon: padrão provisório.** O Elias não respondeu sobre a cobertura na rodada 5; vale 80% até ele decidir outro valor. Com amostras manuais esparsas, o mínimo que guardamos é maior ou igual ao mínimo real. O selo "menor preço em 90 dias" é afirmação ao consumidor (CDC, `distribuicao-canais.md` §12.3).
 - **Regra:** a série da Amazon de um livro só conta para o selo e para o componente Preço se tiver amostra em **pelo menos 80% dos dias BRT da janela de 90 dias** (≥ 72 dias distintos com linha `source=manual`), além dos 90 dias de `history_since`.

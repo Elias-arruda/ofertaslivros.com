@@ -333,8 +333,9 @@ def _editora(pid, token):
 def amazon_todo(catalog=None, path=None, today=None):
     """Reescreve a amazon_links.tsv: livros do catálogo sem asin (pendentes inclusos, §10.5). Linhas já na fila ficam
     como estão (com o que o Elias preencheu); entram até AMAZON_QUEUE_DAY novas por dia.
-    ponytail: "por dia" = o arquivo não foi gravado hoje (mtime); sem score, a ordem é a do
-    catálogo. Trocar pela ordem do score quando ele sair da sombra."""
+    ponytail: "por dia" = o arquivo não foi gravado hoje (mtime). Ordem provisória do
+    curator.md 5.7 enquanto não há score: a do catálogo (posição no /highlights e no /trends
+    de cada dia). Trocar pelo score quando ele sair da sombra."""
     path = path or AMAZON_LINKS
     today = today or date.today()
     books = [b for b in c.read_catalog(catalog) if "asin" not in b]

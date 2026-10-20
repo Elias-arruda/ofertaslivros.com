@@ -336,7 +336,8 @@ def amazon_queue(books, last_checked, since=None):
     Só AMAZON_ACTIVE_MAX livros (curator.md 5.7): quem já está em conferência fica (o mais
     antigo pelo history_since da Amazon) e o novo entra quando sobra vaga. O que não cabe
     mantém o asin no catálogo e segue pelo ML.
-    ponytail: sem score ainda; quando houver, o de menor score cede a vaga.
+    Ordem provisória do curator.md 5.7 enquanto não há score; quando houver, o de menor
+    score cede a vaga.
     Etapa 2: ordenar por número de alertas ativos antes da data (só mudar esta chave)."""
     since = since or {}
     am = sorted((b for b in books if "asin" in b),
