@@ -284,8 +284,10 @@ def md(s):
 
 
 def _tsv_cell(s):
-    """Sem TAB/quebra de linha e sem fórmula de planilha (=, +, -, @ no começo)."""
-    return " ".join(s.split()).lstrip("=+-@ ")
+    """Sem TAB/quebra de linha e sem fórmula de planilha (=, +, -, @ no começo). O "-"
+    sozinho é o marcador de "sem dado" e fica."""
+    s = " ".join(s.split())
+    return s if s == "-" else s.lstrip("=+-@ ")
 
 
 def write_ml_links(path, books):
@@ -328,7 +330,7 @@ def _editora(pid, token):
 
 
 def amazon_todo(catalog=None, path=None, today=None):
-    """Reescreve a amazon_links.tsv: livros publicados sem asin. Linhas já na fila ficam
+    """Reescreve a amazon_links.tsv: livros do catálogo sem asin (pendentes inclusos, §10.5). Linhas já na fila ficam
     como estão (com o que o Elias preencheu); entram até AMAZON_QUEUE_DAY novas por dia.
     ponytail: "por dia" = o arquivo não foi gravado hoje (mtime); sem score, a ordem é a do
     catálogo. Trocar pela ordem do score quando ele sair da sombra."""
@@ -355,7 +357,8 @@ def amazon_todo(catalog=None, path=None, today=None):
               asin_provavel(b.get("isbn")), amazon_product_url(b), "", ""] for b in new]
     path.write_text("".join("\t".join(r) + "\n" for r in [AMAZON_LINKS_COLS] + rows),
                     encoding="utf-8")
-    print(f"amazon-todo: {len(new)} novas, {len(old)} já na fila -> {path.name}")
+    print(f"amazon-todo: {len(new)} novas, {len(old)} já na fila -> {path.name}"
+          + (" (fila já gravada hoje: novas só amanhã)" if not room else ""))
     return 0
 
 

@@ -685,7 +685,8 @@ def test_amazon_todo(env, tmp_path):
     assert "pub-4" not in tsv.read_text()  # já tem asin
     r1, r2, r3 = rows[:3]
     assert r1[4] == "Editora X / 2ª" and r1[6] == f"https://www.amazon.com.br/dp/{r1[5]}"
-    assert r2[5] == "-" and r2[6] == "https://www.amazon.com.br/s?k=T%C3%ADtulo+2+Fulana"
+    assert r2[4] == "-" and r2[5] == "-"
+    assert r2[6] == "https://www.amazon.com.br/s?k=T%C3%ADtulo+2+Fulana"
     assert r3[6] == "https://www.amazon.com.br/s?k=9791234567896"
     assert not any("amazon" in u for u in env["fake"].urls)  # regra 1: só texto
     # mesmo dia: nada novo; o que o Elias preencheu fica
@@ -693,6 +694,7 @@ def test_amazon_todo(env, tmp_path):
     tsv.write_text("\n".join("\t".join(r) for r in [cur.AMAZON_LINKS_COLS] + rows) + "\n")
     cur.amazon_todo(env["cat"], tsv, date.fromtimestamp(tsv.stat().st_mtime))
     assert len(tsv.read_text().splitlines()) == 11 and isbn(1) in tsv.read_text()
+    assert tsv.read_text().splitlines()[2].split("\t")[4:6] == ["-", "-"]  # marcador fica
     # dia seguinte: entram as que faltam (4 restantes, abaixo do teto)
     os.utime(tsv, (0, 0))
     cur.amazon_todo(env["cat"], tsv, TODAY)
