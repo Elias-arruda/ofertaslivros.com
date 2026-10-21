@@ -41,7 +41,7 @@ Você é o engenheiro de infraestrutura do Ofertas Livros. Leia o CLAUDE.md ante
 
 ## Estado em 2026-10-19 (handoff da sessão do front)
 - **Site no ar:** Worker `ofertaslivros` em `https://ofertaslivros.mkt-eliasarruda.workers.dev`, publicado pelo `deploy.yml` (após o `pipeline` ou push na `main`). O token do Cloudflare e o account id estão no Environment `production`.
-- **Agendador:** o Worker `ofertaslivros-cron` (pasta `cron/`, PR #17) dispara o `pipeline` a cada 30 min. Funciona desde 2026-10-20 02:00 UTC (log `dispatch pipeline: 204`). Workers Logs está ligado no Worker.
+- **Agendador:** o Worker `ofertaslivros-cron` (pasta `cron/`, PR #17) dispara o `pipeline` a cada 30 min. Desde 2026-10-21 dispara também o `curator` (mode=suggest) às 12:00 UTC, porque o schedule do GitHub perdeu a execução daquele dia; o `curator.yml` não tem mais `schedule`. Funciona desde 2026-10-20 02:00 UTC (log `dispatch pipeline: 204`). Workers Logs está ligado no Worker.
   - Segredo `GH_DISPATCH_TOKEN`: fine-grained PAT `ofertaslivros-cron`, só deste repo, Actions: Read and write. **Vence em 2027-01-17**; o Elias renova antes e regrava o segredo no Worker.
   - O `schedule` do `pipeline` ficou como reserva a cada 3h. O `concurrency` evita execução dupla.
 - **Bloqueio da Vivo (2026-10-20):** a Vivo Fibra bloqueia os 4 IPs da zona `ofertaslivros.com` no Cloudflare. O Cloudflare não troca os IPs, e o Pro não garante IP livre. Teste daqui só com o WARP desligado (`cdn-cgi/trace` mostra `warp=off`).

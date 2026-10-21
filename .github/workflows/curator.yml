@@ -1,7 +1,8 @@
 name: curator
 
 # docs/produto/curator.md. Um PR de curadoria por dia (até 50 candidatos e retirada).
-# Nada de pull_request/pull_request_target.
+# Nada de pull_request/pull_request_target. O agendamento diário (09h BRT) é do Worker ofertaslivros-cron,
+# que dispara este workflow com mode=suggest: o schedule do GitHub perdia execuções.
 on:
   workflow_dispatch:
     inputs:
@@ -10,8 +11,6 @@ on:
         type: choice
         options: [probe, suggest]
         default: probe
-  schedule:
-    - cron: "0 12 * * *" # todo dia 09h BRT
 
 permissions: {}
 
@@ -40,7 +39,7 @@ jobs:
   suggest:
     if: >-
       github.ref == 'refs/heads/main'
-      && (inputs.mode == 'suggest' || github.event_name == 'schedule')
+      && inputs.mode == 'suggest'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
