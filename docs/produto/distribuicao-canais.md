@@ -337,3 +337,18 @@ Site:
 4. Foto: ML com a foto do produto vinda da API. Amazon sem foto até a Creators API, quando passa a usar a imagem que ela devolver. Sem Open Library.
 5. Bot do Telegram: `@ofertaslivros_bot`.
 6. Horário do resumo do WhatsApp: em teste. Começa às 11h BRT, configurável.
+
+## Respostas do Elias (2026-10-21)
+1. Canal do Telegram **com Amazon e Mercado Livre**. O Elias decidiu que a Amazon entra no canal (a decisão 1 de 2026-10-18 deixa de bloquear).
+2. Oferta postável = **o mesmo critério "em oferta" do site** (`build.em_oferta`), no lugar dos 30% da seção 5. O texto é o `build.post_text`.
+3. Janela 08h–22h, 2 por execução, 8 por dia e 7 dias sem repetir: **em avaliação.** O MVP (`telegram_post.py`) sai com esses valores como constantes.
+4. Capa local `/capas/` (Open Library) no post: **em avaliação.** O MVP posta só a foto https do ML; sem ela, sai `sendMessage`.
+5. `TELEGRAM_BOT_TOKEN` passa para o Environment `telegram`, restrito à `main`.
+
+Implementação:
+- O workflow `telegram.yml` roda depois de cada `deploy` bem-sucedido. Antes de postar, confere com um HEAD sem seguir redirect que `/r/<id>/tg` está no ar e leva (302, https) a uma loja da allowlist.
+- O log `channel_posts.csv` fica no branch próprio `channel-posts`, e não no `price-history` (§6). Assim ele não disputa push com o pipeline, que grava sem retry.
+- O post sai sem prévia do link (`link_preview_options.is_disabled`). Com prévia, o servidor do Telegram seguiria o `/r/` até a loja e geraria um clique automatizado no link de afiliado a cada post.
+- Limites aceitos no MVP:
+  - Se o job morrer entre o ok do Telegram e o push, o post se repete uma vez.
+  - O post lê o `offers.json` do momento em que roda. Se o pipeline gravou um mais novo depois do deploy, o preço pode ser mais recente que o do site publicado.
