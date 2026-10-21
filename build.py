@@ -404,6 +404,7 @@ def seal_of(win, el):
     return "since", max(hs)
 
 
+VELHO = "Preço pode estar desatualizado"
 NEW_DAYS = 3  # badge "Novo": o livro entrou no histórico (history_since) nos últimos 3 dias
 # Critério "em oferta" (curadoria-automatica.md §10.8, item 3, aprovado pelo Elias em 2026-10-19).
 # Quem não é oferta fica só na Curadoria: fora dos destaques, das ofertas ativas, da contagem e dos canais.
@@ -429,13 +430,18 @@ def resolve(books, now):
     out = []
     for b in books:
         el = [s for s in b["stores"] if fresh(s, now)]
-        if not el:
-            continue  # nenhuma loja no prazo: o livro sai da lista
+        # Amazon fora do prazo e nenhuma loja no prazo (decisão do Elias, 2026-10-21): o livro fica como
+        # estava, com a última leitura da Amazon e o aviso VELHO. ML fora do prazo e sem Amazon: sai da lista.
+        velho = not el
+        if velho:
+            el = [s for s in b["stores"] if s["store"] == "amazon"]
+            if not el:
+                continue
         win = min(el, key=lambda s: (s["price_cents"], -s["checked_at"].timestamp()))
         seal, since = seal_of(win, el)
         hs = [s["history_since"] for s in b["stores"]]
         novo = None not in hs and (now.astimezone(BRT).date() - min(hs)).days < NEW_DAYS
-        out.append({**b, **win, "novo": novo, "oferta": em_oferta(win, seal), "stores": el,
+        out.append({**b, **win, "novo": novo, "oferta": em_oferta(win, seal), "velho": velho, "stores": el,
                     "alt": next((s for s in el if s is not win), None),
                     "seal": seal, "since": since, "now": now})  # now: relógio do build, para o "visto hoje"
     if not out:
@@ -500,6 +506,8 @@ def post_text(o, url):
         raise Invalid(f"post_text só aceita o /r/ do nosso domínio: {url!r}")
     if not o.get("oferta"):
         raise Invalid(f"post_text só publica oferta; {o['id']!r} está sem oferta")
+    if o["velho"]:
+        raise Invalid(f"post_text não publica preço fora do prazo: {o['id']!r}")
     _ascii(url)
     off = discount(o)
     price = brl(o["price_cents"]) + (f" (de {brl(o['list_price_cents'])}, -{off}%)" if off else "")
@@ -592,7 +600,8 @@ def drop(o):
 def meta_html(o):
     dr = drop(o)
     fell = f'. <span class="drop">Caiu {brl(dr[0])} desde {dr[1]:%d/%m}</span>' if dr else ""
-    return f'<span class="store">{na(o["store"])}</span>, {checked(o, o["now"])}{fell}'
+    old = f'. <span class="velho">{VELHO}</span>' if o["velho"] else ""
+    return f'<span class="store">{na(o["store"])}</span>, {checked(o, o["now"])}{fell}{old}'
 
 
 def na(store):
@@ -645,12 +654,13 @@ def card(o, bot=None, h=3):
            f'<span class="sr">, {off_}% de desconto</span>' if off_ else "")
     if not o["oferta"]:
         old = ' <span class="sem">Sem oferta agora</span>'
+    velho = f' <span class="velho">{VELHO}</span>' if o["velho"] else ""
     hs = [s["history_since"] for s in o["stores"] if s["history_since"]]
     rec = f'{min(hs) if hs else "0000-00-00"}|{o["checked_at"].astimezone(timezone.utc):%Y-%m-%dT%H:%M}'
     return f"""<li class="card" data-g="{g}" data-id="{oid}" data-q="{e(fold(o["title"] + " " + o["author"]))}" data-preco="{o["price_cents"]}" data-off="{off_}" data-rec="{rec}" data-tipo="{tipo(o)}">
   <div class="sleeve">{obj(o)}{bdg}{stk}{alert_link(o, bot, full=False)}</div>
   <div class="card-body">
-    <p class="card-meta">{avatar(g, "av av--sm")}<span><span class="store">{STORES[o["store"]]}</span> <span>{checked(o, o["now"])}</span></span></p>
+    <p class="card-meta">{avatar(g, "av av--sm")}<span><span class="store">{STORES[o["store"]]}</span> <span>{checked(o, o["now"])}</span>{velho}</span></p>
     <h{h} class="card-title"><a href="/livro/{oid}/" data-modal="{oid}">{t}</a></h{h}>
     <p class="card-sub">{e(o["author"])}</p>
     {stamp_html(o)}
@@ -1191,7 +1201,7 @@ def offer_json(o, bot):
             "selo": ("Menor preço em 90 dias" if kind == "90d" else
                      f"Menor preço desde {o['since']:%d/%m}" if kind == "since" else None), "desde": kind == "since",
             "meta": f"{STORES[o['store']]}, {checked_txt(o, o['now'])}"
-                    + (f". Caiu {brl(dr[0])} desde {dr[1]:%d/%m}" if dr else ""),
+                    + (f". Caiu {brl(dr[0])} desde {dr[1]:%d/%m}" if dr else "") + (f". {VELHO}" if o["velho"] else ""),
             "hist": chart_label(o, pts) if pts else None, "lojas": lojas,
             "alerta": tg_alert_url(bot, o["id"]) if bot else None, "pag": f"/livro/{o['id']}/"}
 
@@ -1397,7 +1407,7 @@ MAX_REDIRECTS = 2000  # limite de regras estáticas do _redirects na Cloudflare
 def redirects(offers):
     """/novidades/ (página antiga) vai para /curadoria/. Por livro: /r/<id> e /r/<id>/tg|wa
     (vencedora, com a tag do canal se for a Amazon) e /r/<id>/<loja> para cada loja elegível.
-    Vencido ou loja fora do prazo cai na home pelo curinga.
+    Vencido ou loja fora do prazo cai na home pelo curinga; o livro com a Amazon vencida (velho) segue no /r/.
     Até 5 regras por livro: cabem 399 livros com duas lojas (1.995 + curinga + /novidades/)."""
     tags, aff = channel_tags(), ml_affiliate()
     lines = ["/novidades/ /curadoria/ 301\n"]  # destino interno fixo, nunca vindo do JSON
@@ -2120,18 +2130,32 @@ def selftest():
     assert r["store"] == "amazon" and r["alt"] is None and len(r["stores"]) == 1  # ML velho saiu
     assert win(a8, now=datetime(2026, 10, 18, 20, 0, tzinfo=BRT)) == "amazon"     # 12 h
     late = datetime(2026, 10, 18, 20, 1, tzinfo=BRT)
-    assert [x["id"] for x in load(good, M(checked_at="2026-10-18T19:00:00-03:00"), now=late)] == ["livro-2"]
+    # Amazon fora do prazo: o livro fica como estava (preço, desconto, oferta, /r/ com a tag) + o aviso
+    vel = load(good, M(checked_at="2026-10-18T19:00:00-03:00"), now=late)
+    assert [x["id"] for x in vel] == ["livro-1", "livro-2"] and vel[0]["velho"] and not vel[1]["velho"]
+    v, fresco = vel[0], load(good)[0]
+    assert (v["price_cents"], v["oferta"], v["seal"], off(v)) == (fresco["price_cents"], fresco["oferta"], fresco["seal"], off(fresco))
+    assert v in ofertas(vel) and v in hero_items(vel)
+    c = card(v)
+    assert brl(1990) in c and "−50%" in c and f'<span class="velho">{VELHO}</span>' in c and VELHO not in card(fresco)
+    assert f'<span class="velho">{VELHO}</span>' in book_page(v, vel) and brl(1990) in book_page(v, vel)
+    assert offer_json(v, None)["meta"].endswith(f". {VELHO}") and offer_json(v, None)["p"] == brl(1990)
+    assert f"/r/livro-1 https://www.amazon.com.br/dp/B0ABCDEFGH?tag={t} 302" in redirects(vel).splitlines()
     try:
-        load(good, now=late)  # nenhum livro elegível
+        post_text(v, "https://x.com/r/livro-1")  # canal nunca publica preço vencido
+        raise AssertionError("post_text aceitou preço fora do prazo")
+    except Invalid:
+        pass
+    only_ml = {**good, "stores": [{**mls, "checked_at": "2026-10-18T08:00:00-03:00"}]}
+    assert [x["id"] for x in load(only_ml, M(checked_at="2026-10-18T19:00:00-03:00"), now=late)] == ["livro-2"]  # ML vencido sai
+    assert load(good, now=late)[0]["velho"]                                 # só Amazon vencida: publica com o aviso
+    try:
+        load(only_ml, now=late)  # nenhum livro elegível
         raise AssertionError("lista vazia")
     except Invalid:
         pass
-    assert load(A(checked_at="2026-10-18T09:04:00-03:00"))                 # 4 min no futuro: tolerado
-    try:
-        load(A(checked_at="2026-10-18T09:06:00-03:00"))
-        raise AssertionError("futuro")
-    except Invalid:
-        pass
+    assert not load(A(checked_at="2026-10-18T09:04:00-03:00"))[0]["velho"]  # 4 min no futuro: tolerado
+    assert load(A(checked_at="2026-10-18T09:06:00-03:00"))[0]["velho"]       # 6 min: fora do prazo, com o aviso
     # selo estrito: 90 dias em TODAS as lojas elegíveis e preço <= o mínimo de todas
     def seal_two(a, m):
         r = load({**good, "stores": [{**a8, **a}, {**m8, "price_cents": 2490, **m}]})[0]
