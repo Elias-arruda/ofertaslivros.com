@@ -711,7 +711,8 @@ def track_curadoria(state, books, latest, offers, now, ml_ok=False):
     if ml_ok:
         state["curadoria_ok"] = today
     try:
-        em_oferta = {o["id"] for o in build.load_offers(offers, now) if o["oferta"]}
+        # preço vencido da Amazon (velho) aparece no site, mas não conta como oferta de hoje
+        em_oferta = {o["id"] for o in build.load_offers(offers, now) if o["oferta"] and not o["velho"]}
     except Invalid:  # nenhuma loja fresca agora (ou offers que o build recusaria)
         em_oferta = set()
     cur = state["curadoria"]
