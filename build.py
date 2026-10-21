@@ -404,6 +404,7 @@ def seal_of(win, el):
     return "since", max(hs)
 
 
+SEM_PRECO = "Amazon: preço não conferido nas últimas 12 horas. Confira na loja."
 NEW_DAYS = 3  # badge "Novo": o livro entrou no histórico (history_since) nos últimos 3 dias
 # Critério "em oferta" (curadoria-automatica.md §10.8, item 3, aprovado pelo Elias em 2026-10-19).
 # Quem não é oferta fica só na Curadoria: fora dos destaques, das ofertas ativas, da contagem e dos canais.
@@ -430,15 +431,21 @@ def resolve(books, now):
     for b in books:
         el = [s for s in b["stores"] if fresh(s, now)]
         if not el:
-            continue  # nenhuma loja no prazo: o livro sai da lista
+            # Amazon fora do prazo (decisão do Elias, 2026-10-21): o livro fica, sem preço e sem oferta,
+            # só com o "Ver na Amazon". ML fora do prazo e sem Amazon: o livro sai da lista.
+            amz = next((s for s in b["stores"] if s["store"] == "amazon"), None)
+            if amz:
+                out.append({**b, **amz, "novo": False, "oferta": False, "sem_preco": True, "stores": [amz],
+                            "alt": None, "seal": None, "since": None, "now": now})
+            continue
         win = min(el, key=lambda s: (s["price_cents"], -s["checked_at"].timestamp()))
         seal, since = seal_of(win, el)
         hs = [s["history_since"] for s in b["stores"]]
         novo = None not in hs and (now.astimezone(BRT).date() - min(hs)).days < NEW_DAYS
-        out.append({**b, **win, "novo": novo, "oferta": em_oferta(win, seal), "stores": el,
+        out.append({**b, **win, "novo": novo, "oferta": em_oferta(win, seal), "sem_preco": False, "stores": el,
                     "alt": next((s for s in el if s is not win), None),
                     "seal": seal, "since": since, "now": now})  # now: relógio do build, para o "visto hoje"
-    if not out:
+    if all(o["sem_preco"] for o in out):
         raise Invalid("nenhuma oferta com preço dentro do prazo de frescor")
     return out
 
@@ -599,10 +606,15 @@ def na(store):
     return f'{"no" if store == "mercadolivre" else "na"} {STORES[store]}'
 
 
+def por(o):
+    """" por R$ X" no botão de compra; vazio no livro sem preço (Amazon fora do prazo)."""
+    return "" if o["sem_preco"] else f" por {brl(o['price_cents'])}"
+
+
 def go(o):
     """Link de afiliado da vencedora: sempre o nosso /r/<id>, nunca a URL da loja."""
     return (f'<a class="go" href="/r/{e(o["id"])}" rel="sponsored noopener noreferrer" target="_blank">'
-            f'Ver {na(o["store"])} por {brl(o["price_cents"])}{icon("seta")}'
+            f'Ver {na(o["store"])}{por(o)}{icon("seta")}'
             f'<span class="sr">: {e(o["title"])} (abre em nova aba)</span></a>')
 
 
@@ -626,7 +638,7 @@ def buy(o):
 def buy_circle(o):
     """Botão de compra do card: círculo com a seta; loja e preço no nome acessível."""
     return (f'<a class="buy-c" href="/r/{e(o["id"])}" rel="sponsored noopener noreferrer" target="_blank">{icon("seta")}'
-            f'<span class="sr">Ver {na(o["store"])} por {brl(o["price_cents"])}: {e(o["title"])} (abre em nova aba)</span></a>')
+            f'<span class="sr">Ver {na(o["store"])}{por(o)}: {e(o["title"])} (abre em nova aba)</span></a>')
 
 
 def fold(text):
@@ -645,16 +657,20 @@ def card(o, bot=None, h=3):
            f'<span class="sr">, {off_}% de desconto</span>' if off_ else "")
     if not o["oferta"]:
         old = ' <span class="sem">Sem oferta agora</span>'
+    price = f'<span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong>{old}'
+    seen = f' <span>{checked(o, o["now"])}</span>'
+    if o["sem_preco"]:
+        price, seen = '<span class="sem">Preço na loja</span>', ""
     hs = [s["history_since"] for s in o["stores"] if s["history_since"]]
     rec = f'{min(hs) if hs else "0000-00-00"}|{o["checked_at"].astimezone(timezone.utc):%Y-%m-%dT%H:%M}'
-    return f"""<li class="card" data-g="{g}" data-id="{oid}" data-q="{e(fold(o["title"] + " " + o["author"]))}" data-preco="{o["price_cents"]}" data-off="{off_}" data-rec="{rec}" data-tipo="{tipo(o)}">
+    return f"""<li class="card" data-g="{g}" data-id="{oid}" data-q="{e(fold(o["title"] + " " + o["author"]))}" data-preco="{"" if o["sem_preco"] else o["price_cents"]}" data-off="{off_}" data-rec="{rec}" data-tipo="{tipo(o)}">
   <div class="sleeve">{obj(o)}{bdg}{stk}{alert_link(o, bot, full=False)}</div>
   <div class="card-body">
-    <p class="card-meta">{avatar(g, "av av--sm")}<span><span class="store">{STORES[o["store"]]}</span> <span>{checked(o, o["now"])}</span></span></p>
+    <p class="card-meta">{avatar(g, "av av--sm")}<span><span class="store">{STORES[o["store"]]}</span>{seen}</span></p>
     <h{h} class="card-title"><a href="/livro/{oid}/" data-modal="{oid}">{t}</a></h{h}>
     <p class="card-sub">{e(o["author"])}</p>
     {stamp_html(o)}
-    <div class="card-foot"><p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong>{old}</p>{alt_details(o)}{buy_circle(o)}</div>
+    <div class="card-foot"><p class="price">{price}</p>{alt_details(o)}{buy_circle(o)}</div>
   </div>
 </li>"""
 
@@ -786,7 +802,7 @@ def hero_items(offers):
     """Até 5 para o hero: as ofertas primeiro (featured, selo, desconto) e, se faltarem, livros sem
     oferta (entrada mais recente primeiro), marcados "Da curadoria"."""
     top = ranked(ofertas(offers))[:5]
-    return top + sem_oferta(offers)[:5 - len(top)]
+    return top + [o for o in sem_oferta(offers) if not o["sem_preco"]][:5 - len(top)]
 
 
 def section(sid, title, body, count=None, note="", unit=("oferta", "ofertas")):
@@ -1181,19 +1197,19 @@ def offer_json(o, bot):
     Os links são só os nossos (/r/..., /livro/..., t.me): o JS confere o formato de novo."""
     off_, a, dr = off(o), o["alt"], drop(o)
     pts = series(o)
-    lojas = [{"txt": f"Ver {na(o['store'])} por {brl(o['price_cents'])}", "href": f"/r/{o['id']}", "main": True}]
+    lojas = [{"txt": f"Ver {na(o['store'])}{por(o)}", "href": f"/r/{o['id']}", "main": True}]
     if a:
         lojas.append({"txt": f"Também {na(a['store'])}: {brl(a['price_cents'])}", "href": f"/r/{o['id']}/{a['store']}",
                       "w": checked_txt(a, o["now"]), "main": False})
-    kind = seal(o)
+    kind, sp = seal(o), o["sem_preco"]
     return {"id": o["id"], "t": o["title"], "a": o["author"], "g": o["genre"], "gl": GENRES[o["genre"]],
-            "img": o["image_url"], "p": brl(o["price_cents"]), "de": brl(o["list_price_cents"]) if off_ else None,
+            "img": o["image_url"], "p": None if sp else brl(o["price_cents"]), "de": brl(o["list_price_cents"]) if off_ else None,
             "off": off_, "nov": not o["oferta"], "blurb": o["blurb"],
             "selo": ("Menor preço em 90 dias" if kind == "90d" else
                      f"Menor preço desde {o['since']:%d/%m}" if kind == "since" else None), "desde": kind == "since",
-            "meta": f"{STORES[o['store']]}, {checked_txt(o, o['now'])}"
+            "meta": SEM_PRECO if sp else f"{STORES[o['store']]}, {checked_txt(o, o['now'])}"
                     + (f". Caiu {brl(dr[0])} desde {dr[1]:%d/%m}" if dr else ""),
-            "hist": chart_label(o, pts) if pts else None, "lojas": lojas,
+            "hist": chart_label(o, pts) if pts and not sp else None, "lojas": lojas,
             "alerta": tg_alert_url(bot, o["id"]) if bot else None, "pag": f"/livro/{o['id']}/"}
 
 
@@ -1287,6 +1303,10 @@ def book_page(o, offers, bot=None, ch=()):
     old = f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>' if off_ else ""
     pill = f'<span class="off-pill">−{off_}%</span>' if off_ else ""
     nov = "" if o["oferta"] else '\n    <p class="nov-nota">Sem oferta agora: o preço ainda não baixou o bastante. Ative o alerta e avisamos quando cair.</p>'
+    deal = (f'<div class="hero-deal">{stamp_html(o)}<p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong>{old}</p>{pill}</div>'
+            f'\n    <p class="meta">{meta_html(o)}</p>{chart(o, "    ")}')
+    if o["sem_preco"]:
+        deal, nov = f'<p class="meta">{SEM_PRECO}</p>', ""
     b = badge(o)
     chips = f'<span class="chip chip--g">{icon("g-" + g)}{e(GENRES[g])}</span>' + (
         f'<span class="chip chip--{b[0]}">{b[1]}</span>' if b else "")
@@ -1300,14 +1320,14 @@ def book_page(o, offers, bot=None, ch=()):
     <h1 class="livro-h1">{t}</h1>
     <p class="hero-sub">{e(o["author"])}</p>
     {note}
-    <div class="hero-deal">{stamp_html(o)}<p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong>{old}</p>{pill}</div>
-    <p class="meta">{meta_html(o)}</p>{chart(o, "    ")}{nov}
+    {deal}{nov}
     <div class="hero-acts">{go(o)}{alert_link(o, bot)}</div>
     {store_list(o)}
   </div>
 </article>"""
-    return shell(offers, f"{t}, de {e(o['author'])}: {'oferta' if o['oferta'] else 'preço'} conferid{'a' if o['oferta'] else 'o'} | Ofertas Livros",
-                 f"{t}, de {e(o['author'])}, por {brl(o['price_cents'])} {na(o['store'])}. Preço conferido na loja.",
+    tt = ("na Amazon" if o["sem_preco"] else "oferta conferida" if o["oferta"] else "preço conferido")
+    return shell(offers, f"{t}, de {e(o['author'])}: {tt} | Ofertas Livros",
+                 f"{t}, de {e(o['author'])}{por(o)} {na(o['store'])}. " + ("Confira o preço na loja." if o["sem_preco"] else "Preço conferido na loja."),
                  body, ch, style=g, bot=bot)
 
 
@@ -1324,7 +1344,7 @@ CUR_INTRO = ("Uma seleção de livros escolhidos por regras a partir de sinais p
 
 
 def curadoria_page(offers, bot=None, ch=()):
-    """/curadoria/: todo livro com loja fresca, com ou sem oferta. Uma seção por nicho, na ordem de
+    """/curadoria/: todo livro com loja fresca (ou com Amazon vencida, sem preço), com ou sem oferta. Uma seção por nicho, na ordem de
     GENRES, com âncoras no topo; dentro dela, entrada mais recente primeiro. Nunca ordem de ranking."""
     present = [g for g in GENRES if any(o["genre"] == g for o in offers)]
     anchors = "".join(f'<li><a class="pill" href="#{g}">{avatar(g, "av av--sm")}{e(GENRES[g])}</a></li>' for g in present)
@@ -1398,7 +1418,7 @@ MAX_REDIRECTS = 2000  # limite de regras estáticas do _redirects na Cloudflare
 def redirects(offers):
     """/novidades/ (página antiga) vai para /curadoria/. Por livro: /r/<id> e /r/<id>/tg|wa
     (vencedora, com a tag do canal se for a Amazon) e /r/<id>/<loja> para cada loja elegível.
-    Vencido ou loja fora do prazo cai na home pelo curinga.
+    Vencido ou loja fora do prazo cai na home pelo curinga; o livro só com Amazon vencida segue no /r/<id>.
     Até 5 regras por livro: cabem 399 livros com duas lojas (1.995 + curinga + /novidades/)."""
     tags, aff = channel_tags(), ml_affiliate()
     lines = ["/novidades/ /curadoria/ 301\n"]  # destino interno fixo, nunca vindo do JSON
@@ -2123,7 +2143,26 @@ def selftest():
     assert r["store"] == "amazon" and r["alt"] is None and len(r["stores"]) == 1  # ML velho saiu
     assert win(a8, now=datetime(2026, 10, 18, 20, 0, tzinfo=BRT)) == "amazon"     # 12 h
     late = datetime(2026, 10, 18, 20, 1, tzinfo=BRT)
-    assert [x["id"] for x in load(good, M(checked_at="2026-10-18T19:00:00-03:00"), now=late)] == ["livro-2"]
+    # Amazon fora do prazo: o livro fica sem preço, sem oferta e sem selo, com o "Ver na Amazon" e o /r/ com a tag
+    vel = load(good, M(checked_at="2026-10-18T19:00:00-03:00"), now=late)
+    assert [x["id"] for x in vel] == ["livro-1", "livro-2"]
+    sp = vel[0]
+    assert sp["sem_preco"] and not sp["oferta"] and sp["seal"] is None and sp["alt"] is None and not vel[1]["sem_preco"]
+    assert sp not in ofertas(vel) and sp in sem_oferta(vel) and sp not in hero_items(vel)  # fora da vitrine e do hero
+    c = card(sp)
+    assert ('data-preco=""' in c and 'data-off="0"' in c and "R$" not in c and "visto" not in c
+            and '<span class="sem">Preço na loja</span>' in c and "Ver na Amazon: T" in c)
+    bp = book_page(sp, vel)
+    assert ("R$" not in bp.split("<main", 1)[1].split("</main>")[0] and SEM_PRECO in bp
+            and '>Ver na Amazon<svg' in bp and 'class="stamp' not in bp and "Confira o preço na loja." in bp and "<title>T, de A: na Amazon | Ofertas Livros</title>" in bp)
+    j = offer_json(sp, None)
+    assert j["p"] is None and j["de"] is None and j["hist"] is None and j["off"] == 0 and j["selo"] is None
+    assert j["meta"] == SEM_PRECO and j["lojas"] == [{"txt": "Ver na Amazon", "href": "/r/livro-1", "main": True}]
+    rr = redirects(vel).splitlines()
+    assert f"/r/livro-1 https://www.amazon.com.br/dp/B0ABCDEFGH?tag={t} 302" in rr          # o /r/ segue com a tag
+    assert "R$" not in curadoria_page(vel).split('data-id="livro-1"', 1)[1].split("</li>", 1)[0]
+    only_ml = {**good, "stores": [{**mls, "checked_at": "2026-10-18T08:00:00-03:00"}]}
+    assert [x["id"] for x in load(only_ml, M(checked_at="2026-10-18T19:00:00-03:00"), now=late)] == ["livro-2"]  # ML vencido sai
     try:
         load(good, now=late)  # nenhum livro elegível
         raise AssertionError("lista vazia")

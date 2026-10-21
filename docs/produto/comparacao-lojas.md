@@ -40,7 +40,7 @@ Uma oferta passa a ser um **livro**, não um anúncio de uma loja.
 - O mesmo livro nas duas lojas é casado **pelo ISBN** no `collector/catalog.json`, que também passa a ter uma entrada por livro com os ids das duas lojas. Quando a API do ML devolver o GTIN, o coletor confere se bate com o ISBN; se não bater, descarta o preço do ML daquele livro e registra no log.
 
 ## Regras (o build aplica; o back não decide quem ganha)
-1. **Loja elegível:** preço verificado dentro do prazo de frescor (ML até 2 h, Amazon até 12 h, conforme `distribuicao-canais.md`). Loja com preço velho não entra na comparação. Se nenhuma loja for elegível, o livro sai da lista.
+1. **Loja elegível:** preço verificado dentro do prazo de frescor (ML até 2 h, Amazon até 12 h, conforme `distribuicao-canais.md`). Loja com preço velho não entra na comparação. Se nenhuma loja for elegível, o livro sai da lista, exceto quando ele tem Amazon (decisão do Elias em 2026-10-21): aí fica sem preço, sem desconto e sem selo, com o botão "Ver na Amazon" (`/r/<id>` com a tag), fora das ofertas e do hero, e aparece na Curadoria, nos nichos e no modal. Isso não muda o contrato: o coletor já manda a última leitura da Amazon, e o build decide pelo `checked_at`.
 2. **Vencedora:** a loja elegível com o menor `price_cents`. Em caso de empate, ganha a verificada mais recentemente.
 3. **Selo "menor preço em 90 dias":** só aparece quando o preço da vencedora é ≤ o `lowest_90d_cents` de **todas** as lojas e quando há ao menos 90 dias de histórico (`history_since`). Sem 90 dias de histórico, o selo não aparece.
 4. **Desconto exibido:** calculado sobre o `list_price_cents` da loja vencedora.

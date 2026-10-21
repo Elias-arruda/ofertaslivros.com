@@ -34,7 +34,7 @@
   const grid = grids[0] || null;
   if (grids.length) {
     const st = { q: '', g: '', order: '' };
-    const keys = { preco: c => +c.dataset.preco, off: c => -c.dataset.off };
+    const keys = { preco: c => c.dataset.preco ? +c.dataset.preco : Infinity, off: c => -c.dataset.off };  // sem preço vai para o fim
     const feeds = grids.map(el => {
       const sec = el.closest('.sec');
       return { el, sec, full: el.classList.contains('feed--full'), cards: $$(':scope > .card', el),
