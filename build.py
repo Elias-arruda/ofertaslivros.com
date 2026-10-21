@@ -405,6 +405,7 @@ def seal_of(win, el):
 
 
 VELHO = "Preço pode estar desatualizado"
+VELHO_OFERTA = timedelta(days=7)  # Amazon vencida há mais que isso: deixa de ser oferta, fica na Curadoria com o preço
 NEW_DAYS = 3  # badge "Novo": o livro entrou no histórico (history_since) nos últimos 3 dias
 # Critério "em oferta" (curadoria-automatica.md §10.8, item 3, aprovado pelo Elias em 2026-10-19).
 # Quem não é oferta fica só na Curadoria: fora dos destaques, das ofertas ativas, da contagem e dos canais.
@@ -441,7 +442,7 @@ def resolve(books, now):
         seal, since = seal_of(win, el)
         hs = [s["history_since"] for s in b["stores"]]
         novo = None not in hs and (now.astimezone(BRT).date() - min(hs)).days < NEW_DAYS
-        out.append({**b, **win, "novo": novo, "oferta": em_oferta(win, seal), "velho": velho, "stores": el,
+        out.append({**b, **win, "novo": novo, "oferta": em_oferta(win, seal) and not (velho and now - win["checked_at"] > VELHO_OFERTA), "velho": velho, "stores": el,
                     "alt": next((s for s in el if s is not win), None),
                     "seal": seal, "since": since, "now": now})  # now: relógio do build, para o "visto hoje"
     if not out:
@@ -2149,6 +2150,11 @@ def selftest():
     only_ml = {**good, "stores": [{**mls, "checked_at": "2026-10-18T08:00:00-03:00"}]}
     assert [x["id"] for x in load(only_ml, M(checked_at="2026-10-18T19:00:00-03:00"), now=late)] == ["livro-2"]  # ML vencido sai
     assert load(good, now=late)[0]["velho"]                                 # só Amazon vencida: publica com o aviso
+    sem = load(good, now=datetime(2026, 10, 25, 8, 1, tzinfo=BRT))[0]       # 7 dias e 1 min: vai para a Curadoria
+    assert sem["velho"] and not sem["oferta"] and off(sem) == 0 and sem not in ofertas([sem])
+    assert load(good, now=datetime(2026, 10, 25, 8, 0, tzinfo=BRT))[0]["oferta"]  # 7 dias: ainda oferta
+    c = card(sem)
+    assert brl(1990) in c and VELHO in c and 'href="/r/livro-1"' in c and 'data-tipo="sem-oferta"' in c
     try:
         load(only_ml, now=late)  # nenhum livro elegível
         raise AssertionError("lista vazia")
