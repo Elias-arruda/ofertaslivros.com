@@ -41,6 +41,9 @@ export async function pedido(request, env, enviar) {
   if (env.LIMITE && !(await env.LIMITE.limit({ key: ip })).success)
     return erro(429, "Muitos pedidos seguidos. Tente de novo em um minuto.");
 
+  // Content-Length antes de ler: corpo grande nem chega a ser alocado (form do navegador sempre manda).
+  const tam = Number(request.headers.get("Content-Length"));
+  if (!tam || tam > MAX_CORPO) return erro(413, "Pedido grande demais.");
   const corpo = await request.text();
   if (corpo.length > MAX_CORPO) return erro(413, "Pedido grande demais.");
   const f = new URLSearchParams(corpo);

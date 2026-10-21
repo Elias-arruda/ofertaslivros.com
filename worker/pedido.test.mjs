@@ -5,7 +5,8 @@ import { pedido } from "./pedido.js";
 const env = { PEDIDOS_PARA: "destino@example.com", LIMITE: { limit: async () => ({ success: true }) } };
 const req = (body, { origin = "https://ofertaslivros.com.br", method = "POST" } = {}) =>
   new Request("https://ofertaslivros.com.br/pedido", {
-    method, headers: { Origin: origin, "Content-Type": "application/x-www-form-urlencoded" },
+    method, headers: { Origin: origin, "Content-Type": "application/x-www-form-urlencoded",
+                      ...(method === "POST" ? { "Content-Length": String(Buffer.byteLength(body)) } : {}) },
     body: method === "POST" ? body : undefined,
   });
 let enviados = [];
@@ -28,6 +29,8 @@ assert.equal((await pedido(req("titulo=+&autor=a"), env, enviar)).status, 400); 
 assert.equal((await pedido(req("titulo=" + "a".repeat(151)), env, enviar)).status, 400);
 assert.equal((await pedido(req("titulo=a&autor=" + "b".repeat(101)), env, enviar)).status, 400);
 assert.equal((await pedido(req("titulo=" + "a".repeat(5000)), env, enviar)).status, 413);
+const semTam = new Request("https://ofertaslivros.com.br/pedido", { method: "POST", headers: { Origin: "https://ofertaslivros.com.br" }, body: "titulo=X" });
+assert.equal((await pedido(semTam, env, enviar)).status, 413);                            // sem Content-Length
 assert.equal((await pedido(req("titulo=X"), { ...env, LIMITE: { limit: async () => ({ success: false }) } }, enviar)).status, 429);
 assert.equal((await pedido(req("titulo=X"), { LIMITE: env.LIMITE }, enviar)).status, 503);
 assert.equal((await pedido(req("titulo=X"), env, async () => { throw new Error("x"); })).status, 502);
