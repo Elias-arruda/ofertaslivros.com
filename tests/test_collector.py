@@ -189,7 +189,6 @@ def test_criterio2_sem_credenciais_nao_chama_rede_e_falha(env, monkeypatch):
     "B0ZZZZZZZZ,2990,4990,2026-10-18T08:00:00-03:00",   # fora do catálogo
     "B0ABCDEFGH,4990,2990,2026-10-18T08:00:00-03:00",   # de < por
     "B0ABCDEFGH,2990,4990,2027-01-01T08:00:00-03:00",   # futuro
-    "B0ABCDEFGH,2990,4990,2026-10-10T08:00:00-03:00",   # mais de 7 dias
     "B0ABCDEFGH,2990,4990",                              # coluna faltando
 ])
 def test_criterio3_manual_invalido_nao_grava(env, line):
@@ -199,6 +198,28 @@ def test_criterio3_manual_invalido_nao_grava(env, line):
         env["run"]()
     assert not env["hist"].exists()  # nem a linha boa, nem o ML, nem offers.json
     assert env["fake"].hosts == []
+
+
+def test_manual_com_mais_de_7_dias_e_ignorado(env):
+    old = "B0ABCDEFGH,1990,4990,2026-10-10T08:00:00-03:00\n"  # já está no histórico
+    good = "B0ABCDEFGH,2990,4990,2026-10-17T08:00:00-03:00\n"
+    env["manual"].write_text(HEADER + old + good)
+    env["run"]()
+    manual = [r for r in rows(env["hist"]) if r.endswith(",manual")]
+    assert len(manual) == 1 and ",2990," in manual[0]
+
+
+@pytest.mark.parametrize("line,ok", [
+    ("B0ZZZZZZZZ,1990,4990,2026-10-10T08:00:00-03:00", True),   # saiu do catálogo: ignora
+    ("B0ABCDEFGH,4990,2990,2026-10-10T08:00:00-03:00", False),  # de < por: formato vale sempre
+])
+def test_manual_antigo_ainda_valida_formato(env, line, ok):
+    env["manual"].write_text(HEADER + line + "\n")
+    if ok:
+        env["run"]()
+    else:
+        with pytest.raises(Invalid):
+            env["run"]()
 
 
 def test_criterio3_main_sai_com_erro(env, monkeypatch):
