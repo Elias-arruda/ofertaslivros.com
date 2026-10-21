@@ -13,3 +13,4 @@ dist/
 history/
 # fila local da Amazon (docs/produto/curadoria-automatica.md §10.5): tem o link do SiteStripe
 collector/amazon_links.tsv
+.wrangler/

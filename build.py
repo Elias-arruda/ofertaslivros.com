@@ -971,13 +971,12 @@ PEDIDO_OK = "Recebemos seu pedido. Obrigado! Se o livro entrar em oferta, ele ap
 
 def fab():
     """Botão flutuante "Pedir um livro": <details> que abre o form sem JS (docs/produto/pedido-de-livro.md).
-    Netlify Forms (form "pedido", honeypot "site") recebe o POST no SITE, também vindo do .com.br; o e-mail
-    de destino fica só no painel do Netlify. Sem JS, a volta é SITE/#pedido-recebido e o :target mostra o
+    O POST vai para SITE/pedido, onde o Worker (worker/pedido.js) confere o honeypot "site" e manda o pedido
+    por e-mail; o destino fica só no segredo do Worker. Sem JS, a volta é SITE/#pedido-recebido e o :target mostra o
     aviso; com JS (app.js), o envio é por fetch e o aviso aparece no próprio painel."""
     return f"""<details class="fab-box" id="pedir">
 <summary class="fab">{icon("busca")}<span class="fab-t">Pedir um livro</span></summary>
-<form class="pedir" name="pedido" method="POST" action="{SITE}/#pedido-recebido" data-netlify="true" netlify-honeypot="site" accept-charset="utf-8">
-<input type="hidden" name="form-name" value="pedido">
+<form class="pedir" name="pedido" method="POST" action="{SITE}/pedido" accept-charset="utf-8">
 <button class="pedir-x js-px" type="button" hidden>{icon("x")}<span class="sr">Fechar</span></button>
 <p class="sr" aria-hidden="true"><label>Não preencha <input name="site" tabindex="-1" autocomplete="off"></label></p>
 <p class="pedir-h">Qual livro você quer ver aqui?</p>
@@ -1347,9 +1346,9 @@ def privacy(offers, bot=None, ch=()):
     body = f"""<h1 class="page-h1">Privacidade</h1>
 <article class="doc">
 <h2>No site</h2>
-<p>O site não tem cadastro, cookies nem ferramentas de análise. Ele tem um script próprio, servido pelo próprio site, para a busca, os filtros e o tema; a única coisa que ele guarda é a sua escolha de tema claro ou escuro, no seu navegador (localStorage), e nada disso sai do aparelho. O site é hospedado na Cloudflare e no Netlify, que recebem os dados técnicos de cada acesso (como o endereço IP) para entregar as páginas.</p>
+<p>O site não tem cadastro, cookies nem ferramentas de análise. Ele tem um script próprio, servido pelo próprio site, para a busca, os filtros e o tema; a única coisa que ele guarda é a sua escolha de tema claro ou escuro, no seu navegador (localStorage), e nada disso sai do aparelho. O site é hospedado na Cloudflare; o endereço ofertaslivros.com passa pelo Netlify só para redirecionar a este site. Os dois recebem os dados técnicos de cada acesso (como o endereço IP) para entregar as páginas.</p>
 <h2>No pedido de livro</h2>
-<p>O formulário “Pedir um livro” pede só o nome e o autor do livro. Ele é processado pelo Netlify, que registra o endereço IP, o navegador e a página de onde o pedido veio. O pedido chega também ao nosso e-mail. Apagamos os pedidos, no Netlify e no e-mail, em até 30 dias.</p>
+<p>O formulário “Pedir um livro” pede só o nome e o autor do livro. Ele é processado na Cloudflare, que usa o endereço IP só para barrar envios repetidos, sem guardá-lo, e envia o pedido ao nosso e-mail. O site não guarda o pedido. Apagamos os pedidos do e-mail em até 30 dias.</p>
 <p>Ao clicar em uma oferta, você vai para a Amazon ou para o Mercado Livre. A partir daí valem as políticas de privacidade de cada loja.</p>
 <h2>No alerta de preço do Telegram</h2>
 <p>{"Quando você pede um alerta para " + bot_name + ", guardamos" if bot else "O alerta ainda não está no ar. Em breve você poderá pedir um alerta para " + bot_name + ". Quando isso funcionar, vamos guardar"} só o necessário para avisar você:</p>
@@ -1412,7 +1411,7 @@ def redirects(offers):
     return "".join(lines)
 
 
-# form-action e connect-src: só o POST do pedido de livro para o Netlify Forms no SITE (fab).
+# form-action e connect-src: só o POST do pedido de livro para o Worker no SITE (/pedido, fab).
 HEADERS = f"""/*
   Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://http2.mlstatic.com; font-src 'self'; connect-src {SITE}; base-uri 'none'; form-action {SITE}; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
@@ -1671,7 +1670,7 @@ def selftest():
     assert '<a href="/privacidade/">Privacidade</a>' in page(o)
     assert '<a href="/privacidade/" aria-current="page">' in privacy(o)
     pv = privacy(o, "ofertaslivros_bot")
-    assert all(w in pv for w in ("No pedido de livro", "Netlify", "endereço IP", "30 dias"))  # pedido de livro
+    assert all(w in pv for w in ("No pedido de livro", "Cloudflare", "endereço IP", "30 dias"))  # pedido de livro
     assert all(w in pv for w in ("chat_id", "Cloudflare D1", "90 dias", "/parar", "bloquear o bot",
                                  "https://t.me/ofertaslivros_bot"))
     # _redirects: /novidades/ -> /curadoria/ (interno), 4 linhas por livro de uma loja + curinga; tag por canal
@@ -1880,14 +1879,12 @@ def selftest():
     for cls in ('blk--bot', 'blk--canais', 'class="bot"', 'class="canais"', 'class="fab"'):
         assert cls in h, cls
     assert 'href="https://t.me/ofertaslivros_bot" rel="noopener noreferrer"' in h  # bloco do alerta, sem start
-    # pedir um livro: um form só (Netlify Forms, no SITE), título e autor, honeypot; nada de dado do visitante
+    # pedir um livro: um form só (Worker /pedido no SITE), título e autor, honeypot; nada de dado do visitante
     forms = re.findall(r"<form[^>]*>", h)
-    assert forms == [f'<form class="pedir" name="pedido" method="POST" action="{SITE}/#pedido-recebido" data-netlify="true" '
-                     'netlify-honeypot="site" accept-charset="utf-8">']
+    assert forms == [f'<form class="pedir" name="pedido" method="POST" action="{SITE}/pedido" accept-charset="utf-8">']
     pf = h[h.index('<form class="pedir"'):h.index("</form>")]
-    assert re.findall(r'<input[^>]*name="([^"]+)"', pf) == ["form-name", "site", "titulo", "autor"]
-    assert ('<input type="hidden" name="form-name" value="pedido">' in pf
-            and 'name="titulo" required maxlength="150"' in pf and 'name="autor" maxlength="100"' in pf
+    assert re.findall(r'<input[^>]*name="([^"]+)"', pf) == ["site", "titulo", "autor"]
+    assert ('name="titulo" required maxlength="150"' in pf and 'name="autor" maxlength="100"' in pf
             and '<input name="site" tabindex="-1"' in pf and not re.search(r'type="(email|tel)"|name="(nome|email|tel)', pf))
     assert '<button class="pedir-x js-px" type="button" hidden>' in pf  # X só com JS: sem JS o <summary> fecha
     assert '<details class="fab-box" id="pedir">' in h and 'id="pedido-recebido"' in h and "Recebemos seu pedido" in h

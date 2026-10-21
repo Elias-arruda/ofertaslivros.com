@@ -15,9 +15,6 @@ on:
         description: "Publicar no Netlify o redirect do ofertaslivros.com (pasta netlify/, 15 créditos)"
         type: boolean
         default: false
-      retencao_dias:
-        description: "Apagar pedidos do Netlify mais velhos que N dias (0 só para testar a limpeza)"
-        default: "30"
 
 permissions: {}
 
@@ -123,42 +120,3 @@ jobs:
             sleep 5
           done
           echo "netlify: deploy não ficou pronto a tempo"; exit 1
-
-      # Pedidos do form (Netlify Forms) guardam IP e navegador: a privacidade promete apagar em 30 dias.
-      # Roda mesmo se o deploy falhar, para a retenção não depender do site publicar.
-      - name: Apagar pedidos do Netlify com mais de 30 dias
-        if: ${{ !cancelled() }}
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
-          RETENCAO_DIAS: ${{ inputs.retencao_dias || '30' }}
-        run: |
-          python3 - <<'PY'
-          import json
-          import os
-          import urllib.request
-          from datetime import datetime, timedelta, timezone
-
-          api = "https://api.netlify.com/api/v1"
-          auth = {"Authorization": "Bearer " + os.environ["NETLIFY_AUTH_TOKEN"]}
-          limite = datetime.now(timezone.utc) - timedelta(days=int(os.environ["RETENCAO_DIAS"]))
-
-          def call(method, path):
-              req = urllib.request.Request(api + path, method=method, headers=auth)
-              with urllib.request.urlopen(req, timeout=30) as r:
-                  body = r.read()
-              return json.loads(body) if body else None
-
-          apagados = 0
-          for form in call("GET", f"/sites/{os.environ['NETLIFY_SITE_ID']}/forms"):
-              for estado in ("", "&state=spam"):  # spam também guarda IP
-                  velhos, page = [], 1
-                  while lote := call("GET", f"/forms/{form['id']}/submissions?per_page=100&page={page}{estado}"):
-                      velhos += [s["id"] for s in lote
-                                 if datetime.fromisoformat(s["created_at"].replace("Z", "+00:00")) < limite]
-                      page += 1
-                  for sid in velhos:  # apaga depois de listar, para não pular página
-                      call("DELETE", f"/submissions/{sid}")
-                      apagados += 1
-          print(f"netlify: {apagados} pedido(s) apagado(s), limite {limite:%Y-%m-%d %H:%M} UTC")
-          PY
