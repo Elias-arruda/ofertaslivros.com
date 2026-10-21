@@ -1296,7 +1296,9 @@ def book_page(o, offers, bot=None, ch=()):
     off_ = off(o)
     old = f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>' if off_ else ""
     pill = f'<span class="off-pill">−{off_}%</span>' if off_ else ""
-    nov = "" if o["oferta"] else '\n    <p class="nov-nota">Sem oferta agora: o preço ainda não baixou o bastante. Ative o alerta e avisamos quando cair.</p>'
+    why = ("o último preço que vimos tem mais de 7 dias. Confira o preço atual na loja." if o["velho"]
+           else "o preço ainda não baixou o bastante. Ative o alerta e avisamos quando cair.")
+    nov = "" if o["oferta"] else f'\n    <p class="nov-nota">Sem oferta agora: {why}</p>'
     b = badge(o)
     chips = f'<span class="chip chip--g">{icon("g-" + g)}{e(GENRES[g])}</span>' + (
         f'<span class="chip chip--{b[0]}">{b[1]}</span>' if b else "")
@@ -2155,6 +2157,8 @@ def selftest():
     assert load(good, now=datetime(2026, 10, 25, 8, 0, tzinfo=BRT))[0]["oferta"]  # 7 dias: ainda oferta
     c = card(sem)
     assert brl(1990) in c and VELHO in c and 'href="/r/livro-1"' in c and 'data-tipo="sem-oferta"' in c
+    bp = book_page(sem, [sem])
+    assert "tem mais de 7 dias" in bp and "não baixou o bastante" not in bp
     try:
         load(only_ml, now=late)  # nenhum livro elegível
         raise AssertionError("lista vazia")
