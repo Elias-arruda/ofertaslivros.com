@@ -32,7 +32,7 @@ ALLOWED_HOSTS = {
 }
 STORES = {"amazon": "Amazon", "mercadolivre": "Mercado Livre"}
 # Domínio do <link rel="canonical"> (o site responde em .com e .com.br): o .com, decisão do Elias em 2026-10-20.
-SITE = "https://ofertaslivros.com"
+SITE = "https://ofertaslivros.com.br"
 # Conjunto fechado: o slug vira diretório em dist/, então nunca vem do JSON livre.
 GENRES = {
     "literatura-brasileira": "Literatura brasileira",
@@ -1749,11 +1749,11 @@ def selftest():
                   "stores": [{**amz, "price_cents": 4290, "list_price_cents": 7490, "lowest_90d_cents": 4590,
                               "checked_at": "2026-10-18T08:47:00-03:00", "history_since": "2026-06-01"}]})[0]
     nb = "\u00a0"
-    assert post_text(torto, "https://ofertaslivros.com/r/livro-1/tg") == (
+    assert post_text(torto, "https://ofertaslivros.com.br/r/livro-1/tg") == (
         "Menor preço em 90 dias\nTorto Arado, de Itamar Vieira Junior\n"
         f"R${nb}42,90 (de R${nb}74,90, -42%)\n"
         "Amazon · preço verificado em 18/10 às 08h47. O preço final é o da loja.\n"
-        "Link de afiliado: https://ofertaslivros.com/r/livro-1/tg")
+        "Link de afiliado: https://ofertaslivros.com.br/r/livro-1/tg")
     plain = post_text({**torto, "seal": None, "list_price_cents": 4290}, "https://x.com/r/livro-1")
     assert plain.splitlines()[:2] == ["Torto Arado, de Itamar Vieira Junior", f"R${nb}42,90"]
     assert "Menor preço" not in post_text({**torto, "seal": "since"}, "https://x.com/r/livro-1")
@@ -1969,11 +1969,11 @@ def selftest():
     blob = json.loads(re.search(r'id="ofertas">(.*?)</script>', page(mix)).group(1))
     assert all(d["off"] == 0 and d["de"] is None and d["nov"] for d in blob if d["id"].startswith("nov-"))
     try:
-        post_text(next(o for o in mix if o["id"] == "nov-1"), "https://ofertaslivros.com/r/nov-1/tg")
+        post_text(next(o for o in mix if o["id"] == "nov-1"), "https://ofertaslivros.com.br/r/nov-1/tg")
         raise AssertionError("post_text aceitou livro sem oferta")
     except Invalid:
         pass
-    assert post_text(mix[0], "https://ofertaslivros.com/r/l-0/tg")                         # oferta passa
+    assert post_text(mix[0], "https://ofertaslivros.com.br/r/l-0/tg")                         # oferta passa
     # /curadoria/: todo livro fresco, com ou sem oferta, uma seção por nicho na ordem de GENRES
     cur_books = [*mix_books, {**nov(5, "2026-10-12"), "genre": "literatura-brasileira"}, {**good, "id": "fc-1", "genre": "ficcao"}]
     cpg = render_pages(load(*cur_books))
@@ -2216,7 +2216,7 @@ def selftest():
     # CSP: só a foto do ML entra além do próprio site
     csp = HEADERS.split("Content-Security-Policy: ")[1].splitlines()[0]
     assert csp == ("default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://http2.mlstatic.com; "
-                   "font-src 'self'; connect-src https://ofertaslivros.com; base-uri 'none'; form-action https://ofertaslivros.com; "
+                   "font-src 'self'; connect-src https://ofertaslivros.com.br; base-uri 'none'; form-action https://ofertaslivros.com.br; "
                    "frame-ancestors 'none'")                                 # só o POST do pedido de livro
     # JS: só o nosso arquivo, sem script inline executável; o JSON embutido não fecha o <script> antes da hora
     evil = '</script><script>alert(1)</script><!--'
@@ -2258,8 +2258,8 @@ def selftest():
     assert "canais/index.html" in render_pages(load(good), ch=[("Telegram", "https://t.me/ofertaslivros")])
     for path, h in pg.items():                                                 # canonical absoluto, um por página
         assert re.findall(r'<link rel="canonical" href="([^"]+)">', h) == [SITE + "/" + path.removesuffix("index.html")], path
-    assert '<link rel="canonical" href="https://ofertaslivros.com/livro/livro-1/">' in pg["livro/livro-1/index.html"]
-    assert '<link rel="canonical" href="https://ofertaslivros.com/">' in pg["index.html"]
+    assert '<link rel="canonical" href="https://ofertaslivros.com.br/livro/livro-1/">' in pg["livro/livro-1/index.html"]
+    assert '<link rel="canonical" href="https://ofertaslivros.com.br/">' in pg["index.html"]
     lv = pg["livro/livro-1/index.html"]
     assert "<h1 class=\"livro-h1\">T</h1>" in lv and '<html lang="pt-BR" data-style="manga">' in lv
     assert 'href="/r/livro-1" rel="sponsored noopener noreferrer" target="_blank"' in lv
@@ -2273,11 +2273,11 @@ def selftest():
                   "stores": [{**amz, "price_cents": 4290, "list_price_cents": 7490, "lowest_90d_cents": 4290},
                              {**mls, "price_cents": ml_price, "list_price_cents": 7490,
                               "checked_at": "2026-10-18T08:40:00-03:00"}]}, now=now)[0]
-        return post_text(r, "https://ofertaslivros.com/r/livro-1/wa")
+        return post_text(r, "https://ofertaslivros.com.br/r/livro-1/wa")
     assert post(4719).splitlines() == [
         "Torto Arado, de Itamar Vieira Junior", f"R${nb}42,90 (de R${nb}74,90, -42%)",
         "Amazon · preço verificado em 18/10 às 08h00. O preço final é o da loja.",
-        f"Também no Mercado Livre por R${nb}47,19", "Link de afiliado: https://ofertaslivros.com/r/livro-1/wa"]
+        f"Também no Mercado Livre por R${nb}47,19", "Link de afiliado: https://ofertaslivros.com.br/r/livro-1/wa"]
     assert "Também" not in post(4720)                                     # 10,02% mais cara
     t = post(4290)                                                        # empate: ML verificado depois vence
     assert t.splitlines()[2].startswith("Mercado Livre · ") and f"Também na Amazon por R${nb}42,90" in t
