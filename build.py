@@ -445,7 +445,7 @@ def resolve(books, now):
         out.append({**b, **win, "novo": novo, "oferta": em_oferta(win, seal), "sem_preco": False, "stores": el,
                     "alt": next((s for s in el if s is not win), None),
                     "seal": seal, "since": since, "now": now})  # now: relógio do build, para o "visto hoje"
-    if all(o["sem_preco"] for o in out):
+    if not out:  # só Amazon vencida ainda publica: melhor que o site antigo no ar com preço vencido
         raise Invalid("nenhuma oferta com preço dentro do prazo de frescor")
     return out
 
@@ -2163,8 +2163,9 @@ def selftest():
     assert "R$" not in curadoria_page(vel).split('data-id="livro-1"', 1)[1].split("</li>", 1)[0]
     only_ml = {**good, "stores": [{**mls, "checked_at": "2026-10-18T08:00:00-03:00"}]}
     assert [x["id"] for x in load(only_ml, M(checked_at="2026-10-18T19:00:00-03:00"), now=late)] == ["livro-2"]  # ML vencido sai
+    assert load(good, now=late)[0]["sem_preco"]                            # só Amazon vencida: publica sem preço
     try:
-        load(good, now=late)  # nenhum livro elegível
+        load(only_ml, now=late)  # nenhum livro elegível
         raise AssertionError("lista vazia")
     except Invalid:
         pass
