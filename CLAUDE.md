@@ -16,7 +16,7 @@ Domínio comprado na HostGator. A HostGator é usada SÓ para o domínio (DNS).
   - O coletor gera `data/offers.json`, e o `build.py` gera o site estático (HTML puro) a partir dele.
   - JavaScript só como melhoria progressiva: um arquivo próprio (`static/app.js`), CSP `script-src 'self'`, sem script de terceiros nem inline, e o site completo sem JS. Fontes OFL auto-hospedadas (`font-src 'self'`).
   - Deploy no Cloudflare Workers (static assets, plano Free), que é o caminho que a Cloudflare indica para projetos novos no lugar do Pages. `_headers` e `_redirects` funcionam igual.
-  - Desde 2026-10-20 o `ofertaslivros.com` é servido pelo Netlify (Free), com o mesmo `dist/`, porque a Vivo bloqueia os IPs da zona no Cloudflare. O `ofertaslivros.com.br` continua no Worker. O DNS dos dois segue no Cloudflare.
+  - Desde 2026-10-21 o site principal (canonical, links dos canais) é o `ofertaslivros.com.br`, no Worker, com deploy a cada merge e coleta. O `ofertaslivros.com` fica no Netlify só com um 301 para o `.com.br` (`netlify/_redirects`), porque a Vivo bloqueia os IPs da zona `.com` no Cloudflare e cada deploy no Netlify gasta crédito. O DNS dos dois segue no Cloudflare.
   - DNS: trocar os nameservers do domínio no painel da HostGator para os da Cloudflare. A HostGator fica só como registrador; não contratar hospedagem lá.
 - **Fase 2:** canal no Telegram alimentado pelo mesmo pipeline. Depois, um bot com lista de desejos.
 
@@ -32,7 +32,7 @@ Domínio comprado na HostGator. A HostGator é usada SÓ para o domínio (DNS).
 ## Riscos de segurança específicos (ver /threat-model)
 - **Open redirect** na rota de redirecionamento de afiliado (`/r/<id>`): só redirecionar para IDs conhecidos no `offers.json` e domínios em allowlist (amazon.com.br, mercadolivre.com.br, mercadolivre.com).
 - **XSS** vindo de dados coletados (título, autor, descrição): sempre escapar o HTML e nunca usar `innerHTML` com dado externo.
-- **Headers:** definir CSP, X-Content-Type-Options, Referrer-Policy e Permissions-Policy via `_headers` (vale no Cloudflare e no Netlify).
+- **Headers:** definir CSP, X-Content-Type-Options, Referrer-Policy e Permissions-Policy via `_headers` (vale no Cloudflare).
 - **Supply chain:** fixar versões de dependências e de actions do GitHub (por SHA). Revisar qualquer skill/agent de terceiros antes de instalar.
 
 ## Status (respondido em 2026-10-18)

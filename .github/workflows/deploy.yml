@@ -11,6 +11,10 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      publicar_redirect_com:
+        description: "Publicar no Netlify o redirect do ofertaslivros.com (pasta netlify/, 15 créditos)"
+        type: boolean
+        default: false
       retencao_dias:
         description: "Apagar pedidos do Netlify mais velhos que N dias (0 só para testar a limpeza)"
         default: "30"
@@ -92,16 +96,18 @@ jobs:
           wranglerVersion: "4.151.1"
           command: deploy --config cron/wrangler.jsonc
 
-      # ofertaslivros.com fica no Netlify: a Vivo bloqueia os IPs da zona no Cloudflare (2026-10-20).
-      # Por último: se o Netlify falhar, o site no Cloudflare e o agendador já saíram.
-      # Mesmo dist/ (_headers e _redirects valem igual). Zip na API do Netlify: sem CLI de terceiros.
-      - name: Publicar no Netlify (ofertaslivros.com)
+      # O site principal é o .com.br (Worker acima). O ofertaslivros.com fica no Netlify, porque a Vivo bloqueia
+      # os IPs da zona no Cloudflare, mas só com o 301 de netlify/_redirects para o .com.br (decisão de 2026-10-21).
+      # Cada deploy no Netlify custa 15 créditos: sai só por dispatch manual, quando netlify/ mudar.
+      # Zip na API do Netlify: sem CLI de terceiros.
+      - name: Publicar no Netlify o redirect do ofertaslivros.com
+        if: github.event_name == 'workflow_dispatch' && inputs.publicar_redirect_com
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
         run: |
           : "${NETLIFY_AUTH_TOKEN:?segredo NETLIFY_AUTH_TOKEN ausente}" "${NETLIFY_SITE_ID:?variável NETLIFY_SITE_ID ausente}"
-          (cd dist && zip -qr "$RUNNER_TEMP/site.zip" .)
+          (cd netlify && zip -qr "$RUNNER_TEMP/site.zip" .)
           curl -sS --fail-with-body -o "$RUNNER_TEMP/netlify.json" -X POST \
             -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" -H "Content-Type: application/zip" \
             --data-binary @"$RUNNER_TEMP/site.zip" \
