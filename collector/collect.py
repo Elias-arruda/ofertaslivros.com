@@ -280,14 +280,15 @@ def _cents_field(v):
 
 
 def parse_manual(text, books, now):
-    """Tudo ou nada: qualquer linha inválida levanta Invalid e nada é gravado."""
+    """Tudo ou nada: qualquer linha inválida levanta Invalid e nada é gravado.
+    Linha com mais de MANUAL_MAX_AGE é ignorada: já entrou no histórico quando era nova."""
     if not text.strip():
         return []
     by_asin = {b["asin"]: b for b in books if "asin" in b}
     reader = csv.DictReader(io.StringIO(text))
     if reader.fieldnames != MANUAL_COLS:
         raise Invalid(f"{MANUAL_CSV.name}: cabeçalho precisa ser {','.join(MANUAL_COLS)}")
-    rows = []
+    rows, skipped = [], 0
     for n, r in enumerate(reader, start=2):
         try:
             if None in r or None in r.values():
@@ -295,8 +296,6 @@ def parse_manual(text, books, now):
             asin = r["asin"].strip()
             if not ASIN_RE.fullmatch(asin):
                 raise Invalid(f"ASIN inválido: {asin!r}")
-            if asin not in by_asin:
-                raise Invalid(f"ASIN fora do catálogo: {asin}")
             price, lst = _cents_field(r["price_cents"]), _cents_field(r["list_price_cents"])
             if lst < price:
                 raise Invalid("list_price_cents menor que price_cents")
@@ -310,10 +309,15 @@ def parse_manual(text, books, now):
             if dt > now + timedelta(minutes=5):
                 raise Invalid(f"checked_at no futuro: {raw!r}")
             if dt < now - MANUAL_MAX_AGE:
-                raise Invalid(f"checked_at com mais de 7 dias: {raw!r}")
+                skipped += 1  # o livro pode ter saído do catálogo depois
+                continue
+            if asin not in by_asin:
+                raise Invalid(f"ASIN fora do catálogo: {asin}")
         except Invalid as e:
             raise Invalid(f"{MANUAL_CSV.name} linha {n}: {e}") from None
         rows.append(row(by_asin[asin]["id"], "amazon", price, lst, dt, "manual"))
+    if skipped:
+        print(f"{MANUAL_CSV.name}: {skipped} linhas com mais de 7 dias ignoradas")
     return rows
 
 

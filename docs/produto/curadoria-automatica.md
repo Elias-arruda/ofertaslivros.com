@@ -594,6 +594,13 @@ O ML desses livros entra pelo `links-apply` (o produto do ML é achado pela busc
 
 O `AMAZON_ACTIVE_MAX = 30` só ordena a fila de conferência. Com cerca de 96 livros com Amazon, a rodada de preço de duas vezes por dia precisa cobrir todos, ou os que ficarem de fora perdem o preço da Amazon depois de 12 h. Decisão pendente do Elias: rodada completa ou só os 30 primeiros.
 
+**Agenda da rodada de preço (decisão do Elias, 2026-10-21: "ver os preços 2 vezes ao dia"):**
+- Horários: **8h53 e 20h53** (BRT). A rodada é um agendamento da sessão do Claude Code na máquina do Elias, nunca do GitHub Actions. Cada rodada leva uns 20 minutos e cobre todos os livros com `asin`, uma página por vez.
+- Precisa estar ligado nesses horários: o computador, o Chrome com a extensão Claude in Chrome conectada e a sessão do Claude Code aberta. O agendamento da sessão expira em 7 dias e precisa ser recriado.
+- Cada rodada vira um PR (`Elias-arruda/precos-AAAA-MM-DD-HHh`) no fluxo normal. Entre a leitura e o site há de 30 a 60 minutos (PR, coletor e deploy), em que os preços da rodada anterior já podem ter vencido.
+- Rodada que falha (Chrome fechado, extensão desconectada, computador dormindo): a Amazon vence 12 h depois da última leitura. Os livros com ML seguem pelo ML, e os só da Amazon somem até a rodada seguinte. Foi o que aconteceu em 2026-10-21, quando a rodada das 21h de 2026-10-20 não rodou.
+- O coletor ignora linhas do `amazon_prices.csv` com mais de 7 dias (`MANUAL_MAX_AGE`): elas entraram no histórico quando eram novas. Antes, uma linha antiga invalidava o arquivo inteiro.
+
 **Pendências de implementação:**
 - `amazon_prices.csv` está na `main`: cada rodada de preço vira um PR. Se ficar pesado com duas rodadas por dia, a alternativa é o coletor ler o arquivo do `price-history` (exige mudança no `collect.py` e decisão sobre push local nesse branch).
 - Livro novo só da Amazon (passo 5).
