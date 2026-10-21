@@ -2169,12 +2169,8 @@ def selftest():
         raise AssertionError("lista vazia")
     except Invalid:
         pass
-    assert load(A(checked_at="2026-10-18T09:04:00-03:00"))                 # 4 min no futuro: tolerado
-    try:
-        load(A(checked_at="2026-10-18T09:06:00-03:00"))
-        raise AssertionError("futuro")
-    except Invalid:
-        pass
+    assert not load(A(checked_at="2026-10-18T09:04:00-03:00"))[0]["sem_preco"]  # 4 min no futuro: tolerado
+    assert load(A(checked_at="2026-10-18T09:06:00-03:00"))[0]["sem_preco"]       # 6 min: fora do prazo, sem preço
     # selo estrito: 90 dias em TODAS as lojas elegíveis e preço <= o mínimo de todas
     def seal_two(a, m):
         r = load({**good, "stores": [{**a8, **a}, {**m8, "price_cents": 2490, **m}]})[0]
