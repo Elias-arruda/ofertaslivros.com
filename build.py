@@ -340,6 +340,10 @@ def validate_offer(o, tag, aff):
         raise Invalid("stores com loja repetida")
     out = {"id": oid, "isbn": isbn, "genre": o["genre"], "title": _text(o, "title"),
            "author": _text(o, "author"), "image_url": image_url(o.get("image_url"), oid), "stores": stores}
+    # ponytail: capa provisória (Open Library, baixada à mão em static/capas/) para livro sem foto do ML.
+    # Sai quando a Creators API der a imagem da Amazon.
+    if out["image_url"] is None and isbn and (STATIC / "capas" / f"{isbn}.jpg").is_file():
+        out["image_url"] = f"/capas/{isbn}.jpg"
     # Opcionais propostos ao back: curadoria manual e ranking de popularidade real.
     ft = o.get("featured", False)
     if type(ft) is not bool:
@@ -2193,6 +2197,9 @@ def selftest():
     h = vis(page(load(good)))
     assert '<div class="cover cover--none" aria-hidden="true"><span class="ini">T</span></div>' in h
     assert '<span class="pages" aria-hidden="true"></span>' in h            # o miolo do livro atrás da capa
+    isbn_capa = next(STATIC.glob("capas/*.jpg")).stem                      # capa provisória local
+    assert load({**good, "isbn": isbn_capa})[0]["image_url"] == f"/capas/{isbn_capa}.jpg"
+    assert load({**good, "isbn": isbn_capa, "image_url": img})[0]["image_url"] == img  # foto do ML ganha
     h = vis(page(load({**good, "image_url": img, "title": 'O "x" <b>', "author": "A & B"})))
     assert 'alt="Capa de O &quot;x&quot; &lt;b&gt;, de A &amp; B"' in h and '"x" <b>' not in h
     h = vis(page(offers_n(5, {k: {"image_url": img} for k in range(5)})))
