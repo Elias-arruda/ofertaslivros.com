@@ -1,2 +1,3 @@
 # ofertaslivros.com (Netlify) só redireciona para o site principal no Cloudflare.
+# O index.html existe porque deploy de um arquivo só vira a própria página (o _redirects era servido como texto).
 /*  https://ofertaslivros.com.br/:splat  301!
