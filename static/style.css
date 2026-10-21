@@ -305,6 +305,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 .price > * { white-space: nowrap; }
 .price strong { font: 700 22px/1.05 var(--sans); letter-spacing: -.02em; }
 .old, .sem { font-size: 13px; color: var(--muted); }
+.velho { font-style: italic; }  /* preço da Amazon fora do prazo */
 .meta { font-size: 13px; color: var(--muted); }
 .store { font-weight: 600; color: var(--text); }
 .drop { font-weight: 600; color: var(--text); }
