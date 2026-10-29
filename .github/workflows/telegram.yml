@@ -1,0 +1,76 @@
+name: telegram
+
+# Posta no canal do Telegram depois de cada deploy bem-sucedido (o /r/<id>/tg já está no ar).
+# Janela, limites e repetição ficam no telegram_post.py. O estado é o channel_posts.csv do branch
+# channel-posts, gravado só por este workflow: não disputa push com o pipeline no price-history.
+# Encadeamento: pipeline -> deploy -> telegram já são os 3 níveis de workflow_run que o GitHub dispara.
+on:
+  workflow_run:
+    workflows: [deploy]
+    types: [completed]
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: telegram
+  cancel-in-progress: false
+
+jobs:
+  post:
+    if: github.event.workflow_run.conclusion == 'success'
+    # TELEGRAM_BOT_TOKEN fica no Environment telegram, restrito à main.
+    environment: telegram
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write # só para o push do channel_posts.csv no branch channel-posts
+    env:
+      POSTS_BRANCH: channel-posts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Abrir as ofertas e o log dos posts
+        id: posts
+        run: |
+          git fetch --no-tags --depth=1 origin refs/heads/price-history:refs/remotes/origin/price-history
+          git show origin/price-history:offers.json > "$RUNNER_TEMP/offers.json"
+          rc=0; git ls-remote --exit-code --heads origin "$POSTS_BRANCH" >/dev/null || rc=$?
+          if [ "$rc" -eq 0 ]; then
+            git fetch --no-tags --depth=1 origin "$POSTS_BRANCH"
+            git worktree add --detach posts FETCH_HEAD
+          elif [ "$rc" -eq 2 ]; then
+            # 2 = branch não existe: primeira execução, branch órfão só com o log
+            git worktree add --orphan -b "$POSTS_BRANCH" posts
+          else
+            echo "::error::ls-remote falhou (código $rc)"; exit 1
+          fi
+
+      - name: Postar no canal
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ vars.TELEGRAM_CHANNEL_ID }}
+          ML_AFFILIATE_ID: ${{ vars.ML_AFFILIATE_ID }}
+          AMAZON_PARTNER_TAG: ${{ vars.AMAZON_PARTNER_TAG }}
+        run: python3 telegram_post.py "$RUNNER_TEMP/offers.json" posts/channel_posts.csv
+
+      - name: Gravar o log dos posts
+        # grava mesmo se um envio falhou no meio: o que já saiu não pode sair de novo
+        if: ${{ !cancelled() && steps.posts.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: posts
+        run: |
+          git add -A
+          if git diff --cached --quiet; then echo "sem posts novos"; exit 0; fi
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "channel_posts: run $GITHUB_RUN_ID"
+          b64=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          echo "::add-mask::$b64"
+          export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="http.https://github.com/.extraheader" \
+                 GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $b64"
+          git push -q origin "HEAD:refs/heads/$POSTS_BRANCH"
