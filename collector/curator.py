@@ -863,10 +863,13 @@ def match_one(isbn, token, pause=time.sleep, **kw):
     """-> (MLB, None) se exatamente um produto da busca pelo ISBN é livro ativo, em
     português e com isbn_of(ficha) == isbn; senão (None, motivo). A ficha sempre vem do
     /products/{id}: os resultados da busca não trazem os atributos."""
-    res = c.ml_request(_isbn_path(isbn), token, **kw)
-    res = res.get("results") if isinstance(res, dict) else None
+    body = c.ml_request(_isbn_path(isbn), token, **kw)
+    res = body.get("results") if isinstance(body, dict) else None
     if not isinstance(res, list):
         raise c.MLError("/products/search malformado")
+    total = (body.get("paging") or {}).get("total") if isinstance(body.get("paging"), dict) else None
+    if type(total) is int and total > len(res):  # página incompleta: pode haver outro válido
+        return None, "ambiguo"
     ids = list(dict.fromkeys(r["id"] for r in res if isinstance(r, dict)
                              and isinstance(r.get("id"), str) and c.MLB_RE.fullmatch(r["id"])))
     if not ids:

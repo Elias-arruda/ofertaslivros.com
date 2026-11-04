@@ -987,7 +987,7 @@ def mm(env, monkeypatch):
     """Catálogo com livros só da Amazon; /products/search?product_identifier= devolve
     fake.by_isbn[isbn] (lista de MLB)."""
     fake = env["fake"]
-    fake.by_isbn = {}
+    fake.by_isbn, fake.totals = {}, {}
     orig = fake.__call__
 
     def call(req, timeout=None):
@@ -997,7 +997,8 @@ def mm(env, monkeypatch):
             assert q["site_id"] == ["MLB"] and q["status"] == ["active"]
             fake.urls.append(req.full_url)
             ids = fake.by_isbn.get(q["product_identifier"][0], [])
-            return Resp({"paging": {"total": len(ids)}, "results": [{"id": i} for i in ids]})
+            total = fake.totals.get(q["product_identifier"][0], len(ids))
+            return Resp({"paging": {"total": total}, "results": [{"id": i} for i in ids]})
         return orig(req, timeout)
     monkeypatch.setattr(c, "_urlopen", call)
     doc = json.loads(env["cat"].read_text())
@@ -1088,3 +1089,12 @@ def test_ml_match_e_links_apply_juntam_as_lojas(mm):
     assert cur.links_apply(mm["links"], mm["cat"]) == 0
     b = next(b for b in mm["books"]() if b["id"] == "amz-1")
     assert b == {**_amz(1), "ml_product_id": "MLB10", "ml_url": url}
+
+
+def test_ml_match_pagina_incompleta_e_ambigua(mm, capsys):
+    mm["fake"].products["MLB10"] = prod(10, gtin=isbn(1))
+    mm["fake"].by_isbn[isbn(1)] = ["MLB10"]
+    mm["fake"].totals[isbn(1)] = 2  # paging.total diz que há outro resultado fora da página
+    mm["run"](max_books=1)
+    assert "1 ambíguos" in capsys.readouterr().out and not mm["links"].exists()
+    assert not any("/products/MLB10" in u for u in mm["fake"].urls)
