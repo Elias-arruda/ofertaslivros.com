@@ -13,7 +13,7 @@ Hoje nenhum livro novo ganha `ml_url` sem o Elias abrir o Gerador de links, cola
    - **Ritmo:** uma página por vez, em ritmo humano, com cerca de 20 s entre ações (colar, gerar, copiar, abrir). Nada roda em paralelo nem em segundo plano.
    - **Lote:** até **20 links por dia** (`ML_LINKS_DAY = 20`), contando só livros novos com `ml_url` pendente. São uns 25 min por lote. O gate 8 permite até 50 candidatos por dia; o que passar de 20 fica para o dia seguinte.
    - **Proibido:** guardar cookie, token ou sessão; chamar API interna do portal; fazer `fetch`/`requests`/`curl` em código para o portal ou para o link gerado; rodar no GitHub Actions. O código do repo continua sem nenhuma request ao portal.
-   - **Risco aceito pelo Elias** (precisa ser confirmado por escrito na sessão, ver decisão 1): os termos do programa e o item 7.6 dos Termos de Desenvolvedores proíbem robôs no site. A punição possível é suspender a conta de afiliado e reter comissões.
+   - **Risco aceito pelo Elias:** a aceitação é o "aprovado, pode seguir" dele na sessão para o PR que cria esta exceção (2026-11-04). Sem esse merge, nada deste fluxo roda. Os termos do programa e o item 7.6 dos Termos de Desenvolvedores proíbem robôs no site. A punição possível é suspender a conta de afiliado e reter comissões.
 2. **Validação de cada link** antes de ir ao TSV (ver abaixo).
 3. **PR não sensível** quando só preenche `ml_url` pendentes (critérios abaixo).
 4. **Parada segura** em captcha, verificação ou logout.
@@ -88,8 +88,7 @@ A mudança na lista de sensíveis do CLAUDE.md e na regra 2 é, ela mesma, um PR
 
 ## Decisões em aberto para o Elias
 
-1. **Risco aceito:** confirme na sessão que aceita o risco de suspensão da conta de afiliado do ML pelo acesso automatizado ao portal, como fez com a Amazon em 2026-10-20.
-2. **Lote:** 20 links por dia está bom? Com 50, fecha o gate 8, mas expõe mais a conta.
-3. **Conferência do MLB:** abrir o link gerado (gasta 1 clique próprio por link, recomendado) ou confiar só no par construído (colei a URL X e o gerador devolveu o link Y) e no título que o gerador mostra, sem clique?
-4. **Livro só da Amazon:** o PR que adiciona `ml_product_id` e `ml_url` a esses livros fica sensível (recomendado) ou entra na regra de não sensível?
-5. **Agenda:** sob demanda ou num horário fixo junto da rodada de preço das 8h53? Agendado, depende do computador e do Chrome ligados, como na Amazon.
+1. **Lote:** 20 links por dia está bom? Com 50, fecha o gate 8, mas expõe mais a conta. Até decidir, vale 20 (CLAUDE.md, regra 2).
+2. **Conferência do MLB:** abrir o link gerado (gasta 1 clique próprio por link, recomendado) ou confiar só no par construído (colei a URL X e o gerador devolveu o link Y) e no título que o gerador mostra, sem clique?
+3. **Livro só da Amazon:** o PR que adiciona `ml_product_id` e `ml_url` a esses livros fica sensível (recomendado) ou entra na regra de não sensível?
+4. **Agenda:** sob demanda ou num horário fixo junto da rodada de preço das 8h53? Agendado, depende do computador e do Chrome ligados, como na Amazon.
