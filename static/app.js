@@ -215,6 +215,7 @@
       selo.textContent = o.selo || ''; selo.classList.toggle('stamp--since', Boolean(o.desde));
       txt('.m-meta', o.meta); txt('.m-hist', o.hist); txt('.m-p', o.p); txt('.m-de', o.de);
       txt('.m-off', o.off ? '−' + o.off + '%' : '');
+      $('.m-off', dlg).classList.toggle('off-pill--forte', o.forte === true);
       const img = $('.m-img', dlg), ini = $('.m-ini', dlg), foto = typeof o.img === 'string' && (o.img.startsWith('https://http2.mlstatic.com/') || /^\/capas\/\d{9}[\dX](\d{3})?\.jpg$/.test(o.img));
       $('.m-obj .cover', dlg).classList.toggle('cover--none', !foto);
       img.hidden = !foto; ini.hidden = foto;

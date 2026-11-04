@@ -47,7 +47,7 @@ GENRES = {
     "manga": "Mangá e HQ",
 }
 # Rotas de dist/ que nenhum slug de nicho pode ocupar.
-RESERVED = {"r", "livro", "ofertas", "privacidade", "canais", "curadoria", "novidades", "fonts"}
+RESERVED = {"r", "livro", "ofertas", "privacidade", "canais", "curadoria", "novidades", "fonts", "black-friday"}
 if set(GENRES) & RESERVED:
     raise SystemExit("slug de GENRES reservado")
 
@@ -484,6 +484,25 @@ def sem_oferta(items):
     return recentes(o for o in items if not o["oferta"])
 
 
+CAMPANHA = (date(2026, 11, 5), date(2026, 12, 1))  # inclusive, em BRT
+BF_MIN = 30  # % de desconto para o destaque e para a página /black-friday/
+
+
+def campanha(now):
+    """None antes da janela, "on" dentro dela, "fim" depois. now: o relógio do build (o["now"])."""
+    d = now.astimezone(BRT).date()
+    return None if d < CAMPANHA[0] else "on" if d <= CAMPANHA[1] else "fim"
+
+
+def bf_on(offers):
+    return bool(offers) and campanha(offers[0]["now"]) == "on"
+
+
+def forte(o):
+    """Desconto grande durante a campanha: sticker e pílula invertidos (--text sobre --bg)."""
+    return off(o) >= BF_MIN and campanha(o["now"]) == "on"
+
+
 def off(o):
     """Desconto que pode aparecer na tela: só em oferta (sem oferta não mostra riscado nem %)."""
     return discount(o) if o["oferta"] else 0
@@ -650,7 +669,8 @@ def card(o, bot=None, h=3):
     g, t, oid, off_ = o["genre"], e(o["title"]), e(o["id"]), off(o)
     b = badge(o)
     bdg = f'<span class="badge badge--{b[0]}">{b[1]}</span>' if b else ""
-    stk = f'<span class="sticker" aria-hidden="true">−{off_}%</span>' if off_ else ""
+    stk = (f'<span class="sticker{" sticker--forte" if forte(o) else ""}" aria-hidden="true">−{off_}%</span>'
+           if off_ else "")
     old = (f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>'
            f'<span class="sr">, {off_}% de desconto</span>' if off_ else "")
     if not o["oferta"]:
@@ -737,7 +757,7 @@ def slide(o, k, n, bot=None):
         chips.append(f'<span class="chip chip--{b[0]}">{b[1]}</span>')
     off = discount(o) if o["oferta"] else 0
     old = f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>' if off else ""
-    pill = f'<span class="off-pill">−{off}%</span>' if off else ""
+    pill = f'<span class="off-pill{" off-pill--forte" if forte(o) else ""}">−{off}%</span>' if off else ""
     blurb = f'\n    <p class="blurb">{e(o["blurb"])}</p>' if o["blurb"] else ""
     stamp = stamp_html(o)
     long = " hero-title--long" if len(o["title"]) > 38 else ""
@@ -1154,6 +1174,12 @@ def header(offers, ch):
 </header>"""
 
 
+# Faixa da campanha: texto fixo (nenhum dado do JSON). Três tamanhos: completo, celular e ≤ 359 px.
+FAIXA = ('<p class="sazonal"><a href="/black-friday/"><strong><span class="saz-11">11.11 e </span>Black Friday:</strong> '
+         '<span class="saz-d">descontos comparados com o nosso histórico de preço. </span>'
+         '<em><span class="saz-d">Ver os maiores</span><span class="saz-m">ver os maiores descontos</span></em></a></p>')
+
+
 def intro(h1, text):
     return f'<div class="intro"><h1>{h1}</h1><p>{text}</p></div>'
 
@@ -1166,6 +1192,7 @@ def foot(offers, bot=None, ch=(), here=""):
     """Rodapé: marca, colunas de links (só o que existe) e o aviso de associado na linha final."""
     present = [g for g in GENRES if any(o["genre"] == g for o in offers)]
     cols = [("Ofertas", [internal("/ofertas/", "Todas as ofertas", here), internal("/curadoria/", "Curadoria", here)]
+             + ([internal("/black-friday/", "Black Friday", here)] if bf_on(offers) else [])
              + [internal(f"/{g}/", e(GENRES[g]), here) for g in present])]
     receber = ([internal("/canais/", "Canais", here)] if ch else
                [cta(None, n, "foot-soon") for n in CHANNELS]) + (
@@ -1198,7 +1225,7 @@ def offer_json(o, bot):
     kind = seal(o)
     return {"id": o["id"], "t": o["title"], "a": o["author"], "g": o["genre"], "gl": GENRES[o["genre"]],
             "img": o["image_url"], "p": brl(o["price_cents"]), "de": brl(o["list_price_cents"]) if off_ else None,
-            "off": off_, "nov": not o["oferta"], "blurb": o["blurb"],
+            "off": off_, "forte": forte(o), "nov": not o["oferta"], "blurb": o["blurb"],
             "selo": ("Menor preço em 90 dias" if kind == "90d" else
                      f"Menor preço desde {o['since']:%d/%m}" if kind == "since" else None), "desde": kind == "since",
             "meta": f"{STORES[o['store']]}, {checked_txt(o, o['now'])}"
@@ -1247,7 +1274,7 @@ def shell(offers, title, desc, body, ch=(), here="", style=None, bot=None, modal
 {SPRITE}
 <div class="bg-blobs" aria-hidden="true"><i></i><i></i><i></i></div>
 <a class="skip" href="#conteudo">Pular para o conteúdo</a>
-{header(offers, ch)}
+{header(offers, ch)}{(chr(10) + FAIXA) if bf_on(offers) else ""}
 <main id="conteudo">
 {carimbo(offers, "carimbo--m")}
 {body}
@@ -1295,7 +1322,7 @@ def book_page(o, offers, bot=None, ch=()):
     g, t = o["genre"], e(o["title"])
     off_ = off(o)
     old = f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>' if off_ else ""
-    pill = f'<span class="off-pill">−{off_}%</span>' if off_ else ""
+    pill = f'<span class="off-pill{" off-pill--forte" if forte(o) else ""}">−{off_}%</span>' if off_ else ""
     why = ("o último preço que vimos tem mais de 7 dias. Confira o preço atual na loja." if o["velho"]
            else "o preço ainda não baixou o bastante. Ative o alerta e avisamos quando cair.")
     nov = "" if o["oferta"] else f'\n    <p class="nov-nota">Sem oferta agora: {why}</p>'
@@ -1328,6 +1355,26 @@ def all_page(offers, bot=None, ch=()):
     body = (intro("Todas as ofertas", LEDE) + f"\n{nav(offers, None, filtro=True)}\n{feed(offers, bot, ch, full=True)}")
     return shell(offers, "Todas as ofertas de livros | Ofertas Livros",
                  "Todas as ofertas de livros ativas, conferidas na loja.", body, ch, "/ofertas/", bot=bot, modal=True)
+
+
+BF_LEDE = ("Ofertas ativas com 30% ou mais de desconto ou no menor preço que vimos em 90 dias. "
+           "Cada livro mostra quando conferimos o preço; o preço final é o da loja.")
+
+
+def bf_page(offers, bot=None, ch=()):
+    """/black-friday/: subconjunto das ofertas ativas (desconto >= BF_MIN ou selo de 90 dias), na ordem
+    do ranked(). Depois da janela, só o aviso de encerramento, para os links compartilhados não quebrarem."""
+    t, d = "Black Friday de livros | Ofertas Livros", "Livros com desconto grande, conferidos na loja."
+    if campanha(offers[0]["now"]) == "fim":
+        body = ('<div class="intro"><h1>A Black Friday 2026 acabou</h1><p>Veja as '
+                '<a href="/ofertas/">ofertas ativas</a> de agora.</p></div>')
+        return shell(offers, t, d, body, ch, "/black-friday/", bot=bot)
+    items = ranked([o for o in offers if o["oferta"] and not o["velho"] and (off(o) >= BF_MIN or seal(o) == "90d")])
+    lista = (feed(items, bot, ch, full=True) if items else
+             '<p class="vazio vazio--fixo">Nenhum livro com desconto grande agora. '
+             'Veja todas as <a href="/ofertas/">ofertas ativas</a>.</p>')
+    return shell(offers, t, d, intro("Black Friday de livros", BF_LEDE) + "\n" + lista, ch, "/black-friday/",
+                 bot=bot, modal=True)
 
 
 CUR_INTRO = ("Uma seleção de livros escolhidos por regras a partir de sinais públicos e por nós. Alguns estão "
@@ -1457,6 +1504,8 @@ def render_pages(offers, bot=None, ch=()):
         pages[f"{g}/index.html"] = page(offers, g, bot, ch)
     if ch:
         pages["canais/index.html"] = canais(offers, ch, bot)
+    if offers and campanha(offers[0]["now"]):  # antes da janela não existe; depois, só o aviso de fim
+        pages["black-friday/index.html"] = bf_page(offers, bot, ch)
     for o in offers:  # id validado por ID_RE: seguro como diretório
         pages[f"livro/{o['id']}/index.html"] = book_page(o, offers, bot, ch)
     # canonical pelo caminho em dist/ (slugs de GENRES e ids de ID_RE), num lugar só para todas as páginas
@@ -2298,6 +2347,53 @@ def selftest():
     assert pg["ofertas/index.html"].count('class="card"') == 2 and "feed--full" in pg["ofertas/index.html"]
     for path, h in pg.items():                                                 # rodapé obrigatório em todas
         assert "ganhamos com compras qualificadas" in h and "o preço final é o da loja" in h, path
+    # Black Friday: janela por data em BRT (bordas inclusive), destaque >= BF_MIN e a página /black-friday/
+    assert campanha(datetime(2026, 11, 5, 2, 59, tzinfo=timezone.utc)) is None   # 04/11 23h59 BRT
+    assert campanha(datetime(2026, 11, 5, 3, 0, tzinfo=timezone.utc)) == "on"    # 05/11 00h00 BRT
+    assert campanha(datetime(2026, 12, 2, 2, 59, tzinfo=timezone.utc)) == "on"   # 01/12 23h59 BRT
+    assert campanha(datetime(2026, 12, 2, 3, 0, tzinfo=timezone.utc)) == "fim"   # 02/12 00h00 BRT
+
+    def bf(day, *books):  # "_h": horas desde a verificação (padrão 1 h, no prazo)
+        n = datetime(2026, *day, 9, 0, tzinfo=BRT)
+        return load(*[{**{k: v for k, v in b.items() if k != "_h"}, "stores": [
+            {**s, "checked_at": (n - timedelta(hours=b.get("_h", 1))).isoformat()} for s in b["stores"]]}
+            for b in books], now=n)
+    pr = lambda p, de, **k: [{**amz, "price_cents": p, "list_price_cents": de, "lowest_90d_cents": p, **k}]  # noqa: E731
+    b30 = {**good, "id": "bf-30", "stores": pr(7000, 10000)}
+    b29 = {**good, "id": "bf-29", "stores": pr(7100, 10000)}
+    b90 = {**good, "id": "bf-90d", "stores": pr(8000, 10000, history_since="2026-08-01")}  # 20%, mas selo de 90 dias
+    bvel = {**good, "id": "bf-velho", "stores": pr(5000, 10000), "_h": 48}                # Amazon vencida: velho
+    bnao = {**good, "id": "bf-nao", "stores": pr(9500, 10000)}                            # 5%: sem oferta
+    for day, on in (((11, 4), False), ((11, 5), True), ((12, 1), True), ((12, 2), False)):
+        bo = bf(day, b30, b29, b90, bvel, bnao)
+        pg = render_pages(bo)
+        for path, h in pg.items():
+            foot_bf = re.search(r'<a href="/black-friday/"( aria-current="page")?>Black Friday</a>', h)
+            assert ('class="sazonal"' in h) == on and bool(foot_bf) == on, (day, path)
+            if 'class="card"' in h:
+                assert ("sticker--forte" in vis(h)) == on, (day, path)
+        assert ('"forte":true' in pg["index.html"]) == on                               # pílula do modal
+        if day == (11, 4):
+            assert "black-friday/index.html" not in pg
+        elif day == (12, 2):                                                   # links compartilhados não quebram
+            fim = pg["black-friday/index.html"]
+            assert "A Black Friday 2026 acabou" in fim and 'href="/ofertas/"' in fim and 'class="card"' not in fim
+        else:
+            bfp = pg["black-friday/index.html"]
+            assert re.findall(r'<li class="card"[^>]* data-id="([^"]+)"', bfp) == ["bf-90d", "bf-30"]  # ranked: selo primeiro
+            assert "<h1>Black Friday de livros</h1>" in bfp and "visto hoje às 08h00" in bfp
+            assert "ganhamos com compras qualificadas" in bfp and "o preço final é o da loja" in bfp
+            assert '<a href="/black-friday/" aria-current="page">Black Friday</a>' in bfp
+            assert not re.search(r"(?i)ranking|mais vendid|posição|termina|restam|estoque|últimas", vis(bfp))
+            assert bfp.index('class="skip"') < bfp.index('class="sazonal"') < bfp.index('<main')  # pular é o 1º foco
+            cards = {o["id"]: card(o) for o in bo}
+            assert 'class="sticker sticker--forte"' in cards["bf-30"]
+            assert 'class="sticker"' in cards["bf-29"] and "--forte" not in cards["bf-29"]
+            assert "sticker" not in cards["bf-nao"]
+            assert "off-pill--forte" in book_page(bo[0], bo) and "off-pill--forte" in slide(bo[0], 1, 1)
+            assert "off-pill--forte" not in book_page(bo[1], bo)
+            vazio = render_pages(bf(day, b29, bnao))["black-friday/index.html"]
+            assert "Nenhum livro com desconto grande agora." in vazio and 'class="card"' not in vazio
     # post: linha "também" só com a outra loja elegível até 10% mais cara, sem URL de loja
     def post(ml_price, now=NOW):
         r = load({**good, "title": "Torto Arado", "author": "Itamar Vieira Junior",
