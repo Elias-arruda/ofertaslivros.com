@@ -4,6 +4,7 @@
     python3 collector/curator.py probe [--isbn ISBN]     # passo 0: as rotas de descoberta respondem?
     python3 collector/curator.py suggest [--summary MD] [--history DIR]
         # retirada (§10.8, item 6) + até 50 pendentes no catalog.json + ml_links.tsv
+    python3 collector/curator.py ml-match [--max N]     # MLB dos livros só da Amazon pelo ISBN -> ml_links.tsv
     python3 collector/curator.py amazon-todo            # fila local amazon_links.tsv (§10.5)
     python3 collector/curator.py links-apply [--replace] [TSV]  # grava os ml_url colados (§10.4)
     python3 collector/curator.py amazon-apply [--confirm-asin ID ...] [TSV]  # grava os asin (§10.5)
@@ -295,20 +296,35 @@ def _tsv_cell(s):
     return s if s == "-" else s.lstrip("=+-@ ")
 
 
-def write_ml_links(path, books):
-    """Fila do §10.4: uma linha por livro com ml_product_id e sem ml_url. O ml_url já
-    colado numa linha (mesmo book_id e ml_product_id) é preservado; quem valida e aplica
-    é o links-apply do affiliate-linker. product_url é montada aqui, nunca vem da API."""
+def _queued_amazon(path, books):
+    """{book_id: MLB} das linhas da fila para livros só da Amazon (ml-match): o livro não
+    tem ml_product_id no catálogo, então a linha é o único lugar onde o MLB fica."""
+    only = {b["id"] for b in books if "ml_product_id" not in b and "ml_url" not in b}
+    if not path.exists():
+        return {}
+    with path.open(newline="", encoding="utf-8-sig") as f:
+        return {r["book_id"]: r["ml_product_id"]
+                for r in csv.DictReader(f, delimiter="\t", quoting=csv.QUOTE_NONE)
+                if r.get("book_id") in only and c.MLB_RE.fullmatch(r.get("ml_product_id") or "")}
+
+
+def write_ml_links(path, books, matched=None):
+    """Fila do §10.4: uma linha por livro com ml_product_id e sem ml_url, e uma por livro só
+    da Amazon com MLB achado pelo ml-match (matched + as que já estavam na fila). O ml_url
+    já colado numa linha (mesmo book_id e ml_product_id) é preservado; quem valida e aplica
+    é o links-apply. product_url é montada aqui, nunca vem da API."""
     kept = {}
     if path.exists():
         with path.open(newline="", encoding="utf-8-sig") as f:  # BOM de planilha
             for r in csv.DictReader(f, delimiter="\t", quoting=csv.QUOTE_NONE):
                 if r.get("ml_url"):
                     kept[(r.get("book_id"), r.get("ml_product_id"))] = r["ml_url"].strip()
+    amz = {**_queued_amazon(path, books), **(matched or {})}
+    pid = {b["id"]: b.get("ml_product_id") or amz.get(b["id"]) for b in books}
     rows = [ML_LINKS_COLS] + [
-        [b["id"], b["ml_product_id"], _tsv_cell(b["title"]),
-         PRODUCT_URL.format(b["ml_product_id"]), _tsv_cell(kept.get((b["id"], b["ml_product_id"]), ""))]
-        for b in books if "ml_product_id" in b and "ml_url" not in b]  # load_catalog já validou o MLB
+        [b["id"], pid[b["id"]], _tsv_cell(b["title"]), PRODUCT_URL.format(pid[b["id"]]),
+         _tsv_cell(kept.get((b["id"], pid[b["id"]]), ""))]
+        for b in books if pid[b["id"]] and "ml_url" not in b]  # MLB já validado (MLB_RE)
     path.write_text("".join("\t".join(r) + "\n" for r in rows), encoding="utf-8")
 
 
@@ -834,6 +850,95 @@ def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
     return rc
 
 
+MATCH_MAX = 70      # livros consultados por execução do ml-match
+MATCH_PAUSE_S = 1   # pausa entre requests do ml-match (ritmo educado com a API)
+
+
+def _isbn_path(isbn):
+    return "/products/search?" + urlencode({"site_id": "MLB", "status": "active",
+                                            "product_identifier": isbn})
+
+
+def match_one(isbn, token, pause=time.sleep, **kw):
+    """-> (MLB, None) se exatamente um produto da busca pelo ISBN é livro ativo, em
+    português e com isbn_of(ficha) == isbn; senão (None, motivo). A ficha sempre vem do
+    /products/{id}: os resultados da busca não trazem os atributos."""
+    res = c.ml_request(_isbn_path(isbn), token, **kw)
+    res = res.get("results") if isinstance(res, dict) else None
+    if not isinstance(res, list):
+        raise c.MLError("/products/search malformado")
+    ids = list(dict.fromkeys(r["id"] for r in res if isinstance(r, dict)
+                             and isinstance(r.get("id"), str) and c.MLB_RE.fullmatch(r["id"])))
+    if not ids:
+        return None, "sem_resultado"
+    if len(ids) > SEARCH_LIMIT:
+        return None, "ambiguo"
+    ok, why = [], Counter()
+    for pid in ids:
+        pause(MATCH_PAUSE_S)
+        prod = c.ml_request(f"/products/{pid}", token, **kw)
+        found, err = isbn_of(prod) if isinstance(prod, dict) else (None, "ficha")
+        if not isinstance(prod, dict) or prod.get("status") != "active":
+            why["inativo"] += 1
+        elif not _name(prod, "BOOK_TITLE") or not _name(prod, "AUTHOR"):
+            why["nao_livro"] += 1
+        elif found != isbn:
+            why[err or ("isbn_diferente" if found else "sem_isbn_na_ficha")] += 1
+        elif not portugues(prod):
+            why["idioma"] += 1
+        else:
+            ok.append(pid)
+    if len(ok) > 1:
+        return None, "ambiguo"
+    if ok:
+        return ok[0], None
+    return None, "sem_match:" + ",".join(f"{k}={v}" for k, v in sorted(why.items()))
+
+
+def ml_match(catalog=None, links_path=None, max_books=MATCH_MAX, pause=time.sleep):
+    """Livros com isbn, sem ml_product_id e sem ml_url: acha o produto do ML pelo ISBN e
+    põe o MLB na fila ml_links.tsv (book_id, ml_product_id, ml_url vazio). O catalog.json
+    não muda: o load_catalog exige ml_product_id junto com ml_url (ou pendente, que não
+    combina com asin). O links-apply grava os dois quando o ml_url do painel é colado."""
+    catalog, links_path = catalog or c.CATALOG, links_path or ML_LINKS
+    if max_books < 1:
+        raise c.Invalid("--max precisa ser 1 ou mais")
+    doc = json.loads(catalog.read_text(encoding="utf-8"))
+    books = c.load_catalog(doc, include_pending=True)  # catálogo quebrado: nem começa
+    queued = _queued_amazon(links_path, doc["books"])
+    todo = [b for b in books if "isbn" in b and "ml_product_id" not in b
+            and "ml_url" not in b and b["id"] not in queued]
+    if len(todo) > max_books:
+        print(f"ml-match: {len(todo) - max_books} livros ficam para a próxima (teto {max_books})")
+    token = c.ml_token()
+    if token is None:
+        raise c.Invalid("ML_CLIENT_ID/ML_CLIENT_SECRET ausentes no ambiente")
+    used = {b["ml_product_id"] for b in books if "ml_product_id" in b} | set(queued.values())
+    matched, tally = {}, Counter()
+    for i, b in enumerate(todo[:max_books]):
+        if i:
+            pause(MATCH_PAUSE_S)
+        try:
+            pid, why = match_one(b["isbn"], token, pause)
+        except c.MLError as e:
+            pid, why = None, f"erro ({e})"  # mensagem do cliente: só o caminho, sem token
+        if pid and pid in used:
+            pid, why = None, f"mlb_de_outro_livro {pid}"
+        if pid:
+            used.add(pid)
+            matched[b["id"]] = pid
+            tally["casados"] += 1
+            print(f"casado: {b['id']} isbn {b['isbn']} -> {PRODUCT_URL.format(pid)}")
+        else:
+            tally["ambiguos" if why == "ambiguo" else "sem match"] += 1
+            print(f"sem match: {b['id']} isbn {b['isbn']}: {why}")
+    if matched:
+        write_ml_links(links_path, doc["books"], matched)
+    print(f"ml-match: {tally['casados']} casados, {tally['sem match']} sem match, "
+          f"{tally['ambiguos']} ambíguos; casados vão para {links_path.name} com ml_url vazio")
+    return 0
+
+
 def _count(body):
     """Contagem sem conteúdo: nenhum título, preço, vendedor ou URL vai para o log."""
     if isinstance(body, list):
@@ -970,6 +1075,8 @@ def main(argv=None):
     s.add_argument("--history", type=Path,
                    help="checkout do branch price-history (lê o state.json); sem ele, não retira")
     sub.add_parser("amazon-todo")
+    mm = sub.add_parser("ml-match")
+    mm.add_argument("--max", type=int, default=MATCH_MAX, help="livros consultados nesta execução")
     la = sub.add_parser("links-apply")
     la.add_argument("tsv", nargs="?", type=Path, default=ML_LINKS)
     la.add_argument("--replace", action="store_true", help="troca um ml_url que já existe")
@@ -981,6 +1088,8 @@ def main(argv=None):
     try:
         if a.cmd == "probe":
             return probe(a.isbn)
+        if a.cmd == "ml-match":
+            return ml_match(max_books=a.max)
         if a.cmd == "amazon-todo":
             return amazon_todo()
         if a.cmd == "links-apply":

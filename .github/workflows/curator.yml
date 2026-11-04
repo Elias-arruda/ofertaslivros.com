@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "probe (passo 0, só diagnóstico) ou suggest (abre o PR com candidatos)"
+        description: "probe (passo 0, só diagnóstico), suggest (abre o PR com candidatos) ou ml-match (MLB dos livros só da Amazon, pelo ISBN)"
         type: choice
-        options: [probe, suggest]
+        options: [probe, suggest, ml-match]
         default: probe
 
 permissions: {}
@@ -102,3 +102,50 @@ jobs:
           gh pr create --base main --head "$branch" \
             --title "Curadoria: candidatos de $(date -u +%F)" \
             --body-file "$RUNNER_TEMP/curator.md"
+
+  ml-match:
+    # Livros com isbn e sem ML: acha o MLB pelo ISBN e abre um PR com a fila ml_links.tsv
+    # (o catalog.json não muda; o links-apply grava ml_product_id + ml_url depois).
+    if: github.ref == 'refs/heads/main' && inputs.mode == 'ml-match'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write      # push só no branch curator-ml-match/AAAA-MM-DD
+      pull-requests: write # gh pr create
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Casar ISBN com produto do ML (API do ML)
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          ML_AFFILIATE_ID: ${{ vars.ML_AFFILIATE_ID }}
+        run: |
+          set -o pipefail
+          { echo '```'; python3 collector/curator.py ml-match --max 70; echo '```'; } \
+            | tee "$RUNNER_TEMP/ml-match.md"
+
+      - name: Abrir o PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          f=collector/ml_links.tsv
+          if [ -z "$(git status --porcelain -- $f)" ]; then
+            echo "nenhum livro casado: sem PR"; exit 0
+          fi
+          branch="curator-ml-match/$(date -u +%F)"
+          git switch -c "$branch"
+          git add -- $f
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "curator ml-match: MLB dos livros só da Amazon ($(date -u +%F))"
+          b64=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          echo "::add-mask::$b64"
+          export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="http.https://github.com/.extraheader" \
+                 GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $b64"
+          git push -q origin "HEAD:refs/heads/$branch"
+          gh pr create --base main --head "$branch" \
+            --title "Curadoria: MLB dos livros só da Amazon ($(date -u +%F))" \
+            --body-file "$RUNNER_TEMP/ml-match.md"
