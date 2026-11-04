@@ -257,6 +257,20 @@ body::after {
   font: 400 16px var(--sans); transition: border-color .3s var(--ease);
 }
 .busca input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+/* Faixa da campanha (docs/produto/black-friday-2026.md): uma linha marinha sob o header, não fixa.
+   Marfim 12,4:1 e rosado 7,1:1 sobre o marinho, nos dois temas; a borda separa do fundo escuro. */
+.sazonal { background: var(--wine); color: var(--ivory); border-bottom: 1px solid var(--line); text-align: center; }
+.sazonal a { display: block; padding: 10px var(--pad); font: 600 14px/16px var(--sans); text-decoration: none; }
+.sazonal em { color: var(--rose); font-size: 15px; text-underline-offset: 3px; }
+.sazonal a:hover em { text-decoration: underline; }
+.sazonal a:focus-visible { outline-color: var(--ivory); outline-offset: -5px; }  /* o acento some no marinho */
+.saz-m { display: none; }
+@media (max-width: 640px) {
+  .sazonal a { padding-block: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }  /* 44 px de toque */
+  .saz-d { display: none; }
+  .saz-m { display: inline; }
+}
+@media (max-width: 359px) { .saz-11 { display: none; } }
 .intro { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px clamp(16px, 3vw, 36px); margin-top: 26px; padding: 0 4px; }
 .intro h1, .page-h1 { font-size: clamp(30px, 4vw, 52px); letter-spacing: -1px; }
 .page-h1 { margin: 26px 4px 18px; }
@@ -501,6 +515,11 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
   background: var(--accent); color: var(--accent-ink); font: 800 16px/1 var(--sans);
   transform: rotate(12deg); box-shadow: 0 10px 22px -8px var(--accent);
   transition: transform .6s var(--ease);
+}
+/* Desconto grande na campanha: invertido e com o anel duplo do carimbo, sem cor nova */
+.off-pill--forte, .sticker--forte {
+  background: var(--text); color: var(--bg);
+  box-shadow: inset 0 0 0 3px var(--text), inset 0 0 0 4px var(--bg), 0 10px 22px -8px color-mix(in srgb, var(--text) 70%, transparent);
 }
 /* Sino do alerta, no canto da capa (como o "salvar" de loja) */
 .bell {
