@@ -7,7 +7,7 @@ Plano do agent-dados, aprovado pelo Elias na sessão de 2026-11-04. Nada daqui e
 Medir o site e mostrar ao Elias, num painel privado:
 - acessos;
 - cliques nos links de afiliado (`/r/`), por livro, loja, nicho e canal;
-- termos buscados;
+- termos buscados (desenho na F2);
 - Telegram × WhatsApp × site;
 - vendas e comissões da Amazon e do ML.
 
@@ -23,7 +23,6 @@ Medir o site e mostrar ao Elias, num painel privado:
 | Fonte | O que mede | Como |
 |---|---|---|
 | GraphQL da zona (`httpRequestsAdaptiveGroups`) | views por página, cliques em `/r/` (302 por livro, loja e canal), país, bot | Leitura com token só de leitura. No Free, guarda **31 dias** e não traz referrer nem query string (teste da F0, 2026-11-04) |
-| Beacon `/e` (`static/app.js`) | termos buscados | `navigator.sendBeacon`, para o mesmo domínio (o `connect-src` já é o `SITE`). Nada é enviado com `navigator.globalPrivacyControl` ligado |
 | Painéis de afiliado | pedidos e comissões | CSV exportado pelo próprio painel, no Chrome do Elias (seção "Vendas") |
 
 **Clique sem Worker.** O caminho já carrega o que importa:
@@ -52,12 +51,7 @@ CREATE TABLE daily_rollup (
 
 Entram só os caminhos de página (HTML) e de `/r/`, sem bots. Asset (`.css`, `.woff2`, `.svg`) fica de fora.
 
-**`search_events`, dataset `ol_search` no Analytics Engine (F2).** Guarda o termo (`blob1`), os resultados (`double1`) e o país (`blob2`), por 92 dias. Na F0, a SQL API do AE devolveu 403. Antes da F2, é preciso habilitar o AE na conta; se não der, a busca vai para uma tabela no D1.
-
-**Termo de busca.** É texto livre, então pode trazer dado pessoal.
-- O termo passa pelo `fold()`, é cortado em 40 caracteres e é descartado se tiver `@` ou 5 dígitos ou mais.
-- O evento sai uma vez por termo: depois de 1,5 s sem digitar, no Enter ou no blur.
-- O painel só mostra termo com 3 ocorrências ou mais.
+**Termos buscados (F2).** Ficam fora desta spec. O desenho (o que guardar, por quanto tempo e com que proteção para dado pessoal digitado na busca) vai numa spec própria da F2, com PR sensível por LGPD. Nada de busca é coletado antes disso.
 
 **Nicho.** O painel cruza o `<id>` do caminho com o `genre` do `offers.json`.
 
@@ -133,15 +127,6 @@ SELECT CASE WHEN path LIKE '%/tg' THEN 'tg' WHEN path LIKE '%/wa' THEN 'wa' ELSE
 FROM daily_rollup WHERE path LIKE '/r/%' AND day >= date('now', '-7 days') GROUP BY canal;
 ```
 
-Termos buscados, na SQL API do AE (F2):
-
-```sql
-SELECT blob1 AS termo, SUM(_sample_interval) AS buscas,
-       SUM(IF(double1 = 0, _sample_interval, 0)) AS sem_resultado
-FROM ol_search WHERE timestamp > NOW() - INTERVAL '7' DAY
-GROUP BY termo HAVING buscas >= 3 ORDER BY sem_resultado DESC, buscas DESC LIMIT 30;
-```
-
 D1:
 
 ```sql
@@ -162,7 +147,6 @@ O R$ por clique junta, no D1, as tabelas `sales` e `daily_rollup` por semana e l
 | KPI | Latência real |
 |---|---|
 | Cliques e views (GraphQL) | alguns minutos |
-| Termos buscados (AE) | cerca de 1 min |
 | Pedidos e comissões | **Não é tempo real.** Os painéis atualizam com horas a 1 dia de atraso, e a comissão só fecha no mês. No painel, o dado chega com a rodada diária do navegador: D+1 no melhor caso |
 
 Cada bloco do painel mostra "dados até HH:MM", e as vendas mostram "vendas até DD/MM".
@@ -173,7 +157,7 @@ Cada bloco do painel mostra "dados até HH:MM", e as vendas mostram "vendas até
 - O Worker **também confere o JWT do Access**: sem um JWT válido, a resposta é 403, mesmo se a regra do Access sumir.
 - É HTML montado no servidor, sem JS, com `<meta http-equiv="refresh" content="60">`.
 - O token só de leitura (Account Analytics e Zone Analytics) e o binding do D1 ficam no Worker (segredo e binding, nunca no repo).
-- Só o `/painel*` e o `/e` passam pelo Worker. O `/r/` continua estático, então a cota do Free nunca derruba o clique de afiliado.
+- Só o `/painel*` passa pelo Worker (e o `/e`, se a F2 for aprovada). O `/r/` continua estático, então a cota do Free nunca derruba o clique de afiliado.
 
 ## Vendas pelo navegador
 
@@ -200,7 +184,7 @@ A rodada só acontece com uma sessão aberta na máquina do Elias, que pode ser 
 | F0 ✅ | Teste só de leitura, feito em 2026-11-04. O GraphQL do Free traz caminho, status, navegador e país, por 31 dias; referrer e query não. A SQL API do AE deu 403 | agent-dados |
 | F1 | `Disallow: /r/` no `robots.txt`, `daily_rollup` no D1 e rollup diário no `ofertaslivros-cron` | agent-front (robots); agent-dados e agent-backend (cron e D1). PR sensível (Worker) |
 | F1b | `/painel` com Access e conferência do JWT, lendo o GraphQL e o D1 | agent-dados e agent-backend. PR sensível |
-| F2 | Beacon `/e` para os termos buscados e atualização da página de privacidade | agent-front e agent-dados. PR sensível (LGPD) |
+| F2 | Termos buscados: spec própria (privacidade), beacon `/e` e atualização da página de privacidade | agent-dados e agent-front. PR sensível (LGPD) |
 | F3 | Vendas pelo navegador, importação no D1, progresso da Creators API e R$ por clique | agent-dados |
 
 ## O que o Elias faz
