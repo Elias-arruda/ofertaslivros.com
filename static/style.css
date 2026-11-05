@@ -640,6 +640,11 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 .sec-head h2 { font-size: clamp(26px, 3.2vw, 38px); }
 .sec-n { margin-left: -8px; font-size: 15px; font-weight: 600; color: var(--muted); }
 .sec-note { flex: 1 1 18rem; font-size: 14px; color: var(--muted); }
+/* Faixas de desconto (Todas / 40%+ / 50%+): links para /ofertas/<t>/, a ativa em acento */
+.faixas ul { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; padding: 0 4px; }
+.faixas .pill { color: var(--text); }
+.faixas .pill[aria-current] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.faixa-n { font-weight: 500; font-size: 12.5px; opacity: .75; font-variant-numeric: tabular-nums; }
 .feed-tools { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 0 4px; font-size: 14px; color: var(--muted); }
 .feed-tools select {
   height: 46px; padding: 0 44px 0 18px; border-radius: 999px; appearance: none;
@@ -1002,8 +1007,9 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
   .foot-t { margin-bottom: 0; }
   .foot-legal { margin-top: 16px; padding-top: 14px; }
   .card .obj { aspect-ratio: 3 / 2; }
-  /* Selo numa linha: a fonte acompanha a largura do card (9,5 a 8 px); 14 px de padding+borda, texto ≈ 13,5 em */
-  .card .stamp { white-space: nowrap; max-width: 100%; letter-spacing: .02em; padding: 3px 6px; font-size: clamp(8px, calc((100cqi - 15px) / 13.6), 9.5px); }
+  /* Selo: a fonte acompanha a largura do card (9,5 a 8 px) para caber numa linha; se nem assim couber, quebra.
+     100cqi é o card sem o padding dele; tira 8 px do padding do .card-body e 14 px de padding+borda; texto até ≈ 14 em */
+  .card .stamp { white-space: normal; max-width: 100%; letter-spacing: .02em; padding: 3px 6px; font-size: clamp(8px, calc((100cqi - 23px) / 14.2), 9.5px); }
   .cur-d { display: none; }
   .faq summary { min-height: 46px; padding: 7px 16px; font-size: 15.5px; }
   .kicker--muted { margin-bottom: 6px; }
@@ -1025,7 +1031,6 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 @media (max-width: 360px) {
   .top-bar { gap: 6px; }
   .pill--wa { display: none; }
-  .card .stamp { white-space: normal; }  /* o selo não cabe numa linha no card de 140 px */
 }
 @media (max-width: 640px) {
   main { position: relative; }
