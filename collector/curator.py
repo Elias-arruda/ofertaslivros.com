@@ -859,10 +859,48 @@ def _isbn_path(isbn):
                                             "product_identifier": isbn})
 
 
-def match_one(isbn, token, pause=time.sleep, **kw):
-    """-> (MLB, None) se exatamente um produto da busca pelo ISBN é livro ativo, em
-    português e com isbn_of(ficha) == isbn; senão (None, motivo). A ficha sempre vem do
-    /products/{id}: os resultados da busca não trazem os atributos."""
+def _words(s):
+    """_plain + pontuação vira espaço + espaços colapsados, com espaço nas pontas para
+    comparar palavras inteiras com `in` ("duna" não casa com "dunas")."""
+    return " " + " ".join(re.sub(r"[^a-z0-9]+", " ", _plain(s)).split()) + " "
+
+
+def _core(title):
+    """Título sem subtítulo/edição: corta no 1º ":", "(", " - " ou " – "."""
+    return _words(re.split(r":|\(| [-–] ", title, maxsplit=1)[0])
+
+
+def titulo_bate(cat, ficha):
+    """O título principal do catálogo (sem subtítulo), em palavras inteiras, aparece no
+    título da ficha. Só nessa direção: "Duna" na ficha não casa com "O messias de Duna".
+    "Duna: livro 1" x "Duna"; "O ladrão de raios (Percy Jackson...)" x "Percy Jackson e
+    os Olimpianos - O Ladrão de Raios"."""
+    core = _core(cat)
+    return core.strip() != "" and core in _words(ficha)
+
+
+SUFIXOS = {"jr", "junior", "filho", "neto", "sobrinho"}
+
+
+def autor_bate(cat, ficha_autores):
+    """Sobrenome do 1º autor do catálogo, como palavra inteira, em algum AUTHOR da ficha.
+    1º autor: o que vem antes de ",", ";", "&" ou " e "; sobrenome: a última palavra
+    dele que não é sufixo. "Atwood, Margaret" dá "atwood"; "Ichiro Kishimi, Fumitake
+    Koga" dá "kishimi"; "F. A. Hayek" dá "hayek"."""
+    first = re.split(r"[,;&]| e ", cat, maxsplit=1)[0]
+    words = [w for w in _words(first).split() if w not in SUFIXOS]  # split() sem argumento: sem ""
+    return bool(words) and any(f" {words[-1]} " in _words(a) for a in ficha_autores)
+
+
+def match_one(book, token, pause=time.sleep, **kw):
+    """-> (MLB, None) ou (None, motivo). Uma ficha (do /products/{id}: a busca não traz os
+    atributos) é válida se está ativa, é livro, em português e:
+    - traz ISBN igual ao do catálogo; ou
+    - não traz ISBN (o token de app não recebe GTIN) e título e autor batem com o catálogo
+      (titulo_bate, autor_bate). Esse caminho só vale se a busca, que já filtra pelo ISBN
+      no ML, devolveu exatamente um produto; com mais de um, é ambíguo.
+    ISBN na ficha diferente do catálogo descarta, mesmo com título e autor iguais."""
+    isbn = book["isbn"]
     body = c.ml_request(_isbn_path(isbn), token, **kw)
     res = body.get("results") if isinstance(body, dict) else None
     if not isinstance(res, list):
@@ -885,16 +923,22 @@ def match_one(isbn, token, pause=time.sleep, **kw):
             why["inativo"] += 1
         elif not _name(prod, "BOOK_TITLE") or not _name(prod, "AUTHOR"):
             why["nao_livro"] += 1
-        elif found != isbn:
-            why[err or ("isbn_diferente" if found else "sem_isbn_na_ficha")] += 1
+        elif err or (found and found != isbn):
+            why[err or "isbn_diferente"] += 1
+        elif not found and not titulo_bate(book["title"], _name(prod, "BOOK_TITLE")):
+            why["titulo_diferente"] += 1
+        elif not found and not autor_bate(book["author"], [
+                v for v in _values(_attr(prod, "AUTHOR"), "value_name", "name")
+                if isinstance(v, str)]):
+            why["autor_diferente"] += 1
         elif not portugues(prod):
             why["idioma"] += 1
         else:
-            ok.append(pid)
-    if len(ok) > 1:
-        return None, "ambiguo"
+            ok.append((pid, found))
+    if len(ok) > 1 or (ok and not ok[0][1] and len(res) > 1):
+        return None, "ambiguo"  # sem ISBN na ficha: a busca crua (antes de filtrar ids) tem 1
     if ok:
-        return ok[0], None
+        return ok[0][0], None
     return None, "sem_match:" + ",".join(f"{k}={v}" for k, v in sorted(why.items()))
 
 
@@ -922,7 +966,7 @@ def ml_match(catalog=None, links_path=None, max_books=MATCH_MAX, pause=time.slee
         if i:
             pause(MATCH_PAUSE_S)
         try:
-            pid, why = match_one(b["isbn"], token, pause)
+            pid, why = match_one(b, token, pause)
         except c.MLError as e:
             pid, why = None, f"erro ({e})"  # mensagem do cliente: só o caminho, sem token
         if pid and pid in used:
