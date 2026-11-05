@@ -58,6 +58,7 @@ from build import (ASIN_RE, BRT, GENRES, ID_RE, MLB_RE, STORE_COMMON, Invalid, _
                    check_url, ml_affiliate, ml_url)
 
 CATALOG = HERE / "catalog.json"
+EXCLUDED = HERE / "ml_excluded.csv"  # leituras gravadas que o cálculo ignora (price_history fica intacto)
 MANUAL_CSV = HERE / "amazon_prices.csv"
 
 ID_MAX = 57  # deep link do Telegram aceita 64; folga para prefixo futuro
@@ -262,6 +263,32 @@ def read_history(hist_dir, months):
         if p.exists():
             with p.open(newline="", encoding="utf-8") as f:
                 yield from csv.DictReader(f)
+
+
+def load_excluded(path=None):
+    """Leituras ruins já gravadas (isca etc.), por (book_id, store, price_cents) num intervalo
+    de checked_at. O price_history é append-only: em vez de apagar, o summarize as ignora.
+    Linha malformada é erro (fail-closed: arquivo versionado, revisado em PR)."""
+    p = Path(path or EXCLUDED)
+    if not p.exists():
+        return []
+    out = []
+    with p.open(newline="", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            try:
+                a, z = _dt(r["desde"], "desde"), _dt(r["ate"], "ate")
+                out.append((r["book_id"], r["store"], int(r["price_cents"]), a, z))
+            except (KeyError, TypeError, ValueError, Invalid) as e:
+                raise Invalid(f"{p.name}: linha inválida {r!r}: {e}") from None
+    return out
+
+
+def excluded(h, rules):
+    if not rules:
+        return False
+    t = datetime.fromisoformat(h["checked_at"])
+    return any(h["book_id"] == b and h["store"] == st and int(h["price_cents"]) == c and a <= t <= z
+               for b, st, c, a, z in rules)
 
 
 def recent_months(now, n=4):
@@ -743,7 +770,7 @@ def track_curadoria(state, books, latest, offers, now, ml_ok=False):
         del cur[k]  # saiu do catálogo (ou voltou a pendente)
 
 
-def summarize(hist_dir, now):
+def summarize(hist_dir, now, excluded_path=None):
     """Por (livro, loja): última linha, menor preço em 90 dias, primeira data vista e o
     menor preço de cada dia BRT dos últimos 90 dias até hoje ({date: cents}): a mediana
     filtra a janela dela, e o price_points usa os dias até hoje."""
@@ -752,7 +779,10 @@ def summarize(hist_dir, now):
     lo, hi = (today - timedelta(days=n) for n in reversed(MEDIAN_DAYS))
     latest, low, first, daily = {}, {}, {}, {}
     # 5 meses UTC: 4 não cobrem o dia 90 BRT em todo começo de mês (ex.: 1º/05)
+    rules = load_excluded(excluded_path)
     for h in read_history(hist_dir, recent_months(now, 5)):
+        if excluded(h, rules):
+            continue
         k = (h["book_id"], h["store"])
         p = int(h["price_cents"])
         if k not in latest or h["checked_at"] >= latest[k]["checked_at"]:  # empate: a última gravada

@@ -992,3 +992,36 @@ def test_price_points_limites():
     # Amazon vencida: termina no dia da leitura e não volta além de hoje - 89
     old = c.price_points(days, "2026-01-01", "2026-10-10T12:00:00+00:00", today)
     assert old[0]["date"] == "2026-07-21" and old[-1]["date"] == "2026-10-10"
+
+
+def test_leituras_excluidas_nao_entram_no_calculo(tmp_path):
+    """ml_excluded.csv: a isca já gravada não puxa latest/lowest_90d/price_points; o
+    price_history não muda."""
+    hist = tmp_path / "h"
+    (hist / "price_history").mkdir(parents=True)
+    head = ",".join(c.HISTORY_COLS) + "\n"
+    f = hist / "price_history" / "2026-10.csv"
+    f.write_text(head + "".join(f"livro-ml-2,mercadolivre,{p},9990,{ts},ml_api\n" for p, ts in [
+        (3000, "2026-10-10T12:00:00+00:00"), (200, "2026-10-11T12:00:00+00:00"),
+        (200, "2026-10-17T12:00:00+00:00")]))
+    antes = f.read_text()
+    ex = tmp_path / "ex.csv"
+    ex.write_text("book_id,store,price_cents,desde,ate,motivo\n"
+                  "livro-ml-2,mercadolivre,200,2026-10-01T00:00:00-03:00,2026-10-12T23:59:59-03:00,isca\n")
+    latest, low, _, daily = c.summarize(hist, NOW, ex)
+    k = ("livro-ml-2", "mercadolivre")
+    assert low[k] == 200 and latest[k]["price_cents"] == "200"  # 17/10 fica fora do intervalo
+    assert c.date(2026, 10, 11) not in daily[k]
+    ex.write_text(ex.read_text().replace("2026-10-12T23", "2026-10-17T23"))
+    latest, low, _, daily = c.summarize(hist, NOW, ex)
+    assert low[k] == 3000 and latest[k]["price_cents"] == "3000" and list(daily[k]) == [c.date(2026, 10, 10)]
+    assert f.read_text() == antes
+    ex.write_text("book_id,store,price_cents,desde,ate,motivo\nlivro-ml-2,mercadolivre,x,a,b,c\n")
+    with pytest.raises(c.Invalid, match="linha inválida"):
+        c.summarize(hist, NOW, ex)
+
+
+def test_arquivo_de_exclusoes_do_repo_e_valido():
+    regras = c.load_excluded()
+    ids = {b["id"] for b in json.loads(c.CATALOG.read_text())["books"]}
+    assert regras and all(b in ids and st in ("amazon", "mercadolivre") and z > a for b, st, _, a, z in regras)
