@@ -102,7 +102,7 @@ FROM ol_events
 WHERE blob1 = 'click' AND double3 = 0 AND timestamp > NOW() - INTERVAL '7' DAY
 GROUP BY book_id, loja, canal ORDER BY cliques DESC LIMIT 20;
 
--- CTR por posição
+-- Cliques por posição (sem impressão por card não há CTR; a distribuição dos cliques basta para comparar posições)
 SELECT blob2 AS pagina, double1 AS pos, SUM(_sample_interval) AS cliques
 FROM ol_events
 WHERE blob1 = 'click' AND double3 = 0 AND timestamp > NOW() - INTERVAL '7' DAY
@@ -129,7 +129,7 @@ WHERE store = 'amazon' AND status != 'devolvido' AND order_date >= date('now', '
 
 -- Comissão por semana, loja e canal
 SELECT strftime('%Y-W%W', order_date) AS semana, store, tracking,
-       SUM(qty) AS itens, SUM(commission_cents) / 100.0 AS comissao_brl
+       SUM(qty) AS itens, SUM(commission_cents) AS comissao_cents  -- em centavos; o painel formata com brl()
 FROM sales GROUP BY semana, store, tracking ORDER BY semana DESC;
 ```
 
