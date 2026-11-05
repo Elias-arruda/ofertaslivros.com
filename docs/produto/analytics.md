@@ -130,8 +130,9 @@ FROM daily_rollup WHERE path LIKE '/r/%' AND day >= date('now', '-7 days') GROUP
 D1:
 
 ```sql
--- Progresso para liberar a Creators API (~10 vendas qualificadas em 30 dias)
-SELECT COUNT(*) FROM sales
+-- Progresso para liberar a Creators API (~10 vendas qualificadas em 30 dias).
+-- Estimativa: soma itens, porque a importação agrega pedidos por chave. O número que vale é o do painel da Amazon.
+SELECT SUM(qty) AS vendas_30d FROM sales
 WHERE store = 'amazon' AND status != 'devolvido' AND order_date >= date('now', '-30 days');
 
 -- Comissão por semana, loja e canal
