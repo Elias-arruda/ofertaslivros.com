@@ -888,7 +888,7 @@ def autor_bate(cat, ficha_autores):
     dele que não é sufixo. "Atwood, Margaret" dá "atwood"; "Ichiro Kishimi, Fumitake
     Koga" dá "kishimi"; "F. A. Hayek" dá "hayek"."""
     first = re.split(r"[,;&]| e ", cat, maxsplit=1)[0]
-    words = [w for w in _words(first).split() if w not in SUFIXOS]
+    words = [w for w in _words(first).split() if w not in SUFIXOS]  # split() sem argumento: sem ""
     return bool(words) and any(f" {words[-1]} " in _words(a) for a in ficha_autores)
 
 

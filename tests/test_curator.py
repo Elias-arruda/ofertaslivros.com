@@ -1144,3 +1144,5 @@ def test_titulo_e_autor_normalizados():
     assert cur.autor_bate("Martin Luther King Jr.", ["King, Martin Luther"])
     assert not cur.autor_bate("Mark Manson", ["Marko Mansonn"])
     assert not cur.autor_bate("Mark Manson", [])
+    assert not cur.autor_bate("Mark Manson", ["Fulano Silva"])  # sobrenome nunca é ""
+    assert not cur.autor_bate("Jr.", ["Fulano Jr"])             # só sufixo: sem sobrenome
