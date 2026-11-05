@@ -39,7 +39,7 @@ export function toRows(groups) {
   return [...acc].map(([k, n]) => [...JSON.parse(k), n]);
 }
 
-async function fetchDay(token, day) {
+export async function fetchDay(token, day) {
   const r = await fetch(GRAPHQL, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
