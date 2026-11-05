@@ -68,7 +68,7 @@
   --line: #1c2b4a21;
   --text: #1c2b4a;
   --muted: #4a5670;
-  --hc-ml: #0f7a75;    /* linha do Mercado Livre no gráfico do histórico (4,77:1 no --bg2) */
+  --hc-ml: #946400;    /* Mercado Livre no gráfico do histórico: âmbar da família negócios (4,74:1 no --bg2) */
   --shadow: 0 30px 60px -34px #1c2b4a73;
   --paper: #fbfcfd;    /* miolo do livro */
   --paper-edge: #d5dde7;
@@ -90,7 +90,7 @@
   --coral: #ff8a8f; --coral-ink: #0f1729;
   --bg: #0f1729; --bg2: #18233b; --tint: #1d2a45;
   --surface: #e6ebf30b; --surface2: #e6ebf314; --line: #e6ebf31a;
-  --text: #e6ebf3; --muted: #a9b4c8; --hc-ml: #5fd3cc;
+  --text: #e6ebf3; --muted: #a9b4c8; --hc-ml: #f2c14e;
   --shadow: 0 30px 60px -30px #000000b3;
   --paper: #dfe5ee; --paper-edge: #9aa7bb;
   color-scheme: dark;
@@ -100,7 +100,7 @@
     --coral: #ff8a8f; --coral-ink: #0f1729;
     --bg: #0f1729; --bg2: #18233b; --tint: #1d2a45;
     --surface: #e6ebf30b; --surface2: #e6ebf314; --line: #e6ebf31a;
-    --text: #e6ebf3; --muted: #a9b4c8; --hc-ml: #5fd3cc;
+    --text: #e6ebf3; --muted: #a9b4c8; --hc-ml: #f2c14e;
     --shadow: 0 30px 60px -30px #000000b3;
     --paper: #dfe5ee; --paper-edge: #9aa7bb;
     color-scheme: dark;

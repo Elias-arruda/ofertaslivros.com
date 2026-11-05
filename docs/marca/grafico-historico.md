@@ -1,6 +1,6 @@
 # Gráfico do histórico de preço (direção visual, 2026-11-04)
 
-Proposta para o Elias validar. Implementação: `frontend-developer`. Tokens reais do `static/style.css` (a §2 da spec ainda lista o vinho antigo). Base visual: post 02 do kit de redes (linha marinho, tracejado vermelho no menor preço, ponto vermelho no preço atual, frase embaixo).
+Implementado no PR #91 (opção B, cores revistas pelo Elias em 2026-11-04). Implementação: `frontend-developer`. Tokens reais do `static/style.css` (a §2 da spec ainda lista o vinho antigo). Base visual: post 02 do kit de redes (linha marinho, tracejado vermelho no menor preço, ponto vermelho no preço atual, frase embaixo).
 
 ## 1. Onde entra (decisão do Elias, 2026-11-04: opção B)
 - **Página `/livro/<id>/`:** versão completa, abaixo do `.meta`, no lugar do sparkline antigo, em `<figure id="historico">`.
@@ -13,17 +13,17 @@ O gráfico fica num painel neutro (`.hc`: fundo `--bg2`, borda 1px `--line`, rai
 
 | Papel | Token | Claro | Escuro | Traço |
 |---|---|---|---|---|
-| Linha Amazon | `--hc-amz: var(--text)` | #1c2b4a, 12,96:1 | #e6ebf3, 13,07:1 | 2.5, com marcador r=3 em cada leitura |
-| Linha Mercado Livre | `--hc-ml` (novo) | #0f7a75, 4,77:1 | #5fd3cc, 8,70:1 | 2, sem marcador |
+| Linha Amazon ("branca" no escuro) | `--hc-amz: var(--text)` | #1c2b4a, 12,96:1 | #e6ebf3, 13,07:1 (#ffffff não precisa) | 2.5, com marcador r=3 em cada leitura |
+| Linha Mercado Livre (amarela) | `--hc-ml` | #946400, 4,74:1 (âmbar da família `--g-negocios`; o #b87d00 dá 3,24:1 e não serve para o rótulo, que é texto) | #f2c14e (`--g-negocios-2`), 9,32:1 | 2, sem marcador |
 | Menor preço (tracejado e rótulo) | `--coral` | #b3262f, 5,98:1 | #ff8a8f, 6,92:1 | 1.5, `stroke-dasharray="4 4"` |
 | Maior preço, datas | `--muted` | #4a5670, 6,78:1 | #a9b4c8, 7,49:1 | texto |
 | Linha-guia do maior preço | `--line` | | | 1, decorativa |
 
-Sem depender de cor: (a) **rótulo direto** com o nome da loja na ponta de cada linha, na cor dela (nada de legenda); (b) **marcadores só na Amazon**, que ainda mostram onde houve leitura de fato; (c) espessuras diferentes. Não usar o laranja da Amazon nem o amarelo do ML. Só uma loja: uma linha `--hc-amz`, mesmo se for o ML, e o rótulo continua.
+Sem depender de cor: (a) **rótulo direto** com o nome da loja na ponta de cada linha, na cor dela (nada de legenda); (b) **marcadores na Amazon**, que mostram onde houve leitura de fato (no ML, só no ponto solto entre buracos, que o path não pinta); (c) espessuras diferentes. Pedido do Elias: ML em amarelo/âmbar (família `--g-negocios`), Amazon no `--text` (quase branco no escuro). Só uma loja: a linha mantém a cor da loja, e o rótulo continua.
 
 ## 3. Elementos
-- **Eixo x:** datas reais, de `max(primeiro ponto de qualquer loja, hoje − 89)` até hoje. Domínio mínimo de 7 dias: com 3 dias, a linha ocupa só a ponta direita, o que mostra que o histórico é novo.
-- **Eixo y:** do menor ao maior preço das séries mostradas, com 10% de folga. Sem grade e sem ticks. Só dois rótulos à esquerda, 13 u: o maior (`--muted`, sobre a linha-guia `--line`) e "menor R$ 34,90" (`--coral`, logo acima do tracejado). Se o maior for igual ao menor, só o tracejado.
+- **Eixo x:** datas reais, de `max(primeiro ponto de qualquer loja, hoje − 89)` até hoje (ou o último ponto, se um `checked_at` adiantado cair no dia seguinte). O texto (frase e `<title>`) usa a data do primeiro ponto real, nunca o início puxado do eixo. Domínio mínimo de 7 dias: com 3 dias, a linha ocupa só a ponta direita, o que mostra que o histórico é novo.
+- **Eixo y:** do menor ao maior preço das séries mostradas, sem folga (o maior na linha-guia do topo, o menor no tracejado). Sem grade e sem ticks. Só dois rótulos à esquerda, 13 u: o maior (`--muted`, sobre a linha-guia `--line`) e "menor R$ 34,90" (`--coral`, logo abaixo do tracejado). Se o maior for igual ao menor, só o tracejado.
 - **Tracejado:** o menor preço entre **todas** as séries mostradas, o mesmo universo do `seal_of()`, que exige o mínimo de todas as lojas elegíveis.
 - **Ponto atual:** na ponta da loja vencedora, r=5, preenchido `--coral` com contorno 2px `--bg2`. Datas embaixo: a primeira à esquerda ("18/10") e "hoje" à direita.
 - **Frase-resumo** (`figcaption`, 15px/600 `--text`), sempre derivada do `seal(o)` e nunca do desenho, para não contradizer o selo:
@@ -34,12 +34,13 @@ Sem depender de cor: (a) **rótulo direto** com o nome da loja na ponta de cada 
 ## 4. Estados
 - **Nenhuma loja com 2 dias distintos:** sem SVG. Só `<p class="hist">Primeira leitura em DD/MM: R$ X.</p>`.
 - **Menos de 7 dias:** desenha, com o domínio mínimo de 7 dias.
+- **Amazon vencida há mais de 90 dias:** nenhum ponto na janela: sem gráfico e sem link no card.
 - **Buraco na Amazon:** reta entre leituras, com o marcador mostrando o que é leitura real. Buraco de mais de 7 dias quebra a linha (novo `M` no path), sem inventar preço.
 - **Amazon vencida (`velho`):** a linha para na última leitura (não vai até hoje), e o rótulo fica "Amazon, 28/10" em `--muted`. Se ela for a vencedora, o ponto atual fica vazado (preenchido `--bg2`, contorno 2px `--coral`). O aviso "Preço pode estar desatualizado" continua no `.meta`.
 - **Rótulos de ponta colidindo:** ordenar por y e garantir 16 u entre eles.
 
 ## 5. Dimensões
-`viewBox="0 0 300 150"`, `width="100%"`, CSS `.hc svg { display:block; max-width: 420px; height:auto }`. No celular de 360px (cerca de 290px úteis) a escala é ~1:1, e o texto de 13 u fica com 12–13px. No desktop, até 1,4x. Área do gráfico: x 4–204, y 22–124. Coluna de rótulos das lojas: x ≥ 210, `text-anchor="start"`. Datas em y 142. Fonte: `font: 600 13px var(--sans)` via classe CSS, com `font-variant-numeric: tabular-nums`. Sem atributo `style=` (CSP); cores só por classe (`.hc-amz`, `.hc-ml`, `.hc-min`, `.hc-now`, `.hc-now--velho`, `.hc-lbl`).
+`viewBox="0 0 300 150"`, `width="100%"`, CSS `.hc svg { display:block; max-width: 420px; height:auto }`. No celular de 360px (cerca de 290px úteis) a escala é ~1:1, e o texto de 13 u fica com 12–13px. No desktop, até 1,4x. Área do gráfico: x 4–204, y 22–112. Coluna de rótulos das lojas: x ≥ 210, `text-anchor="start"`. Datas em y 144. Fonte: `font: 600 13px var(--sans)` via classe CSS, com `font-variant-numeric: tabular-nums`. Sem atributo `style=` (CSP); cores só por classe (`.hc-amz`, `.hc-ml`, `.hc-min`, `.hc-now`, `.hc-now--velho`, `.hc-lbl`).
 
 ```
 Desktop (coluna direita do .livro, SVG até 420px)          Celular (~290px úteis, empilhado)

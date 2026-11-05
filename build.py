@@ -580,17 +580,13 @@ def chart(o, pad="  "):
     """Histórico da página do livro (docs/marca/grafico-historico.md): uma linha por loja elegível,
     tracejado no menor preço mostrado, ponto no preço atual da vencedora. SVG estático, sem JS e sem
     style= (CSP). A frase vem do selo, nunca do desenho; a tabela por dia é o equivalente acessível."""
-    lines = [(s, series(s)) for s in o["stores"]]
-    lines = [(s, pts) for s, pts in lines if pts]
-    if not lines:
+    w = hc_window(o)
+    if not w:
         if not any(s["price_points"] for s in o["stores"]):
             return ""  # sem histórico no contrato: nada a dizer
         return f'\n{pad}<p class="hist">Primeira leitura em {o["checked_at"].astimezone(BRT):%d/%m}: {brl(o["price_cents"])}.</p>'
-    today = o["now"].astimezone(BRT).date()
-    start = max(min(pts[0][0] for _, pts in lines), today - timedelta(days=89))
-    start = min(start, today - timedelta(days=6))  # eixo mínimo de 7 dias: histórico novo fica à direita
-    lines = [(s, [(d, c) for d, c in pts if d >= start]) for s, pts in lines]
-    lines = [(s, pts) for s, pts in lines if pts]
+    lines, start, today = w
+    first = min(pts[0][0] for _, pts in lines)  # o texto diz a data real; start é só o eixo
     span = (today - start).days
     cs = [c for _, pts in lines for _, c in pts]
     lo, hi = min(cs), max(cs)
@@ -603,12 +599,13 @@ def chart(o, pad="  "):
     svg.append(f'<line class="hc-min" x1="{HC_X0}" y1="{HC_Y1}" x2="{HC_X1}" y2="{HC_Y1}"/>'
                f'<text class="hc-lbl hc-lbl--min" x="{HC_X0}" y="{HC_Y1 + 15}">menor {brl(lo)}</text>')
     for s, pts in lines:
-        cls = "hc-ml" if s["store"] == "mercadolivre" and len(lines) > 1 else "hc-amz"
-        d_ = "".join(f'{"M" if i == 0 or (d - pts[i - 1][0]).days > HC_GAP else "L"}{X(d):.1f} {Y(c):.1f}'
-                     for i, (d, c) in enumerate(pts))
+        cls = "hc-ml" if s["store"] == "mercadolivre" else "hc-amz"  # ML amarelo, Amazon no --text (Elias, 2026-11-04)
+        cut = [i == 0 or (d - pts[i - 1][0]).days > HC_GAP for i, (d, _) in enumerate(pts)] + [True]
+        d_ = "".join(f'{"M" if cut[i] else "L"}{X(d):.1f} {Y(c):.1f}' for i, (d, c) in enumerate(pts))
         svg.append(f'<path class="hc-line {cls}" d="{d_}"/>')
-        if s["store"] == "amazon":  # leitura manual: o marcador mostra onde houve leitura de fato
-            svg.extend(f'<circle class="hc-pt {cls}" cx="{X(d):.1f}" cy="{Y(c):.1f}" r="3"/>' for d, c in pts)
+        # Amazon (leitura manual): marcador em toda leitura. Outra loja: só no ponto solto, que o path não pinta.
+        svg.extend(f'<circle class="hc-pt {cls}" cx="{X(d):.1f}" cy="{Y(c):.1f}" r="3"/>' for i, (d, c) in enumerate(pts)
+                   if s["store"] == "amazon" or (cut[i] and cut[i + 1]))
         last = pts[-1][0]
         name = STORES[s["store"]] + ("" if last == today else f", {last:%d/%m}")
         ends.append([Y(pts[-1][1]), s["store"] != o["store"], name, cls + ("" if last == today else " hc-old")])
@@ -622,14 +619,28 @@ def chart(o, pad="  "):
     svg.append(f'<text class="hc-lbl" x="{HC_X0}" y="144">{start:%d/%m}</text>'
                f'<text class="hc-lbl" x="{HC_X1}" y="144" text-anchor="end">hoje</text>')
     return f"""\n{pad}<figure class="hc" id="historico">
-{pad}  <svg viewBox="0 0 {HC_W} 150" width="100%" role="img" aria-labelledby="hc-t" focusable="false"><title id="hc-t">{e(hc_title(lines, start, today))}</title>{"".join(svg)}</svg>
-{pad}  <figcaption>{e(hc_phrase(o, start, lo, hi))}</figcaption>
+{pad}  <svg viewBox="0 0 {HC_W} 150" width="100%" role="img" aria-labelledby="hc-t" focusable="false"><title id="hc-t">{e(hc_title(lines, first, today))}</title>{"".join(svg)}</svg>
+{pad}  <figcaption>{e(hc_phrase(o, first, lo, hi))}</figcaption>
 {pad}  {hc_table(lines)}
 {pad}</figure>"""
 
 
+def hc_window(o):
+    """(linhas [(loja, pontos)], início do eixo, hoje) ou None. Janela de 90 dias até hoje, eixo mínimo de 7.
+    Amazon vencida há mais de 90 dias fica sem ponto na janela: sem gráfico (e sem link no card)."""
+    lines = [(s, pts) for s in o["stores"] if (pts := series(s))]
+    if not lines:
+        return None
+    # checked_at até 5 min no futuro (SKEW) pode cair no dia seguinte: o eixo vai até o último ponto
+    today = max(o["now"].astimezone(BRT).date(), max(pts[-1][0] for _, pts in lines))
+    start = max(min(pts[0][0] for _, pts in lines), today - timedelta(days=89))
+    start = min(start, today - timedelta(days=6))  # eixo mínimo de 7 dias: histórico novo fica à direita
+    lines = [(s, kept) for s, pts in lines if (kept := [(d, c) for d, c in pts if d >= start])]
+    return (lines, start, today) if lines else None
+
+
 def has_hc(o):
-    return any(series(s) for s in o["stores"])
+    return hc_window(o) is not None
 
 
 def card_hist(o):
@@ -1984,6 +1995,18 @@ def selftest():
     assert 'class="hc-line hc-amz"' in h and 'class="hc-line hc-ml"' in h and ">menor R$\u00a018,90<" in h
     assert '<th scope="col">Amazon</th><th scope="col">Mercado Livre</th>' in h and '<span class="sr">sem leitura</span>' in h
     assert h.count('class="hc-now"') == 1 and "Mercado Livre: menor R$ 18,90, maior R$ 21,90, hoje R$ 18,90." in h
+    # Amazon vencida há mais de 90 dias: sem gráfico nem link, sem quebrar o build (review do PR #91)
+    old_ = load(A(checked_at="2026-07-01T10:00:00-03:00", history_since="2026-06-20",
+                  price_points=pp(("2026-06-20", 2990), ("2026-06-25", 2490))), now=datetime(2026, 10, 18, 12, tzinfo=BRT))[0]
+    assert old_["velho"] and not has_hc(old_) and 'class="hc"' not in chart(old_) and "ver-hist" not in card(old_)
+    # texto com a data real do primeiro ponto, mesmo com o eixo puxado para 7 dias
+    h = livro(history_since="2026-10-15", lowest_90d_cents=1000, price_points=pp(("2026-10-15", 2990)))
+    assert "<figcaption>Desde 15/10: " in h and "Preço desde 15/10." in h and ">12/10</text>" in h
+    # ponto solto de outra loja (entre buracos) ganha marcador
+    solto = load({**good, "stores": [{**amz, "history_since": "2026-10-01", "price_points": ok_pp},
+                                     {**mls, "price_cents": 1890, "history_since": "2026-09-01",
+                                      "price_points": pp(("2026-09-01", 2190), ("2026-10-05", 2090))}]})
+    assert vis(book_page(solto[0], solto)).count('class="hc-pt hc-ml"') == 3  # 01/09, 05/10 e hoje: buracos de 34 e 13 dias
     # card: link "ver histórico" só com gráfico; o modal busca o #historico da página só quando há gráfico
     def card_of(**kw):
         return card(load(A(**kw))[0])
