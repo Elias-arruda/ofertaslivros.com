@@ -16,7 +16,7 @@
      "list_price_cents": 24490,
      "lowest_90d_cents": 13029,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:04:29+00:00"
+     "checked_at": "2026-11-05T00:23:42+00:00"
     },
     {
      "store": "mercadolivre",
@@ -26,7 +26,7 @@
      "list_price_cents": 24490,
      "lowest_90d_cents": 13029,
      "history_since": "2026-10-18",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 14000
     }
    ]
@@ -46,7 +46,7 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 3134,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:04:48+00:00"
+     "checked_at": "2026-11-05T00:24:00+00:00"
     },
     {
      "store": "mercadolivre",
@@ -56,7 +56,7 @@
      "list_price_cents": 4020,
      "lowest_90d_cents": 3788,
      "history_since": "2026-10-18",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3992
     }
    ]
@@ -76,7 +76,7 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 3245,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:05:06+00:00"
+     "checked_at": "2026-11-05T00:24:19+00:00"
     },
     {
      "store": "mercadolivre",
@@ -86,7 +86,7 @@
      "list_price_cents": 2500,
      "lowest_90d_cents": 2500,
      "history_since": "2026-10-19",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 2500
     }
    ]
@@ -106,7 +106,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 4061,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:05:46+00:00"
+     "checked_at": "2026-11-05T00:24:37+00:00"
     },
     {
      "store": "mercadolivre",
@@ -116,7 +116,7 @@
      "list_price_cents": 4100,
      "lowest_90d_cents": 3000,
      "history_since": "2026-10-19",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 4100
     }
    ]
@@ -136,7 +136,7 @@
      "list_price_cents": 5990,
      "lowest_90d_cents": 2786,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:06:05+00:00"
+     "checked_at": "2026-11-05T00:25:17+00:00"
     },
     {
      "store": "mercadolivre",
@@ -146,7 +146,7 @@
      "list_price_cents": 1299,
      "lowest_90d_cents": 200,
      "history_since": "2026-10-19",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 200
     }
    ]
@@ -166,7 +166,7 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 3698,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:06:23+00:00"
+     "checked_at": "2026-11-05T00:25:37+00:00"
     },
     {
      "store": "mercadolivre",
@@ -176,7 +176,7 @@
      "list_price_cents": 3500,
      "lowest_90d_cents": 3310,
      "history_since": "2026-10-19",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3500
     }
    ]
@@ -196,7 +196,7 @@
      "list_price_cents": 6262,
      "lowest_90d_cents": 4584,
      "history_since": "2026-10-19",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 6098
     }
    ]
@@ -216,7 +216,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 4645,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:06:57+00:00"
+     "checked_at": "2026-11-05T00:25:58+00:00"
     },
     {
      "store": "mercadolivre",
@@ -226,7 +226,7 @@
      "list_price_cents": 5723,
      "lowest_90d_cents": 5193,
      "history_since": "2026-10-19",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 5890
     }
    ]
@@ -256,7 +256,7 @@
      "list_price_cents": 5600,
      "lowest_90d_cents": 5600,
      "history_since": "2026-10-19",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 5600
     }
    ]
@@ -276,7 +276,7 @@
      "list_price_cents": 8600,
      "lowest_90d_cents": 8600,
      "history_since": "2026-10-19",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 8600
     }
    ]
@@ -296,7 +296,7 @@
      "list_price_cents": 2947,
      "lowest_90d_cents": 2947,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 2947
     }
    ]
@@ -316,7 +316,7 @@
      "list_price_cents": 5699,
      "lowest_90d_cents": 1999,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 2500
     }
    ]
@@ -336,7 +336,7 @@
      "list_price_cents": 5990,
      "lowest_90d_cents": 5722,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 5990
     }
    ]
@@ -356,7 +356,7 @@
      "list_price_cents": 7990,
      "lowest_90d_cents": 4661,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:07:39+00:00"
+     "checked_at": "2026-11-05T00:27:01+00:00"
     },
     {
      "store": "mercadolivre",
@@ -366,7 +366,7 @@
      "list_price_cents": 5290,
      "lowest_90d_cents": 5290,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 5290
     }
    ]
@@ -386,7 +386,7 @@
      "list_price_cents": 6400,
      "lowest_90d_cents": 6400,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 6400
     }
    ]
@@ -406,7 +406,7 @@
      "list_price_cents": 6000,
      "lowest_90d_cents": 6000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 6000
     }
    ]
@@ -421,11 +421,11 @@
     {
      "store": "amazon",
      "asin": "8539004119",
-     "price_cents": 4566,
+     "price_cents": 4807,
      "list_price_cents": 7990,
      "lowest_90d_cents": 4566,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:08:27+00:00"
+     "checked_at": "2026-11-05T00:27:21+00:00"
     }
    ]
   },
@@ -444,7 +444,7 @@
      "list_price_cents": 6090,
      "lowest_90d_cents": 3675,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:08:46+00:00"
+     "checked_at": "2026-11-05T00:27:42+00:00"
     },
     {
      "store": "mercadolivre",
@@ -454,7 +454,7 @@
      "list_price_cents": 6299,
      "lowest_90d_cents": 3300,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3300
     }
    ]
@@ -474,7 +474,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 3082,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:09:04+00:00"
+     "checked_at": "2026-11-05T00:28:02+00:00"
     },
     {
      "store": "mercadolivre",
@@ -484,7 +484,7 @@
      "list_price_cents": 3500,
      "lowest_90d_cents": 3291,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3500
     }
    ]
@@ -504,7 +504,7 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 4004,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:09:39+00:00"
+     "checked_at": "2026-11-05T00:28:44+00:00"
     },
     {
      "store": "mercadolivre",
@@ -514,7 +514,7 @@
      "list_price_cents": 2500,
      "lowest_90d_cents": 2500,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 2500
     }
    ]
@@ -534,7 +534,7 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 2684,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:09:58+00:00"
+     "checked_at": "2026-11-05T00:29:05+00:00"
     },
     {
      "store": "mercadolivre",
@@ -544,7 +544,7 @@
      "list_price_cents": 2500,
      "lowest_90d_cents": 2500,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 2500
     }
    ]
@@ -564,7 +564,7 @@
      "list_price_cents": 5490,
      "lowest_90d_cents": 3595,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:10:17+00:00"
+     "checked_at": "2026-11-05T00:29:26+00:00"
     },
     {
      "store": "mercadolivre",
@@ -574,7 +574,7 @@
      "list_price_cents": 3290,
      "lowest_90d_cents": 3290,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3290
     }
    ]
@@ -593,7 +593,7 @@
      "list_price_cents": 5990,
      "lowest_90d_cents": 3383,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:10:52+00:00"
+     "checked_at": "2026-11-05T00:29:46+00:00"
     }
    ]
   },
@@ -612,7 +612,7 @@
      "list_price_cents": 8990,
      "lowest_90d_cents": 4717,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:11:10+00:00"
+     "checked_at": "2026-11-05T00:30:21+00:00"
     },
     {
      "store": "mercadolivre",
@@ -622,7 +622,7 @@
      "list_price_cents": 5000,
      "lowest_90d_cents": 5000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 5000
     }
    ]
@@ -641,7 +641,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 3911,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:11:29+00:00"
+     "checked_at": "2026-11-05T00:30:42+00:00"
     }
    ]
   },
@@ -660,7 +660,7 @@
      "list_price_cents": 7990,
      "lowest_90d_cents": 4540,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:12:05+00:00"
+     "checked_at": "2026-11-05T00:31:31+00:00"
     },
     {
      "store": "mercadolivre",
@@ -670,7 +670,7 @@
      "list_price_cents": 4560,
      "lowest_90d_cents": 4560,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 4560
     }
    ]
@@ -689,7 +689,7 @@
      "list_price_cents": 5490,
      "lowest_90d_cents": 3648,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:12:23+00:00"
+     "checked_at": "2026-11-05T00:32:31+00:00"
     }
    ]
   },
@@ -707,7 +707,7 @@
      "list_price_cents": 4990,
      "lowest_90d_cents": 2449,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:12:42+00:00"
+     "checked_at": "2026-11-05T00:32:51+00:00"
     }
    ]
   },
@@ -736,7 +736,7 @@
      "list_price_cents": 3500,
      "lowest_90d_cents": 3200,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3200
     }
    ]
@@ -756,7 +756,7 @@
      "list_price_cents": 10350,
      "lowest_90d_cents": 6633,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:13:40+00:00"
+     "checked_at": "2026-11-05T00:33:39+00:00"
     },
     {
      "store": "mercadolivre",
@@ -766,7 +766,7 @@
      "list_price_cents": 7196,
      "lowest_90d_cents": 5800,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 5800
     }
    ]
@@ -786,7 +786,7 @@
      "list_price_cents": 7990,
      "lowest_90d_cents": 4411,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:13:59+00:00"
+     "checked_at": "2026-11-05T00:35:18+00:00"
     },
     {
      "store": "mercadolivre",
@@ -796,7 +796,7 @@
      "list_price_cents": 1999,
      "lowest_90d_cents": 1999,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 1999
     }
    ]
@@ -816,7 +816,7 @@
      "list_price_cents": 3990,
      "lowest_90d_cents": 1510,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:14:33+00:00"
+     "checked_at": "2026-11-05T00:35:38+00:00"
     },
     {
      "store": "mercadolivre",
@@ -826,7 +826,7 @@
      "list_price_cents": 1899,
      "lowest_90d_cents": 1899,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 1899
     }
    ]
@@ -846,7 +846,7 @@
      "list_price_cents": 8990,
      "lowest_90d_cents": 4685,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:14:52+00:00"
+     "checked_at": "2026-11-05T00:35:59+00:00"
     },
     {
      "store": "mercadolivre",
@@ -856,7 +856,7 @@
      "list_price_cents": 5690,
      "lowest_90d_cents": 4791,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 5643
     }
    ]
@@ -876,7 +876,7 @@
      "list_price_cents": 8490,
      "lowest_90d_cents": 5010,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:15:10+00:00"
+     "checked_at": "2026-11-05T00:36:20+00:00"
     },
     {
      "store": "mercadolivre",
@@ -886,7 +886,7 @@
      "list_price_cents": 8490,
      "lowest_90d_cents": 2100,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 2100
     }
    ]
@@ -906,7 +906,7 @@
      "list_price_cents": 4990,
      "lowest_90d_cents": 1890,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:15:48+00:00"
+     "checked_at": "2026-11-05T00:37:02+00:00"
     },
     {
      "store": "mercadolivre",
@@ -916,7 +916,7 @@
      "list_price_cents": 2000,
      "lowest_90d_cents": 2000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 2000
     }
    ]
@@ -935,7 +935,7 @@
      "list_price_cents": 5990,
      "lowest_90d_cents": 4000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:16:06+00:00"
+     "checked_at": "2026-11-05T00:37:23+00:00"
     }
    ]
   },
@@ -950,11 +950,11 @@
     {
      "store": "amazon",
      "asin": "6559791513",
-     "price_cents": 6389,
+     "price_cents": 6658,
      "list_price_cents": 8490,
      "lowest_90d_cents": 5931,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:16:25+00:00"
+     "checked_at": "2026-11-05T00:37:43+00:00"
     },
     {
      "store": "mercadolivre",
@@ -964,7 +964,7 @@
      "list_price_cents": 5882,
      "lowest_90d_cents": 5882,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 5882
     }
    ]
@@ -984,7 +984,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 3233,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:17:34+00:00"
+     "checked_at": "2026-11-05T00:38:04+00:00"
     },
     {
      "store": "mercadolivre",
@@ -994,7 +994,7 @@
      "list_price_cents": 5698,
      "lowest_90d_cents": 5016,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 5723
     }
    ]
@@ -1014,7 +1014,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 3338,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:17:53+00:00"
+     "checked_at": "2026-11-05T00:38:39+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1024,7 +1024,7 @@
      "list_price_cents": 5550,
      "lowest_90d_cents": 3942,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3942
     }
    ]
@@ -1044,7 +1044,7 @@
      "list_price_cents": 2690,
      "lowest_90d_cents": 1914,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:18:10+00:00"
+     "checked_at": "2026-11-05T00:39:00+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1054,7 +1054,7 @@
      "list_price_cents": 2098,
      "lowest_90d_cents": 2098,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 2098
     }
    ]
@@ -1074,7 +1074,7 @@
      "list_price_cents": 5990,
      "lowest_90d_cents": 3382,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:18:52+00:00"
+     "checked_at": "2026-11-05T00:39:20+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1084,7 +1084,7 @@
      "list_price_cents": 800,
      "lowest_90d_cents": 800,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 800
     }
    ]
@@ -1103,7 +1103,7 @@
      "list_price_cents": 6640,
      "lowest_90d_cents": 6305,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:19:10+00:00"
+     "checked_at": "2026-11-05T00:39:41+00:00"
     }
    ]
   },
@@ -1122,7 +1122,7 @@
      "list_price_cents": 11790,
      "lowest_90d_cents": 8238,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:19:29+00:00"
+     "checked_at": "2026-11-05T00:40:21+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1132,7 +1132,7 @@
      "list_price_cents": 8960,
      "lowest_90d_cents": 8716,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 8960
     }
    ]
@@ -1152,7 +1152,7 @@
      "list_price_cents": 9990,
      "lowest_90d_cents": 6098,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:20:05+00:00"
+     "checked_at": "2026-11-05T00:40:42+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1162,7 +1162,7 @@
      "list_price_cents": 4000,
      "lowest_90d_cents": 4000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 4000
     }
    ]
@@ -1182,7 +1182,7 @@
      "list_price_cents": 9490,
      "lowest_90d_cents": 5955,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:20:24+00:00"
+     "checked_at": "2026-11-05T00:41:02+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1192,7 +1192,7 @@
      "list_price_cents": 7877,
      "lowest_90d_cents": 7877,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 7877
     }
    ]
@@ -1212,7 +1212,7 @@
      "list_price_cents": 9490,
      "lowest_90d_cents": 5152,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:20:42+00:00"
+     "checked_at": "2026-11-05T00:41:23+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1222,7 +1222,7 @@
      "list_price_cents": 5000,
      "lowest_90d_cents": 5000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 5000
     }
    ]
@@ -1242,7 +1242,7 @@
      "list_price_cents": 4990,
      "lowest_90d_cents": 2990,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:21:18+00:00"
+     "checked_at": "2026-11-05T00:41:58+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1252,7 +1252,7 @@
      "list_price_cents": 2933,
      "lowest_90d_cents": 2933,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 2933
     }
    ]
@@ -1282,7 +1282,7 @@
      "list_price_cents": 4700,
      "lowest_90d_cents": 4700,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 4990
     }
    ]
@@ -1302,7 +1302,7 @@
      "list_price_cents": 13990,
      "lowest_90d_cents": 8721,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:22:01+00:00"
+     "checked_at": "2026-11-05T00:42:45+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1312,7 +1312,7 @@
      "list_price_cents": 13990,
      "lowest_90d_cents": 9930,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 9930
     }
    ]
@@ -1332,7 +1332,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 4207,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:22:38+00:00"
+     "checked_at": "2026-11-05T00:43:06+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1342,7 +1342,7 @@
      "list_price_cents": 3500,
      "lowest_90d_cents": 3500,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3500
     }
    ]
@@ -1361,7 +1361,7 @@
      "list_price_cents": 9990,
      "lowest_90d_cents": 4844,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:22:57+00:00"
+     "checked_at": "2026-11-05T00:43:47+00:00"
     }
    ]
   },
@@ -1380,7 +1380,7 @@
      "list_price_cents": 5990,
      "lowest_90d_cents": 2460,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:23:15+00:00"
+     "checked_at": "2026-11-05T00:44:08+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1390,7 +1390,7 @@
      "list_price_cents": 3000,
      "lowest_90d_cents": 2900,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 2900
     }
    ]
@@ -1410,7 +1410,7 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 2460,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:23:49+00:00"
+     "checked_at": "2026-11-05T00:44:28+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1420,7 +1420,7 @@
      "list_price_cents": 3000,
      "lowest_90d_cents": 3000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3000
     }
    ]
@@ -1440,7 +1440,7 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 2989,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:24:08+00:00"
+     "checked_at": "2026-11-05T00:44:49+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1450,7 +1450,7 @@
      "list_price_cents": 3000,
      "lowest_90d_cents": 3000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3000
     }
    ]
@@ -1470,7 +1470,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 3284,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:24:26+00:00"
+     "checked_at": "2026-11-05T00:45:25+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1480,7 +1480,7 @@
      "list_price_cents": 2500,
      "lowest_90d_cents": 2500,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 2500
     }
    ]
@@ -1500,7 +1500,7 @@
      "list_price_cents": 7490,
      "lowest_90d_cents": 5061,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:26:03+00:00"
+     "checked_at": "2026-11-05T00:45:46+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1510,7 +1510,7 @@
      "list_price_cents": 3200,
      "lowest_90d_cents": 3200,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3200
     }
    ]
@@ -1530,7 +1530,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 4645,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:26:58+00:00"
+     "checked_at": "2026-11-05T00:46:06+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1540,7 +1540,7 @@
      "list_price_cents": 3500,
      "lowest_90d_cents": 3190,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3190
     }
    ]
@@ -1560,7 +1560,7 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 3912,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:26:21+00:00"
+     "checked_at": "2026-11-05T00:46:27+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1570,7 +1570,7 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 4043,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 4347
     }
    ]
@@ -1590,7 +1590,7 @@
      "list_price_cents": 7990,
      "lowest_90d_cents": 3840,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:27:16+00:00"
+     "checked_at": "2026-11-05T00:47:10+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1600,7 +1600,7 @@
      "list_price_cents": 7990,
      "lowest_90d_cents": 4621,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 4718
     }
    ]
@@ -1620,7 +1620,7 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 3834,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:27:35+00:00"
+     "checked_at": "2026-11-05T00:47:31+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1630,7 +1630,7 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 4072,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 4500
     }
    ]
@@ -1650,7 +1650,7 @@
      "list_price_cents": 7990,
      "lowest_90d_cents": 4413,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:28:09+00:00"
+     "checked_at": "2026-11-05T00:47:51+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1660,7 +1660,7 @@
      "list_price_cents": 4690,
      "lowest_90d_cents": 4690,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 4690
     }
    ]
@@ -1680,7 +1680,7 @@
      "list_price_cents": 7490,
      "lowest_90d_cents": 3899,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:28:28+00:00"
+     "checked_at": "2026-11-05T00:48:12+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1690,7 +1690,7 @@
      "list_price_cents": 3845,
      "lowest_90d_cents": 3845,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3845
     }
    ]
@@ -1710,7 +1710,7 @@
      "list_price_cents": 5490,
      "lowest_90d_cents": 2991,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:28:47+00:00"
+     "checked_at": "2026-11-05T00:48:47+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1720,7 +1720,7 @@
      "list_price_cents": 3000,
      "lowest_90d_cents": 3000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3000
     }
    ]
@@ -1739,7 +1739,7 @@
      "list_price_cents": 10990,
      "lowest_90d_cents": 6366,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:29:22+00:00"
+     "checked_at": "2026-11-05T00:49:08+00:00"
     }
    ]
   },
@@ -1757,7 +1757,7 @@
      "list_price_cents": 10990,
      "lowest_90d_cents": 6612,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:29:41+00:00"
+     "checked_at": "2026-11-05T00:49:29+00:00"
     }
    ]
   },
@@ -1776,7 +1776,7 @@
      "list_price_cents": 28990,
      "lowest_90d_cents": 13545,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:29:59+00:00"
+     "checked_at": "2026-11-05T00:49:49+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1786,7 +1786,7 @@
      "list_price_cents": 28990,
      "lowest_90d_cents": 16300,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 18991
     }
    ]
@@ -1806,7 +1806,7 @@
      "list_price_cents": 8990,
      "lowest_90d_cents": 5641,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:30:34+00:00"
+     "checked_at": "2026-11-05T00:50:30+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1816,7 +1816,7 @@
      "list_price_cents": 3000,
      "lowest_90d_cents": 3000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T01:00:13+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3000
     }
    ]
@@ -1836,7 +1836,7 @@
      "list_price_cents": 11990,
      "lowest_90d_cents": 6752,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:30:52+00:00"
+     "checked_at": "2026-11-05T00:50:51+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1865,7 +1865,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 4041,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:31:11+00:00"
+     "checked_at": "2026-11-05T00:51:12+00:00"
     }
    ]
   },
@@ -1884,7 +1884,7 @@
      "list_price_cents": 19990,
      "lowest_90d_cents": 11708,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:31:47+00:00"
+     "checked_at": "2026-11-05T00:51:32+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1894,7 +1894,7 @@
      "list_price_cents": 19022,
      "lowest_90d_cents": 11500,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 19022
     }
    ]
@@ -1914,7 +1914,7 @@
      "list_price_cents": 7990,
      "lowest_90d_cents": 4695,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:32:05+00:00"
+     "checked_at": "2026-11-05T00:52:08+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1924,7 +1924,7 @@
      "list_price_cents": 4100,
      "lowest_90d_cents": 4100,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 4100
     }
    ]
@@ -1944,7 +1944,7 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 3245,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:32:24+00:00"
+     "checked_at": "2026-11-05T00:52:28+00:00"
     },
     {
      "store": "mercadolivre",
@@ -1954,7 +1954,7 @@
      "list_price_cents": 1990,
      "lowest_90d_cents": 1990,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 1990
     }
    ]
@@ -1973,7 +1973,7 @@
      "list_price_cents": 5990,
      "lowest_90d_cents": 3200,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:33:02+00:00"
+     "checked_at": "2026-11-05T00:52:49+00:00"
     }
    ]
   },
@@ -1992,7 +1992,7 @@
      "list_price_cents": 5990,
      "lowest_90d_cents": 3675,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:33:21+00:00"
+     "checked_at": "2026-11-05T00:53:10+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2002,7 +2002,7 @@
      "list_price_cents": 3696,
      "lowest_90d_cents": 3275,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3797
     }
    ]
@@ -2022,7 +2022,7 @@
      "list_price_cents": 7990,
      "lowest_90d_cents": 3951,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:33:40+00:00"
+     "checked_at": "2026-11-05T00:53:51+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2032,7 +2032,7 @@
      "list_price_cents": 3800,
      "lowest_90d_cents": 3800,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3800
     }
    ]
@@ -2052,7 +2052,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 3799,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:34:14+00:00"
+     "checked_at": "2026-11-05T00:54:11+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2062,7 +2062,7 @@
      "list_price_cents": 1500,
      "lowest_90d_cents": 1500,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3500
     }
    ]
@@ -2082,7 +2082,7 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 3246,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:34:33+00:00"
+     "checked_at": "2026-11-05T00:54:32+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2092,7 +2092,7 @@
      "list_price_cents": 3000,
      "lowest_90d_cents": 3000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3450
     }
    ]
@@ -2108,11 +2108,11 @@
     {
      "store": "amazon",
      "asin": "6555658118",
-     "price_cents": 4682,
+     "price_cents": 4929,
      "list_price_cents": 7990,
      "lowest_90d_cents": 4265,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:34:52+00:00"
+     "checked_at": "2026-11-05T00:54:53+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2122,7 +2122,7 @@
      "list_price_cents": 7990,
      "lowest_90d_cents": 4200,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 5014
     }
    ]
@@ -2141,7 +2141,7 @@
      "list_price_cents": 10490,
      "lowest_90d_cents": 7687,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:35:28+00:00"
+     "checked_at": "2026-11-05T00:55:29+00:00"
     }
    ]
   },
@@ -2160,7 +2160,7 @@
      "list_price_cents": 7990,
      "lowest_90d_cents": 5060,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:35:46+00:00"
+     "checked_at": "2026-11-05T00:55:49+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2170,7 +2170,7 @@
      "list_price_cents": 3500,
      "lowest_90d_cents": 3500,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3500
     }
    ]
@@ -2190,7 +2190,7 @@
      "list_price_cents": 7490,
      "lowest_90d_cents": 4009,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:36:05+00:00"
+     "checked_at": "2026-11-05T00:56:10+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2200,7 +2200,7 @@
      "list_price_cents": 3000,
      "lowest_90d_cents": 3000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3000
     }
    ]
@@ -2215,11 +2215,11 @@
     {
      "store": "amazon",
      "asin": "6555522267",
-     "price_cents": 1498,
+     "price_cents": 2390,
      "list_price_cents": 3490,
      "lowest_90d_cents": 1498,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:36:43+00:00"
+     "checked_at": "2026-11-05T00:56:30+00:00"
     }
    ]
   },
@@ -2238,7 +2238,7 @@
      "list_price_cents": 4990,
      "lowest_90d_cents": 2365,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:37:02+00:00"
+     "checked_at": "2026-11-05T00:57:12+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2248,7 +2248,7 @@
      "list_price_cents": 1500,
      "lowest_90d_cents": 1395,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 1395
     }
    ]
@@ -2268,7 +2268,7 @@
      "list_price_cents": 2190,
      "lowest_90d_cents": 1165,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:37:21+00:00"
+     "checked_at": "2026-11-05T00:57:32+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2278,7 +2278,7 @@
      "list_price_cents": 2190,
      "lowest_90d_cents": 1347,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 1347
     }
    ]
@@ -2297,7 +2297,7 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 2989,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:38:01+00:00"
+     "checked_at": "2026-11-05T00:57:53+00:00"
     }
    ]
   },
@@ -2316,7 +2316,7 @@
      "list_price_cents": 9490,
      "lowest_90d_cents": 3600,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:38:20+00:00"
+     "checked_at": "2026-11-05T00:58:14+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2326,7 +2326,7 @@
      "list_price_cents": 3000,
      "lowest_90d_cents": 3000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3000
     }
    ]
@@ -2346,7 +2346,7 @@
      "list_price_cents": 7990,
      "lowest_90d_cents": 3516,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:38:38+00:00"
+     "checked_at": "2026-11-05T00:58:50+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2356,7 +2356,7 @@
      "list_price_cents": 10699,
      "lowest_90d_cents": 3549,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3549
     }
    ]
@@ -2371,11 +2371,11 @@
     {
      "store": "amazon",
      "asin": "6580309318",
-     "price_cents": 4749,
+     "price_cents": 5477,
      "list_price_cents": 8990,
      "lowest_90d_cents": 4559,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:39:16+00:00"
+     "checked_at": "2026-11-05T00:59:11+00:00"
     }
    ]
   },
@@ -2394,7 +2394,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 2990,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:39:35+00:00"
+     "checked_at": "2026-11-05T00:59:31+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2404,7 +2404,7 @@
      "list_price_cents": 2500,
      "lowest_90d_cents": 2500,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 2500
     }
    ]
@@ -2424,7 +2424,7 @@
      "list_price_cents": 2490,
      "lowest_90d_cents": 1182,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:39:53+00:00"
+     "checked_at": "2026-11-05T00:59:52+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2434,7 +2434,7 @@
      "list_price_cents": 800,
      "lowest_90d_cents": 800,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 800
     }
    ]
@@ -2454,7 +2454,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 3438,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:40:29+00:00"
+     "checked_at": "2026-11-05T01:00:34+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2464,7 +2464,7 @@
      "list_price_cents": 3961,
      "lowest_90d_cents": 3961,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3961
     }
    ]
@@ -2483,7 +2483,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 3912,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:40:47+00:00"
+     "checked_at": "2026-11-05T01:00:54+00:00"
     }
    ]
   },
@@ -2501,7 +2501,7 @@
      "list_price_cents": 5490,
      "lowest_90d_cents": 2479,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:41:06+00:00"
+     "checked_at": "2026-11-05T01:01:15+00:00"
     }
    ]
   },
@@ -2520,7 +2520,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 3719,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:41:41+00:00"
+     "checked_at": "2026-11-05T01:01:36+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2530,7 +2530,7 @@
      "list_price_cents": 4068,
      "lowest_90d_cents": 4068,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 4068
     }
    ]
@@ -2550,7 +2550,7 @@
      "list_price_cents": 10490,
      "lowest_90d_cents": 6327,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:41:59+00:00"
+     "checked_at": "2026-11-05T01:02:11+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2560,7 +2560,7 @@
      "list_price_cents": 4000,
      "lowest_90d_cents": 4000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 4000
     }
    ]
@@ -2579,7 +2579,7 @@
      "list_price_cents": 4190,
      "lowest_90d_cents": 3700,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:42:18+00:00"
+     "checked_at": "2026-11-05T01:02:31+00:00"
     }
    ]
   },
@@ -2598,7 +2598,7 @@
      "list_price_cents": 10990,
      "lowest_90d_cents": 6257,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:43:07+00:00"
+     "checked_at": "2026-11-05T01:02:52+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2608,7 +2608,7 @@
      "list_price_cents": 4500,
      "lowest_90d_cents": 4500,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 4500
     }
    ]
@@ -2628,7 +2628,7 @@
      "list_price_cents": 4690,
      "lowest_90d_cents": 3344,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:43:25+00:00"
+     "checked_at": "2026-11-05T01:03:12+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2638,7 +2638,7 @@
      "list_price_cents": 2990,
      "lowest_90d_cents": 2990,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 3300
     }
    ]
@@ -2654,11 +2654,11 @@
     {
      "store": "amazon",
      "asin": "856240988X",
-     "price_cents": 1900,
+     "price_cents": 1398,
      "list_price_cents": 2990,
-     "lowest_90d_cents": 1710,
+     "lowest_90d_cents": 1398,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:43:44+00:00"
+     "checked_at": "2026-11-05T01:03:52+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2668,7 +2668,7 @@
      "list_price_cents": 1490,
      "lowest_90d_cents": 1490,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 1490
     }
    ]
@@ -2688,7 +2688,7 @@
      "list_price_cents": 5190,
      "lowest_90d_cents": 3033,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:44:24+00:00"
+     "checked_at": "2026-11-05T01:04:13+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2698,7 +2698,7 @@
      "list_price_cents": 2200,
      "lowest_90d_cents": 2200,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 2200
     }
    ]
@@ -2717,7 +2717,7 @@
      "list_price_cents": 4307,
      "lowest_90d_cents": 2965,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:44:42+00:00"
+     "checked_at": "2026-11-05T01:04:32+00:00"
     }
    ]
   },
@@ -2736,7 +2736,7 @@
      "list_price_cents": 2490,
      "lowest_90d_cents": 1022,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:45:01+00:00"
+     "checked_at": "2026-11-05T01:04:53+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2746,7 +2746,7 @@
      "list_price_cents": 1900,
      "lowest_90d_cents": 1900,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 1900
     }
    ]
@@ -2766,7 +2766,7 @@
      "list_price_cents": 7490,
      "lowest_90d_cents": 4407,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-04T16:45:19+00:00"
+     "checked_at": "2026-11-05T01:05:28+00:00"
     },
     {
      "store": "mercadolivre",
@@ -2776,7 +2776,7 @@
      "list_price_cents": 5060,
      "lowest_90d_cents": 5060,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:30:11+00:00",
      "median_90d_cents": 5060
     }
    ]
@@ -2795,7 +2795,7 @@
      "list_price_cents": 1990,
      "lowest_90d_cents": 1646,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:42:36+00:00"
+     "checked_at": "2026-11-05T01:05:49+00:00"
     }
    ]
   },
@@ -2813,7 +2813,7 @@
      "list_price_cents": 3490,
      "lowest_90d_cents": 1990,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:42:55+00:00"
+     "checked_at": "2026-11-05T01:06:09+00:00"
     }
    ]
   },
@@ -2831,7 +2831,7 @@
      "list_price_cents": 1990,
      "lowest_90d_cents": 1320,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:43:14+00:00"
+     "checked_at": "2026-11-05T01:06:30+00:00"
     }
    ]
   },
@@ -2849,7 +2849,7 @@
      "list_price_cents": 8990,
      "lowest_90d_cents": 5318,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:43:33+00:00"
+     "checked_at": "2026-11-05T01:07:12+00:00"
     }
    ]
   },
@@ -2867,7 +2867,7 @@
      "list_price_cents": 9490,
      "lowest_90d_cents": 9490,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:44:32+00:00"
+     "checked_at": "2026-11-05T01:07:33+00:00"
     }
    ]
   },
@@ -2881,11 +2881,11 @@
     {
      "store": "amazon",
      "asin": "6555520809",
-     "price_cents": 1805,
+     "price_cents": 1900,
      "list_price_cents": 2990,
      "lowest_90d_cents": 1805,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:44:50+00:00"
+     "checked_at": "2026-11-05T01:07:53+00:00"
     }
    ]
   },
@@ -2903,7 +2903,7 @@
      "list_price_cents": 42990,
      "lowest_90d_cents": 20029,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:45:09+00:00"
+     "checked_at": "2026-11-05T01:08:14+00:00"
     }
    ]
   },
@@ -2921,7 +2921,7 @@
      "list_price_cents": 4490,
      "lowest_90d_cents": 2721,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:45:28+00:00"
+     "checked_at": "2026-11-05T01:08:49+00:00"
     }
    ]
   },
@@ -2939,7 +2939,7 @@
      "list_price_cents": 7490,
      "lowest_90d_cents": 3769,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:46:10+00:00"
+     "checked_at": "2026-11-05T01:09:10+00:00"
     }
    ]
   },
@@ -2957,7 +2957,7 @@
      "list_price_cents": 5990,
      "lowest_90d_cents": 2995,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:46:29+00:00"
+     "checked_at": "2026-11-05T01:09:30+00:00"
     }
    ]
   },
@@ -2975,7 +2975,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 3363,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:46:48+00:00"
+     "checked_at": "2026-11-05T01:09:51+00:00"
     }
    ]
   },
@@ -2993,7 +2993,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 4329,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:47:06+00:00"
+     "checked_at": "2026-11-05T01:10:32+00:00"
     }
    ]
   },
@@ -3011,7 +3011,7 @@
      "list_price_cents": 3500,
      "lowest_90d_cents": 2365,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:47:48+00:00"
+     "checked_at": "2026-11-05T01:10:53+00:00"
     }
    ]
   },
@@ -3029,7 +3029,7 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 2984,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:48:07+00:00"
+     "checked_at": "2026-11-05T01:11:14+00:00"
     }
    ]
   },
@@ -3047,7 +3047,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 3630,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:48:51+00:00"
+     "checked_at": "2026-11-05T01:12:16+00:00"
     }
    ]
   },
@@ -3065,7 +3065,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 4418,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:49:29+00:00"
+     "checked_at": "2026-11-05T01:12:36+00:00"
     }
    ]
   },
@@ -3083,7 +3083,7 @@
      "list_price_cents": 8990,
      "lowest_90d_cents": 5880,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:49:47+00:00"
+     "checked_at": "2026-11-05T01:12:57+00:00"
     }
    ]
   },
@@ -3097,11 +3097,11 @@
     {
      "store": "amazon",
      "asin": "858235889X",
-     "price_cents": 8082,
-     "list_price_cents": 8980,
+     "price_cents": 8531,
+     "list_price_cents": 8531,
      "lowest_90d_cents": 8082,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:50:06+00:00"
+     "checked_at": "2026-11-05T01:13:18+00:00"
     }
    ]
   },
@@ -3119,7 +3119,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 4061,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:50:25+00:00"
+     "checked_at": "2026-11-05T01:14:00+00:00"
     }
    ]
   },
@@ -3137,7 +3137,7 @@
      "list_price_cents": 7490,
      "lowest_90d_cents": 3981,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:51:13+00:00"
+     "checked_at": "2026-11-05T01:14:20+00:00"
     }
    ]
   },
@@ -3155,7 +3155,7 @@
      "list_price_cents": 7990,
      "lowest_90d_cents": 4421,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:51:32+00:00"
+     "checked_at": "2026-11-05T01:14:41+00:00"
     }
    ]
   },
@@ -3173,7 +3173,7 @@
      "list_price_cents": 7990,
      "lowest_90d_cents": 4929,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:51:51+00:00"
+     "checked_at": "2026-11-05T01:15:01+00:00"
     }
    ]
   },
@@ -3191,7 +3191,7 @@
      "list_price_cents": 8890,
      "lowest_90d_cents": 5098,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:52:09+00:00"
+     "checked_at": "2026-11-05T01:15:37+00:00"
     }
    ]
   },
@@ -3209,7 +3209,7 @@
      "list_price_cents": 6990,
      "lowest_90d_cents": 4592,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:52:50+00:00"
+     "checked_at": "2026-11-05T01:15:57+00:00"
     }
    ]
   },
@@ -3227,7 +3227,7 @@
      "list_price_cents": 10900,
      "lowest_90d_cents": 4275,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:53:09+00:00"
+     "checked_at": "2026-11-05T01:16:18+00:00"
     }
    ]
   },
@@ -3245,7 +3245,7 @@
      "list_price_cents": 20990,
      "lowest_90d_cents": 12560,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:53:27+00:00"
+     "checked_at": "2026-11-05T01:16:38+00:00"
     }
    ]
   },
@@ -3259,11 +3259,11 @@
     {
      "store": "amazon",
      "asin": "8508171277",
-     "price_cents": 6460,
+     "price_cents": 7466,
      "list_price_cents": 11100,
      "lowest_90d_cents": 6460,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:53:45+00:00"
+     "checked_at": "2026-11-05T01:17:20+00:00"
     }
    ]
   },
@@ -3281,7 +3281,7 @@
      "list_price_cents": 8490,
      "lowest_90d_cents": 3978,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:54:25+00:00"
+     "checked_at": "2026-11-05T01:17:41+00:00"
     }
    ]
   },
@@ -3299,7 +3299,7 @@
      "list_price_cents": 9490,
      "lowest_90d_cents": 5809,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:54:43+00:00"
+     "checked_at": "2026-11-05T01:18:00+00:00"
     }
    ]
   },
@@ -3317,7 +3317,7 @@
      "list_price_cents": 7990,
      "lowest_90d_cents": 3989,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:55:02+00:00"
+     "checked_at": "2026-11-05T01:18:21+00:00"
     }
    ]
   },
@@ -3335,7 +3335,7 @@
      "list_price_cents": 5990,
      "lowest_90d_cents": 2933,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:55:21+00:00"
+     "checked_at": "2026-11-05T01:18:56+00:00"
     }
    ]
   },
@@ -3353,7 +3353,7 @@
      "list_price_cents": 9990,
      "lowest_90d_cents": 5560,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:56:02+00:00"
+     "checked_at": "2026-11-05T01:19:17+00:00"
     }
    ]
   },
@@ -3371,7 +3371,7 @@
      "list_price_cents": 10990,
      "lowest_90d_cents": 6599,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:56:21+00:00"
+     "checked_at": "2026-11-05T01:19:38+00:00"
     }
    ]
   },
@@ -3389,7 +3389,7 @@
      "list_price_cents": 5190,
      "lowest_90d_cents": 2970,
      "history_since": "2026-11-04",
-     "checked_at": "2026-11-04T18:56:39+00:00"
+     "checked_at": "2026-11-05T01:19:58+00:00"
     }
    ]
   },
