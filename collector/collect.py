@@ -16,8 +16,9 @@ Mercado Livre: o link do painel aponta para PRODUTO de catálogo (/p/MLB...). Po
      status=active com buy_box_winner null: sem vencedor não quer dizer sem anúncio.
      GTIN diferente do ISBN do catálogo: o preço do ML daquele livro é descartado.
   1b. Sem buy_box_winner: GET /products/{id}/items (anúncios que competem no produto).
-     Elegível: condition=new, BRL, status ausente/active, item_id válido. O de menor
-     price vale, com price/original_price do próprio resultado (sale_price dá 403 com
+     Elegível: condition=new, BRL, status ausente/active, item_id válido. Elegível abaixo
+     de metade da mediana dos elegíveis é descartado (isca/kit/e-book). O de menor
+     price que sobra vale, com price/original_price do próprio resultado (sale_price dá 403 com
      token de app, run 39178554200). Nenhum elegível (ou 404) = "inativo".
   2. Só no buy_box: GET /items/{item_id}/sale_price?context=channel_marketplace ->
      amount/regular_amount (doc "Preços de produtos", 14/10/2026). 403: cai para
@@ -44,7 +45,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from http.client import HTTPException
 from pathlib import Path
-from statistics import median_low
+from statistics import median, median_low
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -92,6 +93,9 @@ MAX_BYTES = 5_000_000
 ML_DEADLINE_S = 40  # orçamento do ML inteiro (token incluso): job abaixo de 1 min
 ITEMS_PAGE_SIZE = 50
 ITEMS_MAX_TOTAL = 1000  # falha fechada se um produto exceder o teto de coleta
+# /items: anúncio abaixo desta fração da mediana dos elegíveis do mesmo produto é isca,
+# kit, e-book ou anúncio errado (R$ 2 e R$ 8 entre ~200 anúncios, 2026-11-05): descarta.
+ITEMS_MIN_FRACTION_OF_MEDIAN = Decimal("0.5")
 _urlopen = urlopen  # ponto de mock dos testes
 
 
@@ -444,13 +448,15 @@ def winner(prod):
 
 
 def best_listing(body):
-    """De /products/{id}/items -> (anúncio elegível de menor price ou None, nº de elegíveis).
-    Elegível: condition == "new" (ausente = descarta: livro usado não entra), BRL, status
-    ausente ou "active", item_id no MLB_RE, price válido."""
+    """De /products/{id}/items -> (anúncio elegível de menor price ou None, nº de elegíveis,
+    nº de suspeitos). Elegível: condition == "new" (ausente = descarta: livro usado não
+    entra), BRL, status ausente ou "active", item_id no MLB_RE, price válido.
+    Suspeito: elegível com price abaixo de ITEMS_MIN_FRACTION_OF_MEDIAN x a mediana dos
+    elegíveis; não vale como menor preço (o menor entre ~200 anúncios é quase sempre isca)."""
     res = body.get("results") if isinstance(body, dict) else None
     if not isinstance(res, list):
         raise MLError("/items malformado")
-    best, n = None, 0
+    ok = []
     for it in res:
         if not isinstance(it, dict) or it.get("condition") != "new" \
                 or it.get("currency_id") != "BRL" \
@@ -461,10 +467,12 @@ def best_listing(body):
             c = to_cents(it.get("price"))
         except Invalid:
             continue
-        n += 1
-        if best is None or c < best[0]:
-            best = (c, it)
-    return (best and best[1]), n
+        ok.append((c, it))
+    if not ok:
+        return None, 0, 0
+    floor = median(Decimal(c) for c, _ in ok) * ITEMS_MIN_FRACTION_OF_MEDIAN  # sem float
+    sane = [x for x in ok if x[0] >= floor]  # nunca vazio: a mediana >= o menor
+    return min(sane, key=lambda x: x[0])[1], len(ok), len(ok) - len(sane)
 
 
 def listing_row(book_id, it, now):
@@ -599,11 +607,13 @@ def collect_ml(books, token, now, deadline, start=0, clock=time.monotonic, sleep
         k = start % len(ml)
         ml = ml[k:] + ml[:k]
     rows, images = [], {}
-    n = {"ok": 0, "inativo": 0, "gtin_divergente": 0, "erro": 0, "adiado": 0, "auth": 0}
+    n = {"ok": 0, "inativo": 0, "gtin_divergente": 0, "erro": 0, "adiado": 0, "auth": 0,
+         "anuncios_suspeitos": 0}
     kw = {"deadline": deadline, "clock": clock, "sleep": sleep}
     for i, b in enumerate(ml):
         # diagnóstico (log público): só id do livro, status HTTP, contagens e caminho
-        d = {"http": "-", "buy_box": "não", "items": "-", "novos_brl": "-", "caminho": "erro"}
+        d = {"http": "-", "buy_box": "não", "items": "-", "novos_brl": "-", "caminho": "erro",
+             "suspeitos": "-"}
         try:
             try:
                 prod = ml_request(f"/products/{b['ml_product_id']}", token, **kw)
@@ -634,7 +644,8 @@ def collect_ml(books, token, now, deadline, start=0, clock=time.monotonic, sleep
                     r = listing_row(b["id"], w, now)  # sem price: Invalid, conta como erro
             else:
                 body, d["items"] = product_items(b["ml_product_id"], token, **kw)
-                it, d["novos_brl"] = best_listing(body)
+                it, d["novos_brl"], d["suspeitos"] = best_listing(body)
+                n["anuncios_suspeitos"] += d["suspeitos"]
                 if it is None:
                     n["inativo"] += 1
                     d["caminho"] = "inativo"
@@ -654,7 +665,8 @@ def collect_ml(books, token, now, deadline, start=0, clock=time.monotonic, sleep
                 n["auth"] += 1
         finally:
             print(f"ML diag: {b['id']} /products={d['http']} buy_box={d['buy_box']} "
-                  f"/items={d['items']} novos_brl={d['novos_brl']} caminho={d['caminho']}")
+                  f"/items={d['items']} novos_brl={d['novos_brl']} caminho={d['caminho']} "
+                  f"suspeitos={d['suspeitos']}")
     return rows, n, images
 
 
@@ -957,8 +969,8 @@ def probe(ids):
             print(f"  sem buy_box_winner; /items -> {st} itens="
                   f"{len(res) if isinstance(res, list) else '-'}")
             try:
-                it, ne = best_listing(body) if st != 404 else (None, 0)
-                print(f"  novos_brl={ne}")
+                it, ne, ns = best_listing(body) if st != 404 else (None, 0, 0)
+                print(f"  novos_brl={ne} suspeitos={ns}")
                 if it is None:
                     print("  resultado: inativo (nenhum anúncio novo em BRL)")
                     continue

@@ -202,7 +202,7 @@ def price_of(prod, pid, token, **kw):
     it = w if w and w.get("condition") == "new" and w.get("currency_id") == "BRL" else None
     if it is None:
         body, _ = c.product_items(pid, token, **kw)
-        it, _ = c.best_listing(body)
+        it, *_ = c.best_listing(body)
         if it is None:
             return None
     r = c.listing_row(pid, it, datetime.now(timezone.utc))
@@ -1061,7 +1061,7 @@ def _probe_isbn(token, catalog=None):
         if not isinstance(item, str):
             _, body = c._probe_get(f"/products/{b['ml_product_id']}/items", token)
             try:
-                it, _ = c.best_listing(body)
+                it, *_ = c.best_listing(body)
             except c.MLError:
                 it = None
             item = it and it.get("item_id")

@@ -593,6 +593,54 @@ def test_items_pagina_todas_as_listagens_para_escolher_menor(env):
         "/products/MLB11/items", "/products/MLB11/items"]
 
 
+def test_best_listing_descarta_isca_abaixo_da_metade_da_mediana():
+    D = Decimal  # o JSON real vem com parse_float=Decimal; float é recusado
+    # caso a-psicologia-financeira: um anúncio de R$ 2 entre vários de ~R$ 20 a R$ 45
+    res = [item("MLB8001", 2), item("MLB8002", D("19.9")), item("MLB8003", D("24.9")),
+           item("MLB8004", D("29.9")), item("MLB8005", 45), item("MLB8006", 8, cond="used")]
+    it, n, sus = c.best_listing({"results": res})
+    assert (it["item_id"], n, sus) == ("MLB8002", 5, 1)
+
+
+def test_best_listing_promocao_legitima_fica():
+    # 60% da mediana não é isca: continua valendo como menor preço
+    it, n, sus = c.best_listing({"results": [item("MLB8001", 18), item("MLB8002", 30),
+                                             item("MLB8003", 31)]})
+    assert (it["item_id"], n, sus) == ("MLB8001", 3, 0)
+
+
+def test_best_listing_um_so_anuncio_e_vazio():
+    assert c.best_listing({"results": [item("MLB8001", 8)]})[1:] == (1, 0)
+    assert c.best_listing({"results": [item("MLB8001", 8, cond="used")]}) == (None, 0, 0)
+
+
+def test_best_listing_mediana_par_sem_float():
+    # mediana de 1249, 1250, 3750 e 4000 centavos = 2500 (par); o piso é 1250 exato
+    res = [item("MLB8001", D2) for D2 in (Decimal("12.49"), Decimal("12.50"),
+                                          Decimal("37.50"), 40)]
+    it, n, sus = c.best_listing({"results": res})
+    assert (it["price"], n, sus) == (Decimal("12.50"), 4, 1)
+
+
+def test_items_isca_nao_entra_no_historico_e_conta(env, capsys):
+    p = prod()
+    p["buy_box_winner"] = None
+    env["fake"].products["MLB11"] = p
+    env["fake"].items["MLB11"] = {"results": [
+        item("MLB7001", 8), item("MLB7002", 2), item("MLB7003", 29.9),
+        item("MLB7004", 31), item("MLB7005", 35)]}
+    assert env["run"]() == 0
+    hist = rows(env["hist"])
+    assert any(r.startswith("livro-duplo,mercadolivre,2990,2990,") for r in hist)
+    assert not any(r.startswith(("livro-duplo,mercadolivre,800,",
+                                 "livro-duplo,mercadolivre,200,")) for r in hist)
+    out = capsys.readouterr().out
+    assert ("ML diag: livro-duplo /products=200 buy_box=não /items=5 novos_brl=5 "
+            "caminho=items suspeitos=2") in out
+    assert "2 anuncios_suspeitos" in out
+    assert "MLB700" not in out
+
+
 def test_items_total_acima_do_limite_falha_fechado(env):
     p = prod()
     p["buy_box_winner"] = None
