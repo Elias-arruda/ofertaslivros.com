@@ -224,6 +224,32 @@ def test_limite_diario_e_ordem(env, monkeypatch):
     assert new_ids(env) == [f"MLB{n}" for n in range(1, 8)]
 
 
+def test_rodadas_do_mesmo_dia_somam_no_teto(env, monkeypatch):
+    """Curador de hora em hora: a 2ª rodada parte do PR do dia, não repete candidato e
+    não passa de DAY_MAX nem de GENRE_MAX somando as rodadas."""
+    monkeypatch.setattr(cur, "DAY_MAX", 5)
+    monkeypatch.setattr(cur, "GENRE_MAX", 3)
+    env["add"](prod(1), prod(2), prod(3, genre=NEG))
+    env["suggest"]()
+    assert new_ids(env) == ["MLB1", "MLB2", "MLB3"]
+    env["add"](prod(4), prod(5), prod(6, genre=NEG), prod(7, genre=LIT), prod(8, genre=LIT))
+    env["suggest"]()
+    # mangá: 2 + 1 (teto 3); dia: 3 + 2 (teto 5); MLB1-3 não voltam
+    assert new_ids(env) == ["MLB1", "MLB2", "MLB3", "MLB4", "MLB6"]
+    n = len(env["fake"].urls)
+    env["add"](prod(9, genre=BIO))
+    env["suggest"]()
+    assert len(new_ids(env)) == 5 and len(env["fake"].urls) == n  # teto: nem chama a API
+
+
+def test_retirada_soma_as_rodadas_do_dia():
+    books = [{"id": f"b{i}", "genre_source": "x"} for i in range(30)]
+    old = {"publicado": "2026-01-01", "ultimo_anuncio": "2026-01-01", "ultima_oferta": None}
+    st = {"curadoria": {b["id"]: old for b in books[:5]}, "curadoria_ok": TODAY.isoformat()}
+    assert len(cur.retire(books, st, TODAY)) == 5
+    assert cur.retire(books, st, TODAY, done_today=cur.RETIRE_MAX - 4) == []
+
+
 def _cands(n, genres=25):
     return [{"genre": f"g{i % genres}", "ml_product_id": f"MLB{i}", "pos": i, "off": 0}
             for i in range(1, n + 1)]

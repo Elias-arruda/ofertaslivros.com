@@ -6,7 +6,9 @@ const REPO = "https://api.github.com/repos/Elias-arruda/ofertaslivros.com/action
 const ROLLUP = "15 3 * * *"; // 00:15 em Brasília: grava no D1 o analytics do dia anterior
 const POR_CRON = {
   "*/30 * * * *": { workflow: "pipeline.yml", body: { ref: "main" } },
-  "0 12 * * *": { workflow: "curator.yml", body: { ref: "main", inputs: { mode: "suggest" } } },
+  // De hora em hora (Black Friday, 2026-11-05): cada rodada acrescenta ao PR de candidatos do dia.
+  // Minuto 5 para não cair junto com o pipeline do */30.
+  "5 * * * *": { workflow: "curator.yml", body: { ref: "main", inputs: { mode: "suggest" } } },
 };
 
 export default {
