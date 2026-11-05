@@ -184,7 +184,15 @@ Esta seção depende da exceção nas regras 1 e 2 do CLAUDE.md (risco aceito pe
 6. **Parada:** em captcha, verificação, 2FA ou logout, o agent para na hora, não resolve, não faz login e avisa o Elias.
 7. **ML:** antes de usar o navegador, conferir se o portal tem API ou exportação oficial de relatório. Se tiver, ela vem primeiro.
 
+**O que a primeira rodada mostrou (2026-11-05):**
+- **Amazon:** a exportação fica em "Fazer download de relatórios". O relatório **"Produto relacionado"** (Linked-Product), em CSV, traz uma linha por ASIN e por data, com as colunas `Items Ordered`, `Items Shipped`, `Items Returned`, as receitas e os ganhos. Ele agrega pelo período escolhido, então a rodada diária exporta **"Ontem"**, o que dá uma data por linha. O arquivo vem zipado e fica em `~/ofertaslivros-vendas/amazon/<dia>/`. O importador é o `analytics/vendas.py`: `python3 analytics/vendas.py amazon <csv>`, com o token `CF_D1_TOKEN` (D1 Edit) no `.env`. Cada linha vira até três registros em `sales`, um por status (`pedido`, `enviado`, `devolvido`).
+- **Mercado Livre:** o portal de afiliados (Métricas) **não tem botão de exportar**. Como a exceção só permite a exportação oficial, nada do ML entra no D1 por enquanto. O painel manda acompanhar no próprio portal do ML.
+
 A rodada só acontece com uma sessão aberta na máquina do Elias, que pode ser agendada localmente. Se a rodada falhar, o "vendas até" do painel fica parado e mostra isso.
+
+## Pedidos de livro no painel
+
+O formulário "Pedir um livro" (`worker/pedido.js`) continua mandando o e-mail para o destino do segredo `PEDIDOS_PARA` (`pedidos@ofertaslivros.com`). Além disso, grava o pedido na tabela `pedidos` do D1, só com `criado_em`, `titulo` e `autor`. Se o D1 falhar, o e-mail sai do mesmo jeito. O cron diário apaga pedidos com mais de 30 dias. O `/painel` lista os pedidos e destaca os das últimas 24 h. O texto da página de privacidade não muda, por decisão do Elias em 2026-11-05.
 
 ## Fases
 

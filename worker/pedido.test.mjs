@@ -36,3 +36,20 @@ assert.equal((await pedido(req("titulo=X"), { LIMITE: env.LIMITE }, enviar)).sta
 assert.equal((await pedido(req("titulo=X"), env, async () => { throw new Error("x"); })).status, 502);
 assert.equal(enviados.length, 0);
 console.log("ok");
+
+// Painel: o pedido fica no D1 (só título e autor); D1 fora do ar não impede o e-mail.
+{
+  const { DatabaseSync } = await import("node:sqlite");
+  const db = new DatabaseSync(":memory:");
+  const stmt = (sql, args = []) => ({ bind: (...a) => stmt(sql, a), run: async () => db.prepare(sql).run(...args) });
+  const d1 = { prepare: sql => stmt(sql), batch: async ss => { for (const s of ss) await s.run(); } };
+  enviados = [];
+  assert.equal((await pedido(req("titulo=Torto+Arado&autor=Itamar"), { ...env, ANALYTICS: d1 }, enviar)).status, 303);
+  assert.deepEqual({ ...db.prepare("SELECT titulo, autor FROM pedidos").get() }, { titulo: "Torto Arado", autor: "Itamar" });
+  assert.equal(enviados.length, 1);
+  const quebrado = { prepare: () => ({ bind: () => ({}) }), batch: async () => { throw new Error("D1 fora"); } };
+  assert.equal((await pedido(req("titulo=X"), { ...env, ANALYTICS: quebrado }, enviar)).status, 303);
+  assert.equal(enviados.length, 2);
+  assert.equal((await pedido(req("titulo=Y&site=bot"), { ...env, ANALYTICS: d1 }, enviar)).status, 303); // honeypot não grava
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM pedidos").get().n, 1);
+}
