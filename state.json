@@ -288,7 +288,11 @@
   "desenhos-ocultos|mercadolivre": "2026-11-05",
   "assistente-do-vilao|mercadolivre": "2026-11-05",
   "binding-13|mercadolivre": "2026-11-05",
-  "o-poder-do-habito|mercadolivre": "2026-11-05"
+  "o-poder-do-habito|mercadolivre": "2026-11-05",
+  "a-sutil-arte-de-ligar-o-f-da-se|mercadolivre": "2026-11-05",
+  "garra|mercadolivre": "2026-11-05",
+  "o-milagre-da-manha|mercadolivre": "2026-11-05",
+  "mais-esperto-que-o-diabo|mercadolivre": "2026-11-05"
  },
  "image_url": {
   "irmao-do-jorel": "https://http2.mlstatic.com/D_NQ_NP_948056-MLA113307591683_062026-F.jpg",
@@ -420,7 +424,10 @@
   "assistente-do-vilao": "https://http2.mlstatic.com/D_NQ_NP_979317-MLA112165848128_062026-F.jpg",
   "binding-13": "https://http2.mlstatic.com/D_NQ_NP_933698-MLA112250639242_062026-F.jpg",
   "o-poder-do-habito": "https://http2.mlstatic.com/D_NQ_NP_938657-MLA113420423213_062026-F.jpg",
-  "a-sutil-arte-de-ligar-o-f-da-se": "https://http2.mlstatic.com/D_NQ_NP_754073-MLA109214613012_042026-F.jpg"
+  "a-sutil-arte-de-ligar-o-f-da-se": "https://http2.mlstatic.com/D_NQ_NP_754073-MLA109214613012_042026-F.jpg",
+  "garra": "https://http2.mlstatic.com/D_NQ_NP_707080-MLA109215174248_042026-F.jpg",
+  "o-milagre-da-manha": "https://http2.mlstatic.com/D_NQ_NP_804249-MLU50456237944_062022-F.jpg",
+  "mais-esperto-que-o-diabo": "https://http2.mlstatic.com/D_NQ_NP_947096-MLA82741575778_032025-F.jpg"
  },
  "curadoria": {
   "senhor-dos-aneis-box-trilogia": {
@@ -535,7 +542,7 @@
   },
   "a-sutil-arte-de-ligar-o-f-da-se": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-04",
+   "ultimo_anuncio": "2026-11-05",
    "ultima_oferta": "2026-11-05"
   },
   "rapido-e-devagar": {
@@ -545,7 +552,7 @@
   },
   "garra": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-04",
+   "ultimo_anuncio": "2026-11-05",
    "ultima_oferta": "2026-11-05"
   },
   "inteligencia-emocional": {
@@ -555,12 +562,12 @@
   },
   "o-milagre-da-manha": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-04",
+   "ultimo_anuncio": "2026-11-05",
    "ultima_oferta": "2026-11-05"
   },
   "mais-esperto-que-o-diabo": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-04",
+   "ultimo_anuncio": "2026-11-05",
    "ultima_oferta": "2026-11-05"
   },
   "comece-pelo-porque": {
@@ -606,7 +613,7 @@
   "como-salvar-a-democracia": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-05",
-   "ultima_oferta": "2026-10-29"
+   "ultima_oferta": "2026-11-05"
   },
   "a-elite-do-atraso": {
    "publicado": "2026-10-20",
@@ -636,12 +643,12 @@
   "o-povo-contra-a-democracia": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-05",
-   "ultima_oferta": "2026-10-28"
+   "ultima_oferta": "2026-11-05"
   },
   "sapiens": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-05",
-   "ultima_oferta": "2026-10-28"
+   "ultima_oferta": "2026-11-05"
   },
   "1808": {
    "publicado": "2026-10-20",
@@ -651,12 +658,12 @@
   "escravidao-volume-1": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-05",
-   "ultima_oferta": "2026-10-29"
+   "ultima_oferta": "2026-11-05"
   },
   "o-diario-de-anne-frank": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-05",
-   "ultima_oferta": "2026-10-29"
+   "ultima_oferta": "2026-11-05"
   },
   "eu-sou-malala": {
    "publicado": "2026-10-20",
@@ -671,7 +678,7 @@
   "uma-breve-historia-do-tempo": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-05",
-   "ultima_oferta": "2026-10-28"
+   "ultima_oferta": "2026-11-05"
   },
   "armas-germes-e-aco": {
    "publicado": "2026-10-20",
@@ -696,17 +703,17 @@
   "os-sete-maridos-de-evelyn-hugo": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-05",
-   "ultima_oferta": "2026-10-28"
+   "ultima_oferta": "2026-11-05"
   },
   "vermelho-branco-e-sangue-azul": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-05",
-   "ultima_oferta": "2026-10-28"
+   "ultima_oferta": "2026-11-05"
   },
   "teto-para-dois": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-05",
-   "ultima_oferta": "2026-10-29"
+   "ultima_oferta": "2026-11-05"
   },
   "orgulho-e-preconceito": {
    "publicado": "2026-10-20",
@@ -731,7 +738,7 @@
   "o-hobbit": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-05",
-   "ultima_oferta": "2026-10-29"
+   "ultima_oferta": "2026-11-05"
   },
   "harry-potter-e-a-pedra-filosofal": {
    "publicado": "2026-10-20",
@@ -761,7 +768,7 @@
   "a-guerra-dos-tronos": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-05",
-   "ultima_oferta": "2026-11-04"
+   "ultima_oferta": "2026-11-05"
   },
   "percy-jackson-o-ladrao-de-raios": {
    "publicado": "2026-10-20",
@@ -776,7 +783,7 @@
   "fundacao": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-05",
-   "ultima_oferta": "2026-11-04"
+   "ultima_oferta": "2026-11-05"
   },
   "a-paciente-silenciosa": {
    "publicado": "2026-10-20",
@@ -791,17 +798,17 @@
   "o-segredo-da-empregada": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-05",
-   "ultima_oferta": "2026-11-04"
+   "ultima_oferta": "2026-11-05"
   },
   "garota-exemplar": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-05",
-   "ultima_oferta": "2026-11-04"
+   "ultima_oferta": "2026-11-05"
   },
   "e-nao-sobrou-nenhum": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-05",
-   "ultima_oferta": "2026-11-04"
+   "ultima_oferta": "2026-11-05"
   },
   "assassinato-no-expresso-do-oriente": {
    "publicado": "2026-10-20",
@@ -826,7 +833,7 @@
   "jantar-secreto": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-05",
-   "ultima_oferta": "2026-11-04"
+   "ultima_oferta": "2026-11-05"
   },
   "1984": {
    "publicado": "2026-10-20",
@@ -836,7 +843,7 @@
   "a-revolucao-dos-bichos": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-05",
-   "ultima_oferta": "2026-11-04"
+   "ultima_oferta": "2026-11-05"
   },
   "o-pequeno-principe": {
    "publicado": "2026-10-20",
