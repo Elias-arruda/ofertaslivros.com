@@ -73,10 +73,10 @@ CREATE TABLE sales (
   qty INTEGER NOT NULL,
   revenue_cents INTEGER,
   commission_cents INTEGER,
-  status TEXT,                    -- pendente | confirmado | devolvido
+  status TEXT NOT NULL,           -- pendente | confirmado | devolvido
   source_file TEXT NOT NULL,
   imported_at TEXT NOT NULL,
-  UNIQUE (store, order_date, item_id, tracking)
+  UNIQUE (store, order_date, item_id, tracking, status)
 );
 ```
 
@@ -182,7 +182,7 @@ Esta seção depende da exceção nas regras 1 e 2 do CLAUDE.md (risco aceito pe
 1. **Onde:** só no Chrome do Elias (Claude in Chrome), já logado. As páginas são a de relatórios dos Associados da Amazon e a de relatórios do portal de afiliados do ML. O navegador embutido do Orca não serve: lá, qualquer agent alcança a aba e consegue ler o cookie da sessão.
 2. **Ritmo:** uma página por vez, cerca de 20 s entre ações, no máximo 1 rodada por dia em cada painel.
 3. **Como:** o agent usa o botão de exportar do próprio painel (CSV de pedidos e ganhos) e não lê a tabela da tela linha por linha. O CSV vai para a pasta local `~/ofertaslivros-vendas/<loja>/`, fora do repo.
-4. **Importação:** um script local lê o CSV e grava na tabela `sales` do D1 com `wrangler d1 execute`. Numa transação, ele apaga as linhas da loja no período que o CSV cobre e insere tudo de novo. Assim, reimportar não duplica e o status atualiza (pendente → confirmado). A chave `UNIQUE`, sem colunas que aceitam `NULL`, barra o que escapar.
+4. **Importação:** um script local lê o CSV e grava na tabela `sales` do D1 com `wrangler d1 execute`. Ele soma `qty`, `revenue_cents` e `commission_cents` por `(store, order_date, item_id, tracking, status)`, porque o mesmo livro pode ter dois pedidos no mesmo dia. Depois, numa transação, apaga as linhas da loja no período que o CSV cobre e insere tudo de novo. Assim, reimportar não duplica e o status atualiza (pendente → confirmado). A chave `UNIQUE`, sem colunas que aceitam `NULL`, barra o que escapar.
 5. **Proibido:**
    - guardar cookie, token ou sessão;
    - chamar API interna dos painéis;
