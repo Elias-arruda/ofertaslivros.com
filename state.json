@@ -212,7 +212,37 @@
   "a-inquilina|amazon": "2026-11-04",
   "alchemised|amazon": "2026-11-04",
   "chama-de-ferro|amazon": "2026-11-04",
-  "quebrando-o-habito-de-ser-voce-mesmo|amazon": "2026-11-04"
+  "quebrando-o-habito-de-ser-voce-mesmo|amazon": "2026-11-04",
+  "a-cirurgia|amazon": "2026-11-04",
+  "o-poder-do-subconsciente|amazon": "2026-11-04",
+  "ideias-para-adiar-o-fim-do-mundo|amazon": "2026-11-04",
+  "a-contadora|amazon": "2026-11-04",
+  "uma-segunda-chance|amazon": "2026-11-04",
+  "o-segredo-final|amazon": "2026-11-04",
+  "os-miseraveis|amazon": "2026-11-04",
+  "coracao-de-gelo-e-rosas|amazon": "2026-11-04",
+  "o-sol-e-para-todos|amazon": "2026-11-04",
+  "nao-e-como-nos-filmes|amazon": "2026-11-04",
+  "nocticadia-edicao-especial|amazon": "2026-11-04",
+  "o-despertar-da-lua-caida-edicao-especial|amazon": "2026-11-04",
+  "desenhos-ocultos|amazon": "2026-11-04",
+  "assistente-do-vilao|amazon": "2026-11-04",
+  "binding-13|amazon": "2026-11-04",
+  "os-esquecidos-de-domingo|amazon": "2026-11-04",
+  "a-cancao-dos-dragoes-perdidos|amazon": "2026-11-04",
+  "agua-fresca-para-as-flores|amazon": "2026-11-04",
+  "o-risco|amazon": "2026-11-04",
+  "a-guerra-da-papoula|amazon": "2026-11-04",
+  "keeping-13|amazon": "2026-11-04",
+  "meridiana|amazon": "2026-11-04",
+  "os-imortais|amazon": "2026-11-04",
+  "jogo-a-longo-prazo|amazon": "2026-11-04",
+  "noites-brancas|amazon": "2026-11-04",
+  "cancao-para-ninar-menino-grande|amazon": "2026-11-04",
+  "eu-duvido-voce-terminar-este-livro|amazon": "2026-11-04",
+  "bons-tempos|amazon": "2026-11-04",
+  "a-morte-e-um-dia-que-vale-a-pena-viver|amazon": "2026-11-04",
+  "a-estranha-na-cama|amazon": "2026-11-04"
  },
  "image_url": {
   "irmao-do-jorel": "https://http2.mlstatic.com/D_NQ_NP_948056-MLA113307591683_062026-F.jpg",
@@ -986,6 +1016,156 @@
    "ultima_oferta": "2026-11-04"
   },
   "quebrando-o-habito-de-ser-voce-mesmo": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "a-cirurgia": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "o-poder-do-subconsciente": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "ideias-para-adiar-o-fim-do-mundo": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "a-contadora": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "uma-segunda-chance": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "o-segredo-final": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "os-miseraveis": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "coracao-de-gelo-e-rosas": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "o-sol-e-para-todos": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "nao-e-como-nos-filmes": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "nocticadia-edicao-especial": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "o-despertar-da-lua-caida-edicao-especial": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "desenhos-ocultos": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "assistente-do-vilao": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "binding-13": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "os-esquecidos-de-domingo": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "a-cancao-dos-dragoes-perdidos": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "agua-fresca-para-as-flores": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "o-risco": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "a-guerra-da-papoula": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "keeping-13": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "meridiana": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "os-imortais": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "jogo-a-longo-prazo": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "noites-brancas": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "cancao-para-ninar-menino-grande": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "eu-duvido-voce-terminar-este-livro": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "bons-tempos": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "a-morte-e-um-dia-que-vale-a-pena-viver": {
+   "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-04",
+   "ultima_oferta": "2026-11-04"
+  },
+  "a-estranha-na-cama": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-04",
    "ultima_oferta": "2026-11-04"

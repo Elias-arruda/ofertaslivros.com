@@ -146,7 +146,7 @@
      "list_price_cents": 1299,
      "lowest_90d_cents": 200,
      "history_since": "2026-10-19",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 200
     }
    ]
@@ -176,7 +176,7 @@
      "list_price_cents": 3500,
      "lowest_90d_cents": 3310,
      "history_since": "2026-10-19",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 3500
     }
    ]
@@ -196,7 +196,7 @@
      "list_price_cents": 6262,
      "lowest_90d_cents": 4584,
      "history_since": "2026-10-19",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 6098
     }
    ]
@@ -226,7 +226,7 @@
      "list_price_cents": 5723,
      "lowest_90d_cents": 5193,
      "history_since": "2026-10-19",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 5890
     }
    ]
@@ -256,7 +256,7 @@
      "list_price_cents": 5600,
      "lowest_90d_cents": 5600,
      "history_since": "2026-10-19",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 5600
     }
    ]
@@ -276,7 +276,7 @@
      "list_price_cents": 8600,
      "lowest_90d_cents": 8600,
      "history_since": "2026-10-19",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 8600
     }
    ]
@@ -296,7 +296,7 @@
      "list_price_cents": 2947,
      "lowest_90d_cents": 2947,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 2947
     }
    ]
@@ -316,7 +316,7 @@
      "list_price_cents": 5699,
      "lowest_90d_cents": 1999,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 2500
     }
    ]
@@ -336,7 +336,7 @@
      "list_price_cents": 5990,
      "lowest_90d_cents": 5722,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 5990
     }
    ]
@@ -366,7 +366,7 @@
      "list_price_cents": 5290,
      "lowest_90d_cents": 5290,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 5290
     }
    ]
@@ -386,7 +386,7 @@
      "list_price_cents": 6400,
      "lowest_90d_cents": 6400,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 6400
     }
    ]
@@ -406,7 +406,7 @@
      "list_price_cents": 6000,
      "lowest_90d_cents": 6000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 6000
     }
    ]
@@ -454,7 +454,7 @@
      "list_price_cents": 6299,
      "lowest_90d_cents": 3300,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 3300
     }
    ]
@@ -484,7 +484,7 @@
      "list_price_cents": 3500,
      "lowest_90d_cents": 3291,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 3500
     }
    ]
@@ -514,7 +514,7 @@
      "list_price_cents": 2500,
      "lowest_90d_cents": 2500,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 2500
     }
    ]
@@ -544,7 +544,7 @@
      "list_price_cents": 2500,
      "lowest_90d_cents": 2500,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 2500
     }
    ]
@@ -574,7 +574,7 @@
      "list_price_cents": 3290,
      "lowest_90d_cents": 3290,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 3290
     }
    ]
@@ -622,7 +622,7 @@
      "list_price_cents": 5000,
      "lowest_90d_cents": 5000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 5000
     }
    ]
@@ -670,7 +670,7 @@
      "list_price_cents": 4560,
      "lowest_90d_cents": 4560,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 4560
     }
    ]
@@ -736,7 +736,7 @@
      "list_price_cents": 3500,
      "lowest_90d_cents": 3200,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 3200
     }
    ]
@@ -766,7 +766,7 @@
      "list_price_cents": 7196,
      "lowest_90d_cents": 5800,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 5800
     }
    ]
@@ -796,7 +796,7 @@
      "list_price_cents": 1999,
      "lowest_90d_cents": 1999,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 1999
     }
    ]
@@ -826,7 +826,7 @@
      "list_price_cents": 1899,
      "lowest_90d_cents": 1899,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 1899
     }
    ]
@@ -856,7 +856,7 @@
      "list_price_cents": 5690,
      "lowest_90d_cents": 4791,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 5643
     }
    ]
@@ -886,7 +886,7 @@
      "list_price_cents": 8490,
      "lowest_90d_cents": 2100,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 2100
     }
    ]
@@ -916,7 +916,7 @@
      "list_price_cents": 2000,
      "lowest_90d_cents": 2000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 2000
     }
    ]
@@ -964,7 +964,7 @@
      "list_price_cents": 5882,
      "lowest_90d_cents": 5882,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 5882
     }
    ]
@@ -994,7 +994,7 @@
      "list_price_cents": 5698,
      "lowest_90d_cents": 5016,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 5723
     }
    ]
@@ -1020,11 +1020,11 @@
      "store": "mercadolivre",
      "ml_product_id": "MLB41851273",
      "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=ofertaslivros&matt_tool=31781474&forceInApp=true&ref=BKsC9wtsqpgudbigVoywhPGmsbWOdGdtC5TDypZ36gYVQ6SQ5JtA7gIEJTyCvGBGUycmHoo%2BkAhZeMFbnJR9Wuq7wbS%2BfpHUxIKY%2BOKxVbTZwb%2F0bxL7%2FMwFb3ctFa6u4fjeVCZMKBOgVwgiZ3FBYP7O4vmPrbh5LmYbWsuk5VQDTQgpcOfZpl1SrqwO0sim6cZoW3k6RwpCg5nlFTLJAdDyNa4KUmd%2FmX57p1SvNy8Rs57E%2Bmr3qWD7CAMWHToxyd%2FRpA%3D%3D",
-     "price_cents": 5641,
-     "list_price_cents": 5641,
+     "price_cents": 5550,
+     "list_price_cents": 5550,
      "lowest_90d_cents": 3942,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 3942
     }
    ]
@@ -1054,7 +1054,7 @@
      "list_price_cents": 2098,
      "lowest_90d_cents": 2098,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 2098
     }
    ]
@@ -1084,7 +1084,7 @@
      "list_price_cents": 800,
      "lowest_90d_cents": 800,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 800
     }
    ]
@@ -1132,7 +1132,7 @@
      "list_price_cents": 8960,
      "lowest_90d_cents": 8716,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 8960
     }
    ]
@@ -1162,7 +1162,7 @@
      "list_price_cents": 4000,
      "lowest_90d_cents": 4000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 4000
     }
    ]
@@ -1192,7 +1192,7 @@
      "list_price_cents": 7877,
      "lowest_90d_cents": 7877,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 7877
     }
    ]
@@ -1222,7 +1222,7 @@
      "list_price_cents": 5000,
      "lowest_90d_cents": 5000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 5000
     }
    ]
@@ -1252,7 +1252,7 @@
      "list_price_cents": 2933,
      "lowest_90d_cents": 2933,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 2933
     }
    ]
@@ -1282,7 +1282,7 @@
      "list_price_cents": 4700,
      "lowest_90d_cents": 4700,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 4990
     }
    ]
@@ -1312,7 +1312,7 @@
      "list_price_cents": 13990,
      "lowest_90d_cents": 9930,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 9930
     }
    ]
@@ -1342,7 +1342,7 @@
      "list_price_cents": 3500,
      "lowest_90d_cents": 3500,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 3500
     }
    ]
@@ -1390,7 +1390,7 @@
      "list_price_cents": 3000,
      "lowest_90d_cents": 2900,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 2900
     }
    ]
@@ -1420,7 +1420,7 @@
      "list_price_cents": 3000,
      "lowest_90d_cents": 3000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 3000
     }
    ]
@@ -1450,7 +1450,7 @@
      "list_price_cents": 3000,
      "lowest_90d_cents": 3000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 3000
     }
    ]
@@ -1480,7 +1480,7 @@
      "list_price_cents": 2500,
      "lowest_90d_cents": 2500,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 2500
     }
    ]
@@ -1510,7 +1510,7 @@
      "list_price_cents": 3200,
      "lowest_90d_cents": 3200,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 3200
     }
    ]
@@ -1540,7 +1540,7 @@
      "list_price_cents": 3500,
      "lowest_90d_cents": 3190,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 3190
     }
    ]
@@ -1570,7 +1570,7 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 4043,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 4347
     }
    ]
@@ -1600,7 +1600,7 @@
      "list_price_cents": 7990,
      "lowest_90d_cents": 4621,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 4718
     }
    ]
@@ -1630,7 +1630,7 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 4072,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 4500
     }
    ]
@@ -1660,7 +1660,7 @@
      "list_price_cents": 4690,
      "lowest_90d_cents": 4690,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 4690
     }
    ]
@@ -1690,7 +1690,7 @@
      "list_price_cents": 3845,
      "lowest_90d_cents": 3845,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 3845
     }
    ]
@@ -1720,7 +1720,7 @@
      "list_price_cents": 3000,
      "lowest_90d_cents": 3000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 3000
     }
    ]
@@ -1786,7 +1786,7 @@
      "list_price_cents": 28990,
      "lowest_90d_cents": 16300,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 18991
     }
    ]
@@ -1816,7 +1816,7 @@
      "list_price_cents": 3000,
      "lowest_90d_cents": 3000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-05T00:30:11+00:00",
+     "checked_at": "2026-11-05T01:00:13+00:00",
      "median_90d_cents": 3000
     }
    ]
@@ -3390,6 +3390,546 @@
      "lowest_90d_cents": 2970,
      "history_since": "2026-11-04",
      "checked_at": "2026-11-04T18:56:39+00:00"
+    }
+   ]
+  },
+  {
+   "id": "a-cirurgia",
+   "isbn": "9786559574605",
+   "genre": "suspense",
+   "title": "A cirurgiã",
+   "author": "Leslie Wolfe",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6559574601",
+     "price_cents": 1890,
+     "list_price_cents": 4990,
+     "lowest_90d_cents": 1890,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:12:52+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-poder-do-subconsciente",
+   "isbn": "9788546501458",
+   "genre": "mindset",
+   "title": "O poder do subconsciente",
+   "author": "Joseph Murphy",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8546501459",
+     "price_cents": 2270,
+     "list_price_cents": 5990,
+     "lowest_90d_cents": 2270,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:13:10+00:00"
+    }
+   ]
+  },
+  {
+   "id": "ideias-para-adiar-o-fim-do-mundo",
+   "isbn": "9788535933581",
+   "genre": "politica",
+   "title": "Ideias para adiar o fim do mundo",
+   "author": "Ailton Krenak",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8535933581",
+     "price_cents": 2270,
+     "list_price_cents": 5990,
+     "lowest_90d_cents": 2270,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:13:51+00:00"
+    }
+   ]
+  },
+  {
+   "id": "a-contadora",
+   "isbn": "9788501922052",
+   "genre": "suspense",
+   "title": "A contadora",
+   "author": "Freida McFadden",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8501922056",
+     "price_cents": 2270,
+     "list_price_cents": 5990,
+     "lowest_90d_cents": 2270,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:14:09+00:00"
+    }
+   ]
+  },
+  {
+   "id": "uma-segunda-chance",
+   "isbn": "9786559811298",
+   "genre": "romance",
+   "title": "Uma segunda chance",
+   "author": "Colleen Hoover",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6559811298",
+     "price_cents": 2460,
+     "list_price_cents": 6490,
+     "lowest_90d_cents": 2460,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:14:28+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-segredo-final",
+   "isbn": "9786555658392",
+   "genre": "suspense",
+   "title": "O segredo final",
+   "author": "Dan Brown",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6555658398",
+     "price_cents": 3324,
+     "list_price_cents": 7990,
+     "lowest_90d_cents": 3324,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:15:11+00:00"
+    }
+   ]
+  },
+  {
+   "id": "os-miseraveis",
+   "isbn": "9788544000007",
+   "genre": "ficcao",
+   "title": "Os miseráveis",
+   "author": "Victor Hugo",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8544000002",
+     "price_cents": 8546,
+     "list_price_cents": 18990,
+     "lowest_90d_cents": 8546,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:15:29+00:00"
+    }
+   ]
+  },
+  {
+   "id": "coracao-de-gelo-e-rosas",
+   "isbn": "9786559243822",
+   "genre": "romance",
+   "title": "Coração de gelo e rosas",
+   "author": "Babi A. Sette",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6559243826",
+     "price_cents": 3375,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 3375,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:15:48+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-sol-e-para-todos",
+   "isbn": "9788503009492",
+   "genre": "ficcao",
+   "title": "O sol é para todos",
+   "author": "Harper Lee",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8503009498",
+     "price_cents": 3495,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 3495,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:16:32+00:00"
+    }
+   ]
+  },
+  {
+   "id": "nao-e-como-nos-filmes",
+   "isbn": "9788551014158",
+   "genre": "romance",
+   "title": "Não é como nos filmes",
+   "author": "Lynn Painter",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8551014153",
+     "price_cents": 3589,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 3589,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:16:51+00:00"
+    }
+   ]
+  },
+  {
+   "id": "nocticadia-edicao-especial",
+   "isbn": "9788530601850",
+   "genre": "romance",
+   "title": "Nocticadia (edição especial)",
+   "author": "Keri Lake",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8530601858",
+     "price_cents": 6305,
+     "list_price_cents": 11990,
+     "lowest_90d_cents": 6305,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:17:09+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-despertar-da-lua-caida-edicao-especial",
+   "isbn": "9786559704156",
+   "genre": "fantasia",
+   "title": "O despertar da lua caída (edição especial)",
+   "author": "Sarah A. Parker",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6559704157",
+     "price_cents": 5347,
+     "list_price_cents": 9990,
+     "lowest_90d_cents": 5347,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:17:54+00:00"
+    }
+   ]
+  },
+  {
+   "id": "desenhos-ocultos",
+   "isbn": "9786555604627",
+   "genre": "suspense",
+   "title": "Desenhos ocultos",
+   "author": "Jason Rekulak",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "655560462X",
+     "price_cents": 3809,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 3809,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:18:13+00:00"
+    }
+   ]
+  },
+  {
+   "id": "assistente-do-vilao",
+   "isbn": "9786585348249",
+   "genre": "fantasia",
+   "title": "Assistente do vilão",
+   "author": "Hannah Nicole Maehrer",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6585348249",
+     "price_cents": 3830,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 3830,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:18:31+00:00"
+    }
+   ]
+  },
+  {
+   "id": "binding-13",
+   "isbn": "9786583127013",
+   "genre": "romance",
+   "title": "Binding 13",
+   "author": "Chloe Walsh",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6583127016",
+     "price_cents": 4436,
+     "list_price_cents": 7990,
+     "lowest_90d_cents": 4436,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:19:16+00:00"
+    }
+   ]
+  },
+  {
+   "id": "os-esquecidos-de-domingo",
+   "isbn": "9788551015896",
+   "genre": "ficcao",
+   "title": "Os esquecidos de domingo",
+   "author": "Valérie Perrin",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8551015893",
+     "price_cents": 3888,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 3888,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:19:35+00:00"
+    }
+   ]
+  },
+  {
+   "id": "a-cancao-dos-dragoes-perdidos",
+   "isbn": "9786559706075",
+   "genre": "fantasia",
+   "title": "A canção dos dragões perdidos",
+   "author": "Sarah A. Parker",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6559706079",
+     "price_cents": 5567,
+     "list_price_cents": 9990,
+     "lowest_90d_cents": 5567,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:19:53+00:00"
+    }
+   ]
+  },
+  {
+   "id": "agua-fresca-para-as-flores",
+   "isbn": "9786555602302",
+   "genre": "ficcao",
+   "title": "Água fresca para as flores",
+   "author": "Valérie Perrin",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6555602309",
+     "price_cents": 4508,
+     "list_price_cents": 7990,
+     "lowest_90d_cents": 4508,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:21:03+00:00"
+    }
+   ]
+  },
+  {
+   "id": "o-risco",
+   "isbn": "9788584395132",
+   "genre": "romance",
+   "title": "O risco",
+   "author": "S. T. Abby",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "858439513X",
+     "price_cents": 2259,
+     "list_price_cents": 3990,
+     "lowest_90d_cents": 2259,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:21:21+00:00"
+    }
+   ]
+  },
+  {
+   "id": "a-guerra-da-papoula",
+   "isbn": "9786555604344",
+   "genre": "fantasia",
+   "title": "A guerra da papoula",
+   "author": "R.F. Kuang",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6555604344",
+     "price_cents": 4592,
+     "list_price_cents": 7990,
+     "lowest_90d_cents": 4592,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:21:40+00:00"
+    }
+   ]
+  },
+  {
+   "id": "keeping-13",
+   "isbn": "9786583127020",
+   "genre": "romance",
+   "title": "Keeping 13",
+   "author": "Chloe Walsh",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6583127024",
+     "price_cents": 4604,
+     "list_price_cents": 7990,
+     "lowest_90d_cents": 4604,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:22:23+00:00"
+    }
+   ]
+  },
+  {
+   "id": "meridiana",
+   "isbn": "9788535940138",
+   "genre": "literatura-brasileira",
+   "title": "Meridiana",
+   "author": "Eliana Alves Cruz",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8535940138",
+     "price_cents": 4395,
+     "list_price_cents": 7490,
+     "lowest_90d_cents": 4395,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:22:41+00:00"
+    }
+   ]
+  },
+  {
+   "id": "os-imortais",
+   "isbn": "9786560001770",
+   "genre": "literatura-brasileira",
+   "title": "Os imortais",
+   "author": "Paulliny Tort",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6560001776",
+     "price_cents": 4999,
+     "list_price_cents": 8490,
+     "lowest_90d_cents": 4999,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:23:00+00:00"
+    }
+   ]
+  },
+  {
+   "id": "jogo-a-longo-prazo",
+   "isbn": "9786552261878",
+   "genre": "romance",
+   "title": "Jogo a longo prazo",
+   "author": "Rachel Reid",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "655226187X",
+     "price_cents": 3531,
+     "list_price_cents": 5990,
+     "lowest_90d_cents": 3531,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:23:42+00:00"
+    }
+   ]
+  },
+  {
+   "id": "noites-brancas",
+   "isbn": "9788573263350",
+   "genre": "ficcao",
+   "title": "Noites brancas",
+   "author": "Fiódor Dostoiévski",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8573263350",
+     "price_cents": 3510,
+     "list_price_cents": 5900,
+     "lowest_90d_cents": 3510,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:24:01+00:00"
+    }
+   ]
+  },
+  {
+   "id": "cancao-para-ninar-menino-grande",
+   "isbn": "9786556020884",
+   "genre": "literatura-brasileira",
+   "title": "Canção para ninar menino grande",
+   "author": "Conceição Evaristo",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6556020885",
+     "price_cents": 2499,
+     "list_price_cents": 4200,
+     "lowest_90d_cents": 2499,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:24:20+00:00"
+    }
+   ]
+  },
+  {
+   "id": "eu-duvido-voce-terminar-este-livro",
+   "isbn": "9788542243161",
+   "genre": "ficcao",
+   "title": "Eu duvido você terminar este livro",
+   "author": "Giuliana Mafra",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8542243161",
+     "price_cents": 3653,
+     "list_price_cents": 5990,
+     "lowest_90d_cents": 3653,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:25:02+00:00"
+    }
+   ]
+  },
+  {
+   "id": "bons-tempos",
+   "isbn": "9786555327076",
+   "genre": "suspense",
+   "title": "Bons tempos",
+   "author": "Caro Claire Burke",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "6555327073",
+     "price_cents": 4310,
+     "list_price_cents": 6990,
+     "lowest_90d_cents": 4310,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:25:39+00:00"
+    }
+   ]
+  },
+  {
+   "id": "a-morte-e-um-dia-que-vale-a-pena-viver",
+   "isbn": "9788543107202",
+   "genre": "mindset",
+   "title": "A morte é um dia que vale a pena viver",
+   "author": "Ana Claudia Quintana Arantes",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8543107202",
+     "price_cents": 3386,
+     "list_price_cents": 5490,
+     "lowest_90d_cents": 3386,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:26:16+00:00"
+    }
+   ]
+  },
+  {
+   "id": "a-estranha-na-cama",
+   "isbn": "9788535947908",
+   "genre": "suspense",
+   "title": "A estranha na cama",
+   "author": "Raphael Montes",
+   "stores": [
+    {
+     "store": "amazon",
+     "asin": "8535947906",
+     "price_cents": 4019,
+     "list_price_cents": 6490,
+     "lowest_90d_cents": 4019,
+     "history_since": "2026-11-04",
+     "checked_at": "2026-11-04T18:26:35+00:00"
     }
    ]
   }
