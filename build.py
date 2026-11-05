@@ -472,6 +472,25 @@ def ofertas(items):
     return [o for o in items if o["oferta"]]
 
 
+FAIXAS = (40, 50)  # filtro por desconto: /ofertas/40/ e /ofertas/50/ (pedido do Elias, Black Friday 2026)
+
+
+def com_desconto(items, t):
+    """Faixa de desconto: oferta ativa ou livro da curadoria, com preço no prazo e desconto >= t% sobre o "de"
+    da loja vencedora. Sem os vencidos: desconto de preço velho não entra num filtro de "agora"."""
+    return [o for o in items if not o["velho"] and discount(o) >= t]
+
+
+def faixas(offers, cur=None):
+    """Pílulas Todas / 40%+ / 50%+, com a contagem. São links para páginas do build: funcionam sem JS."""
+    opts = [("/ofertas/", "Todas", len(ofertas(offers)), 0)]
+    opts += [(f"/ofertas/{t}/", f"{t}%+", len(com_desconto(offers, t)), t) for t in FAIXAS]
+    cur_ = ' aria-current="page"'
+    lis = "".join(f'<li><a class="pill" href="{h}"{cur_ if t == cur else ""}>{l}'
+                  f'<span class="faixa-n">{n}</span></a></li>' for h, l, n, t in opts)
+    return f'<nav class="faixas" aria-label="Faixa de desconto"><ul>{lis}</ul></nav>'
+
+
 def recentes(items):
     """Entrada mais recente no histórico primeiro, depois o título. Nunca score nem ranking."""
     def key(o):
@@ -1034,14 +1053,14 @@ def ver_todas(n, home):
                 " mais--m" if n <= CAP[1] else "")  # só no celular quando o desktop já mostra todas
 
 
-def feed(offers, bot=None, ch=(), full=False):
+def feed(offers, bot=None, ch=(), full=False, pills="", items=None):
     """Ofertas ativas: ordenação (JS), grid com blocos intercalados e "Ver todas" / "carregar mais".
     Os blocos guardam a posição (data-at) para o JS recolocá-los depois de ordenar ou filtrar.
     Sem nenhuma oferta, um estado vazio que aponta para a curadoria e o alerta."""
-    items = ofertas(offers)
+    items = ofertas(offers) if items is None else items
     n = len(items)
     if not n:
-        return ('<section class="sec" aria-labelledby="h-ativas">\n<div class="sec-head"><h2 id="h-ativas">Ofertas ativas</h2></div>\n'
+        return (pills + '<section class="sec" aria-labelledby="h-ativas">\n<div class="sec-head"><h2 id="h-ativas">Ofertas ativas</h2></div>\n'
                 '<p class="vazio vazio--fixo">Nenhuma oferta conferida agora. Veja a <a href="/curadoria/">curadoria</a> '
                 'ou ative um alerta no sino de um livro.</p>\n</section>')
     cards = [card(o, bot) for o in items]
@@ -1053,7 +1072,7 @@ def feed(offers, bot=None, ch=(), full=False):
     more = ver_todas(n, not full) + (
         f'<p class="mais"><button class="btn btn--ghost js-mais" type="button" hidden>{icon("livro", "i i-livro")}'
         'Carregar mais ofertas</button></p>' if full else "")
-    body = (f'{tools}\n<p class="vazio" hidden role="status">Nenhuma oferta com esse título ou autor. '
+    body = (f'{pills}{tools}\n<p class="vazio" hidden role="status">Nenhuma oferta com esse título ou autor. '
             f'Tente outro nome ou volte para Todos.</p>\n<ul class="grid feed{" feed--full" if full else " feed--home"}">\n'
             + "\n".join(cards) + f"\n</ul>\n{more}")
     return section("h-ativas", "Ofertas ativas", body, n, "Conferidas na loja. A que vence sai da lista.")
@@ -1187,7 +1206,7 @@ def home_sections(offers, bot=None, ch=()):
                          '<ul class="grid grid--feat">\n' + "\n".join(card(o, bot) for o in feat) + "\n</ul>",
                          len(feat), "" if curated else "Primeiro o menor preço do histórico, depois o maior desconto."),
         nav(offers, None, filtro=True),
-        feed(order, bot, ch),
+        feed(order, bot, ch, pills=faixas(offers)),
         da_curadoria(offers, bot, skip=in_hero),
         bot_block(bot),
         channels_block(ch),
@@ -1502,9 +1521,23 @@ def book_page(o, offers, bot=None, ch=()):
 
 def all_page(offers, bot=None, ch=()):
     """/ofertas/: a lista completa das ofertas (sem JS, é para onde o "Ver todas" leva)."""
-    body = (intro("Todas as ofertas", LEDE) + f"\n{nav(offers, None, filtro=True)}\n{feed(offers, bot, ch, full=True)}")
+    body = (intro("Todas as ofertas", LEDE) + f"\n{nav(offers, None, filtro=True)}\n"
+            + feed(offers, bot, ch, full=True, pills=faixas(offers, 0)))
     return shell(offers, "Todas as ofertas de livros | Ofertas Livros",
                  "Todas as ofertas de livros ativas, conferidas na loja.", body, ch, "/ofertas/", bot=bot, modal=True)
+
+
+def faixa_page(offers, t, bot=None, ch=()):
+    """/ofertas/<t>/: livros com t% ou mais de desconto (com_desconto). Existe sempre, mesmo vazia."""
+    h1 = f"Livros com {t}% ou mais de desconto"
+    lede = (f"Ofertas e livros da curadoria com pelo menos {t}% de desconto sobre o preço de lista da loja. "
+            "Cada livro mostra quando conferimos o preço; o preço final é o da loja.")
+    items = com_desconto(offers, t)
+    lista = (feed(offers, bot, ch, full=True, pills=faixas(offers, t), items=items) if items else
+             faixas(offers, t) + f'\n<p class="vazio vazio--fixo">Nenhum livro com {t}% ou mais de desconto agora. '
+             'Veja todas as <a href="/ofertas/">ofertas ativas</a>.</p>')
+    return shell(offers, f"{h1} | Ofertas Livros", f"{h1}, conferidos na loja.",
+                 intro(h1, lede) + f"\n{nav(items, None, filtro=True) if items else ''}\n" + lista, ch, f"/ofertas/{t}/", bot=bot, modal=True)
 
 
 BF_LEDE = ("Ofertas ativas com 30% ou mais de desconto ou no menor preço que vimos em 90 dias. "
@@ -1650,6 +1683,8 @@ def render_pages(offers, bot=None, ch=()):
     """{caminho em dist/: HTML}. Uma página por nicho presente, por livro e a lista completa."""
     pages = {"index.html": page(offers, bot=bot, ch=ch), "privacidade/index.html": privacy(offers, bot, ch),
              "ofertas/index.html": all_page(offers, bot, ch), "curadoria/index.html": curadoria_page(offers, bot, ch)}
+    for t in FAIXAS:
+        pages[f"ofertas/{t}/index.html"] = faixa_page(offers, t, bot, ch)
     for g in {o["genre"] for o in offers}:
         pages[f"{g}/index.html"] = page(offers, g, bot, ch)
     if ch:
@@ -2541,6 +2576,7 @@ def selftest():
     # páginas geradas: home, nichos, /ofertas/, /livro/<id>/ e privacidade; /canais/ só com canal
     pg = render_pages(load(good, ml))
     assert set(pg) == {"index.html", "privacidade/index.html", "ofertas/index.html", "curadoria/index.html", "manga/index.html",
+                       "ofertas/40/index.html", "ofertas/50/index.html",
                        "ficcao/index.html", "livro/livro-1/index.html", "livro/livro-2/index.html"}
     assert "canais/index.html" in render_pages(load(good), ch=[("Telegram", "https://t.me/ofertaslivros")])
     for path, h in pg.items():                                                 # canonical absoluto, um por página
@@ -2571,6 +2607,22 @@ def selftest():
     b90 = {**good, "id": "bf-90d", "stores": pr(8000, 10000, history_since="2026-08-01")}  # 20%, mas selo de 90 dias
     bvel = {**good, "id": "bf-velho", "stores": pr(5000, 10000), "_h": 48}                # Amazon vencida: velho
     bnao = {**good, "id": "bf-nao", "stores": pr(9500, 10000)}                            # 5%: sem oferta
+    # Faixas de desconto: /ofertas/40/ e /ofertas/50/ sempre existem; sem vencidos; livro sem oferta entra
+    b50 = {**good, "id": "bf-50", "stores": pr(5000, 10000)}
+    b40 = {**good, "id": "bf-40", "stores": pr(6000, 10000)}
+    fo = bf((11, 10), b50, b40, b30, bvel, bnao)
+    fp = render_pages(fo)
+    ids = lambda h: re.findall(r'data-id="([^"]+)"', h.split('class="grid feed')[1])  # noqa: E731
+    assert ids(fp["ofertas/40/index.html"]) == ["bf-50", "bf-40"] and ids(fp["ofertas/50/index.html"]) == ["bf-50"]
+    for path in ("index.html", "ofertas/index.html", "ofertas/40/index.html", "ofertas/50/index.html"):
+        assert '<a class="pill" href="/ofertas/40/"' in fp[path] and '50%+<span class="faixa-n">1</span>' in fp[path], path
+    assert '<a class="pill" href="/ofertas/40/" aria-current="page">' in fp["ofertas/40/index.html"]
+    assert re.search(r'Todos</span>.*?2 ofertas', fp["ofertas/40/index.html"])                      # nichos contam a faixa
+    assert 'aria-current="page">Todas' in fp["ofertas/index.html"] and 'aria-current="page">Todas' not in fp["index.html"]
+    assert [o["id"] for o in com_desconto([{"id": "nov", "velho": False, "oferta": False, "price_cents": 5000,
+                                            "list_price_cents": 10000}], 50)] == ["nov"]           # curadoria entra
+    vazio = render_pages(bf((11, 10), b30))["ofertas/50/index.html"]
+    assert "Nenhum livro com 50% ou mais de desconto agora." in vazio and 'class="card"' not in vazio
     for day, on in (((11, 4), False), ((11, 5), True), ((12, 1), True), ((12, 2), False)):
         bo = bf(day, b30, b29, b90, bvel, bnao)
         pg = render_pages(bo)
