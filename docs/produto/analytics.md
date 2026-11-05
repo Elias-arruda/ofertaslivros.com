@@ -6,57 +6,60 @@ Plano do agent-dados, aprovado pelo Elias na sessão de 2026-11-04. Nada daqui e
 
 Medir o site e mostrar ao Elias, num painel privado:
 - acessos;
-- cliques nos links de afiliado (`/r/`), por livro, loja, nicho, posição e canal;
+- cliques nos links de afiliado (`/r/`), por livro, loja, nicho e canal;
 - termos buscados;
-- origem do tráfego;
 - Telegram × WhatsApp × site;
 - vendas e comissões da Amazon e do ML.
 
 ## Restrições que não mudam
 
 - CSP `script-src 'self'`, sem script de terceiros, site completo sem JS. Nada de Google Analytics nem Web Analytics da Cloudflare, cujo beacon vem de `cloudflareinsights.com`.
-- Sem cookie, sem IP e sem user agent guardados. O país (`request.cf.country`) é o único dado de localização.
-- O destino do `/r/` continua vindo do `_redirects` gerado pelo `build.py`. A allowlist, o `affiliate_url`, o `ml_url` e o `check_url` não mudam.
+- Sem cookie, sem IP e sem user agent guardados. O país é o único dado de localização.
+- O `/r/` continua sendo o `_redirects` estático gerado pelo `build.py`, sem Worker. A allowlist, o `affiliate_url`, o `ml_url` e o `check_url` não mudam.
 - O repo é público. Dado de venda e de comissão nunca vai para o repo, issue, PR ou artifact do Actions.
 
 ## Coleta
 
 | Fonte | O que mede | Como |
 |---|---|---|
-| Worker em `/r/*` | cliques | Grava o evento no Workers Analytics Engine (AE) e chama `env.ASSETS.fetch()` com a URL **sem query**. Quem decide o destino continua sendo o `_redirects` |
-| Beacon `/e` (`static/app.js`) | views de página e de modal, referrer, UTM, termos buscados | `navigator.sendBeacon`, para o mesmo domínio (o `connect-src` já é o `SITE`). Nada é enviado com `navigator.globalPrivacyControl` ligado |
-| GraphQL da zona | volume bruto de requisições e países | Só para conferência, porque conta bot junto |
+| GraphQL da zona (`httpRequestsAdaptiveGroups`) | views por página, cliques em `/r/` (302 por livro, loja e canal), país, bot | Leitura com token só de leitura. No Free, guarda **31 dias** e não traz referrer nem query string (teste da F0, 2026-11-04) |
+| Beacon `/e` (`static/app.js`) | termos buscados | `navigator.sendBeacon`, para o mesmo domínio (o `connect-src` já é o `SITE`). Nada é enviado com `navigator.globalPrivacyControl` ligado |
 | Painéis de afiliado | pedidos e comissões | CSV exportado pelo próprio painel, no Chrome do Elias (seção "Vendas") |
 
-Os links para `/r/` têm `rel="noreferrer"`. Por isso, o `build.py` passa a pôr a origem na URL: `/r/<id>?de=<página>&pos=<n>`. O Worker só grava esses valores se baterem com uma regex fechada, e eles nunca chegam ao destino, porque a query é removida antes do `ASSETS.fetch()`. Isso mantém o motivo da regra "caminho, não query" de `distribuicao-canais.md`.
+**Clique sem Worker.** O caminho já carrega o que importa:
+- `/r/<id>` é a loja vencedora, e a loja vem do `offers.json` do mesmo dia;
+- `/r/<id>/<loja>` é a outra loja;
+- `/r/<id>/tg` e `/r/<id>/wa` são os canais.
 
-## Esquema: dataset `ol_events` no AE
+Conta só `edgeResponseStatus = 302`, excluindo bots pelo `userAgentBrowser` (GoogleBot e afins). O `robots.txt` ganha `Disallow: /r/` (agent-front), porque o GoogleBot seguia os links de afiliado.
 
-A retenção do AE é fixa em 92 dias. A contagem é sempre `SUM(_sample_interval)`.
+**Fica de fora por enquanto:** a página de origem e a posição do card (exigiriam um Worker no `/r/*`) e o referrer (o Free não traz). O Elias decidiu em 2026-11-04 que não precisa deles ainda.
 
-| Coluna | Campo | view | click | search |
-|---|---|---|---|---|
-| `index1`, `blob1` | event | `view` | `click` | `search` |
-| `blob2` | página normalizada (`/`, `/manga/`, `/livro/<id>/`), regex fechada, até 80 caracteres | vista | de origem (`?de=`) | da busca |
-| `blob3` | book_id (regex de id do `build.py`) | modal ou página de livro | sim | — |
-| `blob4` | loja, pelo host do `Location` que o `_redirects` devolve | — | sim | — |
-| `blob5` | canal `site`/`tg`/`wa`, pelo sufixo do caminho | — | sim | — |
-| `blob6` | só o host do `document.referrer`, ou `direto` | sim | — | — |
-| `blob7` | `utm_source` de uma lista fechada, senão `outro` | sim | — | — |
-| `blob8` | país | sim | sim | sim |
-| `blob9` | termo buscado | — | — | sim |
-| `double1` | posição do card | — | sim | — |
-| `double2` | resultados da busca | — | — | sim |
-| `double3` | `is_bot` 0/1, por regex de UA; o UA não é guardado | — | sim | — |
+## Esquema
+
+**`daily_rollup` no D1.** Guarda o histórico além dos 31 dias do GraphQL. O Worker `ofertaslivros-cron` grava uma vez por dia o dia anterior:
+
+```sql
+CREATE TABLE daily_rollup (
+  day TEXT NOT NULL,        -- AAAA-MM-DD (UTC)
+  path TEXT NOT NULL,       -- /, /manga/, /livro/<id>/, /r/<id>[/loja|/tg|/wa]
+  status INTEGER NOT NULL,  -- 200 ou 302
+  country TEXT NOT NULL,
+  requests INTEGER NOT NULL,
+  PRIMARY KEY (day, path, status, country)
+);
+```
+
+Entram só os caminhos de página (HTML) e de `/r/`, sem bots. Asset (`.css`, `.woff2`, `.svg`) fica de fora.
+
+**`search_events`, dataset `ol_search` no Analytics Engine (F2).** Guarda o termo (`blob1`), os resultados (`double1`) e o país (`blob2`), por 92 dias. Na F0, a SQL API do AE devolveu 403. Antes da F2, é preciso habilitar o AE na conta; se não der, a busca vai para uma tabela no D1.
 
 **Termo de busca.** É texto livre, então pode trazer dado pessoal.
 - O termo passa pelo `fold()`, é cortado em 40 caracteres e é descartado se tiver `@` ou 5 dígitos ou mais.
 - O evento sai uma vez por termo: depois de 1,5 s sem digitar, no Enter ou no blur.
 - O painel só mostra termo com 3 ocorrências ou mais.
 
-**Nicho.** Não é gravado no evento. O painel cruza o `book_id` com o `genre` do `offers.json`.
-
-**Histórico além de 92 dias.** A tabela `daily_rollup(day, event, page, book_id, store, channel, n)` fica no D1 e é preenchida uma vez por dia pelo Worker `ofertaslivros-cron`.
+**Nicho.** O painel cruza o `<id>` do caminho com o `genre` do `offers.json`.
 
 **Vendas** ficam no D1, sem prazo de retenção:
 
@@ -79,44 +82,63 @@ CREATE TABLE sales (
 
 ## Queries das KPIs
 
-SQL API do AE:
+GraphQL da zona, no período `$s`–`$e`:
+
+```graphql
+# Cliques em /r/ por caminho, sem bots (o painel separa livro, loja e canal pelo caminho)
+httpRequestsAdaptiveGroups(limit: 1000, orderBy: [count_DESC], filter: {
+  datetime_geq: $s, datetime_lt: $e, clientRequestPath_like: "/r/%",
+  edgeResponseStatus: 302, userAgentBrowser_notin: $bots }) {
+  count dimensions { clientRequestPath }
+}
+
+# Views por página (HTML), sem bots
+httpRequestsAdaptiveGroups(limit: 1000, orderBy: [count_DESC], filter: {
+  datetime_geq: $s, datetime_lt: $e, edgeResponseStatus: 200,
+  edgeResponseContentTypeName: "html", userAgentBrowser_notin: $bots }) {
+  count dimensions { clientRequestPath }
+}
+
+# Visitas por dia (page views e únicos; conta bot)
+httpRequests1dGroups(limit: 31, filter: { date_geq: $d }) {
+  dimensions { date } sum { pageViews requests } uniq { uniques }
+}
+```
+
+Os filtros foram testados no Free na F0. `$bots` é a lista de navegadores de robô (GoogleBot, BingBot e afins).
+
+SQL, para mais de 31 dias, sobre o `daily_rollup` do D1:
 
 ```sql
--- Visitas e cliques por dia
-SELECT toStartOfDay(timestamp) AS dia,
-       SUM(IF(blob1 = 'view',  _sample_interval, 0)) AS views,
-       SUM(IF(blob1 = 'click' AND double3 = 0, _sample_interval, 0)) AS cliques
-FROM ol_events WHERE timestamp > NOW() - INTERVAL '30' DAY
-GROUP BY dia ORDER BY dia;
+-- Cliques e views por dia
+SELECT day,
+       SUM(CASE WHEN path LIKE '/r/%' THEN requests END) AS cliques,
+       SUM(CASE WHEN path NOT LIKE '/r/%' THEN requests END) AS views
+FROM daily_rollup GROUP BY day ORDER BY day;
 
--- CTR por página
-SELECT blob2 AS pagina,
-       SUM(IF(blob1 = 'view',  _sample_interval, 0)) AS views,
-       SUM(IF(blob1 = 'click', _sample_interval, 0)) AS cliques
-FROM ol_events WHERE timestamp > NOW() - INTERVAL '7' DAY AND double3 = 0
-GROUP BY pagina HAVING views >= 20 ORDER BY cliques DESC;
+-- CTR por livro: cliques em /r/<id>* ÷ views de /livro/<id>/
+WITH c AS (
+  SELECT substr(path, 4, instr(substr(path, 4) || '/', '/') - 1) AS book_id, SUM(requests) AS cliques
+  FROM daily_rollup WHERE path LIKE '/r/%' AND day >= date('now', '-7 days') GROUP BY book_id
+), v AS (
+  SELECT substr(path, 8, length(path) - 8) AS book_id, SUM(requests) AS views
+  FROM daily_rollup WHERE path LIKE '/livro/%/' AND day >= date('now', '-7 days') GROUP BY book_id
+)
+SELECT c.book_id, c.cliques, v.views, 1.0 * c.cliques / v.views AS ctr
+FROM c LEFT JOIN v USING (book_id) ORDER BY c.cliques DESC LIMIT 20;
 
--- Top livros, loja vencedora e Telegram × site
-SELECT blob3 AS book_id, blob4 AS loja, blob5 AS canal, SUM(_sample_interval) AS cliques
-FROM ol_events
-WHERE blob1 = 'click' AND double3 = 0 AND timestamp > NOW() - INTERVAL '7' DAY
-GROUP BY book_id, loja, canal ORDER BY cliques DESC LIMIT 20;
+-- Telegram × WhatsApp × site
+SELECT CASE WHEN path LIKE '%/tg' THEN 'tg' WHEN path LIKE '%/wa' THEN 'wa' ELSE 'site' END AS canal,
+       SUM(requests) AS cliques
+FROM daily_rollup WHERE path LIKE '/r/%' AND day >= date('now', '-7 days') GROUP BY canal;
+```
 
--- Cliques por posição (sem impressão por card não há CTR; a distribuição dos cliques basta para comparar posições)
-SELECT blob2 AS pagina, double1 AS pos, SUM(_sample_interval) AS cliques
-FROM ol_events
-WHERE blob1 = 'click' AND double3 = 0 AND timestamp > NOW() - INTERVAL '7' DAY
-GROUP BY pagina, pos ORDER BY pagina, pos;
+Termos buscados, na SQL API do AE (F2):
 
--- Origem do tráfego
-SELECT blob6 AS origem, blob7 AS utm, SUM(_sample_interval) AS views
-FROM ol_events WHERE blob1 = 'view' AND timestamp > NOW() - INTERVAL '7' DAY
-GROUP BY origem, utm ORDER BY views DESC LIMIT 20;
-
--- Termos buscados (os sem resultado viram pauta da curadoria)
-SELECT blob9 AS termo, SUM(_sample_interval) AS buscas,
-       SUM(IF(double2 = 0, _sample_interval, 0)) AS sem_resultado
-FROM ol_events WHERE blob1 = 'search' AND timestamp > NOW() - INTERVAL '7' DAY
+```sql
+SELECT blob1 AS termo, SUM(_sample_interval) AS buscas,
+       SUM(IF(double1 = 0, _sample_interval, 0)) AS sem_resultado
+FROM ol_search WHERE timestamp > NOW() - INTERVAL '7' DAY
 GROUP BY termo HAVING buscas >= 3 ORDER BY sem_resultado DESC, buscas DESC LIMIT 30;
 ```
 
@@ -133,14 +155,14 @@ SELECT strftime('%Y-W%W', order_date) AS semana, store, tracking,
 FROM sales GROUP BY semana, store, tracking ORDER BY semana DESC;
 ```
 
-O R$ por clique cruza o D1 com o AE por semana e loja. Esse cruzamento é feito no código do painel.
+O R$ por clique junta, no D1, as tabelas `sales` e `daily_rollup` por semana e loja.
 
 ## Latência
 
 | KPI | Latência real |
 |---|---|
-| Cliques, views, origem e busca (AE) | cerca de 1 min |
-| Volume da zona (GraphQL) | alguns minutos |
+| Cliques e views (GraphQL) | alguns minutos |
+| Termos buscados (AE) | cerca de 1 min |
 | Pedidos e comissões | **Não é tempo real.** Os painéis atualizam com horas a 1 dia de atraso, e a comissão só fecha no mês. No painel, o dado chega com a rodada diária do navegador: D+1 no melhor caso |
 
 Cada bloco do painel mostra "dados até HH:MM", e as vendas mostram "vendas até DD/MM".
@@ -150,10 +172,8 @@ Cada bloco do painel mostra "dados até HH:MM", e as vendas mostram "vendas até
 - É uma página no Worker do site (`run_worker_first` com `/painel*`), protegida pelo **Cloudflare Access** só com o e-mail do Elias.
 - O Worker **também confere o JWT do Access**: sem um JWT válido, a resposta é 403, mesmo se a regra do Access sumir.
 - É HTML montado no servidor, sem JS, com `<meta http-equiv="refresh" content="60">`.
-- O token só de leitura do AE e o binding do D1 ficam no Worker (segredo e binding, nunca no repo).
-- Mostra também o uso diário de requisições do Worker.
-
-**Risco do plano Free:** com o `/r/*` passando pelo Worker, se a cota de 100 mil requisições por dia acabar, o clique de afiliado quebra. Se o uso passar de 50%, a saída é o plano de US$ 5 ou amostrar o beacon.
+- O token só de leitura (Account Analytics e Zone Analytics) e o binding do D1 ficam no Worker (segredo e binding, nunca no repo).
+- Só o `/painel*` e o `/e` passam pelo Worker. O `/r/` continua estático, então a cota do Free nunca derruba o clique de afiliado.
 
 ## Vendas pelo navegador
 
@@ -177,14 +197,14 @@ A rodada só acontece com uma sessão aberta na máquina do Elias, que pode ser 
 
 | Fase | Entra | Quem |
 |---|---|---|
-| F0 | Teste só de leitura: o que o GraphQL do Free devolve e se o `ASSETS.fetch` respeita o `_redirects` e descarta a query | agent-dados, com o token só de leitura |
-| F1 | Worker no `/r/*` gravando no AE e `?de=&pos=` nos links do `build.py` | agent-dados escreve; agent-backend revisa o Worker; agent-front, os links. PR sensível |
-| F1b | `/painel` com Access e conferência do JWT | agent-dados e agent-backend. PR sensível |
-| F2 | Beacon `/e`: views, origem e busca. Atualização da página de privacidade | agent-front e agent-dados. PR sensível (LGPD) |
-| F3 | Vendas pelo navegador, importação no D1, progresso da Creators API, R$ por clique e `daily_rollup` | agent-dados |
+| F0 ✅ | Teste só de leitura, feito em 2026-11-04. O GraphQL do Free traz caminho, status, navegador e país, por 31 dias; referrer e query não. A SQL API do AE deu 403 | agent-dados |
+| F1 | `Disallow: /r/` no `robots.txt`, `daily_rollup` no D1 e rollup diário no `ofertaslivros-cron` | agent-front (robots); agent-dados e agent-backend (cron e D1). PR sensível (Worker) |
+| F1b | `/painel` com Access e conferência do JWT, lendo o GraphQL e o D1 | agent-dados e agent-backend. PR sensível |
+| F2 | Beacon `/e` para os termos buscados e atualização da página de privacidade | agent-front e agent-dados. PR sensível (LGPD) |
+| F3 | Vendas pelo navegador, importação no D1, progresso da Creators API e R$ por clique | agent-dados |
 
 ## O que o Elias faz
 
-- Criar o token da Cloudflare só de leitura: Account Analytics Read e Zone Analytics Read na zona `ofertaslivros.com.br`. Ele vira segredo do Worker e, se a F0 precisar, Secret no GitHub.
+- Token da Cloudflare só de leitura: criado em 2026-11-04 (`ofertaslivros-analytics-readonly`) e guardado no `.env` local. Na F1b, vira segredo do Worker.
 - Criar a aplicação do Access para `ofertaslivros.com.br/painel*` com o e-mail dele.
 - Dar o "aprovado, pode seguir" em cada PR sensível.
