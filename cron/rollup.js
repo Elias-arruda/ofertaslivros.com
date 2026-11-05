@@ -18,6 +18,10 @@ export const SCHEMA = `CREATE TABLE IF NOT EXISTS daily_rollup (
   bot INTEGER NOT NULL, requests INTEGER NOT NULL,
   PRIMARY KEY (day, path, status, country, bot))`;
 
+// Pedidos do "Pedir um livro": só título e autor, apagados depois de 30 dias (mesmo prazo do e-mail).
+export const PEDIDOS_SCHEMA = `CREATE TABLE IF NOT EXISTS pedidos (
+  id INTEGER PRIMARY KEY, criado_em TEXT NOT NULL, titulo TEXT NOT NULL, autor TEXT NOT NULL)`;
+
 // Um único statement por dia: os dados vão como um parâmetro JSON (o D1 limita parâmetros por query).
 const INSERT = `INSERT OR REPLACE INTO daily_rollup (day, path, status, country, bot, requests)
   SELECT ?1, j.value->>0, j.value->>1, j.value->>2, j.value->>3, j.value->>4 FROM json_each(?2) AS j`;
@@ -57,7 +61,11 @@ export async function fetchDay(token, day) {
 
 export async function rollup(env, now = new Date()) {
   if (!env.CF_ANALYTICS_TOKEN) throw new Error("CF_ANALYTICS_TOKEN ausente: rollup não rodou");
-  await env.ANALYTICS.prepare(SCHEMA).run();
+  await env.ANALYTICS.batch([
+    env.ANALYTICS.prepare(SCHEMA),
+    env.ANALYTICS.prepare(PEDIDOS_SCHEMA),
+    env.ANALYTICS.prepare("DELETE FROM pedidos WHERE criado_em < datetime('now', '-30 days')"),
+  ]);
   const days = Array.from({ length: BACKFILL_DAYS }, (_, i) => brDay(now, i + 1));
   const { results } = await env.ANALYTICS.prepare(
     `SELECT DISTINCT day FROM daily_rollup WHERE day >= ?1`).bind(days.at(-1)).all();

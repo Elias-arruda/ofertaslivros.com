@@ -3,7 +3,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { accessEmail, painel, render, dados, clique } from "./painel.js";
-import { SCHEMA } from "../cron/rollup.js";
+import { SCHEMA, PEDIDOS_SCHEMA } from "../cron/rollup.js";
+import { execFileSync } from "node:child_process";
 
 const TEAM = "https://ofertaslivros.cloudflareaccess.com";
 const AUD = "eae97b05c067191b8a26d7e97bfbf575088be98d0e891009127728de1932779b";
@@ -81,4 +82,24 @@ test("dados roda o SQL de verdade e render escapa o que vem dos caminhos", async
   assert.match(html, /<td>livro-1<\/td><td>6<\/td><td>3<\/td><td>200\.0%<\/td>/); // 6 cliques ÷ 3 views
   assert.match(html, /<td>\/manga\/<\/td><td>9<\/td>/);
   assert.match(html, /<td>tg<\/td><td>2<\/td>/);
+  assert.match(html, /Pedidos de livro: 0 novo/);       // tabela pedidos ainda não existe: lista vazia
+  assert.match(html, /Creators API: 0 de ~10/);          // sales ainda não existe
+});
+
+test("pedidos (texto do visitante) saem escapados e marcados como novos; vendas somam por status", async () => {
+  const d1 = fakeD1();
+  d1.db.exec(SCHEMA); d1.db.exec(PEDIDOS_SCHEMA);
+  d1.db.prepare("INSERT INTO pedidos (criado_em, titulo, autor) VALUES (datetime('now'), ?, ?)").run('<img src=x onerror=alert(1)>', "Autor");
+  d1.db.prepare("INSERT INTO pedidos (criado_em, titulo, autor) VALUES (datetime('now', '-3 days'), 'Antigo', '')").run();
+  const schema = execFileSync("python3", ["-c", "import sys; sys.path.insert(0, 'analytics'); import vendas; print(vendas.SCHEMA)"]).toString();
+  d1.db.exec(schema);
+  const hoje = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+  const ins = d1.db.prepare("INSERT INTO sales VALUES ('amazon', ?, '', ?, 't', ?, ?, ?, ?, 'f', 'x')");
+  ins.run(hoje, "A1", 3, 9000, null, "pedido"); ins.run(hoje, "A1", 3, 9000, 450, "enviado"); ins.run(hoje, "A1", 1, 3000, -150, "devolvido");
+  globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ data: { viewer: { zones: [{ httpRequestsAdaptiveGroups: [] }] } } }) });
+  const html = render(await dados({ ANALYTICS: d1, CF_ANALYTICS_TOKEN: "t" }));
+  assert.ok(!html.includes("<img") && html.includes("&lt;img src=x onerror=alert(1)&gt;"));
+  assert.match(html, /Pedidos de livro: 1 novo/);
+  assert.match(html, /<td>enviado<\/td><td>3<\/td><td>R\$\s?90,00<\/td><td>R\$\s?4,50<\/td>/);
+  assert.match(html, /Creators API: 2 de ~10/);
 });

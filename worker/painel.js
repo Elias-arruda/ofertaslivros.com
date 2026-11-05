@@ -75,12 +75,21 @@ export async function dados(env, now = new Date()) {
       WHERE bot = 0 AND status = 200 AND day >= date('now', '-3 hours', '-7 days') GROUP BY path`).all(),
     db.prepare(`SELECT MAX(day) AS day FROM daily_rollup`).first(),
   ]);
+  // Tabelas que nascem depois (pedidos no 1º pedido, sales no 1º import): sem tabela = lista vazia.
+  const talvez = q => q.all().then(r => r.results, () => []);
+  const [pedidos, vendas] = await Promise.all([
+    talvez(db.prepare(`SELECT criado_em, titulo, autor, criado_em >= datetime('now', '-1 day') AS novo
+      FROM pedidos ORDER BY id DESC LIMIT 100`)),
+    talvez(db.prepare(`SELECT store, status, SUM(qty) AS itens, SUM(revenue_cents) AS receita,
+      SUM(commission_cents) AS comissao, MAX(order_date) AS ate FROM sales
+      WHERE order_date >= date('now', '-3 hours', '-30 days') GROUP BY store, status`)),
+  ]);
   // Hoje (desde 00:00 em Brasília) direto do GraphQL: alguns minutos de atraso.
   const hoje = brDay(now, 0);
   const rowsHoje = toRows(await fetchDay(env.CF_ANALYTICS_TOKEN, hoje))
     .map(([path, status, country, bot, requests]) => ({ path, status, bot, requests }));
   return { porDia: porDia.results, livros7: livros7.results, cliques7: cliques7.results, nichos7: nichos7.results,
-    ultimoDia: ultimo?.day || null, hoje, rowsHoje, geradoEm: now };
+    ultimoDia: ultimo?.day || null, hoje, rowsHoje, pedidos, vendas, geradoEm: now };
 }
 
 export function render(d) {
@@ -102,12 +111,20 @@ export function render(d) {
     .map(([id, c]) => [id, n(c), n(viewsLivro[id]), viewsLivro[id] ? `${(100 * c / viewsLivro[id]).toFixed(1)}%` : "—"]);
   const nichos = d.nichos7.filter(r => NICHOS.has(r.path.slice(1, -1))).sort((a, b) => b.views - a.views)
     .map(r => [r.path, n(r.views)]);
+  const brl = c => (Number(c || 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const novos = d.pedidos.filter(p => p.novo).length;
+  const v = (store, status) => d.vendas.find(r => r.store === store && r.status === status) || {};
+  const qualificadas = (v("amazon", "enviado").itens || 0) - (v("amazon", "devolvido").itens || 0);
+  const vendasAte = d.vendas.reduce((m, r) => (r.ate > m ? r.ate : m), "") || "—";
   const hora = d.geradoEm.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
 
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="60">
 <meta name="robots" content="noindex"><title>Painel · Ofertas Livros</title><link rel="stylesheet" href="/style.css"></head>
 <body><main class="painel"><h1>Painel</h1><p>Gerado em ${esc(hora)} (atualiza a cada 60 s). Sem bots. Histórico até ${esc(d.ultimoDia || "—")}; hoje vem do GraphQL com alguns minutos de atraso.</p>
+${tabela(`Pedidos de livro: ${novos} novo(s) nas últimas 24 h`, ["Quando (UTC)", "Livro", "Autor", ""],
+  d.pedidos.map(p => [p.criado_em, p.titulo, p.autor || "—", p.novo ? "NOVO" : ""]),
+  "Pedidos do formulário \"Pedir um livro\" (também vão para pedidos@ofertaslivros.com). Ficam 30 dias.")}
 ${tabela(`Hoje (${d.hoje})`, ["Views", "Cliques em /r/"], [[n(viewsHoje), n(cliquesHoje)]])}
 ${tabela("Top livros hoje", ["Livro", "Cliques"], topHoje.map(([id, c]) => [id, n(c)]))}
 ${tabela("Por dia (30 dias)", ["Dia", "Views", "Cliques", "Bots"], d.porDia.map(r => [r.day, n(r.views), n(r.cliques), n(r.bots)]))}
@@ -115,7 +132,10 @@ ${tabela("Top livros (7 dias)", ["Livro", "Cliques", "Views da página", "CTR"],
 ${tabela("Canal (7 dias)", ["Canal", "Cliques"], Object.entries(porCanal).map(([k, v]) => [k, n(v)]))}
 ${tabela("Loja (7 dias)", ["Destino", "Cliques"], Object.entries(porLoja).map(([k, v]) => [k, n(v)]), "vencedora = /r/<id> (a loja com menor preço no dia); amazon/mercadolivre = a seta da outra loja.")}
 ${tabela("Nichos mais vistos (7 dias)", ["Página", "Views"], nichos)}
-${tabela("Vendas e comissões", ["Status"], [["Entra na F3 (CSV dos painéis pelo Chrome)."]])}
+${tabela(`Vendas Amazon (30 dias, até ${vendasAte})`, ["Status", "Itens", "Receita", "Comissão"],
+  ["pedido", "enviado", "devolvido"].map(st => [st, n(v("amazon", st).itens), brl(v("amazon", st).receita), st === "pedido" ? "—" : brl(v("amazon", st).comissao)]),
+  `Creators API: ${qualificadas} de ~10 vendas qualificadas (enviadas − devolvidas) em 30 dias. Vem do CSV exportado pelo Chrome, D+1; o número que vale é o do painel da Amazon.`)}
+${tabela("Vendas Mercado Livre", ["Status"], [["O portal de afiliados do ML não tem exportação; acompanhe no painel do ML."]])}
 </main></body></html>`;
 }
 
