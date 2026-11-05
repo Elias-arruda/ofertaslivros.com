@@ -52,4 +52,7 @@ console.log("ok");
   assert.equal(enviados.length, 2);
   assert.equal((await pedido(req("titulo=Y&site=bot"), { ...env, ANALYTICS: d1 }, enviar)).status, 303); // honeypot não grava
   assert.equal(db.prepare("SELECT COUNT(*) n FROM pedidos").get().n, 1);
+  const falha = async () => { throw new Error("smtp"); };                                    // e-mail falhou:
+  assert.equal((await pedido(req("titulo=Z"), { ...env, ANALYTICS: d1 }, falha)).status, 502); // nada gravado
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM pedidos").get().n, 1);
 }

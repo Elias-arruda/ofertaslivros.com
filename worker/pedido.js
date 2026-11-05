@@ -34,7 +34,7 @@ export function mime(para, titulo, autor, agora = new Date()) {
 const volta = (caminho) => new Response(null, { status: 303, headers: { Location: caminho } });
 const erro = (status, texto) => new Response(texto, { status, headers: { "Content-Type": "text/plain; charset=utf-8" } });
 
-// Painel: guarda o pedido no D1. Se o D1 falhar, segue só com o e-mail (o pedido não se perde).
+// Painel: guarda o pedido no D1 depois do e-mail. Se o D1 falhar, o pedido já está no e-mail.
 async function guardar(db, titulo, autor) {
   if (!db) return;
   try {
@@ -67,12 +67,12 @@ export async function pedido(request, env, enviar) {
   const autor = limpa(f.get("autor") ?? "", 100);
   if (!titulo || autor === null) return erro(400, "Preencha o nome do livro (até 150 letras) e o autor (até 100).");
 
-  await guardar(env.ANALYTICS, titulo, autor);
   try {
     await enviar(env.PEDIDOS_PARA, mime(env.PEDIDOS_PARA, titulo, autor));
   } catch (e) {
     console.log(`pedido: envio falhou (${e?.name || "erro"})`); // sem o conteúdo do pedido
     return erro(502, "Não deu para enviar agora. Tente de novo mais tarde.");
   }
+  await guardar(env.ANALYTICS, titulo, autor); // só depois do e-mail: falha no envio não deixa registro duplicado
   return volta(OK);
 }
