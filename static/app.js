@@ -1,6 +1,6 @@
 /* Ofertas Livros: melhoria progressiva. Sem ele o site funciona igual (links reais, carrossel em CSS).
-   Lê só o que o próprio HTML traz (data-* e o JSON de #ofertas) e escreve só com textContent,
-   createElement e atributos conferidos. Nada de HTML vindo de string. */
+   Lê só o HTML do próprio site (data-*, JSON de #ofertas, #historico da página do livro) e escreve
+   com textContent, createElement, importNode e atributos conferidos. */
 (() => {
   'use strict';
   const d = document, root = d.documentElement;
@@ -27,9 +27,8 @@
     });
   }
 
-  /* Feeds (ofertas, "Da curadoria" e /curadoria/): busca, filtro de nicho e ordenação sobre os cards que já estão no HTML.
-     Na home o CSS corta a lista; com busca ou filtro (.filtrando) aparece tudo. Nas páginas completas,
-     "carregar mais" de 12 em 12. */
+  /* Feeds: busca, filtro de nicho e ordem sobre os cards do HTML. Na home o CSS corta a lista;
+     com busca ou filtro (.filtrando) aparece tudo. Nas páginas completas, "carregar mais" de 12 em 12. */
   const grids = $$('.feed'), PAGE = 12;
   const grid = grids[0] || null;
   if (grids.length) {
@@ -113,7 +112,7 @@
     if (pedida && grid) { input.value = pedida.slice(0, 80); abrir(true); input.dispatchEvent(new Event('input')); }
   }
 
-  /* Carrossel: setas, arraste, contador e barra; o tempo de cada slide é a animação da barra (CSS) */
+  /* Carrossel: setas, arraste, contador e barra (o tempo do slide é a animação da barra) */
   const hero = $('.hero');
   if (hero && $$('.slide', hero).length > 1) { // 1 slide: sem carrossel
     const track = $('.hero-track', hero), view = $('.hero-view', hero);
@@ -163,9 +162,8 @@
     go(0);
   }
 
-  /* Pedir um livro: no próprio domínio do form (o .com), envia por fetch e o aviso aparece no painel.
-     De outra origem (o .com.br) a resposta não seria legível: fica o envio normal, e quem confirma é o
-     servidor (volta em /#pedido-recebido). Erro ou falha de rede também caem no envio normal. */
+  /* Pedir um livro: no domínio do form (o .com), envia por fetch e o aviso aparece no painel. De outra
+     origem a resposta não é legível: fica o envio normal e o servidor confirma (/#pedido-recebido). */
   const pedir = $('.pedir'), px = $('.js-px');
   if (pedir && px) {  // X e Esc fecham o painel nos dois domínios
     const box = pedir.closest('details'), fechar = () => { box.open = false; $('summary', box).focus(); };
@@ -197,7 +195,7 @@
     try { data = JSON.parse(dataEl.textContent); } catch (_) { data = []; }
     const byId = new Map(data.map(o => [o.id, o]));
     const OK = { r: /^\/r\/[a-z0-9-]+(\/(amazon|mercadolivre))?$/, pag: /^\/livro\/[a-z0-9-]+\/$/, tg: /^https:\/\/t\.me\/[A-Za-z0-9_]+\?start=[A-Za-z0-9_-]+$/ };
-    let list = [], idx = 0, opener = null, porPop = false;
+    let list = [], idx = 0, opener = null, porPop = false, cur = null;
     const txt = (sel, v) => { const el = $(sel, dlg); el.textContent = v || ''; el.hidden = !v; return el; };
     const link = (href, text, cls, rel, sr) => {
       const a = d.createElement('a');
@@ -214,6 +212,8 @@
       const selo = $('.m-selo .stamp', dlg);
       selo.textContent = o.selo || ''; selo.classList.toggle('stamp--since', Boolean(o.desde));
       txt('.m-meta', o.meta); txt('.m-hist', o.hist); txt('.m-p', o.p); txt('.m-de', o.de);
+      const hc = $('.m-hc', dlg); hc.replaceChildren();
+      if (o.hc) fetch(o.pag).then(r => r.text()).then(t => { const f = new DOMParser().parseFromString(t, 'text/html').getElementById('historico'); if (f && cur === o.id) { hc.replaceChildren(d.importNode(f, true)); txt('.m-hist', ''); } }, () => {});
       txt('.m-off', o.off ? '−' + o.off + '%' : '');
       $('.m-off', dlg).classList.toggle('off-pill--forte', o.forte === true);
       const img = $('.m-img', dlg), ini = $('.m-ini', dlg), foto = typeof o.img === 'string' && (o.img.startsWith('https://http2.mlstatic.com/') || /^\/capas\/\d{9}[\dX](\d{3})?\.jpg$/.test(o.img));
@@ -243,8 +243,9 @@
       const o = byId.get(id);
       if (!o || !OK.pag.test(o.pag)) return false;
       idx = Math.max(0, list.indexOf(id));
-      fill(o);
+      cur = id;
       if (!dlg.open) dlg.showModal();
+      fill(o);
       if (push) history.pushState({ modal: id }, '', o.pag);
       else history.replaceState({ modal: id }, '', o.pag);
       return true;
@@ -268,7 +269,7 @@
     });
     addEventListener('popstate', e => {
       const id = e.state && e.state.modal;
-      if (id && byId.has(id)) { fill(byId.get(id)); if (!dlg.open) dlg.showModal(); }
+      if (id && byId.has(id)) { cur = id; if (!dlg.open) dlg.showModal(); fill(byId.get(id)); }
       else if (dlg.open) { porPop = true; dlg.close(); }
     });
   }
