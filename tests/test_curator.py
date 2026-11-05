@@ -1134,6 +1134,14 @@ def test_ml_match_sem_isbn_com_dois_resultados_e_ambiguo(mm, capsys):
     assert "1 ambíguos" in capsys.readouterr().out and not mm["links"].exists()
 
 
+def test_ml_match_sem_isbn_com_resultado_sem_id_e_ambiguo(mm, capsys):
+    f = mm["fake"]
+    f.products["MLB10"] = _sem_isbn(10, "Amz 1")
+    f.by_isbn[isbn(1)] = ["MLB10", "xyz"]  # 2º resultado com id inválido também conta
+    mm["run"](max_books=1)
+    assert "1 ambíguos" in capsys.readouterr().out and not mm["links"].exists()
+
+
 def test_titulo_e_autor_normalizados():
     assert cur.titulo_bate("Duna: livro 1", "DUNA")
     assert cur.titulo_bate("O ladrão de raios (Percy Jackson)", "Percy Jackson - O Ladrao De Raios")

@@ -935,8 +935,8 @@ def match_one(book, token, pause=time.sleep, **kw):
             why["idioma"] += 1
         else:
             ok.append((pid, found))
-    if len(ok) > 1 or (ok and not ok[0][1] and len(ids) > 1):
-        return None, "ambiguo"  # sem ISBN na ficha, só aceita se a busca trouxe um produto
+    if len(ok) > 1 or (ok and not ok[0][1] and len(res) > 1):
+        return None, "ambiguo"  # sem ISBN na ficha: a busca crua (antes de filtrar ids) tem 1
     if ok:
         return ok[0][0], None
     return None, "sem_match:" + ",".join(f"{k}={v}" for k, v in sorted(why.items()))
