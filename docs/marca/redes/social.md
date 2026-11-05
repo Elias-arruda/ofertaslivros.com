@@ -98,7 +98,7 @@ Antes de publicar: os mesmos campos do post 3.
 ### 8. Transparência (`posts/08-transparencia`)
 > Como o Ofertas Livros se paga: os links são de afiliado. Como associados da Amazon e afiliados do Mercado Livre, ganhamos com compras qualificadas.
 > O preço final é o da loja. A gente mostra o horário em que conferiu, mas o preço pode mudar depois disso.
-> Quem escolhe o que entra é o preço: se o livro baixou, entra.
+> Nenhuma loja escolhe o que aparece aqui: entra o livro que passa pela curadoria (preço conferido na loja e comparado com o histórico).
 
 `#livros #ofertasdelivros #transparencia`
 
