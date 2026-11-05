@@ -11,7 +11,11 @@ function fakeD1() {
     run: async () => db.prepare(sql).run(...args),
     all: async () => ({ results: db.prepare(sql).all(...args) }),
   });
-  return { db, prepare: sql => stmt(sql) };
+  const batch = async stmts => {
+    db.exec("BEGIN");
+    try { for (const st of stmts) await st.run(); db.exec("COMMIT"); } catch (e) { db.exec("ROLLBACK"); throw e; }
+  };
+  return { db, prepare: sql => stmt(sql), batch };
 }
 
 const g = (path, status, country, ua, count) =>
@@ -56,6 +60,18 @@ test("rollup grava ontem e os dias que faltam, sem duplicar ao rodar de novo", a
   assert.equal(d1.db.prepare("SELECT SUM(requests) n FROM daily_rollup WHERE day = '2026-11-04'").get().n, 10);
   const r = d1.db.prepare("SELECT * FROM daily_rollup WHERE day = '2026-11-04' AND status = 302").get();
   assert.deepEqual({ ...r }, { day: "2026-11-04", path: "/r/livro-1", status: 302, country: "BR", bot: 0, requests: 3 });
+});
+
+test("regravar ontem apaga a linha que sumiu do GraphQL", async () => {
+  const d1 = fakeD1(), now = new Date("2026-11-05T03:15:00Z");
+  let groups = [g("/r/livro-1", 302, "BR", "Chrome", 3), g("/livro/livro-1/", 200, "BR", "Chrome", 7)];
+  globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ data: { viewer: { zones: [{ httpRequestsAdaptiveGroups: groups }] } } }) });
+  const env = { CF_ANALYTICS_TOKEN: "t", ANALYTICS: d1 };
+  await rollup(env, now);
+  groups = [g("/livro/livro-1/", 200, "BR", "Chrome", 8)];
+  await rollup(env, now);
+  assert.deepEqual(d1.db.prepare("SELECT path, requests FROM daily_rollup WHERE day = '2026-11-04'").all().map(r => ({ ...r })),
+    [{ path: "/livro/livro-1/", requests: 8 }]);
 });
 
 test("dia no limite do GraphQL falha em vez de gravar truncado", async () => {

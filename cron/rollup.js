@@ -64,7 +64,11 @@ export async function rollup(env, now = new Date()) {
   done.delete(days[0]); // ontem sempre é regravado (o GraphQL pode ter chegado incompleto na primeira leitura)
   for (const day of days.filter(d => !done.has(d))) {
     const rows = toRows(await fetchDay(env.CF_ANALYTICS_TOKEN, day));
-    await env.ANALYTICS.prepare(INSERT).bind(day, JSON.stringify(rows)).run();
+    // batch do D1 = uma transação: apaga o dia e regrava, sem sobrar linha que sumiu do GraphQL.
+    await env.ANALYTICS.batch([
+      env.ANALYTICS.prepare("DELETE FROM daily_rollup WHERE day = ?1").bind(day),
+      env.ANALYTICS.prepare(INSERT).bind(day, JSON.stringify(rows)),
+    ]);
     console.log(`rollup ${day}: ${rows.length} linhas`);
   }
 }
