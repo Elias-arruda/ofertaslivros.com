@@ -827,14 +827,13 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 .hc-line { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
 .hc-line.hc-amz { stroke: var(--text); }
 .hc-line.hc-ml { stroke: var(--hc-ml); stroke-width: 2; }
-.hc-pt { fill: var(--text); }
-.hc-guide { stroke: var(--line); stroke-width: 1; }
 .hc-min { stroke: var(--coral); stroke-width: 1.5; stroke-dasharray: 4 4; }
 .hc-lbl { fill: var(--muted); }
 .hc-lbl--min { fill: var(--coral); }
 .hc-name.hc-amz { fill: var(--text); }
 .hc-name.hc-ml { fill: var(--hc-ml); }
 .hc-name.hc-old { fill: var(--muted); }
+.hc-now-lbl { fill: var(--coral); font-weight: 700; }
 .hc-now { fill: var(--coral); stroke: var(--bg2); stroke-width: 2; }
 .hc-now--velho { fill: var(--bg2); stroke: var(--coral); }
 .hc figcaption { margin-top: 10px; font-size: 15px; font-weight: 600; }

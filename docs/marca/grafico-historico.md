@@ -19,7 +19,7 @@ O gráfico fica num painel neutro (`.hc`: fundo `--bg2`, borda 1px `--line`, rai
 | Maior preço, datas | `--muted` | #4a5670, 6,78:1 | #a9b4c8, 7,49:1 | texto |
 | Linha-guia do maior preço | `--line` | | | 1, decorativa |
 
-Sem depender de cor: (a) **rótulo direto** com o nome da loja na ponta de cada linha, na cor dela (nada de legenda); (b) **marcadores na Amazon**, que mostram onde houve leitura de fato (no ML, só no ponto solto entre buracos, que o path não pinta); (c) espessuras diferentes. Pedido do Elias: ML em amarelo/âmbar (família `--g-negocios`), Amazon no `--text` (quase branco no escuro). Só uma loja: a linha mantém a cor da loja, e o rótulo continua.
+Sem depender de cor: (a) **rótulo direto** com o nome da loja na ponta de cada linha, na cor dela (nada de legenda); (b) espessuras diferentes. Linhas lisas, sem marcadores (pedido do Elias): o ponto solto entre buracos vira um traço de comprimento zero, que a ponta redonda pinta. Pedido do Elias: ML em amarelo/âmbar (família `--g-negocios`), Amazon no `--text` (quase branco no escuro). Só uma loja: a linha mantém a cor da loja, e o rótulo continua.
 
 ## 3. Elementos
 - **Eixo x:** datas reais, de `max(primeiro ponto de qualquer loja, hoje − 89)` até hoje (ou o último ponto, se um `checked_at` adiantado cair no dia seguinte). O texto (frase e `<title>`) usa a data do primeiro ponto real, nunca o início puxado do eixo. Domínio mínimo de 7 dias: com 3 dias, a linha ocupa só a ponta direita, o que mostra que o histórico é novo.
@@ -30,6 +30,14 @@ Sem depender de cor: (a) **rótulo direto** com o nome da loja na ponta de cada 
   - `90d`: "Hoje é o menor preço dos últimos 90 dias."
   - `since`: "Hoje é o menor preço desde DD/MM." (o mesmo `o["since"]` do selo)
   - `None`: o `chart_label()` atual, "desde 18/10: R$ 34,90 a R$ 59,90", sem a palavra "menor".
+
+## 3b. Rótulos de preço (pedido do Elias, 2026-11-04)
+Só nos pontos-chave, testados antes de desenhar para não cobrir linha (nem o tracejado) nem outro rótulo:
+- **Atual:** na coluna da direita, embaixo do nome da loja vencedora, em `--coral` 700 (o ponto vermelho continua).
+- **Mais alto:** em cima do primeiro ponto onde aparece (a faixa acima da área é livre). Sai se for igual ao atual.
+- **Intermediário:** o degrau mais longo da vencedora (2+ dias no mesmo preço), a pelo menos 15% da faixa do mais alto e do atual. Tenta em cima e depois embaixo da linha; se não couber, sai.
+- **Menor:** "menor R$ X" embaixo do tracejado, só quando o menor não é o atual.
+- A pilha de nomes da direita sobe se encostar na linha das datas.
 
 ## 4. Estados
 - **Nenhuma loja com 2 dias distintos:** sem SVG. Só `<p class="hist">Primeira leitura em DD/MM: R$ X.</p>`.
