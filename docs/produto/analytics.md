@@ -107,6 +107,8 @@ Os filtros foram testados no Free na F0. `$bots` é a lista de navegadores de ro
 
 SQL, para mais de 31 dias, sobre o `daily_rollup` do D1:
 
+O `day` está em horário de Brasília. Por isso, as janelas usam `date('now', '-3 hours', ...)`, porque o `now` do SQLite é UTC.
+
 ```sql
 -- Cliques e views por dia
 SELECT day,
@@ -117,10 +119,10 @@ FROM daily_rollup WHERE bot = 0 GROUP BY day ORDER BY day;
 -- CTR por livro: cliques em /r/<id>* ÷ views de /livro/<id>/
 WITH c AS (
   SELECT substr(path, 4, instr(substr(path, 4) || '/', '/') - 1) AS book_id, SUM(requests) AS cliques
-  FROM daily_rollup WHERE bot = 0 AND path LIKE '/r/%' AND day >= date('now', '-7 days') GROUP BY book_id
+  FROM daily_rollup WHERE bot = 0 AND path LIKE '/r/%' AND day >= date('now', '-3 hours', '-7 days') GROUP BY book_id
 ), v AS (
   SELECT substr(path, 8, length(path) - 8) AS book_id, SUM(requests) AS views
-  FROM daily_rollup WHERE bot = 0 AND path LIKE '/livro/%/' AND day >= date('now', '-7 days') GROUP BY book_id
+  FROM daily_rollup WHERE bot = 0 AND path LIKE '/livro/%/' AND day >= date('now', '-3 hours', '-7 days') GROUP BY book_id
 )
 SELECT c.book_id, c.cliques, v.views, 1.0 * c.cliques / v.views AS ctr
 FROM c LEFT JOIN v USING (book_id) ORDER BY c.cliques DESC LIMIT 20;
@@ -128,7 +130,7 @@ FROM c LEFT JOIN v USING (book_id) ORDER BY c.cliques DESC LIMIT 20;
 -- Telegram × WhatsApp × site
 SELECT CASE WHEN path LIKE '%/tg' THEN 'tg' WHEN path LIKE '%/wa' THEN 'wa' ELSE 'site' END AS canal,
        SUM(requests) AS cliques
-FROM daily_rollup WHERE bot = 0 AND path LIKE '/r/%' AND day >= date('now', '-7 days') GROUP BY canal;
+FROM daily_rollup WHERE bot = 0 AND path LIKE '/r/%' AND day >= date('now', '-3 hours', '-7 days') GROUP BY canal;
 ```
 
 D1:
@@ -137,7 +139,7 @@ D1:
 -- Progresso para liberar a Creators API (~10 vendas qualificadas em 30 dias).
 -- Estimativa: soma itens, porque a importação agrega pedidos por chave. O número que vale é o do painel da Amazon.
 SELECT SUM(qty) AS vendas_30d FROM sales
-WHERE store = 'amazon' AND status != 'devolvido' AND order_date >= date('now', '-30 days');
+WHERE store = 'amazon' AND status != 'devolvido' AND order_date >= date('now', '-3 hours', '-30 days');
 
 -- Comissão por semana, loja e canal
 SELECT strftime('%Y-W%W', order_date) AS semana, store, tracking,
