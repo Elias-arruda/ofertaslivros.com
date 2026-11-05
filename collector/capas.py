@@ -2,6 +2,7 @@
 """Capa provisória dos livros só da Amazon (sem foto do ML): static/capas/<isbn>.jpg. Só stdlib.
 
     python3 collector/capas.py            # baixa as que faltam e lista as não achadas
+    (teste: tests/test_capas.py)
 
 Fontes, pelo ISBN exato, nesta ordem: Open Library e o catálogo público (VTEX) de duas
 livrarias, conferindo o EAN do item. Nenhuma request para a Amazon (regra 1).
@@ -16,6 +17,8 @@ import urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
+from build import ISBN_RE  # noqa: E402
 CAPAS = HERE.parent / "static" / "capas"
 UA = {"User-Agent": "ofertaslivros-capas/1.0"}
 VTEX = ("www.livrariascuritiba.com.br", "www.martinsfontespaulista.com.br")  # a 1ª costuma ter a capa plana
@@ -64,14 +67,19 @@ def vtex(isbn):
     return None
 
 
+def pendentes(books):
+    """Livros só da Amazon com ISBN válido (vai na URL e no nome do arquivo), sem capa nem recusa."""
+    return [b for b in books if not b.get("ml_url") and isinstance(b.get("isbn"), str)
+            and ISBN_RE.fullmatch(b["isbn"]) and b["isbn"] not in RECUSADAS
+            and not (CAPAS / f"{b['isbn']}.jpg").exists()]
+
+
 def main():
     books = json.loads((HERE / "catalog.json").read_text(encoding="utf-8"))
     books = books["books"] if isinstance(books, dict) else books
     falta = []
-    for b in books:
-        isbn = b.get("isbn")
-        if b.get("ml_url") or not isbn or isbn in RECUSADAS or (CAPAS / f"{isbn}.jpg").exists():
-            continue
+    for b in pendentes(books):
+        isbn = b["isbn"]
         d = open_library(isbn) or vtex(isbn)
         if d:
             (CAPAS / f"{isbn}.jpg").write_bytes(d)
@@ -82,15 +90,5 @@ def main():
     print(f"não achadas: {len(falta)}", *falta, sep="\n  ")
 
 
-def demo():
-    p = [{"items": [{"ean": "1", "images": [{"imageUrl": "https://livrariascuritiba.vteximg.com.br/arquivos/ids/9/a.jpg?v=1"}]}]}]
-    assert vtex_url(VTEX[0], "1", p) == "https://livrariascuritiba.vteximg.com.br/arquivos/ids/9-400-600/a.jpg"
-    assert vtex_url(VTEX[0], "2", p) is None                               # EAN diferente
-    assert vtex_url(VTEX[1], "1", p) is None                               # CDN de outra loja
-    evil = [{"items": [{"ean": "1", "images": [{"imageUrl": "https://evil.com/arquivos/ids/9/a.jpg"}]}]}]
-    assert vtex_url(VTEX[0], "1", evil) is None
-    assert jpeg(JPEG + b"x" * 3000) and not jpeg(b"\x89PNG" + b"x" * 3000) and not jpeg(JPEG)
-
-
 if __name__ == "__main__":
-    demo() if sys.argv[1:] == ["--demo"] else main()
+    main()
