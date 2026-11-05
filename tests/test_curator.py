@@ -973,3 +973,128 @@ def test_amazon_apply_mesmo_livro_duas_vezes_e_isbn_vazio(env, monkeypatch, caps
     assert cur.amazon_apply(tsv, env["cat"]) == 1
     out = capsys.readouterr().out
     assert "ISBN-13" in out and "repetido" not in out  # isbn vazio não conta como repetido
+
+
+# ---- ml-match: MLB dos livros só da Amazon pelo ISBN ----
+
+def _amz(n, **kw):
+    return {"id": f"amz-{n}", "isbn": isbn(n), "genre": "ficcao", "title": f"Amz {n}",
+            "author": "A", "asin": f"85{n:08d}", **kw}
+
+
+@pytest.fixture
+def mm(env, monkeypatch):
+    """Catálogo com livros só da Amazon; /products/search?product_identifier= devolve
+    fake.by_isbn[isbn] (lista de MLB)."""
+    fake = env["fake"]
+    fake.by_isbn, fake.totals = {}, {}
+    orig = fake.__call__
+
+    def call(req, timeout=None):
+        u = urlsplit(req.full_url)
+        q = parse_qs(u.query)
+        if u.path == "/products/search" and "product_identifier" in q:
+            assert q["site_id"] == ["MLB"] and q["status"] == ["active"]
+            fake.urls.append(req.full_url)
+            ids = fake.by_isbn.get(q["product_identifier"][0], [])
+            total = fake.totals.get(q["product_identifier"][0], len(ids))
+            return Resp({"paging": {"total": total}, "results": [{"id": i} for i in ids]})
+        return orig(req, timeout)
+    monkeypatch.setattr(c, "_urlopen", call)
+    doc = json.loads(env["cat"].read_text())
+    doc["books"] += [_amz(1), _amz(2), _amz(3), _amz(4),
+                     _amz(5, ml_product_id="MLB55", ml_url=ML_URL.replace("ref=X", "ref=Y"))]
+    env["cat"].write_text(json.dumps(doc))
+
+    def run(**kw):
+        return cur.ml_match(catalog=env["cat"], links_path=env["links"], pause=lambda s: None, **kw)
+    return {**env, "run": run}
+
+
+def _queue(env):
+    lines = env["links"].read_text().splitlines()
+    assert lines[0] == "\t".join(cur.ML_LINKS_COLS)
+    return {r[0]: r for r in (ln.split("\t") for ln in lines[1:])}
+
+
+def test_ml_match_casos(mm, capsys):
+    f = mm["fake"]
+    f.products["MLB10"] = prod(10, gtin=isbn(1))                    # match exato
+    f.by_isbn[isbn(1)] = ["MLB10"]
+    f.products["MLB20"] = prod(20, gtin=isbn(77))                   # ISBN diferente
+    f.by_isbn[isbn(2)] = ["MLB20"]
+    # isbn(3): nenhum resultado
+    f.products["MLB40"] = prod(40, gtin=isbn(4))                    # ambíguo
+    f.products["MLB41"] = prod(41, gtin=isbn(4))
+    f.by_isbn[isbn(4)] = ["MLB40", "MLB41"]
+    f.by_isbn[isbn(5)] = ["MLB10"]                                  # já tem produto: nem busca
+    before = mm["cat"].read_bytes()
+    assert mm["run"]() == 0
+    assert mm["cat"].read_bytes() == before  # catalog.json intacto, nenhuma chave muda
+    q = _queue(mm)
+    assert set(q) == {"amz-1"}
+    assert q["amz-1"] == ["amz-1", "MLB10", "Amz 1", "https://www.mercadolivre.com.br/p/MLB10", ""]
+    out = capsys.readouterr().out
+    assert "amz-2" in out and "isbn_diferente" in out
+    assert "amz-3" in out and "sem_resultado" in out
+    assert "amz-4" in out and "ambiguo" in out
+    assert "1 casados, 2 sem match, 1 ambíguos" in out
+    assert not any(isbn(5) in u for u in f.urls)  # livro com ml_product_id não é consultado
+    assert all(urlsplit(u).hostname == c.ML_HOST for u in f.urls)
+
+
+def test_ml_match_ficha_precisa_ser_livro_em_portugues(mm, capsys):
+    f = mm["fake"]
+    f.products["MLB10"] = prod(10, gtin=isbn(1), lang="Inglês")
+    f.products["MLB11"] = prod(11, gtin=isbn(1), author=None)     # sem AUTHOR: não é livro
+    f.by_isbn[isbn(1)] = ["MLB10", "MLB11"]
+    mm["run"](max_books=1)
+    out = capsys.readouterr().out
+    assert "idioma=1" in out and "nao_livro=1" in out and not mm["links"].exists()
+    assert "3 livros ficam para a próxima" in out
+
+
+def test_ml_match_um_valido_entre_varios_e_fila_preservada(mm):
+    f = mm["fake"]
+    f.products["MLB10"] = prod(10, gtin=isbn(1))
+    f.products["MLB11"] = prod(11, gtin=isbn(1), lang="Inglês")
+    f.by_isbn[isbn(1)] = ["MLB10", "MLB11"]
+    mm["run"]()
+    # o Elias cola o ml_url; nem o ml-match nem o suggest seguintes apagam a linha
+    lines = mm["links"].read_text().replace("/p/MLB10\t", "/p/MLB10\t" + ML_URL)
+    mm["links"].write_text(lines)
+    f.products["MLB30"] = prod(30, gtin=isbn(3))
+    f.by_isbn[isbn(3)] = ["MLB30"]
+    mm["run"]()
+    mm["add"](prod(7))
+    mm["suggest"]()
+    q = _queue(mm)
+    assert q["amz-1"][1:] == ["MLB10", "Amz 1", "https://www.mercadolivre.com.br/p/MLB10", ML_URL]
+    assert q["amz-3"][1] == "MLB30" and q["livro-7"][1] == "MLB7"
+
+
+def test_ml_match_mlb_de_outro_livro(mm, capsys):
+    mm["fake"].products["MLB55"] = prod(55, gtin=isbn(1))
+    mm["fake"].by_isbn[isbn(1)] = ["MLB55"]
+    mm["run"]()
+    assert "mlb_de_outro_livro MLB55" in capsys.readouterr().out and not mm["links"].exists()
+
+
+def test_ml_match_e_links_apply_juntam_as_lojas(mm):
+    mm["fake"].products["MLB10"] = prod(10, gtin=isbn(1))
+    mm["fake"].by_isbn[isbn(1)] = ["MLB10"]
+    mm["run"]()
+    url = ML_URL.replace("ref=X", "ref=Z")
+    mm["links"].write_text(mm["links"].read_text().replace("/p/MLB10\t", "/p/MLB10\t" + url))
+    assert cur.links_apply(mm["links"], mm["cat"]) == 0
+    b = next(b for b in mm["books"]() if b["id"] == "amz-1")
+    assert b == {**_amz(1), "ml_product_id": "MLB10", "ml_url": url}
+
+
+def test_ml_match_pagina_incompleta_e_ambigua(mm, capsys):
+    mm["fake"].products["MLB10"] = prod(10, gtin=isbn(1))
+    mm["fake"].by_isbn[isbn(1)] = ["MLB10"]
+    mm["fake"].totals[isbn(1)] = 2  # paging.total diz que há outro resultado fora da página
+    mm["run"](max_books=1)
+    assert "1 ambíguos" in capsys.readouterr().out and not mm["links"].exists()
+    assert not any("/products/MLB10" in u for u in mm["fake"].urls)
