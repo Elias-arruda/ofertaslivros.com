@@ -556,13 +556,12 @@ def stamp_html(o):
             if kind == "since" else "")
 
 
-def series(o):
-    """Pontos do gráfico da vencedora: os anteriores ao dia da verificação + o preço atual,
-    que vale para hoje. Sem price_points, ou com menos de 2, não há gráfico."""
-    if len(o["price_points"]) < 2:
-        return []
-    day = o["checked_at"].astimezone(BRT).date()
-    return [(d, c) for d, c in o["price_points"] if d < day] + [(day, o["price_cents"])]
+def series(s):
+    """Série diária de uma loja (ou da vencedora, que traz os campos dela): os pontos anteriores ao dia
+    da verificação + o preço atual, que vale para esse dia. Sem nenhum dia anterior, não há série."""
+    day = s["checked_at"].astimezone(BRT).date()
+    old = [(d, c) for d, c in s["price_points"] if d < day]
+    return old + [(day, s["price_cents"])] if old else []
 
 
 def chart_label(o, pts):
@@ -573,25 +572,176 @@ def chart_label(o, pts):
     return f"{when_}: {brl(lo)}" + (f" a {brl(hi)}" if hi > lo else "")
 
 
+HC_W, HC_H, HC_X0, HC_X1, HC_Y0, HC_Y1 = 300, 164, 4, 204, 30, 118  # viewBox 300x164; nomes e preços atuais em x >= 210
+HC_GAP = 7  # dias sem leitura que quebram a linha (Amazon lida à mão tem buracos)
+
+
 def chart(o, pad="  "):
-    """Sparkline em SVG inline (sem JS, sem style=): x pela data, y pelo preço, ponto vermelho no atual."""
-    pts = series(o)
-    if not pts:
-        return ""
-    W, H, M = 120, 32, 3
-    first, span = pts[0][0], max((pts[-1][0] - pts[0][0]).days, 1)
-    lo, hi = min(c for _, c in pts), max(c for _, c in pts)
-    xy = [(M + (d - first).days / span * (W - 2 * M),
-           M + ((hi - c) / (hi - lo) if hi > lo else .5) * (H - 2 * M)) for d, c in pts]
-    line = " ".join(f"{x:.1f},{y:.1f}" for x, y in xy)
-    label = chart_label(o, pts)
-    title = f"Preço {na(o['store'])} de {first:%d/%m} a {pts[-1][0]:%d/%m}: {label.split(': ', 1)[1]}"
-    return (f'\n{pad}<p class="hist"><svg class="spark" viewBox="0 0 {W} {H}" width="{W}" height="{H}" '
-            f'aria-hidden="true" focusable="false"><title>{e(title)}</title>'
-            f'<line class="spark-base" x1="0" y1="{H - .5}" x2="{W}" y2="{H - .5}"/>'
-            f'<polyline class="spark-line" points="{line}"/>'
-            f'<circle class="spark-dot" cx="{xy[-1][0]:.1f}" cy="{xy[-1][1]:.1f}" r="3"/></svg>'
-            f'<span>{e(label)}</span></p>')
+    """Histórico da página do livro (docs/marca/grafico-historico.md): uma linha por loja elegível,
+    tracejado no menor preço mostrado, ponto no preço atual da vencedora. SVG estático, sem JS e sem
+    style= (CSP). A frase vem do selo, nunca do desenho; a tabela por dia é o equivalente acessível."""
+    w = hc_window(o)
+    if not w:
+        if not any(s["price_points"] for s in o["stores"]):
+            return ""  # sem histórico no contrato: nada a dizer
+        return f'\n{pad}<p class="hist">Primeira leitura em {o["checked_at"].astimezone(BRT):%d/%m}: {brl(o["price_cents"])}.</p>'
+    lines, start, today = w
+    first = min(pts[0][0] for _, pts in lines)  # o texto diz a data real; start é só o eixo
+    span = (today - start).days
+    cs = [c for _, pts in lines for _, c in pts]
+    lo, hi = min(cs), max(cs)
+    X = lambda d: HC_X0 + (d - start).days / span * (HC_X1 - HC_X0)
+    Y = lambda c: HC_Y0 + ((hi - c) / (hi - lo) if hi > lo else 1) * (HC_Y1 - HC_Y0)
+    svg, ends, segs, boxes, marks = [], [], [], [], []
+    svg.append(f'<line class="hc-min" x1="{HC_X0}" y1="{HC_Y1}" x2="{HC_X1}" y2="{HC_Y1}"/>')
+    segs.append(((HC_X0, HC_Y1), (HC_X1, HC_Y1)))
+    for s, pts in lines:
+        cls = "hc-ml" if s["store"] == "mercadolivre" else "hc-amz"  # ML amarelo, Amazon no --text (Elias, 2026-11-04)
+        cut = [i == 0 or (d - pts[i - 1][0]).days > HC_GAP for i, (d, _) in enumerate(pts)] + [True]
+        xy = [(X(d), Y(c)) for d, c in pts]
+        # linha lisa; ponto solto (entre buracos) vira traço de comprimento zero, que a ponta redonda pinta
+        d_ = "".join(f'{"M" if cut[i] else "L"}{x:.1f} {y:.1f}' + ("h0" if cut[i] and cut[i + 1] else "")
+                     for i, (x, y) in enumerate(xy))
+        svg.append(f'<path class="hc-line {cls}" d="{d_}"/>')
+        segs.extend((xy[i - 1], xy[i]) if not cut[i] else (xy[i], xy[i]) for i in range(len(xy)))
+        last, cur = pts[-1]
+        name = STORES[s["store"]] + ("" if last == today else f", {last:%d/%m}")
+        ends.append([Y(cur), s["store"] != o["store"], name, cls + ("" if last == today else " hc-old"), cur])
+        marks.append(("now", cls, [(X(last), Y(cur))], cur, s["store"] == "amazon" and o["velho"]))
+        # 3 marcadores por loja: o mais alto, o degrau mais recente (o último preço antes do atual que difere
+        # dele em 3% ou mais: "quanto era logo antes") e o atual. Um valor igual a outro marcador não se repete.
+        # Cada marcador tenta os pontos do seu patamar (o rótulo vai no primeiro que tiver espaço).
+        top = max(c for _, c in pts)
+        if top > cur:
+            marks.append(("max", cls, [(X(d), Y(c)) for d, c in pts if c == top], top, False))
+        i = next((i for i in reversed(range(len(pts))) if abs(pts[i][1] - cur) >= .03 * cur), None)
+        if i is not None and pts[i][1] != top:
+            j = i
+            while j > 0 and pts[j - 1][1] == pts[i][1]:
+                j -= 1
+            marks.append(("mid", cls, [(X(d), Y(c)) for d, c in reversed(pts[j:i + 1])], pts[i][1], False))
+    for k, _, at, _, _ in marks:  # o ponto atual é obstáculo para os rótulos
+        if k == "now":
+            boxes.extend((x - 6, y - 6, x + 6, y + 6) for x, y in at)
+
+    def label(txt, x, y, cls):
+        """Primeira posição livre (em cima, embaixo, à direita, à esquerda do ponto): dentro da área,
+        sem cobrir linha, ponto ou outro rótulo. Nenhuma livre: False, e o marcador sai."""
+        w = 7.2 * len(txt)
+        for cx, base, anchor in ((x, y - 8, "middle"), (x, y + 17, "middle"), (x + 7, y + 4.5, "start"), (x - 7, y + 4.5, "end")):
+            if anchor == "middle":
+                cx = min(max(cx, HC_X0 + w / 2), HC_X1 - w / 2)
+            x0 = cx - w / 2 if anchor == "middle" else cx if anchor == "start" else cx - w
+            box = (x0 - 2, base - 12, x0 + w + 2, base + 3)
+            if box[0] < 0 or box[2] > 207 or box[1] < 2 or box[3] > HC_Y1 + 22:
+                continue
+            if any(hc_hits(box, p, q) for p, q in segs) or any(
+                    box[0] < b[2] and b[0] < box[2] and box[1] < b[3] and b[1] < box[3] for b in boxes):
+                continue
+            boxes.append(box)
+            svg.append(f'<text class="{cls}" x="{cx:.1f}" y="{base:.1f}" text-anchor="{anchor}">{txt}</text>')
+            return True
+        return False
+
+    shown = {m[3] for m in marks if m[0] == "now"}
+    for kind in ("max", "mid"):  # o mais alto tem prioridade; se não couber, o intermediário sai primeiro
+        for k, cls, at, c, _ in marks:
+            if k != kind:
+                continue
+            for x, y in at:
+                boxes.append((x - 5, y - 5, x + 5, y + 5))  # o próprio ponto não pode ficar sob o rótulo
+                if label(brl(c), x, y, f"hc-val {cls}"):
+                    svg.append(f'<circle class="hc-pt {cls}" cx="{x:.1f}" cy="{y:.1f}" r="3.5"/>')
+                    shown.add(c)
+                    break
+                boxes.pop()
+    if lo not in shown:  # o menor só ganha rótulo se não estiver num marcador visível
+        label(f"menor {brl(lo)}", HC_X0 + 3.6 * len(f"menor {brl(lo)}"), HC_Y1, "hc-lbl hc-lbl--min")
+    for k, cls, at, c, velho in marks:  # o atual de cada loja, em vermelho/rosa, por cima das linhas
+        if k == "now":
+            x, y = at[0]
+            svg.append(f'<circle class="hc-now{" hc-now--velho" if velho else ""}" cx="{x:.1f}" cy="{y:.1f}" r="5"/>')
+    ends.sort()  # no empate de altura, a vencedora fica em cima
+    for i in range(1, len(ends)):  # blocos de nome + preço atual (30u) sem colidir
+        ends[i][0] = max(ends[i][0], ends[i - 1][0] + 30)
+    for i in reversed(range(len(ends))):  # e sem descer até a linha das datas: a pilha sobe se precisar
+        ends[i][0] = min(ends[i][0], HC_Y1 + 2 if i == len(ends) - 1 else ends[i + 1][0] - 30)
+    for y, _, name, cls, cur in ends:
+        svg.append(f'<text class="hc-name {cls}" x="210" y="{y + 4.5:.1f}">{e(name)}</text>'
+                   f'<text class="hc-now-lbl" x="210" y="{y + 18.5:.1f}">{brl(cur)}</text>')
+    svg.append(f'<text class="hc-lbl" x="{HC_X0}" y="{HC_H - 6}">{start:%d/%m}</text>'
+               f'<text class="hc-lbl" x="{HC_X1}" y="{HC_H - 6}" text-anchor="end">hoje</text>')
+    return f"""\n{pad}<figure class="hc" id="historico">
+{pad}  <svg viewBox="0 0 {HC_W} {HC_H}" width="100%" role="img" aria-labelledby="hc-t" focusable="false"><title id="hc-t">{e(hc_title(lines, first, today))}</title>{"".join(svg)}</svg>
+{pad}  <figcaption>{e(hc_phrase(o, first, lo, hi))}</figcaption>
+{pad}  {hc_table(lines)}
+{pad}</figure>"""
+
+
+def hc_hits(box, p, q):
+    """O segmento p-q passa pelo retângulo? Amostragem a cada ~2u: basta para rótulos de 13u."""
+    n = max(1, int(max(abs(q[0] - p[0]), abs(q[1] - p[1])) / 2))
+    return any(box[0] <= p[0] + (q[0] - p[0]) * k / n <= box[2] and box[1] <= p[1] + (q[1] - p[1]) * k / n <= box[3]
+               for k in range(n + 1))
+
+
+def hc_window(o):
+    """(linhas [(loja, pontos)], início do eixo, hoje) ou None. Janela de 90 dias até hoje, eixo mínimo de 7.
+    Amazon vencida há mais de 90 dias fica sem ponto na janela: sem gráfico (e sem link no card)."""
+    lines = [(s, pts) for s in o["stores"] if (pts := series(s))]
+    if not lines:
+        return None
+    # checked_at até 5 min no futuro (SKEW) pode cair no dia seguinte: o eixo vai até o último ponto
+    today = max(o["now"].astimezone(BRT).date(), max(pts[-1][0] for _, pts in lines))
+    start = max(min(pts[0][0] for _, pts in lines), today - timedelta(days=89))
+    start = min(start, today - timedelta(days=6))  # eixo mínimo de 7 dias: histórico novo fica à direita
+    lines = [(s, kept) for s, pts in lines if (kept := [(d, c) for d, c in pts if d >= start])]
+    return (lines, start, today) if lines else None
+
+
+def has_hc(o):
+    return hc_window(o) is not None
+
+
+def card_hist(o):
+    """Selo do card + link "ver histórico" logo abaixo (decisão do Elias, 2026-11-04). Só com gráfico de verdade
+    (has_hc): sem price_points, nada de link para gráfico vazio. Sem JS vai à âncora; com JS abre o modal."""
+    if not has_hc(o):
+        return stamp_html(o)
+    oid = e(o["id"])
+    return (f'{stamp_html(o)}<a class="ver-hist" href="/livro/{oid}/#historico" data-modal="{oid}">'
+            f'ver histórico<span class="sr"> de preço: {e(o["title"])}</span></a>')
+
+
+def hc_title(lines, start, today):
+    out = [f"Preço desde {start:%d/%m}."]
+    for s, pts in lines:
+        cs = [c for _, c in pts]
+        d, c = pts[-1]
+        now_ = f"hoje {brl(c)}" if d == today else f"último {brl(c)} em {d:%d/%m}"
+        out.append(f"{STORES[s['store']]}: menor {brl(min(cs))}, maior {brl(max(cs))}, {now_}.")
+    return " ".join(out).replace("\u00a0", " ")
+
+
+def hc_phrase(o, start, lo, hi):
+    """Frase do selo (seal_of), para o gráfico nunca contradizer o selo do card."""
+    quem = "O último preço visto é" if o["velho"] else "Hoje é"
+    if o["seal"] == "90d":
+        return f"{quem} o menor preço dos últimos 90 dias."
+    if o["seal"] == "since":
+        return f"{quem} o menor preço desde {o['since']:%d/%m}."
+    return f"Desde {start:%d/%m}: {brl(lo)}" + (f" a {brl(hi)}." if hi > lo else ".")
+
+
+def hc_table(lines):
+    """Menor preço do dia por loja, do dia mais novo ao mais velho, só dias com leitura."""
+    by = [dict(pts) for _, pts in lines]
+    head = "".join(f'<th scope="col">{STORES[s["store"]]}</th>' for s, _ in lines)
+    sem = '<span aria-hidden="true">—</span><span class="sr">sem leitura</span>'
+    rows = "".join(f'<tr><th scope="row">{d:%d/%m}</th>' + "".join(f"<td>{brl(m[d]) if d in m else sem}</td>" for m in by) + "</tr>"
+                   for d in sorted(set().union(*by), reverse=True))
+    return (f'<details class="hc-tab"><summary>Ver preços por dia</summary><table><caption class="sr">Menor preço do dia, por loja</caption>'
+            f'<thead><tr><th scope="col">Dia</th>{head}</tr></thead><tbody>{rows}</tbody></table></details>')
 
 
 def checked_txt(s, now):
@@ -684,7 +834,7 @@ def card(o, bot=None, h=3):
     <p class="card-meta">{avatar(g, "av av--sm")}<span><span class="store">{STORES[o["store"]]}</span> <span>{checked(o, o["now"])}</span>{velho}</span></p>
     <h{h} class="card-title"><a href="/livro/{oid}/" data-modal="{oid}">{t}</a></h{h}>
     <p class="card-sub">{e(o["author"])}</p>
-    {stamp_html(o)}
+    {card_hist(o)}
     <div class="card-foot"><p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong>{old}</p>{alt_details(o)}{buy_circle(o)}</div>
   </div>
 </li>"""
@@ -1230,7 +1380,7 @@ def offer_json(o, bot):
                      f"Menor preço desde {o['since']:%d/%m}" if kind == "since" else None), "desde": kind == "since",
             "meta": f"{STORES[o['store']]}, {checked_txt(o, o['now'])}"
                     + (f". Caiu {brl(dr[0])} desde {dr[1]:%d/%m}" if dr else "") + (f". {VELHO}" if o["velho"] else ""),
-            "hist": chart_label(o, pts) if pts else None, "lojas": lojas,
+            "hist": chart_label(o, pts) if pts else None, "hc": has_hc(o), "lojas": lojas,
             "alerta": tg_alert_url(bot, o["id"]) if bot else None, "pag": f"/livro/{o['id']}/"}
 
 
@@ -1246,7 +1396,7 @@ MODAL = f"""<dialog class="modal" id="detalhe" aria-labelledby="m-t">
 <div class="m-top"><button class="arrow js-mprev" type="button">{icon("esq")}<span class="sr">Livro anterior</span></button><span class="m-n tnum"></span><button class="arrow js-mnext" type="button">{icon("dir")}<span class="sr">Próximo livro</span></button><button class="arrow m-x js-mx" type="button">{icon("x")}<span class="sr">Fechar</span></button></div>
 <div class="m-grid">
 <div class="obj hero-obj m-obj"><span class="pages" aria-hidden="true"></span><div class="cover"><img class="m-img" alt="" width="120" height="180" decoding="async"><span class="ini m-ini" aria-hidden="true"></span></div></div>
-<div class="m-body"><p class="chips"><span class="chip chip--g"><svg class="i" aria-hidden="true" focusable="false"><use class="m-gi" href="#i-carimbo"/></svg><span class="m-g"></span></span></p><h2 class="m-t" id="m-t"></h2><p class="hero-sub m-a"></p><blockquote class="nota m-nota"><p class="m-blurb"></p></blockquote><p class="m-selo"><span class="stamp"></span></p><p class="meta m-meta"></p><p class="hist m-hist"></p></div>
+<div class="m-body"><p class="chips"><span class="chip chip--g"><svg class="i" aria-hidden="true" focusable="false"><use class="m-gi" href="#i-carimbo"/></svg><span class="m-g"></span></span></p><h2 class="m-t" id="m-t"></h2><p class="hero-sub m-a"></p><blockquote class="nota m-nota"><p class="m-blurb"></p></blockquote><p class="m-selo"><span class="stamp"></span></p><p class="meta m-meta"></p><p class="hist m-hist"></p><div class="m-hc"></div></div>
 </div>
 <div class="m-foot"><p class="price"><strong class="m-p"></strong> <s class="old m-de"></s> <span class="off-pill m-off"></span></p><div class="m-acts"></div></div>
 </dialog>"""
@@ -1870,29 +2020,86 @@ def selftest():
         r = load(A(**kw))
         return vis(book_page(r[0], r))
     h = livro(history_since="2026-10-01", price_points=ok_pp)
-    assert h.count('<p class="hist"><svg class="spark"') == 1 and "<span>desde 01/10: R$ 19,90 a R$ 29,90</span>" in h
-    assert "<title>Preço na Amazon de 01/10 a 18/10: R$ 19,90 a R$ 29,90</title>" in h
-    assert 'class="spark-dot" cx="117.0" cy="29.0"' in h and 'points="3.0,3.0 63.4,16.0 117.0,29.0"' in h
-    assert "style=" not in h[h.index("<svg"):h.index("</svg>")]
-    assert 'class="hist"' not in livro(history_since="2026-10-01", price_points=ok_pp[:1])  # 1 ponto: sem gráfico
-    assert 'class="hist"' not in livro(history_since="2026-10-01")                          # sem série
+    svg = h[h.index('<figure class="hc" id="historico">'):h.index("</svg>", h.index('<figure class="hc" id="historico">'))]
+    assert h.count('<figure class="hc" id="historico">') == 1 and 'role="img" aria-labelledby="hc-t"' in svg and "style=" not in svg
+    assert "Amazon: menor R$ 19,90, maior R$ 29,90, hoje R$ 19,90." in svg  # title para leitor de tela
+    assert '<path class="hc-line hc-amz" d="M4.0 30.0h0M109.9 74.0h0M204.0 118.0h0"/>' in svg  # buracos de 9 e 8 dias: pontos soltos
+    # 3 marcadores com valor: o mais alto, o degrau mais recente e o atual (vermelho/rosa, com o preço embaixo do nome)
+    assert '<text class="hc-val hc-amz" x="32.8" y="22.0" text-anchor="middle">R$\u00a029,90</text><circle class="hc-pt hc-amz" cx="4.0" cy="30.0"' in svg
+    assert '<text class="hc-val hc-amz" x="109.9" y="66.0" text-anchor="middle">R$\u00a024,90</text><circle class="hc-pt hc-amz" cx="109.9"' in svg
+    assert svg.count('class="hc-pt') == 2 and 'class="hc-now" cx="204.0" cy="118.0"' in svg
+    assert '>Amazon</text><text class="hc-now-lbl" x="210" y="136.5">R$\u00a019,90</text>' in svg
+    assert ">menor R$" not in svg  # o menor é o atual: sem rótulo repetido
+    assert "<figcaption>Hoje é o menor preço desde 01/10.</figcaption>" in h  # frase do selo
+    h = livro(history_since="2026-10-01", lowest_90d_cents=1000, price_points=pp(("2026-10-12", 2990), ("2026-10-17", 2490)))
+    assert '<path class="hc-line hc-amz" d="M4.0 30.0L170.7 74.0L204.0 118.0"/>' in h  # 7 dias, retas entre leituras
+    assert "<figcaption>Desde 12/10: R$\u00a019,90 a R$\u00a029,90.</figcaption>" in h      # sem selo: faixa de preço
+    tb = livro(history_since="2026-10-01", price_points=ok_pp)
+    assert '<tr><th scope="row">18/10</th><td>R$\u00a019,90</td></tr>' in tb and tb.index(">18/10</th>") < tb.index(">01/10</th>")
+    assert 'class="hc"' in livro(history_since="2026-10-01", price_points=ok_pp[:1])  # 1 dia antes de hoje já é série
+    assert "Primeira leitura em 18/10: R$\u00a019,90." in livro(history_since="2026-10-18", price_points=pp(("2026-10-18", 1990)))
+    assert 'class="hc"' not in livro(history_since="2026-10-01") and 'class="hist"' not in livro(history_since="2026-10-01")
     # ponto de hoje: vale o preço atual verificado, não o do ponto
     r = load(A(history_since="2026-10-01", price_points=pp(("2026-10-01", 2990), ("2026-10-18", 2500))))[0]
     assert series(r) == [(date(2026, 10, 1), 2990), (date(2026, 10, 18), 1990)]
-    # rótulo: "90 dias" só com o selo de 90 dias e a série cobrindo os 90 dias
+    # eixo de no máximo 90 dias e no mínimo 7; buraco de mais de 7 dias quebra a linha
     full = pp(("2026-07-20", 2990), ("2026-09-01", 2490))
-    assert "<span>90 dias: R$ 19,90 a R$ 29,90</span>" in livro(history_since="2026-07-20", price_points=full)
-    assert "<span>desde 01/08: " in livro(history_since="2026-07-20", price_points=pp(("2026-08-01", 2990), ("2026-09-01", 2490)))
-    assert "<span>desde 21/07: " in livro(history_since="2026-07-21", price_points=pp(("2026-07-21", 2990), ("2026-09-01", 2490)))
-    assert "<span>desde 20/07: " in livro(history_since="2026-07-20", lowest_90d_cents=1000,  # sem selo
-                                          price_points=pp(("2026-07-20", 2990), ("2026-09-01", 2490)))
-    assert "<span>desde 01/10: R$ 19,90</span>" in livro(history_since="2026-10-01",       # preço parado
-                                                              price_points=pp(("2026-10-01", 1990), ("2026-10-10", 1990)))
-    # gráfico da vencedora (ML), não da outra loja
+    h = livro(history_since="2026-07-20", price_points=full)
+    assert '<text class="hc-lbl" x="4" y="158">21/07</text>' in h and "M" in h[h.index('d="M'):][4:30]
+    assert "<figcaption>Hoje é o menor preço dos últimos 90 dias.</figcaption>" in h
+    h = livro(history_since="2026-10-15", price_points=pp(("2026-10-15", 2990)))
+    assert '<text class="hc-lbl" x="4" y="158">12/10</text>' in h  # 3 dias de histórico, eixo de 7
+    h = livro(history_since="2026-10-01", price_points=pp(("2026-10-01", 1990), ("2026-10-10", 1990)))
+    assert 'class="hc-guide"' not in h and "<figcaption>Hoje é o menor preço desde 01/10.</figcaption>" in h
+    # duas lojas: uma linha cada, cor do ML, tracejado no menor das duas, ponto na vencedora (ML)
     two_pp = load({**good, "stores": [{**amz, "history_since": "2026-10-01", "price_points": ok_pp},
                                       {**mls, "price_cents": 1890, "history_since": "2026-10-05",
                                        "price_points": pp(("2026-10-05", 2190), ("2026-10-12", 2090))}]})
-    assert "<span>desde 05/10: R$ 18,90 a R$ 21,90</span>" in vis(book_page(two_pp[0], two_pp)) and "desde 01/10" not in vis(book_page(two_pp[0], two_pp))
+    h = vis(book_page(two_pp[0], two_pp))
+    assert 'class="hc-line hc-amz"' in h and 'class="hc-line hc-ml"' in h and 'class="hc-now-lbl" x="210"' in h and ">R$\u00a018,90</text>" in h
+    assert '<th scope="col">Amazon</th><th scope="col">Mercado Livre</th>' in h and '<span class="sr">sem leitura</span>' in h
+    assert h.count('class="hc-now"') == 2 and "Mercado Livre: menor R$ 18,90, maior R$ 21,90, hoje R$ 18,90." in h  # atual das duas lojas
+    assert '>Mercado Livre</text><text class="hc-now-lbl"' in h and '>Amazon</text><text class="hc-now-lbl"' in h
+    empate = load({**good, "stores": [{**amz, "price_cents": 1890, "lowest_90d_cents": 1890, "history_since": "2026-10-01", "price_points": ok_pp},
+                                      {**mls, "price_cents": 1890, "history_since": "2026-10-05",
+                                       "price_points": pp(("2026-10-05", 2190), ("2026-10-12", 2090))}]})
+    ys = [float(y) for y in re.findall(r'<text class="(?:hc-name[^"]*|hc-now-lbl)" x="210" y="([\d.]+)"', vis(book_page(empate[0], empate)))]
+    assert len(ys) == 4 and max(ys) <= 139 and all(b - a >= 14 for a, b in zip(sorted(ys), sorted(ys)[1:]))  # sem colidir com as datas
+    # Amazon vencida há mais de 90 dias: sem gráfico nem link, sem quebrar o build (review do PR #91)
+    old_ = load(A(checked_at="2026-07-01T10:00:00-03:00", history_since="2026-06-20",
+                  price_points=pp(("2026-06-20", 2990), ("2026-06-25", 2490))), now=datetime(2026, 10, 18, 12, tzinfo=BRT))[0]
+    assert old_["velho"] and not has_hc(old_) and 'class="hc"' not in chart(old_) and "ver-hist" not in card(old_)
+    # texto com a data real do primeiro ponto, mesmo com o eixo puxado para 7 dias
+    h = livro(history_since="2026-10-15", lowest_90d_cents=1000, price_points=pp(("2026-10-15", 2990)))
+    assert "<figcaption>Desde 15/10: " in h and "Preço desde 15/10." in h and ">12/10</text>" in h
+    # ponto solto de outra loja (entre buracos) ganha marcador
+    solto = load({**good, "stores": [{**amz, "history_since": "2026-10-01", "price_points": ok_pp},
+                                     {**mls, "price_cents": 1890, "history_since": "2026-09-01",
+                                      "price_points": pp(("2026-09-01", 2190), ("2026-10-05", 2090))}]})
+    hs = vis(book_page(solto[0], solto))
+    ml_d = re.search(r'class="hc-line hc-ml" d="([^"]+)"', hs).group(1)
+    assert ml_d.count("h0") == 3 and "L" not in ml_d  # 01/09, 05/10 e hoje: buracos de 34 e 13 dias
+    # degrau intermediário relevante ganha rótulo; o menor ganha rótulo quando não é o atual
+    h = livro(history_since="2026-10-01", lowest_90d_cents=1000, price_points=pp(
+        ("2026-10-01", 2990), *((f"2026-10-{d:02d}", 2490) for d in range(5, 11)), ("2026-10-14", 1500)))
+    svg = h[h.index('<figure class="hc"'):h.index("</svg>", h.index('<figure class="hc"'))]
+    assert ">R$\u00a015,00</text>" in svg and ">R$\u00a029,90</text>" in svg and ">R$\u00a024,90<" not in svg  # intermediário = degrau mais recente
+    assert ">menor R$" not in h  # o menor já está num marcador
+    h2 = livro(history_since="2026-10-01", lowest_90d_cents=1000, price_points=pp(
+        ("2026-10-01", 2990), ("2026-10-05", 1500), *((f"2026-10-{d:02d}", 2490) for d in range(10, 18))))
+    assert ">R$\u00a024,90</text>" in h2 and ">menor R$\u00a015,00</text>" in h2  # menor fora dos marcadores ganha rótulo
+    fig = h[h.index('<figure class="hc"'):h.index("</figure>")]
+    assert fig.count("<circle") == 3 and fig.count('class="hc-pt') == 2 and fig.count('class="hc-now"') == 1  # 3 marcadores por loja
+    # card: link "ver histórico" só com gráfico; o modal busca o #historico da página só quando há gráfico
+    def card_of(**kw):
+        return card(load(A(**kw))[0])
+    c = card_of(history_since="2026-10-01", price_points=ok_pp)
+    assert '<a class="ver-hist" href="/livro/livro-1/#historico" data-modal="livro-1">ver histórico' in c
+    assert c.index('class="stamp') < c.index('class="ver-hist"')
+    for kw in ({"history_since": "2026-10-01"}, {"history_since": "2026-10-18", "price_points": pp(("2026-10-18", 1990))}):
+        assert "ver-hist" not in card_of(**kw), kw  # sem série: sem link
+    assert offer_json(load(A(history_since="2026-10-01", price_points=ok_pp))[0], None)["hc"] is True
+    assert offer_json(load(A(history_since="2026-10-01"))[0], None)["hc"] is False
     assert rejects({**good, "history_start": "2026-07-01"})  # campo da proposta antiga, substituído
     # campos novos: tipo errado quebra o build
     for bad in ("true", 1, 0, None, "sim"):
