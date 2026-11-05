@@ -168,6 +168,18 @@
   {"id": "eu-duvido-voce-terminar-este-livro", "isbn": "9788542243161", "genre": "ficcao", "title": "Eu duvido você terminar este livro", "author": "Giuliana Mafra", "asin": "8542243161"},
   {"id": "bons-tempos", "isbn": "9786555327076", "genre": "suspense", "title": "Bons tempos", "author": "Caro Claire Burke", "asin": "6555327073"},
   {"id": "a-morte-e-um-dia-que-vale-a-pena-viver", "isbn": "9788543107202", "genre": "mindset", "title": "A morte é um dia que vale a pena viver", "author": "Ana Claudia Quintana Arantes", "asin": "8543107202"},
-  {"id": "a-estranha-na-cama", "isbn": "9788535947908", "genre": "suspense", "title": "A estranha na cama", "author": "Raphael Montes", "asin": "8535947906"}
+  {"id": "a-estranha-na-cama", "isbn": "9788535947908", "genre": "suspense", "title": "A estranha na cama", "author": "Raphael Montes", "asin": "8535947906"},
+  {"id": "o-homem-mais-rico-da-babilonia-2", "genre": "negocios", "genre_source": "ml_book_genre", "title": "O homem mais rico da Babilônia", "author": "Clason, George S.", "ml_product_id": "MLB19424544", "pendente": true},
+  {"id": "corte-de-espinhos-e-rosas-6-acompanha-sobrecapa", "genre": "ficcao", "genre_source": "ml_book_genre", "title": "Corte de espinhos e rosas 6 (acompanha sobrecapa)", "author": "Maas, Sarah J.", "ml_product_id": "MLB71623820", "pendente": true},
+  {"id": "naruto-a-epica-historia-de-naruto-naruto-uzumaki-e-o-d", "genre": "ficcao", "genre_source": "ml_book_genre", "title": "Naruto - A Épica História De Naruto: Naruto Uzumaki E O Destino Espiral", "author": "Masashi Kishimoto, Jun Esaka", "ml_product_id": "MLB76037521", "pendente": true},
+  {"id": "manifesto-comunista", "genre": "historia", "genre_source": "ml_book_genre", "title": "Manifesto Comunista", "author": "Marx, Karl", "ml_product_id": "MLB19288888", "pendente": true},
+  {"id": "manifesto-comunista-2", "genre": "historia", "genre_source": "ml_book_genre", "title": "Manifesto Comunista", "author": "Marx, Karl", "ml_product_id": "MLB19289140", "pendente": true},
+  {"id": "manifesto-comunista-3", "genre": "historia", "genre_source": "ml_book_genre", "title": "Manifesto Comunista", "author": "Marx, Karl", "ml_product_id": "MLB19289146", "pendente": true},
+  {"id": "o-minimo-sobre-o-manifesto-comunista", "genre": "historia", "genre_source": "ml_book_genre", "title": "O mínimo sobre o manifesto comunista", "author": "López, Daniel", "ml_product_id": "MLB22890443", "pendente": true},
+  {"id": "a-mente-esquerdista-as-causas-psicologicas-da-loucura", "genre": "historia", "genre_source": "ml_book_genre", "title": "A mente esquerdista - As causas psicológicas da loucura política", "author": "Rossiter, Lyle H.", "ml_product_id": "MLB20537895", "pendente": true},
+  {"id": "a-mente-naufragada", "genre": "historia", "genre_source": "ml_book_genre", "title": "A mente naufragada", "author": "Lilla, Mark", "ml_product_id": "MLB68530393", "pendente": true},
+  {"id": "anos-2000-renascimento-marvel-vol-02", "genre": "historia", "genre_source": "ml_book_genre", "title": "ANOS 2000 RENASCIMENTO MARVEL - VOL. 02", "author": "Marvel", "ml_product_id": "MLB68503864", "pendente": true},
+  {"id": "anos-2000-renascimento-marvel-vol-10", "genre": "historia", "genre_source": "ml_book_genre", "title": "ANOS 2000 RENASCIMENTO MARVEL - VOL. 10", "author": "Marvel", "ml_product_id": "MLB68495731", "pendente": true},
+  {"id": "anos-2000-renascimento-marvel-vol-06", "genre": "historia", "genre_source": "ml_book_genre", "title": "ANOS 2000 RENASCIMENTO MARVEL - VOL. 06", "author": "Marvel", "ml_product_id": "MLB68507909", "pendente": true}
  ]
 }
