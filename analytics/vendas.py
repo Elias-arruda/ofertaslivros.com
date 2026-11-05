@@ -28,7 +28,24 @@ INSERT = """INSERT INTO sales (store, order_date, tracking, item_id, title, qty,
   status, source_file, imported_at)
   SELECT j.value->>'store', j.value->>'order_date', j.value->>'tracking', j.value->>'item_id', j.value->>'title',
     j.value->>'qty', j.value->>'revenue_cents', j.value->>'commission_cents', j.value->>'status',
-    j.value->>'source_file', j.value->>'imported_at' FROM json_each(?1) AS j"""
+    j.value->>'source_file', j.value->>'imported_at' FROM json_each({rows}) AS j"""
+DAY_RE = __import__("re").compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def sql_str(v):
+    """Literal SQL de texto: aspas simples dobradas (o JSON vem de um CSV, dado externo)."""
+    return "'" + str(v).replace("'", "''") + "'"
+
+
+def import_sql(rows, per):
+    """DELETE do período + INSERT num único pedido à API do D1, que roda os statements de um pedido
+    numa transação: ou entra o período inteiro, ou nada muda."""
+    if not all(DAY_RE.fullmatch(d) for d in per):
+        raise SystemExit(f"período inválido: {per}")
+    sql = f"DELETE FROM sales WHERE store = 'amazon' AND order_date BETWEEN {sql_str(per[0])} AND {sql_str(per[1])};"
+    if rows:
+        sql += "\n" + INSERT.format(rows=sql_str(json.dumps(rows, ensure_ascii=False))) + ";"
+    return sql
 
 # Colunas do relatório "Produto relacionado" (Linked-Product) que viram uma linha por status.
 STATUS_COLS = {
@@ -112,13 +129,13 @@ def main(argv):
     for k in ("CF_ACCOUNT_ID", "CF_D1_TOKEN"):
         if not env.get(k):
             raise SystemExit(f"{k} ausente no .env")
-    # ponytail: DELETE e INSERT em duas chamadas (a API não garante transação entre elas);
-    # se o INSERT falhar, é só rodar de novo: o import do período é idempotente.
     d1(env, SCHEMA)
-    d1(env, "DELETE FROM sales WHERE store = 'amazon' AND order_date BETWEEN ?1 AND ?2", per)
-    if rows:
-        d1(env, INSERT, [json.dumps(rows)])
-    print("gravado no D1")
+    d1(env, import_sql(rows, per))
+    got = d1(env, "SELECT COUNT(*) AS n FROM sales WHERE store = 'amazon' AND order_date BETWEEN ?1 AND ?2", per)
+    n = got["result"][0]["results"][0]["n"]
+    if n != len(rows):
+        raise SystemExit(f"D1 tem {n} linhas no período, esperado {len(rows)}: confira e rode de novo")
+    print(f"gravado no D1 ({n} linhas no período)")
 
 
 if __name__ == "__main__":

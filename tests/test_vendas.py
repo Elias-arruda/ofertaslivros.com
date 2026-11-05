@@ -40,9 +40,21 @@ def test_sql_do_import_no_sqlite():
     rows = vendas.parse_amazon(csv, "f.csv", now="t")
     db = sqlite3.connect(":memory:")
     db.execute(vendas.SCHEMA)
-    import json
-    db.execute(vendas.INSERT, [json.dumps(rows)])
+    sql = vendas.import_sql(rows, ("2026-11-03", "2026-11-03"))
+    db.executescript(sql)
+    db.executescript(sql)  # reimportar o mesmo período substitui, não duplica
     assert db.execute("SELECT status, qty, commission_cents FROM sales ORDER BY status").fetchall() == [
         ("enviado", 2, 359), ("pedido", 2, None)]
-    with pytest.raises(sqlite3.IntegrityError):  # reimportar sem apagar o período bate na UNIQUE
-        db.execute(vendas.INSERT, [json.dumps(rows)])
+
+
+def test_titulo_com_aspas_nao_quebra_o_sql():
+    csv = HEADER + "\n11-03-2026,Livros,\"O'Brien'); DROP TABLE sales;--\",X1,1,0,1,1.0,0,1,0,0,4,10,0,0,0,0,0,0,0\n"
+    db = sqlite3.connect(":memory:")
+    db.execute(vendas.SCHEMA)
+    db.executescript(vendas.import_sql(vendas.parse_amazon(csv, "f.csv", now="t"), ("2026-11-03", "2026-11-03")))
+    assert db.execute("SELECT title FROM sales").fetchone()[0] == "O'Brien'); DROP TABLE sales;--"
+
+
+def test_periodo_invalido_para():
+    with pytest.raises(SystemExit, match="período inválido"):
+        vendas.import_sql([], ("2026-11-03' OR 1=1 --", "2026-11-03"))
