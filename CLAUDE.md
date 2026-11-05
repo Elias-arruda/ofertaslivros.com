@@ -25,6 +25,14 @@ Domínio comprado na HostGator. A HostGator é usada SÓ para o domínio (DNS).
    - Amazon: usar a **Creators API**. A PA-API foi descontinuada em 2026.
    - Até a API ser liberada para a conta, o fluxo é semi-automático: o coletor monitora uma lista de ASIN/ISBN, e o link e o preço vêm do navegador do Elias.
    - **Exceção decidida pelo Elias em 2026-10-20, com o risco aceito:** o Claude pode usar o Chrome do Elias (Claude in Chrome, logado na conta de associado) para buscar o livro na Amazon, pegar o ASIN (o link no SiteStripe é opcional: o build monta o link com a tag) e ler o preço. O ritmo é de humano, uma página por vez, sem buscas em segundo plano, e vale para os livros da fila, a rodada de preço dos livros que já têm `asin` e uma carga de catálogo que o Elias pedir na sessão (a de 2026-10-20 trouxe 87 livros). Os termos dos Associados proíbem acesso automatizado e preço que não veio da API; o risco é banimento da conta. Fluxo em `docs/produto/curadoria-automatica.md` §10.9.
+   - **Exceção de relatório de vendas, decidida pelo Elias em 2026-11-04, com o risco aceito** (vale também para o portal de afiliados do ML; ver regra 2):
+     - O Claude pode usar o Chrome do Elias (Claude in Chrome, já logado) para exportar o CSV de pedidos e ganhos pelo botão de exportar do próprio painel dos Associados. Nunca no navegador do Orca nem em outro navegador.
+     - Ritmo: uma página por vez, cerca de 20 s entre ações, no máximo 1 rodada por dia.
+     - O CSV fica fora do repo, que é público, e vai para o D1 do painel por um script local.
+     - Proibido: guardar cookie, token ou sessão; chamar API interna do painel; fazer request em código ao painel; rodar no GitHub Actions.
+     - Captcha, verificação, 2FA ou logout: parar na hora, sem resolver nem fazer login, e avisar o Elias.
+     - Risco: banimento da conta de associado e perda das comissões.
+     - Fluxo em `docs/produto/analytics.md`, seção "Vendas pelo navegador".
 2. **Mercado Livre:** o preço vem da API pública de itens. O link de afiliado é gerado no painel de afiliados, salvo se houver um caminho oficial documentado.
    - **Exceção decidida pelo Elias em 2026-11-04, com o risco aceito:** o Claude pode usar o Chrome do Elias (Claude in Chrome, logado no portal de afiliados) para gerar o link no **Gerador de links oficial** do portal. Ele cola a `product_url` do livro, gera o link e abre o link gerado uma vez para conferir o MLB de destino.
      - Ritmo: uma página por vez, em ritmo humano (cerca de 20 s entre ações), até 20 links por dia, só para livros com `ml_url` pendente.
@@ -33,6 +41,7 @@ Domínio comprado na HostGator. A HostGator é usada SÓ para o domínio (DNS).
      - Risco: o item 7.6 dos Termos de Desenvolvedores do ML proíbe robôs no site; a punição possível é suspender a conta de afiliado e reter comissões.
      - Cada link passa pela validação do `links-apply` (o `ml_url()` do `build.py`, sem afrouxar nada) e pela conferência do MLB; o que divergir fica pendente.
      - Fluxo em `docs/produto/ml-links-navegador.md`.
+   - **Relatório de vendas do ML:** vale a exceção da regra 1 (2026-11-04), com as mesmas condições, no portal de afiliados. Uma API ou exportação oficial de relatório, se existir, tem prioridade. Risco: o item 7.6 dos Termos de Desenvolvedores; a punição possível é suspender a conta de afiliado e reter comissões.
 3. **Credenciais:** chaves ficam só em GitHub Secrets ou `.env` local, que está no `.gitignore`. Nunca no código, nunca em JSON público.
 4. **Transparência:** o rodapé deve ter o aviso de associado ("ganhamos com compras qualificadas") e dizer que o preço final é o da loja.
 
