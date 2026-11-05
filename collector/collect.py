@@ -95,7 +95,7 @@ ITEMS_PAGE_SIZE = 50
 ITEMS_MAX_TOTAL = 1000  # falha fechada se um produto exceder o teto de coleta
 # /items: anúncio abaixo desta fração da mediana dos elegíveis do mesmo produto é isca,
 # kit, e-book ou anúncio errado (R$ 2 e R$ 8 entre ~200 anúncios, 2026-11-05): descarta.
-ITEMS_MIN_FRACTION_OF_MEDIAN = 0.5
+ITEMS_MIN_FRACTION_OF_MEDIAN = Decimal("0.5")
 _urlopen = urlopen  # ponto de mock dos testes
 
 
@@ -470,7 +470,7 @@ def best_listing(body):
         ok.append((c, it))
     if not ok:
         return None, 0, 0
-    floor = median(c for c, _ in ok) * ITEMS_MIN_FRACTION_OF_MEDIAN
+    floor = median(Decimal(c) for c, _ in ok) * ITEMS_MIN_FRACTION_OF_MEDIAN  # sem float
     sane = [x for x in ok if x[0] >= floor]  # nunca vazio: a mediana >= o menor
     return min(sane, key=lambda x: x[0])[1], len(ok), len(ok) - len(sane)
 

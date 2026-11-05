@@ -614,6 +614,14 @@ def test_best_listing_um_so_anuncio_e_vazio():
     assert c.best_listing({"results": [item("MLB8001", 8, cond="used")]}) == (None, 0, 0)
 
 
+def test_best_listing_mediana_par_sem_float():
+    # mediana de 1249, 1250, 3750 e 4000 centavos = 2500 (par); o piso é 1250 exato
+    res = [item("MLB8001", D2) for D2 in (Decimal("12.49"), Decimal("12.50"),
+                                          Decimal("37.50"), 40)]
+    it, n, sus = c.best_listing({"results": res})
+    assert (it["price"], n, sus) == (Decimal("12.50"), 4, 1)
+
+
 def test_items_isca_nao_entra_no_historico_e_conta(env, capsys):
     p = prod()
     p["buy_box_winner"] = None
