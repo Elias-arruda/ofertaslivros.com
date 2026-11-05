@@ -31,13 +31,14 @@ Sem depender de cor: (a) **rótulo direto** com o nome da loja na ponta de cada 
   - `since`: "Hoje é o menor preço desde DD/MM." (o mesmo `o["since"]` do selo)
   - `None`: o `chart_label()` atual, "desde 18/10: R$ 34,90 a R$ 59,90", sem a palavra "menor".
 
-## 3b. Rótulos de preço (pedido do Elias, 2026-11-04)
-Só nos pontos-chave, testados antes de desenhar para não cobrir linha (nem o tracejado) nem outro rótulo:
-- **Atual:** na coluna da direita, embaixo do nome da loja vencedora, em `--coral` 700 (o ponto vermelho continua).
-- **Mais alto:** em cima do primeiro ponto onde aparece (a faixa acima da área é livre). Sai se for igual ao atual.
-- **Intermediário:** o degrau mais longo da vencedora (2+ dias no mesmo preço), a pelo menos 15% da faixa do mais alto e do atual. Tenta em cima e depois embaixo da linha; se não couber, sai.
-- **Menor:** "menor R$ X" embaixo do tracejado, só quando o menor não é o atual.
-- A pilha de nomes da direita sobe se encostar na linha das datas.
+## 3b. Marcadores e rótulos de preço (pedido do Elias, 2026-11-04)
+Linhas lisas. Até 3 marcadores por loja, cada um com o valor:
+- **Atual:** ponto vermelho/rosa (`--coral`) nas duas lojas. O preço vai na coluna da direita, embaixo do nome da loja, em `--coral` 700.
+- **Mais alto:** ponto e valor na cor da loja. Sai se for igual ao atual.
+- **Intermediário:** o degrau mais recente, ou seja, o último preço antes do atual que difere dele em 3% ou mais. Responde "quanto era logo antes", e é um preço que esteve na loja. A mediana foi descartada: muitas vezes não é um ponto da linha e, em série parada, repete o mais alto ou o atual. Sai se for igual ao mais alto.
+- **Posição:** cada rótulo tenta em cima, embaixo, à direita e à esquerda do ponto, em cada dia do patamar, do mais recente ao mais antigo. Ele nunca cobre linha, tracejado, ponto ou outro rótulo. Sem posição livre, sai o marcador inteiro: primeiro o intermediário, depois o mais alto de outra loja com o mesmo valor.
+- **Menor:** "menor R$ X" embaixo do tracejado, só quando nenhum marcador visível já mostra esse valor.
+- A pilha de nomes da direita sobe se encostar na linha das datas. `viewBox` de 300×164.
 
 ## 4. Estados
 - **Nenhuma loja com 2 dias distintos:** sem SVG. Só `<p class="hist">Primeira leitura em DD/MM: R$ X.</p>`.
