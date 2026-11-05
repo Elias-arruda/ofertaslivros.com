@@ -82,6 +82,11 @@ test("dia no limite do GraphQL falha em vez de gravar truncado", async () => {
   assert.equal(d1.db.prepare("SELECT COUNT(*) n FROM daily_rollup").get().n, 0);
 });
 
+test("resposta 200 sem zones vira erro claro", async () => {
+  globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ data: { viewer: { zones: [] } } }) });
+  await assert.rejects(rollup({ CF_ANALYTICS_TOKEN: "t", ANALYTICS: fakeD1() }, new Date()), /resposta sem zones/);
+});
+
 test("rollup sem token falha visível", async () => {
   await assert.rejects(rollup({ ANALYTICS: fakeD1() }), /CF_ANALYTICS_TOKEN ausente/);
 });

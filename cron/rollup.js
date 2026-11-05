@@ -48,7 +48,8 @@ async function fetchDay(token, day) {
   const j = await r.json();
   // Só o status e a mensagem do GraphQL vão para o log, nunca o token.
   if (!r.ok || j.errors?.length) throw new Error(`GraphQL ${day}: ${r.status} ${JSON.stringify(j.errors || []).slice(0, 300)}`);
-  const groups = j.data.viewer.zones[0]?.httpRequestsAdaptiveGroups || [];
+  const groups = j.data?.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups;
+  if (!Array.isArray(groups)) throw new Error(`GraphQL ${day}: resposta sem zones/httpRequestsAdaptiveGroups`);
   // ponytail: sem paginação; hoje são ~150-550 grupos por dia. Se bater o limite, falha em vez de gravar um dia truncado.
   if (groups.length >= LIMIT) throw new Error(`GraphQL ${day}: ${groups.length} grupos, no limite; dividir a consulta por hora`);
   return groups;
