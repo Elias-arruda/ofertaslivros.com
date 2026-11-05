@@ -11,7 +11,7 @@
     "crons": ["*/30 * * * *", "0 12 * * *", "15 3 * * *"]
   },
   // D1 do analytics (daily_rollup; depois sales). A tabela é criada pelo próprio rollup.
-  "d1_databases": [{ "binding": "ANALYTICS", "database_name": "ofertaslivros-analytics", "database_id": "PREENCHER_DEPOIS_DE_CRIAR" }]
+  "d1_databases": [{ "binding": "ANALYTICS", "database_name": "ofertaslivros-analytics", "database_id": "aa8a7b0d-e44f-4c1c-8c11-b6e204460e32" }]
   // Segredo GH_DISPATCH_TOKEN (fine-grained PAT, só este repo, Actions: read and write):
   // cadastrar uma vez no painel (Worker > Settings > Variables and Secrets) ou com `wrangler secret put`.
   // Segredo CF_ANALYTICS_TOKEN (token só de leitura: Account Analytics Read + Zone Analytics Read do .com.br), mesmo lugar.
