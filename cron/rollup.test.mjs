@@ -58,6 +58,14 @@ test("rollup grava ontem e os dias que faltam, sem duplicar ao rodar de novo", a
   assert.deepEqual({ ...r }, { day: "2026-11-04", path: "/r/livro-1", status: 302, country: "BR", bot: 0, requests: 3 });
 });
 
+test("dia no limite do GraphQL falha em vez de gravar truncado", async () => {
+  const d1 = fakeD1();
+  globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ data: { viewer: { zones: [{
+    httpRequestsAdaptiveGroups: Array.from({ length: 10000 }, (_, i) => g(`/p${i}/`, 200, "BR", "Chrome", 1)) }] } } }) });
+  await assert.rejects(rollup({ CF_ANALYTICS_TOKEN: "t", ANALYTICS: d1 }, new Date("2026-11-05T03:15:00Z")), /no limite/);
+  assert.equal(d1.db.prepare("SELECT COUNT(*) n FROM daily_rollup").get().n, 0);
+});
+
 test("rollup sem token falha visível", async () => {
   await assert.rejects(rollup({ ANALYTICS: fakeD1() }), /CF_ANALYTICS_TOKEN ausente/);
 });

@@ -7,9 +7,10 @@ const BACKFILL_DAYS = 7; // por execução; dias que faltarem entram nas próxim
 const BOT_RE = /bot|crawl|spider|slurp|curl|wget|headless|python|java|go-http|unknown/i;
 
 // Página HTML com 200 ou /r/ com 302. Asset, 404 e scanner ficam de fora.
+const LIMIT = 10000; // máximo do GraphQL por consulta
 const QUERY = `query($z:String!,$s:Time!,$e:Time!){viewer{zones(filter:{zoneTag:$z}){
-  httpRequestsAdaptiveGroups(limit:10000,filter:{datetime_geq:$s,datetime_lt:$e,edgeResponseStatus_in:[200,302],
-    OR:[{edgeResponseContentTypeName:"html"},{clientRequestPath_like:"/r/%"}]}){
+  httpRequestsAdaptiveGroups(limit:${LIMIT},filter:{datetime_geq:$s,datetime_lt:$e,
+    OR:[{edgeResponseContentTypeName:"html",edgeResponseStatus:200},{clientRequestPath_like:"/r/%",edgeResponseStatus:302}]}){
     count dimensions{clientRequestPath edgeResponseStatus clientCountryName userAgentBrowser}}}}}`;
 
 export const SCHEMA = `CREATE TABLE IF NOT EXISTS daily_rollup (
@@ -47,7 +48,10 @@ async function fetchDay(token, day) {
   const j = await r.json();
   // Só o status e a mensagem do GraphQL vão para o log, nunca o token.
   if (!r.ok || j.errors?.length) throw new Error(`GraphQL ${day}: ${r.status} ${JSON.stringify(j.errors || []).slice(0, 300)}`);
-  return j.data.viewer.zones[0]?.httpRequestsAdaptiveGroups || [];
+  const groups = j.data.viewer.zones[0]?.httpRequestsAdaptiveGroups || [];
+  // ponytail: sem paginação; hoje são ~150-550 grupos por dia. Se bater o limite, falha em vez de gravar um dia truncado.
+  if (groups.length >= LIMIT) throw new Error(`GraphQL ${day}: ${groups.length} grupos, no limite; dividir a consulta por hora`);
+  return groups;
 }
 
 export async function rollup(env, now = new Date()) {
