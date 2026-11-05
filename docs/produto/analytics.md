@@ -36,20 +36,24 @@ Conta só `edgeResponseStatus = 302`, excluindo bots pelo `userAgentBrowser` (Go
 
 ## Esquema
 
-**`daily_rollup` no D1.** Guarda o histórico além dos 31 dias do GraphQL. O Worker `ofertaslivros-cron` grava uma vez por dia o dia anterior:
+**`daily_rollup` no D1** (`ofertaslivros-analytics`, binding `ANALYTICS` no `ofertaslivros-cron`). Guarda o histórico além dos 31 dias do GraphQL. O cron das 03:15 UTC (00:15 em Brasília) grava o dia anterior (`cron/rollup.js`):
+- regrava sempre o dia de ontem;
+- preenche, até 7 dias para trás, os dias que faltarem;
+- cria a tabela na primeira execução.
 
 ```sql
-CREATE TABLE daily_rollup (
-  day TEXT NOT NULL,        -- AAAA-MM-DD (UTC)
+CREATE TABLE IF NOT EXISTS daily_rollup (
+  day TEXT NOT NULL,        -- AAAA-MM-DD em Brasília
   path TEXT NOT NULL,       -- /, /manga/, /livro/<id>/, /r/<id>[/loja|/tg|/wa]
-  status INTEGER NOT NULL,  -- 200 ou 302
+  status INTEGER NOT NULL,  -- 200 (página HTML) ou 302 (/r/)
   country TEXT NOT NULL,
+  bot INTEGER NOT NULL,     -- 1 se o userAgentBrowser parece robô (GoogleBot, Curl, Unknown...)
   requests INTEGER NOT NULL,
-  PRIMARY KEY (day, path, status, country)
+  PRIMARY KEY (day, path, status, country, bot)
 );
 ```
 
-Entram só os caminhos de página (HTML) e de `/r/`, sem bots. Asset (`.css`, `.woff2`, `.svg`) fica de fora.
+Entram só páginas HTML com 200 e `/r/` com 302; asset, 404 e scanner ficam de fora. Os bots são guardados com `bot = 1` para acompanhar o rastreio, e as KPIs usam `bot = 0`.
 
 **Termos buscados (F2).** Ficam fora desta spec. O desenho (o que guardar, por quanto tempo e com que proteção para dado pessoal digitado na busca) vai numa spec própria da F2, com PR sensível por LGPD. Nada de busca é coletado antes disso.
 
@@ -108,15 +112,15 @@ SQL, para mais de 31 dias, sobre o `daily_rollup` do D1:
 SELECT day,
        SUM(CASE WHEN path LIKE '/r/%' THEN requests END) AS cliques,
        SUM(CASE WHEN path NOT LIKE '/r/%' THEN requests END) AS views
-FROM daily_rollup GROUP BY day ORDER BY day;
+FROM daily_rollup WHERE bot = 0 GROUP BY day ORDER BY day;
 
 -- CTR por livro: cliques em /r/<id>* ÷ views de /livro/<id>/
 WITH c AS (
   SELECT substr(path, 4, instr(substr(path, 4) || '/', '/') - 1) AS book_id, SUM(requests) AS cliques
-  FROM daily_rollup WHERE path LIKE '/r/%' AND day >= date('now', '-7 days') GROUP BY book_id
+  FROM daily_rollup WHERE bot = 0 AND path LIKE '/r/%' AND day >= date('now', '-7 days') GROUP BY book_id
 ), v AS (
   SELECT substr(path, 8, length(path) - 8) AS book_id, SUM(requests) AS views
-  FROM daily_rollup WHERE path LIKE '/livro/%/' AND day >= date('now', '-7 days') GROUP BY book_id
+  FROM daily_rollup WHERE bot = 0 AND path LIKE '/livro/%/' AND day >= date('now', '-7 days') GROUP BY book_id
 )
 SELECT c.book_id, c.cliques, v.views, 1.0 * c.cliques / v.views AS ctr
 FROM c LEFT JOIN v USING (book_id) ORDER BY c.cliques DESC LIMIT 20;
@@ -124,7 +128,7 @@ FROM c LEFT JOIN v USING (book_id) ORDER BY c.cliques DESC LIMIT 20;
 -- Telegram × WhatsApp × site
 SELECT CASE WHEN path LIKE '%/tg' THEN 'tg' WHEN path LIKE '%/wa' THEN 'wa' ELSE 'site' END AS canal,
        SUM(requests) AS cliques
-FROM daily_rollup WHERE path LIKE '/r/%' AND day >= date('now', '-7 days') GROUP BY canal;
+FROM daily_rollup WHERE bot = 0 AND path LIKE '/r/%' AND day >= date('now', '-7 days') GROUP BY canal;
 ```
 
 D1:
