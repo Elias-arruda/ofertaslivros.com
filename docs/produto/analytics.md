@@ -160,6 +160,8 @@ Cada bloco do painel mostra "dados até HH:MM", e as vendas mostram "vendas até
 
 ## Painel `/painel`
 
+No ar com a F1b (`worker/painel.js`). O Access é a aplicação `painel-ofertaslivros` (team `ofertaslivros.cloudflareaccess.com`, política `so-elias`). O Worker confere a assinatura RS256 pelos certs do team, o `aud` da aplicação, o `iss`, o `exp` e o e-mail, e só responde no host `ofertaslivros.com.br`. Mostra: hoje (do GraphQL), os últimos 30 dias, os top livros com CTR, o canal, a loja e os nichos (7 dias, do D1). As vendas entram na F3.
+
 - É uma página no Worker do site (`run_worker_first` com `/painel*`), protegida pelo **Cloudflare Access** só com o e-mail do Elias.
 - O Worker **também confere o JWT do Access**: sem um JWT válido, a resposta é 403, mesmo se a regra do Access sumir.
 - É HTML montado no servidor, sem JS, com `<meta http-equiv="refresh" content="60">`.

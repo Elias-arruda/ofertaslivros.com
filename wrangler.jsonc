@@ -6,9 +6,12 @@
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
-    // Só o POST do "Pedir um livro" roda o Worker; o resto sai direto dos assets (sem custo de requisição).
-    "run_worker_first": ["/pedido"]
+    // Só o POST do "Pedir um livro" e o /painel rodam o Worker; o resto sai direto dos assets (sem custo de requisição).
+    "run_worker_first": ["/pedido", "/painel", "/painel/*"]
   },
+  // /painel (Access + JWT conferido no Worker): lê o daily_rollup do D1 e o GraphQL da zona.
+  // Segredo CF_ANALYTICS_TOKEN (só leitura de analytics) no painel: Worker > Settings > Variables and Secrets.
+  "d1_databases": [{ "binding": "ANALYTICS", "database_name": "ofertaslivros-analytics", "database_id": "aa8a7b0d-e44f-4c1c-8c11-b6e204460e32" }],
   // E-mail pela Email Routing do .com.br. O destino (verificado no painel) fica no segredo
   // PEDIDOS_PARA do Worker, fora do repo: Worker > Settings > Variables and Secrets.
   "send_email": [{ "name": "PEDIDOS" }],
