@@ -82,6 +82,7 @@ AMAZON_COVERAGE_MIN = 0.8  # provisório (curator.md 5.7): série manual esparsa
 # O build rejeita campo de loja desconhecido: só emite a mediana quando ele já a aceita.
 # ponytail: tirar o teste quando o build com median_90d_cents estiver na main.
 EMIT_MEDIAN = "median_90d_cents" in STORE_COMMON
+EMIT_POINTS = "price_points" in STORE_COMMON
 
 ML_HOST = "api.mercadolibre.com"  # único host que o coletor chama
 UA = "ofertaslivros-coletor/0.1 (+https://ofertaslivros.com)"
@@ -732,7 +733,8 @@ def track_curadoria(state, books, latest, offers, now, ml_ok=False):
 
 def summarize(hist_dir, now):
     """Por (livro, loja): última linha, menor preço em 90 dias, primeira data vista e o
-    menor preço de cada dia BRT da janela da mediana ({date: cents})."""
+    menor preço de cada dia BRT dos últimos 90 dias até hoje ({date: cents}): a mediana
+    filtra a janela dela, e o price_points usa os dias até hoje."""
     since = utc_iso(now - WINDOW)
     today = now.astimezone(BRT).date()
     lo, hi = (today - timedelta(days=n) for n in reversed(MEDIAN_DAYS))
@@ -747,7 +749,7 @@ def summarize(hist_dir, now):
             low[k] = min(low.get(k, p), p)
         first[k] = min(first.get(k, h["checked_at"]), h["checked_at"])
         d = datetime.fromisoformat(h["checked_at"]).astimezone(BRT).date()
-        if lo <= d <= hi:
+        if lo <= d <= today:
             days = daily.setdefault(k, {})
             days[d] = min(days.get(d, p), p)
     return latest, low, first, daily
@@ -764,6 +766,18 @@ def median_90d(days, history_since, today, store):
                     and len(vals) < AMAZON_COVERAGE_MIN * ((hi - lo).days + 1)):
         return None
     return median_low(vals)
+
+
+def price_points(days, history_since, checked_at, today):
+    """Gráfico do histórico: menor preço de cada dia BRT, em ordem, só os dias entre o
+    history_since e o dia do checked_at e com menos de 90 dias até ele (contrato do
+    build.price_points: até 90 pontos e nada abaixo do lowest_90d_cents, que cobre essa
+    janela; o limite por hoje vale para o preço vencido da Amazon)."""
+    end = datetime.fromisoformat(checked_at).astimezone(BRT).date()
+    lo = max(end - timedelta(days=build.MAX_POINTS - 1), today - timedelta(days=build.MAX_POINTS - 1),
+             date.fromisoformat(history_since))
+    return [{"date": d.isoformat(), "price_cents": p} for d, p in sorted(days.items())
+            if lo <= d <= end]
 
 
 def build_offers(books, latest, low, state, daily, today):
@@ -788,6 +802,9 @@ def build_offers(books, latest, low, state, daily, today):
                 if EMIT_MEDIAN else None
             if med is not None:
                 s["median_90d_cents"] = med
+            if EMIT_POINTS:
+                s["price_points"] = price_points(daily.get(k, {}), s["history_since"],
+                                                 r["checked_at"], today)
             stores.append(s)
         if stores:
             o = {"id": b["id"]}
@@ -820,7 +837,7 @@ def _int_cents(s, k):
 
 STORE_OUT = {"amazon": {"store", "asin"}, "mercadolivre": {"store", "ml_product_id", "ml_url"}}
 STORE_NUM = {"price_cents", "list_price_cents", "lowest_90d_cents", "history_since", "checked_at"}
-STORE_OPT = {"median_90d_cents"}
+STORE_OPT = {"median_90d_cents", "price_points"}
 OFFER_KEYS = {"id", "isbn", "genre", "title", "author", "image_url", "stores"}
 
 
@@ -870,6 +887,11 @@ def validate_offers(doc):
                     raise Invalid("precisa list >= price >= lowest_90d")
                 if "median_90d_cents" in s:
                     _int_cents(s, "median_90d_cents")
+                pts = s.get("price_points", [])
+                if not isinstance(pts, list) or len(pts) > build.MAX_POINTS or any(
+                        not isinstance(x, dict) or set(x) != {"date", "price_cents"}
+                        or _int_cents(x, "price_cents") < lo for x in pts):
+                    raise Invalid("price_points fora do contrato")
                 ca = _dt(s["checked_at"], "checked_at")
                 try:
                     since = date.fromisoformat(s["history_since"])

@@ -365,7 +365,8 @@ def test_offers_v2_contrato(env):
     amz, ml = d["stores"]
     assert amz == {"store": "amazon", "asin": "B0ABCDEFGH", "price_cents": 2990,
                    "list_price_cents": 4990, "lowest_90d_cents": 2990,
-                   "history_since": "2026-10-18", "checked_at": "2026-10-18T11:00:00+00:00"}
+                   "history_since": "2026-10-18", "checked_at": "2026-10-18T11:00:00+00:00",
+                   "price_points": [{"date": "2026-10-18", "price_cents": 2990}]}
     assert ml["ml_product_id"] == "MLB11" and ml["ml_url"] == ML_URL
     assert ml["price_cents"] == 3990 and ml["list_price_cents"] == 5990
     assert [s["store"] for s in o["livro-ml-2"]["stores"]] == ["mercadolivre"]
@@ -904,3 +905,42 @@ def test_state_com_campo_de_tipo_errado_e_descartado(env, bad):
 def test_dia_so_na_forma_canonica(v):
     assert not c._day(v)
     assert c._day("2026-10-18")
+
+
+def test_price_points_menor_do_dia_ate_90_dias(env):
+    """Gráfico do histórico: um ponto por dia BRT (o menor), em ordem, sem dia com mais de
+    90 dias e aceito pelo contrato do build."""
+    hist = env["hist"]
+    (hist / "price_history").mkdir(parents=True)
+    head = ",".join(c.HISTORY_COLS) + "\n"
+    (hist / "price_history" / "2026-07.csv").write_text(
+        head + "livro-ml-2,mercadolivre,1000,1000,2026-07-10T12:00:00+00:00,ml_api\n")  # > 90 dias
+    (hist / "price_history" / "2026-10.csv").write_text(head + "".join(
+        f"livro-ml-2,mercadolivre,{p},9990,{ts},ml_api\n" for p, ts in [
+            (5000, "2026-10-01T12:00:00+00:00"), (4500, "2026-10-01T20:00:00+00:00"),
+            (4800, "2026-10-11T02:00:00+00:00"),  # 10/10 em BRT
+            (5200, "2026-10-12T12:00:00+00:00")]))
+    env["run"]()
+    ml = offers(hist)["livro-ml-2"]["stores"][0]
+    hoje = ml["price_points"][-1]
+    assert ml["price_points"][:-1] == [{"date": "2026-10-01", "price_cents": 4500},
+                                       {"date": "2026-10-10", "price_cents": 4800},
+                                       {"date": "2026-10-12", "price_cents": 5200}]
+    assert hoje["date"] == "2026-10-18"
+    assert len(ml["price_points"]) <= c.build.MAX_POINTS
+    assert all(p["price_cents"] >= ml["lowest_90d_cents"] for p in ml["price_points"])
+    o = c.build.load_offers(json.loads((hist / "offers.json").read_text()), NOW)
+    assert o  # o build aceita a série
+
+
+def test_price_points_limites():
+    from datetime import date, timedelta
+    today = date(2026, 10, 18)
+    days = {today - timedelta(days=n): 3000 + n for n in range(0, 120)}
+    pts = c.price_points(days, "2026-01-01", "2026-10-18T12:00:00+00:00", today)
+    assert len(pts) == 90 and pts[0]["date"] == "2026-07-21" and pts[-1]["date"] == "2026-10-18"
+    assert [p["date"] for p in c.price_points(days, "2026-10-15", "2026-10-18T12:00:00+00:00", today)] \
+        == ["2026-10-15", "2026-10-16", "2026-10-17", "2026-10-18"]  # desde o history_since
+    # Amazon vencida: termina no dia da leitura e não volta além de hoje - 89
+    old = c.price_points(days, "2026-01-01", "2026-10-10T12:00:00+00:00", today)
+    assert old[0]["date"] == "2026-07-21" and old[-1]["date"] == "2026-10-10"
