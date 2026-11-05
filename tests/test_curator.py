@@ -1098,3 +1098,49 @@ def test_ml_match_pagina_incompleta_e_ambigua(mm, capsys):
     mm["run"](max_books=1)
     assert "1 ambíguos" in capsys.readouterr().out and not mm["links"].exists()
     assert not any("/products/MLB10" in u for u in mm["fake"].urls)
+
+
+def _sem_isbn(n, title, author="Fulana A"):
+    """Ficha como vem com token de app: sem GTIN."""
+    p = prod(n, title=title, author=author)
+    p["attributes"] = [a for a in p["attributes"] if a["id"] != "GTIN"]
+    return p
+
+
+def test_ml_match_sem_isbn_casa_por_titulo_e_autor(mm, capsys):
+    f = mm["fake"]
+    f.products["MLB10"] = _sem_isbn(10, "AMZ 1: edição especial")          # casa
+    f.by_isbn[isbn(1)] = ["MLB10"]
+    f.products["MLB20"] = _sem_isbn(20, "Amz 22")                          # título diferente
+    f.by_isbn[isbn(2)] = ["MLB20"]
+    f.products["MLB30"] = _sem_isbn(30, "Amz 3", author="Beltrano")        # autor diferente
+    f.by_isbn[isbn(3)] = ["MLB30"]
+    f.products["MLB40"] = prod(40, gtin=isbn(77), title="Amz 4", author="A")  # ISBN diferente
+    f.by_isbn[isbn(4)] = ["MLB40"]
+    mm["run"]()
+    out = capsys.readouterr().out
+    assert set(_queue(mm)) == {"amz-1"} and _queue(mm)["amz-1"][1] == "MLB10"
+    assert "amz-2 isbn" in out and "titulo_diferente=1" in out
+    assert "amz-3 isbn" in out and "autor_diferente=1" in out
+    assert "amz-4 isbn" in out and "isbn_diferente=1" in out
+
+
+def test_ml_match_sem_isbn_com_dois_resultados_e_ambiguo(mm, capsys):
+    f = mm["fake"]
+    f.products["MLB10"] = _sem_isbn(10, "Amz 1")
+    f.products["MLB11"] = {**_sem_isbn(11, "Outro"), "status": "inactive"}
+    f.by_isbn[isbn(1)] = ["MLB10", "MLB11"]  # só um passa, mas a busca trouxe dois
+    mm["run"](max_books=1)
+    assert "1 ambíguos" in capsys.readouterr().out and not mm["links"].exists()
+
+
+def test_titulo_e_autor_normalizados():
+    assert cur.titulo_bate("Duna: livro 1", "DUNA")
+    assert cur.titulo_bate("O ladrão de raios (Percy Jackson)", "Percy Jackson - O Ladrao De Raios")
+    assert not cur.titulo_bate("O messias de Duna", "Duna")   # só catálogo -> ficha
+    assert not cur.titulo_bate("Duna", "Dunas")                # palavra inteira
+    assert cur.autor_bate("Atwood, Margaret", ["Margaret Atwood"])
+    assert cur.autor_bate("Ichiro Kishimi, Fumitake Koga", ["Kishimi, Ichiro"])
+    assert cur.autor_bate("Martin Luther King Jr.", ["King, Martin Luther"])
+    assert not cur.autor_bate("Mark Manson", ["Marko Mansonn"])
+    assert not cur.autor_bate("Mark Manson", [])
