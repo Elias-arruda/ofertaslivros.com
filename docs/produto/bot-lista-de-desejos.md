@@ -254,7 +254,7 @@ Tirar da lista: /lista
                "texto": "Torto Arado, de Itamar ... Link de afiliado: https://ofertaslivros.com.br/r/torto-arado/bot"}]}
   ```
 - **`texto`** só existe com `oferta and not velho`, e nos outros casos é `null`. Sai de `post_text(o, f"{SITE}/r/{o['id']}/bot")`.
-- **`valido_ate`** = `checked_at + FRESH[store]` da loja vencedora. Assim o Worker não manda um preço que venceu entre o deploy e o cron, e não precisa conhecer o `FRESH`.
+- **`valido_ate`** = `checked_at + FRESH[store]` da loja que vence primeiro (o `texto` pode citar a outra loja, em "Também no..."). Assim o Worker não manda um preço que venceu entre o deploy e o cron, e não precisa conhecer o `FRESH`.
 - **`autores`:** o `autor` dividido em `,`, `;`, `&` e ` e `, cada parte com `fold`. Ex.: "Neil Gaiman e Terry Pratchett" → `["neil gaiman", "terry pratchett"]`.
   - `ponytail`: a divisão ingênua erra autor com " e " no nome. Corrigir com um campo `authors` no contrato se aparecer caso real.
 - `bot` entra em `RESERVED`.
@@ -410,7 +410,7 @@ Testes do Worker em `worker/bot.test.mjs` (`node --test`, como os que já existe
 29. Chat com `visto_em` de 12 meses e 1 dia atrás é apagado na limpeza diária. Chat com 11 meses fica.
 
 **Build (pytest / `build.py --selftest`)**
-30. O `dist/bot.json` tem uma entrada por livro do `resolve`. `texto` não é nulo só com `oferta and not velho`, e é igual a `post_text(o, SITE + "/r/<id>/bot")`. `valido_ate` = `checked_at + FRESH[store]`.
+30. O `dist/bot.json` tem uma entrada por livro do `resolve`. `texto` não é nulo só com `oferta and not velho`, e é igual a `post_text(o, SITE + "/r/<id>/bot")`. `valido_ate` = o menor `checked_at + FRESH[store]` entre as lojas do livro.
 31. O `_redirects` tem `/r/<id>/bot` para cada livro, com a tag `AMAZON_TAG_BOT` na Amazon (ou a do site, sem a var) e o mesmo `ml_url` no ML.
 32. O `post_text` aceita `/r/<id>/bot` e continua recusando qualquer outro caminho e host de loja.
 33. Com `TELEGRAM_BOT_USERNAME` definido, o build falha com id de mais de 60 chars.
