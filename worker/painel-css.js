@@ -8,6 +8,7 @@ export const CSS = `
   --bg: #edf1f5; --card: #ffffff; --line: #1c2b4a1f; --grid: #1c2b4a14;
   --text: #1c2b4a; --muted: #4a5670; --mark: #b3262f; --mark-soft: #b3262f59; --track: #1c2b4a12;
   --hl: #1c2b4a; --hl-text: #edf1f5; --badge: #b3262f; --badge-ink: #fff;
+  --c1: #2f5fb3; --c2: #b3262f; --c3: #b87d00; /* categóricas validadas (dataviz) no fundo claro */
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -15,6 +16,7 @@ export const CSS = `
     --bg: #0f1729; --card: #18233b; --line: #e6ebf31a; --grid: #e6ebf312;
     --text: #e6ebf3; --muted: #a9b4c8; --mark: #e85a66; --mark-soft: #e85a6659; --track: #e6ebf314;
     --hl: #ff8a8f; --hl-text: #0f1729; --badge: #ff8a8f; --badge-ink: #0f1729;
+    --c1: #5b8def; --c2: #e85a66; --c3: #bd8a14; /* idem no fundo escuro; c2×c3 pede rótulo direto */
     color-scheme: dark;
   }
 }
@@ -49,9 +51,6 @@ h2 { font-size: 17px; margin-bottom: 14px; }
 .plot line { stroke: var(--grid); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .plot .ymax { position: absolute; top: 0; left: 0; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .col .hit { fill: transparent; }
-.col .bar { fill: var(--mark); }
-.col.parcial .bar { fill: var(--mark-soft); }
-.col:hover .bar { fill: var(--text); }
 .eixo { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 6px; }
 
 .hbars { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -69,7 +68,7 @@ h2 { font-size: 17px; margin-bottom: 14px; }
 .medidor rect { fill: var(--mark); }
 .medidor .fundo { fill: var(--track); }
 
-.pedidos { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 340px; overflow: auto; }
+.pedidos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; max-height: 340px; overflow: auto; }
 .pedidos li { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 10px 12px; border-radius: 12px; background: var(--track); }
 .pedidos li.novo { outline: 2px solid var(--badge); outline-offset: -2px; }
 .pedidos div { display: flex; flex-direction: column; min-width: 0; }
@@ -83,4 +82,39 @@ summary { cursor: pointer; color: var(--muted); }
 table { width: 100%; border-collapse: collapse; margin-top: 8px; font-variant-numeric: tabular-nums; }
 th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); }
 th { color: var(--muted); font-weight: 500; }
+h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 500; margin: 14px 0 8px; }
+h3:first-of-type { margin-top: 0; }
+.legenda { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12.5px; color: var(--muted); }
+.legenda li { display: flex; align-items: center; gap: 6px; }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
+.sw.s1 { background: var(--c1); } .sw.s2 { background: var(--c2); } .sw.s3 { background: var(--c3); }
+.sw.ln { height: 3px; background: var(--c2); } .sw.lm { height: 3px; background: var(--muted); }
+.col .s1, .seg .s1 { fill: var(--c1); } .col .s2, .seg .s2 { fill: var(--c2); } .seg .s3 { fill: var(--c3); }
+.col.parcial .s1, .col.parcial .s2 { opacity: .4; }
+.col:hover .s1, .col:hover .s2 { opacity: 1; filter: brightness(1.15); }
+.plot polyline { fill: none; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+.plot .ln { stroke: var(--c2); stroke-width: 2.5; }
+.plot .lm { stroke: var(--muted); stroke-width: 2; opacity: .8; }
+.pt .hit { fill: transparent; } .pt:hover .hit { fill: var(--track); }
+.spark { display: block; width: 100%; height: 30px; margin-top: 8px; }
+.spark polyline { fill: none; stroke: var(--c2); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.tile .medidor { margin-top: 10px; height: 10px; }
+.funil { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 4px; }
+.funil li { display: grid; grid-template-columns: minmax(90px, 34%) 1fr 64px; gap: 10px; align-items: center; font-size: 13.5px; }
+.funil .trilho { width: 100%; height: 22px; display: block; background: var(--track); border-radius: 4px; }
+.funil rect { fill: var(--c1); }
+.funil .val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.funil .passo { display: block; padding-left: calc(34% + 10px); font-size: 12.5px; color: var(--muted); }
+.disp { display: block; width: 100%; height: auto; }
+.disp .g { stroke: var(--grid); }
+.disp .tick, .disp .eixo-t { fill: var(--muted); font-size: 13px; font-family: "Outfit", system-ui, sans-serif; }
+.disp .ref { stroke: var(--muted); stroke-width: 1.5; opacity: .7; }
+.disp circle { fill: var(--c1); stroke: var(--card); stroke-width: 2; }
+.disp .abaixo circle { fill: var(--c3); }
+.disp .dot:hover circle { r: 8; }
+.disp .lbl { fill: var(--text); font-size: 13px; paint-order: stroke; stroke: var(--card); stroke-width: 4px; font-family: "Outfit", system-ui, sans-serif; }
+.seg { display: block; width: 100%; height: 26px; border-radius: 6px; overflow: hidden; }
+.seg-leg { margin-top: 8px; }
+.seg-leg b { color: var(--text); font-weight: 600; }
+.seg-leg span { font-size: 11.5px; }
 `;

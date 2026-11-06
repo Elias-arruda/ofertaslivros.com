@@ -62,17 +62,42 @@ function tabela(cols, linhas) {
 const dm = d => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 const pct = (a, b) => (b ? `${(100 * a / b).toFixed(1)}%` : "—");
 
-/** Colunas por dia em SVG (sem JS: tooltip pelo <title>, destaque no :hover pelo CSS). */
-function colunas(pontos, unidade) {
-  const max = Math.max(1, ...pontos.map(p => p.y)), W = pontos.length * 10 || 10;
-  const cols = pontos.map((p, i) => {
-    const h = 92 * p.y / max;
-    return `<g class="col${p.parcial ? " parcial" : ""}"><title>${esc(dm(p.x))}${p.parcial ? " (hoje, parcial)" : ""}: ${n(p.y)} ${esc(unidade)}</title>`
-      + `<rect class="hit" x="${i * 10}" y="0" width="10" height="100"/><rect class="bar" x="${i * 10 + 1.5}" y="${(100 - h).toFixed(2)}" width="7" height="${h.toFixed(2)}"/></g>`;
-  }).join("");
-  const grid = [8, 54, 100].map(y => `<line x1="0" x2="${W}" y1="${y}" y2="${y}"/>`).join("");
-  const eixo = pontos.length ? `<div class="eixo"><span>${esc(dm(pontos[0].x))}</span><span>${esc(dm(pontos.at(-1).x))}${pontos.at(-1).parcial ? " · hoje" : ""}</span></div>` : "";
-  return `<div class="plot"><span class="ymax">${n(max)}</span><svg viewBox="0 0 ${W} 100" preserveAspectRatio="none" role="img" aria-label="${esc(unidade)} por dia">${grid}${cols}</svg>${eixo}</div>`;
+// Gráficos em SVG montado no servidor (sem JS; tooltip pelo <title>, destaque no :hover pelo CSS).
+// Os gráficos diários dividem a largura em N fatias iguais, então as datas se alinham entre eles.
+const X = (i, N) => ((i + 0.5) / N) * 100;
+const nice = v => { const e = 10 ** Math.floor(Math.log10(v || 1)); return Math.ceil(v / e) * e; };
+const eixoX = pts => pts.length ? `<div class="eixo"><span>${esc(dm(pts[0].x))}</span><span>${esc(dm(pts.at(-1).x))}${pts.at(-1).parcial ? " · hoje" : ""}</span></div>` : "";
+const legenda = itens => `<ul class="legenda">${itens.map(([cls, txt]) => `<li><i class="sw ${cls}"></i>${esc(txt)}</li>`).join("")}</ul>`;
+const grade = W => [8, 54, 100].map(y => `<line x1="0" x2="${W}" y1="${y}" y2="${y}"/>`).join("");
+const plot = (W, ymax, corpo, pts, rotulo) =>
+  `<div class="plot"><span class="ymax">${esc(ymax)}</span><svg viewBox="0 0 ${W} 100" preserveAspectRatio="none" role="img" aria-label="${esc(rotulo)}">${grade(W)}${corpo}</svg>${eixoX(pts)}</div>`;
+
+/** Barras agrupadas por dia: views (série 1) e cliques (série 2), no mesmo eixo de contagem. */
+function barrasDia(pts) {
+  const N = pts.length || 1, max = nice(Math.max(1, ...pts.map(p => Math.max(p.v, p.c))));
+  const h = y => 92 * y / max;
+  const g = pts.map((p, i) => `<g class="col${p.parcial ? " parcial" : ""}"><title>${esc(dm(p.x))}${p.parcial ? " (hoje, parcial)" : ""}: ${n(p.v)} views · ${n(p.c)} cliques</title>`
+    + `<rect class="hit" x="${i * 12}" y="0" width="12" height="100"/>`
+    + `<rect class="s1" x="${i * 12 + 1.5}" y="${(100 - h(p.v)).toFixed(2)}" width="4.25" height="${h(p.v).toFixed(2)}"/>`
+    + `<rect class="s2" x="${i * 12 + 6.25}" y="${(100 - h(p.c)).toFixed(2)}" width="4.25" height="${h(p.c).toFixed(2)}"/></g>`).join("");
+  return legenda([["s1", "Views"], ["s2", "Cliques de afiliado"]]) + plot(N * 12, n(max), g, pts, "views e cliques por dia");
+}
+
+/** Linha de taxa por dia (diária + média móvel de 7 dias), alinhada às barras de cima. */
+function linhaDia(pts) {
+  const N = pts.length || 1, max = nice(100 * Math.max(0.01, ...pts.map(p => Math.max(p.y ?? 0, p.m ?? 0))));
+  const Y = r => (100 - 92 * (100 * r) / max).toFixed(2);
+  const linha = (k, cls) => `<polyline class="${cls}" points="${pts.flatMap((p, i) => p[k] == null ? [] : [`${X(i, N).toFixed(2)},${Y(p[k])}`]).join(" ")}"/>`;
+  const hits = pts.map((p, i) => `<g class="pt"><title>${esc(dm(p.x))}${p.parcial ? " (hoje, parcial)" : ""}: CTR ${p.y == null ? "—" : `${(100 * p.y).toFixed(1)}%`} · média 7 dias ${p.m == null ? "—" : `${(100 * p.m).toFixed(1)}%`}</title><rect class="hit" x="${(100 * i / N).toFixed(2)}" y="0" width="${(100 / N).toFixed(2)}" height="100"/></g>`).join("");
+  return legenda([["ln", "CTR do dia"], ["lm", "Média de 7 dias"]]) + plot(100, `${max}%`, linha("y", "ln") + linha("m", "lm") + hits, pts, "taxa de clique por dia");
+}
+
+/** Minigráfico de tendência para os cartões do topo. */
+function spark(vals) {
+  const v = vals.filter(x => x != null);
+  if (v.length < 2) return "";
+  const max = Math.max(...v) || 1, min = Math.min(...v), amp = max - min || 1;
+  return `<svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><polyline points="${v.map((y, i) => `${(100 * i / (v.length - 1)).toFixed(1)},${(27 - 24 * (y - min) / amp).toFixed(1)}`).join(" ")}"/></svg>`;
 }
 
 /** Barras horizontais ranqueadas: rótulo, barra (largura em % do maior) e valor. */
@@ -84,8 +109,54 @@ function barras(linhas, vazio = "Sem dados ainda.") {
     + `<span class="val">${n(l.v)}${l.extra ? `<small>${esc(l.extra)}</small>` : ""}</span></li>`).join("")}</ol>`;
 }
 
-function tile(rotulo, valor, sub = "", cls = "") {
-  return `<div class="tile ${cls}"><span class="rotulo">${esc(rotulo)}</span><strong>${esc(valor)}</strong>${sub ? `<span class="sub">${esc(sub)}</span>` : ""}</div>`;
+/** Funil: cada etapa com a barra proporcional à primeira e a conversão até a próxima. */
+function funil(etapas) {
+  const topo = Math.max(1, etapas[0].v);
+  return `<ol class="funil">${etapas.map((e, i) => {
+    const passo = i ? `<li class="passo">↓ ${etapas[i - 1].v ? `${(100 * e.v / etapas[i - 1].v).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%` : "—"} ${esc(e.verbo)}</li>` : "";
+    return `${passo}<li><span class="rot">${esc(e.rot)}</span><svg class="trilho" preserveAspectRatio="none"><title>${esc(e.rot)}: ${n(e.v)}</title><rect width="${Math.max(1.5, 100 * e.v / topo).toFixed(1)}%" height="100%" rx="3"/></svg><span class="val">${n(e.v)}</span></li>`;
+  }).join("")}</ol>`;
+}
+
+/** Dispersão por livro: views da página × cliques, com a reta do CTR médio. */
+function dispersao(pts) {
+  if (!pts.length) return `<p class="vazio">Sem dados ainda.</p>`;
+  const L = 44, R = 16, T = 20, B = 40, W = 1000, H = 340;
+  const xm = nice(Math.max(1, ...pts.map(p => p.x))), ym = nice(Math.max(1, ...pts.map(p => p.y)));
+  const px = x => L + (W - L - R) * x / xm, py = y => H - B - (H - T - B) * y / ym;
+  const sx = pts.reduce((a, p) => a + p.x, 0), sy = pts.reduce((a, p) => a + p.y, 0), ctr = sx ? sy / sx : 0;
+  const fim = ctr * xm <= ym ? [xm, ctr * xm] : [ym / ctr, ym];
+  const ticks = [0, 0.5, 1].map(f => `<line class="g" x1="${L}" x2="${W - R}" y1="${py(f * ym)}" y2="${py(f * ym)}"/><text class="tick" x="${L - 6}" y="${py(f * ym) + 4}" text-anchor="end">${n(f * ym)}</text>`
+    + `<text class="tick" x="${px(f * xm)}" y="${H - B + 16}" text-anchor="middle">${n(f * xm)}</text>`).join("");
+  // Rótulo só nos extremos (mais vistos e mais acima/abaixo da reta), pulando o que colidiria com outro.
+  const dist = p => p.y - ctr * p.x, usados = [], top = new Set();
+  for (const p of [...[...pts].sort((a, b) => b.x - a.x).slice(0, 3), ...[...pts].sort((a, b) => dist(b) - dist(a)).slice(0, 2), ...[...pts].sort((a, b) => dist(a) - dist(b)).slice(0, 3)]) {
+    const [x, y] = [px(p.x), py(p.y)];
+    if (top.size < 6 && !usados.some(([ux, uy]) => Math.abs(uy - y) < 16 && x < ux + 190 && ux < x + 190)) { top.add(p.id); usados.push([x, y]); }
+  }
+  const dots = pts.map(p => `<g class="dot${p.y < ctr * p.x ? " abaixo" : ""}"><title>${esc(p.id)}: ${n(p.x)} views · ${n(p.y)} cliques · CTR ${pct(p.y, p.x)}</title><circle cx="${px(p.x).toFixed(1)}" cy="${py(p.y).toFixed(1)}" r="6"/>`
+    + (top.has(p.id) ? `<text class="lbl" x="${(px(p.x) + 10).toFixed(1)}" y="${(py(p.y) + 4).toFixed(1)}">${esc(p.id.length > 22 ? `${p.id.slice(0, 21)}…` : p.id)}</text>` : "") + "</g>").join("");
+  return legenda([["s1", "Livro com CTR acima da média"], ["s3", "Abaixo da média: muita visita, pouco clique"]])
+    + `<svg class="disp" viewBox="0 0 ${W} ${H}" role="img" aria-label="views × cliques por livro">${ticks}`
+    + (ctr ? `<line class="ref" x1="${px(0)}" y1="${py(0)}" x2="${px(fim[0]).toFixed(1)}" y2="${py(fim[1]).toFixed(1)}"><title>CTR médio ${(100 * ctr).toFixed(1)}%</title></line>` : "")
+    + `${dots}<text class="eixo-t" x="${W - R}" y="${H - 4}" text-anchor="end">views da página do livro →</text><text class="eixo-t" x="${L}" y="${T - 2}">↑ cliques</text></svg>`;
+}
+
+/** Participação: barra 100% segmentada (≤ 4 partes), com rótulo direto e espaço entre as cores. */
+function segmentos(partes) {
+  const total = partes.reduce((a, p) => a + p.v, 0);
+  if (!total) return `<p class="vazio">Sem cliques ainda.</p>`;
+  let x = 0;
+  const rects = partes.filter(p => p.v).map(p => {
+    const w = 100 * p.v / total, r = `<rect class="${p.cls}" x="${x.toFixed(2)}" width="${Math.max(0, w - 0.6).toFixed(2)}" height="100%"><title>${esc(p.rot)}: ${n(p.v)} (${pct(p.v, total)})</title></rect>`;
+    x += w; return r;
+  }).join("");
+  return `<svg class="seg" viewBox="0 0 100 10" preserveAspectRatio="none" role="img" aria-label="participação">${rects}</svg>`
+    + `<ul class="legenda seg-leg">${partes.map(p => `<li><i class="sw ${p.cls}"></i>${esc(p.rot)} <b>${pct(p.v, total)}</b> <span>${n(p.v)}</span></li>`).join("")}</ul>`;
+}
+
+function tile(rotulo, valor, sub = "", cls = "", extra = "") {
+  return `<div class="tile ${cls}"><span class="rotulo">${esc(rotulo)}</span><strong>${esc(valor)}</strong>${sub ? `<span class="sub">${esc(sub)}</span>` : ""}${extra}</div>`;
 }
 
 /** Variação contra a janela anterior, em texto (não é cor de status). */
@@ -148,23 +219,33 @@ export function render(d) {
     porCanal[c.canal] += r.requests;
     porLoja[c.loja] = (porLoja[c.loja] || 0) + r.requests;
   }
-  const topLivros = Object.entries(porLivro).sort((a, b) => b[1] - a[1]).slice(0, 15);
+  const topLivros = Object.entries(porLivro).sort((a, b) => b[1] - a[1]).slice(0, 10);
   const nichos = d.nichos7.filter(r => NICHOS.has(r.path.slice(1, -1))).sort((a, b) => b.views - a.views);
   const brl = c => (Number(c || 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const novos = d.pedidos.filter(p => p.novo).length;
   const v = (store, status) => d.vendas.find(r => r.store === store && r.status === status) || {};
   const qualificadas = (v("amazon", "enviado").itens || 0) - (v("amazon", "devolvido").itens || 0);
   const comissao = (v("amazon", "enviado").comissao || 0) + (v("amazon", "devolvido").comissao || 0);
+  const pedidosAmz = v("amazon", "pedido").itens || 0;
   const vendasAte = d.vendas.reduce((m, r) => (r.ate > m ? r.ate : m), "") || "—";
   const hora = d.geradoEm.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
 
-  // Série diária (antiga → nova) + hoje como coluna parcial.
+  // Série diária (antiga → nova) + hoje como dia parcial.
   const dias = [...d.porDia].reverse();
-  const serieV = dias.map(r => ({ x: r.day, y: r.views || 0 })).concat([{ x: d.hoje, y: viewsHoje, parcial: true }]);
-  const serieC = dias.map(r => ({ x: r.day, y: r.cliques || 0 })).concat([{ x: d.hoje, y: cliquesHoje, parcial: true }]);
+  const serie = dias.map(r => ({ x: r.day, v: r.views || 0, c: r.cliques || 0 }))
+    .concat([{ x: d.hoje, v: viewsHoje, c: cliquesHoje, parcial: true }]);
+  serie.forEach((p, i) => {
+    const w = serie.slice(Math.max(0, i - 6), i + 1), sv = w.reduce((a, q) => a + q.v, 0);
+    p.y = p.v ? p.c / p.v : null;
+    p.m = sv ? w.reduce((a, q) => a + q.c, 0) / sv : null;
+  });
   const janela = (k, de, ate) => dias.slice(de, ate).reduce((a, r) => a + (r[k] || 0), 0);
   const v7 = janela("views", -7), v7a = janela("views", -14, -7), c7 = janela("cliques", -7), c7a = janela("cliques", -14, -7);
-  const meta = Math.min(100, 10 * qualificadas);
+  const v30 = janela("views", -30), c30 = janela("cliques", -30);
+  const ctr7 = v7 ? c7 / v7 : 0, ctr7a = v7a ? c7a / v7a : 0;
+  const ult14 = dias.slice(-14);
+  const pts = [...new Set([...Object.keys(viewsLivro), ...Object.keys(porLivro)])]
+    .map(id => ({ id, x: viewsLivro[id] || 0, y: porLivro[id] || 0 })).filter(p => p.x || p.y);
 
   const pedidosHtml = d.pedidos.length ? `<ul class="pedidos">${d.pedidos.slice(0, 12).map(p =>
     `<li${p.novo ? ' class="novo"' : ""}><div><strong>${esc(p.titulo)}</strong><span>${esc(p.autor || "autor não informado")}</span></div>`
@@ -176,33 +257,42 @@ export function render(d) {
 <meta name="robots" content="noindex"><title>Painel · Ofertas Livros</title><link rel="stylesheet" href="/painel/painel.css"></head>
 <body><main class="painel">
 <header class="topo"><div><p class="kicker">Ofertas Livros</p><h1>Painel</h1></div>
-<p class="meta">Atualizado ${esc(hora)} · recarrega a cada 60 s · sem bots<br>histórico até ${esc(d.ultimoDia || "—")} · hoje pelo GraphQL (minutos de atraso)</p></header>
+<p class="meta">Atualizado ${esc(hora)} · recarrega a cada 60 s · sem bots<br>histórico até ${esc(d.ultimoDia || "—")} · hoje pelo GraphQL (minutos de atraso) · vendas até ${esc(vendasAte)}</p></header>
 
 <div class="tiles">
-${tile("Views hoje", n(viewsHoje), `CTR ${pct(cliquesHoje, viewsHoje)}`)}
-${tile("Cliques hoje", n(cliquesHoje), "em /r/ (site + canais)")}
-${tile("Views 7 dias", n(v7), delta(v7, v7a))}
-${tile("Cliques 7 dias", n(c7), delta(c7, c7a))}
-${tile("Comissão Amazon 30 dias", brl(comissao), `vendas até ${vendasAte}`, "destaque")}
-${tile("Pedidos de livro", n(novos), "novos nas últimas 24 h", novos ? "alerta" : "")}
+${tile("Views 7 dias", n(v7), delta(v7, v7a), "", spark(ult14.map(r => r.views || 0)))}
+${tile("Cliques 7 dias", n(c7), delta(c7, c7a), "", spark(ult14.map(r => r.cliques || 0)))}
+${tile("CTR 7 dias", pct(c7, v7), ctr7a ? `antes: ${(100 * ctr7a).toFixed(1)}%` : "cliques ÷ views", "", spark(ult14.map(r => (r.views ? r.cliques / r.views : null))))}
+${tile("Comissão 30 dias", brl(comissao), c30 ? `${brl(comissao / c30)} por clique` : "Amazon", "destaque")}
+${tile("Creators API", `${n(qualificadas)} de ~10`, "vendas qualificadas, 30 dias", "", `<svg class="medidor" preserveAspectRatio="none"><title>${n(qualificadas)} de ~10</title><rect class="fundo" width="100%" height="100%" rx="4"/><rect width="${Math.min(100, 10 * qualificadas)}%" height="100%" rx="4"/></svg>`)}
+${tile("Pedidos de livro", n(novos), `novos em 24 h · hoje ${n(viewsHoje)} views, ${n(cliquesHoje)} cliques`, novos ? "alerta" : "")}
 </div>
 
 <div class="grade">
-${card("Views por dia", colunas(serieV, "views") + tabela(["Dia", "Views", "Cliques", "Bots"], d.porDia.map(r => [r.day, n(r.views), n(r.cliques), n(r.bots)])), "largo", "Páginas HTML com status 200, sem bots. A última coluna (mais clara) é hoje, ainda parcial.")}
-${card("Cliques de afiliado por dia", colunas(serieC, "cliques"), "largo", "Cada acesso a /r/ que redirecionou para a loja.")}
+${card("Tráfego por dia", barrasDia(serie) + tabela(["Dia", "Views", "Cliques", "Bots"], d.porDia.map(r => [r.day, n(r.views), n(r.cliques), n(r.bots)])), "largo", "Views = páginas HTML com status 200; cliques = /r/ que redirecionou para a loja. Sem bots. A última coluna (mais clara) é hoje, parcial.")}
+${card("Taxa de clique (CTR) por dia", linhaDia(serie), "largo", "CTR = cliques em /r/ ÷ views. A média de 7 dias tira o ruído de dias fracos; mesmas datas do gráfico acima.")}
 
-${card("Creators API", `<p class="grande">${n(qualificadas)} <small>de ~10</small></p><svg class="medidor" preserveAspectRatio="none"><title>${n(qualificadas)} de ~10 vendas qualificadas</title><rect class="fundo" width="100%" height="100%" rx="6"/><rect width="${meta}%" height="100%" rx="6"/></svg>`
+${card("Funil (30 dias)", funil([
+    { rot: "Views", v: v30 },
+    { rot: "Cliques de afiliado", v: c30, verbo: "clicam para a loja" },
+    { rot: "Pedidos Amazon", v: pedidosAmz, verbo: "viram pedido" },
+  ]) + `<p class="grande">${brl(comissao)} <small>de comissão · ${c30 ? `${brl(comissao / c30)} por clique` : "—"}</small></p>`
   + tabela(["Status", "Itens", "Receita", "Comissão"], ["pedido", "enviado", "devolvido"].map(st => [st, n(v("amazon", st).itens), brl(v("amazon", st).receita), st === "pedido" ? "—" : brl(v("amazon", st).comissao)])),
-  "", `Creators API: ${qualificadas} de ~10 vendas qualificadas (enviadas − devolvidas) em 30 dias. Vem do CSV exportado pelo Chrome, D+1; o número que vale é o do painel da Amazon. ML: o portal não tem exportação.`)}
-${card(`Pedidos de livro: ${novos} novo(s) nas últimas 24 h`, pedidosHtml, "", "Formulário \"Pedir um livro\" (também vai para pedidos@ofertaslivros.com). Ficam 30 dias.")}
+  "", `Pedidos só da Amazon (o portal do ML não exporta) e com 1 dia de atraso; parte dos cliques vai para o ML, então a conversão real da Amazon é maior. Creators API: ${qualificadas} de ~10 vendas qualificadas (enviadas − devolvidas) em 30 dias; o número que vale é o do painel da Amazon.`)}
+${card("De onde vêm e para onde vão os cliques (7 dias)",
+  `<h3>Loja de destino</h3>${segmentos([{ rot: "Menor preço (/r/)", v: porLoja.vencedora || 0, cls: "s1" }, { rot: "Amazon (seta)", v: porLoja.amazon || 0, cls: "s2" }, { rot: "Mercado Livre (seta)", v: porLoja.mercadolivre || 0, cls: "s3" }])}`
+  + `<h3>Canal de origem</h3>${segmentos([{ rot: "Site", v: porCanal.site, cls: "s1" }, { rot: "Telegram", v: porCanal.tg, cls: "s2" }, { rot: "WhatsApp", v: porCanal.wa, cls: "s3" }])}`
+  + tabela(["Canal", "Cliques"], Object.entries(porCanal).map(([k, c]) => [k, n(c)])),
+  "", "Menor preço = /r/<id>, que leva à loja mais barata do dia; a seta é o link da outra loja na página do livro.")}
 
-${card("Top livros (7 dias)", barras(topLivros.map(([id, c]) => ({ rot: id, v: c, extra: viewsLivro[id] ? `CTR ${pct(c, viewsLivro[id])}` : "" })))
+${card("Oportunidades por livro (7 dias)", dispersao(pts), "largo", "Cada ponto é um livro. Abaixo da reta (CTR médio), o livro recebe visita mas pouco clique: vale rever preço, capa ou oferta. Acima, converte bem: candidato a destaque e canais.")}
+
+${card("Top livros por cliques (7 dias)", barras(topLivros.map(([id, c]) => ({ rot: id, v: c, extra: viewsLivro[id] ? `CTR ${pct(c, viewsLivro[id])}` : "" })))
   + tabela(["Livro", "Cliques", "Views da página", "CTR"], topLivros.map(([id, c]) => [id, n(c), n(viewsLivro[id]), pct(c, viewsLivro[id])])),
   "largo", "CTR = cliques em /r/<id> ÷ views de /livro/<id>/. Clique vindo do canal não passa pela página, então pode passar de 100%.")}
-${card("Top livros hoje", barras(topHoje.map(([id, c]) => ({ rot: id, v: c })), "Nenhum clique hoje ainda."))}
 ${card("Nichos mais vistos (7 dias)", barras(nichos.map(r => ({ rot: r.path, v: r.views }))) + tabela(["Página", "Views"], nichos.map(r => [r.path, n(r.views)])))}
-${card("Canal (7 dias)", barras(Object.entries(porCanal).map(([k, c]) => ({ rot: k, v: c }))) + tabela(["Canal", "Cliques"], Object.entries(porCanal).map(([k, c]) => [k, n(c)])))}
-${card("Loja (7 dias)", barras(Object.entries(porLoja).sort((a, b) => b[1] - a[1]).map(([k, c]) => ({ rot: k, v: c }))), "", "vencedora = /r/<id> (a loja com menor preço no dia); amazon/mercadolivre = a seta da outra loja.")}
+${card("Top livros hoje", barras(topHoje.map(([id, c]) => ({ rot: id, v: c })), "Nenhum clique hoje ainda."))}
+${card(`Pedidos de livro: ${novos} novo(s) nas últimas 24 h`, pedidosHtml, "largo", "Formulário \"Pedir um livro\" (também vai para pedidos@ofertaslivros.com). Ficam 30 dias.")}
 </div>
 </main></body></html>`;
 }
@@ -222,7 +312,7 @@ export async function painel(request, env, deps = {}) {
   if (url.hostname !== HOST || request.method !== "GET") return negado();
   if (!await accessEmail(request.headers.get("Cf-Access-Jwt-Assertion"), deps)) return negado();
   if (url.pathname === "/painel/painel.css") {
-    return new Response(CSS, { headers: { "Content-Type": "text/css; charset=utf-8", "Cache-Control": "private, max-age=300", "X-Content-Type-Options": "nosniff" } });
+    return new Response(CSS, { headers: { "Content-Type": "text/css; charset=utf-8", "Cache-Control": "private, no-cache", "X-Content-Type-Options": "nosniff" } });
   }
   try {
     return new Response(render(await dados(env)), { headers: HEADERS });

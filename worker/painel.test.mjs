@@ -115,7 +115,7 @@ test("CSS do painel só sai com JWT válido; gráficos viram SVG sem style inlin
   for (let i = 1; i <= 14; i++) ins.run(`-${i} days`, i * 10);
   globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ data: { viewer: { zones: [{ httpRequestsAdaptiveGroups: [] }] } } }) });
   const html = render(await dados({ ANALYTICS: d1, CF_ANALYTICS_TOKEN: "t" }));
-  assert.equal((html.match(/<g class="col/g) || []).length, 30);      // 14 dias + hoje, nos dois gráficos
+  assert.equal((html.match(/<g class="col/g) || []).length, 15);      // 14 dias + hoje
   assert.match(html, /class="col parcial"/);
   assert.match(html, /▼ 64% vs 7 dias antes/);                         // 280 contra 770 (série decrescente)
   assert.ok(!/style="|<style|<script/.test(html));                    // a CSP bloquearia
