@@ -160,3 +160,31 @@ def test_no_ar(monkeypatch, code, loc, ok):
             raise tp.urllib.error.HTTPError(req.full_url, code, "x", {"Location": loc}, None)
     monkeypatch.setattr(tp.urllib.request, "build_opener", lambda *h: Opener())
     assert tp.no_ar("https://ofertaslivros.com.br/r/a/tg") is ok
+
+
+def test_resumo_wa_no_chat_do_admin_uma_vez_por_dia(run, monkeypatch):
+    monkeypatch.delenv("TELEGRAM_CHANNEL_ID")
+    monkeypatch.setenv("TELEGRAM_ADMIN_CHAT_ID", "123456")
+    calls = run()
+    assert [m for m, _ in calls] == ["sendMessage", "sendMessage", "sendPhoto", "sendMessage", "sendMessage"]
+    assert all(d["chat_id"] == "123456" and "parse_mode" not in d for _, d in calls)
+    texts = [d.get("text") for _, d in calls]
+    assert texts[0] == "Resumo WhatsApp de 21/10: 2 ofertas" and texts[-1] == "fim do resumo"
+    assert texts[1].endswith("/r/torto-arado/wa") and "caption" not in calls[2][1]
+    assert sum(",wa," in line for line in run.csv.read_text().splitlines()) == 2
+    assert len(run()) == 5                                                # 2ª execução no mesmo dia: nada
+
+
+def test_resumo_wa_antes_das_11h_e_sem_oferta_nao_sai(run, monkeypatch):
+    monkeypatch.delenv("TELEGRAM_CHANNEL_ID")
+    monkeypatch.setenv("TELEGRAM_ADMIN_CHAT_ID", "123456")
+    tp.main(run.csv.parent / "offers.json", run.csv, now=NOW.replace(hour=10, minute=59))
+    run.live["ok"] = False
+    assert run() == [] and not run.csv.exists()
+
+
+@pytest.mark.parametrize("bad", ["@elias", "-100123", "12a", "1" * 21])
+def test_admin_chat_id_invalido(run, monkeypatch, bad):
+    monkeypatch.setenv("TELEGRAM_ADMIN_CHAT_ID", bad)
+    with pytest.raises(build.Invalid):
+        run()
