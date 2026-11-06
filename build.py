@@ -1335,7 +1335,6 @@ def header(offers, ch):
                    '<span class="sr"> (abre em nova aba)</span>'))
     return f"""<header class="top">
 <div class="top-bar">
-<span class="menu-slot" aria-hidden="true"></span>
 {brand()}
 {carimbo(offers, "carimbo--bar")}
 <nav class="acoes" aria-label="Atalhos">{"".join(nav)}</nav>
@@ -1899,12 +1898,12 @@ def selftest():
         assert h.count('src="/logo.svg" alt="Ofertas Livros"') == 2 and h.count('src="/logo-negativo.svg" alt="Ofertas Livros"') == 2
         assert not re.search(r"https?://[^\"]*(fonts\.|googleapis|gstatic|jsdelivr|unpkg|cdn)", h)  # nenhuma fonte/script externo
         assert h.count("<h1") == 1
-    for h in every:  # header: espaço do menu (vazio e escondido), carimbo na barra e no conteúdo, sem número solto
+    for h in every:  # header: logo colado à esquerda (sem espaço de menu), carimbo na barra e no conteúdo, sem número solto
         top = h[h.index('<header class="top">'):h.index("</header>")]
-        assert '<span class="menu-slot" aria-hidden="true"></span>' in top and "<button" not in top.split("menu-slot")[0]
+        assert "menu-slot" not in top and "<button" not in top.split('class="brand"')[0]
         assert top.count('class="carimbo carimbo--bar"') == 1 and h.count('class="carimbo carimbo--m"') == 1
         assert "tnum" not in top and 'class="live"' not in top
-        assert top.index("menu-slot") < top.index('class="brand"') < top.index("carimbo--bar") < top.index("js-busca")
+        assert top.index('class="brand"') < top.index("carimbo--bar") < top.index("js-busca") < top.index("pill--tg")
     assert all((STATIC / f).is_file() for f in ("favicon.svg", "logo.svg", "logo-negativo.svg", "app.js", "grao.svg",
                                                 "fonts/fraunces-latin-full-normal.woff2", "fonts/fraunces-latin-full-italic.woff2",
                                                 "fonts/outfit-latin-wght-normal.woff2", "fonts/SOURCES.md"))

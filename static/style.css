@@ -153,7 +153,7 @@ em { font-style: italic; font-family: var(--serif); font-variation-settings: "SO
 @media (max-width: 640px) { body { font-size: 15px; } }
 
 /* ---------- 2. Logo B ---------- */
-/* Wordmark 8,5:1, alinhado à esquerda logo depois do espaço do menu. Altura: 44 px no desktop
+/* Wordmark 8,5:1, colado à esquerda da barra (o espaço do menu saiu em 2026-11-06, pedido do Elias). Altura: 44 px no desktop
    (o carimbo-"o" com ~28 px), 36 px até 1100 px e, até 640 px, pela largura que sobra (mín. ~15 px
    de altura, o "o" com ~10 px). */
 .brand { display: inline-flex; align-items: center; min-height: 44px; flex: none; }
@@ -166,7 +166,8 @@ em { font-style: italic; font-family: var(--serif); font-variation-settings: "SO
   :root:not([data-theme="light"]) .logo-escuro { display: block; }
 }
 @media (max-width: 1100px) { .brand img { height: 36px; } }
-@media (max-width: 640px) { .brand img { height: auto; width: clamp(120px, 100vw - 246px, 200px); } }
+/* Celular: o logo encolhe para o espaço que os botões deixam (até 200 px), sem depender de vw */
+@media (max-width: 640px) { .brand { flex: 0 1 200px; min-width: 0; } .brand img { height: auto; width: 100%; } }
 
 /* ---------- 3. Fundo e textura (spec 2.8) ---------- */
 /* Três manchas desfocadas no acento atual: trocar de nicho muda o clima da página inteira */
@@ -202,8 +203,6 @@ body::after {
   display: inline-flex; align-items: center; gap: 8px; border-radius: 999px;
   background: var(--surface2); white-space: nowrap;
 }
-/* Lugar reservado do futuro menu (44x44): vazio, fora do foco e do leitor de tela */
-.menu-slot { flex: none; width: 44px; height: 44px; }
 /* Carimbo "conferido": girado, no vermelho do carimbo (5,7:1 no claro; #ff8a8f, 7,9:1 no escuro), não clicável */
 .carimbo {
   flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -288,9 +287,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
   .top-bar { gap: 8px; }
   .js-busca { width: 44px; padding: 0; justify-content: center; }
   .js-busca .pill-t, .pill--wa .pill-t { display: none; }
-  /* O logo B é largo: o Telegram sai do topo no celular (fica no bloco de canais e no rodapé)
-     e o WhatsApp vira círculo antes dos 350 px da spec */
-  .pill--tg { display: none; }
+  /* Telegram e WhatsApp viram círculos de 44 px (o Telegram já é círculo desde 900 px) */
   .pill--wa { width: 44px; padding: 0; justify-content: center; }
 }
 
