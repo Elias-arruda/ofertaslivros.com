@@ -302,7 +302,10 @@
   "os-homens-que-nao-amavam-as-mulheres|mercadolivre": "2026-11-06",
   "1984|mercadolivre": "2026-11-06",
   "a-biblioteca-da-meia-noite|mercadolivre": "2026-11-06",
-  "torto-arado|mercadolivre": "2026-11-06"
+  "torto-arado|mercadolivre": "2026-11-06",
+  "capitaes-da-areia|mercadolivre": "2026-11-06",
+  "vidas-secas|mercadolivre": "2026-11-06",
+  "one-piece-vol-1|mercadolivre": "2026-11-06"
  },
  "image_url": {
   "irmao-do-jorel": "https://http2.mlstatic.com/D_NQ_NP_948056-MLA113307591683_062026-F.jpg",
@@ -447,7 +450,10 @@
   "os-homens-que-nao-amavam-as-mulheres": "https://http2.mlstatic.com/D_NQ_NP_750118-MLA113307017173_062026-F.jpg",
   "1984": "https://http2.mlstatic.com/D_NQ_NP_853831-MLU77232637274_072024-F.jpg",
   "a-biblioteca-da-meia-noite": "https://http2.mlstatic.com/D_NQ_NP_804916-MLU50455332334_062022-F.jpg",
-  "torto-arado": "https://http2.mlstatic.com/D_NQ_NP_829104-MLA112762942390_062026-F.jpg"
+  "torto-arado": "https://http2.mlstatic.com/D_NQ_NP_829104-MLA112762942390_062026-F.jpg",
+  "capitaes-da-areia": "https://http2.mlstatic.com/D_NQ_NP_775751-MLA113420165523_062026-F.jpg",
+  "vidas-secas": "https://http2.mlstatic.com/D_NQ_NP_847352-MLU73327565262_122023-F.jpg",
+  "one-piece-vol-1": "https://http2.mlstatic.com/D_NQ_NP_801756-MLA114860787897_072026-F.jpg"
  },
  "curadoria": {
   "senhor-dos-aneis-box-trilogia": {
@@ -892,42 +898,42 @@
   },
   "tudo-e-rio": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "dom-casmurro": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "memorias-postumas-de-bras-cubas": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "capitaes-da-areia": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "vidas-secas": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "o-alquimista": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "maus": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "one-piece-vol-1": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "persepolis": {
