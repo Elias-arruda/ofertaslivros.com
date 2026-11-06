@@ -10,7 +10,7 @@
 > | `favicon-32.svg` (`static/favicon.svg`), `favicon-16.svg` | favicon |
 > | `telegram-avatar-claro.svg` / `.png` (640×640) | foto do grupo/canal no Telegram, em uso desde 2026-11-06 (escolha do Elias): wordmark em duas linhas ("ofertas" / "livros.com"), dentro do círculo do recorte |
 > | `telegram-avatar.svg` / `.png` (640×640) | variante escura (fundo marinho) do avatar, guardada como alternativa: aparece como círculo também no tema claro do Telegram |
-> | `mavi-avatar.svg` / `.png` (640×640) | foto do bot do Telegram: a Mavi, mascote do bot de alertas, em cartoon (cabelo castanho, casaco preto, broche do carimbo e sininho de alerta). Escolha do Elias em 2026-11-06 (versão "sininho") |
+> | `mavi-avatar.svg` / `.png` (640×640) | foto do bot do Telegram: a Mavi, mascote do bot de alertas, em cartoon (cabelo castanho, casaco preto, broche do carimbo e sininho de alerta). Escolha do Elias em 2026-11-06 (versão "sininho", v2 com cachos soltos) |
 >
 > A paleta e a tipografia v2 estão em `paletas.md` (seção "Visual v2") e em `static/fonts/SOURCES.md`. O `contraste.py` agora está no repo.
 
