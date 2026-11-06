@@ -313,6 +313,18 @@ test("cron: aviso do /start de livro que sai antes do cron não fica preso (9)",
   assert.equal(t.enviados().length, n + 1);
 });
 
+test("cron: com mais candidatos que vagas, vão o selo e os maiores descontos (7.4)", async () => {
+  const ls = [["a", 10], ["b", 40], ["c", 25], ["d", 5]].map(([id, d]) => ({ ...oferta(livro(id, `Livro ${id}`, "X")), desconto: d }));
+  ls[3].texto = "Menor preço em 90 dias\n" + ls[3].texto;
+  const t = setup(ls.map(l => ({ ...l, texto: null })));
+  for (const l of ls) await t.msg(`/start ${l.id}`);
+  t.env.livros = ls;
+  const n = t.enviados().length;
+  await avisar(t.env, noDia(12), t.api);
+  const ids = t.enviados().slice(n).map(c => c.body.text.match(/r\/(\w+)\/bot/)[1]);
+  assert.deepEqual(ids, ["d", "b", "c"]);
+});
+
 test("cron: o limite de 40 conta tentativas, não só sucessos", async () => {
   const u = setup([livro("a", "A", "B")]);
   for (let i = 0; i < 60; i++) await u.msg("/start a", { chat: 1000 + i });

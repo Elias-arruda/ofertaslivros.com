@@ -409,8 +409,8 @@ export async function avisar(env, agora = new Date(), api = telegramApi(env)) {
         : cab.autor ? `Entrou em oferta, de ${cab.autor} (autor na sua lista):` : "Entrou em oferta (está na sua lista):" });
     }
     const selo = x => (x.l.texto.startsWith("Menor preço em 90 dias") ? 0 : 1);
-    // selo de 90 dias primeiro, depois o mais barato (o bot.json não traz desconto; a spec pedia "maior desconto")
-    cands.sort((x, y) => selo(x) - selo(y) || x.l.preco_cents - y.l.preco_cents);
+    // §7.4: selo de 90 dias primeiro, depois o maior desconto (campo desconto do bot.json)
+    cands.sort((x, y) => selo(x) - selo(y) || (y.l.desconto || 0) - (x.l.desconto || 0));
     const vagas = Math.min(POR_CHAT_EXEC, POR_CHAT_DIA - (noDia.get(chat) || 0));
     if (vagas > 0) fila.push({ chat, n: noDia.get(chat) || 0, itens: cands.slice(0, vagas) });
   }
