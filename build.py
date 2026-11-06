@@ -1028,7 +1028,7 @@ def strip_canais(ch, at):
 def banner_bot(bot, at):
     """Banner do alerta em 2 colunas do grid. Sem TELEGRAM_BOT_USERNAME, o botão sai "em breve"."""
     return f"""<li class="blk blk--bot" data-at="{at}">
-  <span class="mascote" aria-hidden="true">{icon("carimbo", "i i-carimbo")}</span>
+  <span class="mascote" aria-hidden="true"><img src="/mavi.svg" alt="" width="640" height="640" decoding="async"></span>
   <p class="kicker">{icon("sino")}Alerta grátis no Telegram</p>
   <h3 class="blk-h">Escolha o livro. A gente avisa quando baixar.</h3>
   <p>Toque no sino de qualquer oferta e o bot guarda o preço de hoje.</p>
@@ -1105,7 +1105,7 @@ def bot_block(bot):
     steps = ("Escolha o livro e toque no sino", "No Telegram, toque em Iniciar", "Quando o preço cair, avisamos")
     lis = "".join(f'<li><span class="n">{k}</span>{t}</li>' for k, t in enumerate(steps, 1))
     return f"""<section class="bot" aria-labelledby="h-bot">
-  <div class="bot-art" aria-hidden="true"><span class="radar radar--big"></span><span class="mascote mascote--big">{icon("carimbo", "i i-carimbo")}</span></div>
+  <div class="bot-art" aria-hidden="true"><span class="radar radar--big"></span><span class="mascote mascote--big"><img src="/mavi.svg" alt="" width="640" height="640" decoding="async"></span></div>
   <div class="bot-text">
     <p class="kicker">{icon("sino")}Seu alerta no Telegram</p>
     <h2 id="h-bot">Avisamos quando o livro baixar. <em>Você só escolhe qual.</em></h2>
@@ -1930,7 +1930,7 @@ def selftest():
         assert top.count('class="carimbo carimbo--bar"') == 1 and h.count('class="carimbo carimbo--m"') == 1
         assert "tnum" not in top and 'class="live"' not in top
         assert top.index('class="brand"') < top.index("carimbo--bar") < top.index("js-busca") < top.index("pill--tg")
-    assert all((STATIC / f).is_file() for f in ("favicon.svg", "logo.svg", "logo-negativo.svg", "app.js", "grao.svg",
+    assert all((STATIC / f).is_file() for f in ("favicon.svg", "logo.svg", "logo-negativo.svg", "app.js", "grao.svg", "mavi.svg",
                                                 "fonts/fraunces-latin-full-normal.woff2", "fonts/fraunces-latin-full-italic.woff2",
                                                 "fonts/outfit-latin-wght-normal.woff2", "fonts/SOURCES.md"))
     assert "<rect" not in (STATIC / "logo-negativo.svg").read_text()  # sem caixa no tema escuro
@@ -2572,7 +2572,8 @@ def selftest():
     hero_ = h[:h.index('id="h-filtro"')]
     assert hero_.count('loading="eager" fetchpriority="high"') == 1 and h.count('loading="eager"') == 1
     assert hero_.index('loading="eager"') < hero_.index('loading="lazy"')
-    assert h.count("<img ") == h.count('width="120" height="180"') + 4       # + logo claro e escuro no topo e no rodapé
+    assert h.count("<img ") == h.count('width="120" height="180"') + 4 + h.count('src="/mavi.svg"')  # + logos (topo e rodapé) e a Mavi
+    assert h.count('src="/mavi.svg"') == 2 and "i-carimbo" not in h.split('class="mascote')[1][:200]  # Mavi no banner e no capítulo do bot
     r = load({**good, "image_url": img})
     assert vis(book_page(r[0], r)).count('loading="eager" fetchpriority="high"') == 1  # na página do livro a capa é a LCP
     h = vis(page(offers_n(5, {0: {"blurb": '<i>"Duas" & irmãs</i>'}})))

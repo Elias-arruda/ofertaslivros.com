@@ -701,6 +701,8 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 :root[data-theme="dark"] .mascote { color: #b3262f; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mascote { color: #b3262f; } }
 .i-carimbo { width: 74%; height: 74%; transform: rotate(-10deg); }
+/* A Mavi, cara do bot (a mesma foto do bot no Telegram), ocupa o círculo do mascote */
+.mascote img { display: block; width: 100%; height: 100%; border-radius: 50%; }
 @keyframes float { 50% { transform: translateY(-14px) rotate(3deg); } }
 @media (max-width: 900px) { .blk--canais { grid-template-columns: auto 1fr; } .blk-acts { grid-column: 1 / -1; } }
 @media (max-width: 640px) {
