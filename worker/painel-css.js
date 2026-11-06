@@ -117,4 +117,9 @@ h3:first-of-type { margin-top: 0; }
 .seg-leg { margin-top: 8px; }
 .seg-leg b { color: var(--text); font-weight: 600; }
 .seg-leg span { font-size: 11.5px; }
+.card-topo { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.card-topo h2 { margin: 0; }
+.botao { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; background: var(--hl); color: var(--hl-text); font-size: 13.5px; font-weight: 600; text-decoration: none; }
+.botao:hover, .botao:focus-visible { filter: brightness(1.1); outline: 2px solid var(--text); outline-offset: 2px; }
+.tile a { color: inherit; }
 `;

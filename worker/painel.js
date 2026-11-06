@@ -9,6 +9,7 @@ const HOST = "ofertaslivros.com.br";
 const TEAM = "https://ofertaslivros.cloudflareaccess.com";
 const AUD = "eae97b05c067191b8a26d7e97bfbf575088be98d0e891009127728de1932779b"; // não é segredo
 const EMAIL = "mkt.eliasarruda@gmail.com";
+const WEBMAIL = "https://app.titan.email/mail/"; // caixa pedidos@ofertaslivros.com (Titan)
 const NICHOS = new Set(["literatura-brasileira", "ficcao", "romance", "fantasia", "suspense", "mindset",
   "negocios", "politica", "historia", "manga"]); // GENRES do build.py
 
@@ -166,8 +167,8 @@ function delta(atual, antes) {
   return `${v >= 0 ? "▲" : "▼"} ${Math.abs(v).toFixed(0)}% vs 7 dias antes`;
 }
 
-const card = (titulo, corpo, cls = "", nota = "") =>
-  `<section class="card ${cls}"><h2>${esc(titulo)}</h2>${corpo}${nota ? `<p class="nota">${esc(nota)}</p>` : ""}</section>`;
+const card = (titulo, corpo, cls = "", nota = "", acao = "", id = "") =>
+  `<section class="card ${cls}"${id ? ` id="${id}"` : ""}><div class="card-topo"><h2>${esc(titulo)}</h2>${acao}</div>${corpo}${nota ? `<p class="nota">${esc(nota)}</p>` : ""}</section>`;
 
 const soma = (rows, f) => rows.filter(f).reduce((a, r) => a + r.requests, 0);
 
@@ -265,7 +266,7 @@ ${tile("Cliques 7 dias", n(c7), delta(c7, c7a), "", spark(ult14.map(r => r.cliqu
 ${tile("CTR 7 dias", pct(c7, v7), ctr7a ? `antes: ${(100 * ctr7a).toFixed(1)}%` : "cliques ÷ views", "", spark(ult14.map(r => (r.views ? r.cliques / r.views : null))))}
 ${tile("Comissão 30 dias", brl(comissao), c30 ? `${brl(comissao / c30)} por clique` : "Amazon", "destaque")}
 ${tile("Creators API", `${n(qualificadas)} de ~10`, "vendas qualificadas, 30 dias", "", `<svg class="medidor" preserveAspectRatio="none"><title>${n(qualificadas)} de ~10</title><rect class="fundo" width="100%" height="100%" rx="4"/><rect width="${Math.min(100, 10 * qualificadas)}%" height="100%" rx="4"/></svg>`)}
-${tile("Pedidos de livro", n(novos), `novos em 24 h · hoje ${n(viewsHoje)} views, ${n(cliquesHoje)} cliques`, novos ? "alerta" : "")}
+${tile("Pedidos de livro", n(novos), `novos em 24 h · hoje ${n(viewsHoje)} views, ${n(cliquesHoje)} cliques`, novos ? "alerta" : "", `<a class="sub" href="${WEBMAIL}" target="_blank" rel="noopener noreferrer">Abrir e-mail ↗</a>`)}
 </div>
 
 <div class="grade">
@@ -292,7 +293,8 @@ ${card("Top livros por cliques (7 dias)", barras(topLivros.map(([id, c]) => ({ r
   "largo", "CTR = cliques em /r/<id> ÷ views de /livro/<id>/. Clique vindo do canal não passa pela página, então pode passar de 100%.")}
 ${card("Nichos mais vistos (7 dias)", barras(nichos.map(r => ({ rot: r.path, v: r.views }))) + tabela(["Página", "Views"], nichos.map(r => [r.path, n(r.views)])))}
 ${card("Top livros hoje", barras(topHoje.map(([id, c]) => ({ rot: id, v: c })), "Nenhum clique hoje ainda."))}
-${card(`Pedidos de livro: ${novos} novo(s) nas últimas 24 h`, pedidosHtml, "largo", "Formulário \"Pedir um livro\" (também vai para pedidos@ofertaslivros.com). Ficam 30 dias.")}
+${card(`Pedidos de livro: ${novos} novo(s) nas últimas 24 h`, pedidosHtml, "largo", "Formulário \"Pedir um livro\" (também vai para pedidos@ofertaslivros.com). Ficam 30 dias.",
+  `<a class="botao" href="${WEBMAIL}" target="_blank" rel="noopener noreferrer">Abrir e-mail dos pedidos ↗</a>`, "pedidos")}
 </div>
 </main></body></html>`;
 }
