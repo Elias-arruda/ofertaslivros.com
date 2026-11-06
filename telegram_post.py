@@ -27,6 +27,7 @@ POR_EXECUCAO, POR_DIA = 2, 8
 REPOST_DIAS = 7           # mesmo livro só volta depois disso...
 REPOST_MAIS_BARATO_H = 24  # ...ou com preço menor que o do último post, depois disso
 CAPTION_MAX = 1024        # limite da legenda do sendPhoto
+USER_AGENT = "ofertaslivros-telegram/1.0 (+https://ofertaslivros.com.br)"
 FIELDS = ("posted_at", "channel", "offer_id", "store", "price_cents")
 
 
@@ -68,7 +69,9 @@ def no_ar(url):
     """O /r/ já está publicado e leva a uma loja (não ao curinga da home)? Não segue o redirect:
     nenhum request sai para a loja."""
     try:
-        urllib.request.build_opener(_NoRedirect).open(urllib.request.Request(url, method="HEAD"), timeout=10)
+        # User-Agent próprio: o Cloudflare do site responde 403 ao padrão "Python-urllib"
+        req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": USER_AGENT})
+        urllib.request.build_opener(_NoRedirect).open(req, timeout=10)
     except urllib.error.HTTPError as e:
         loc = urlsplit(e.headers.get("Location", ""))
         return e.code == 302 and loc.scheme == "https" and loc.hostname in build.ALLOWED_HOSTS

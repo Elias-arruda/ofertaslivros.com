@@ -154,6 +154,7 @@ def test_no_ar(monkeypatch, code, loc, ok):
     class Opener:
         def open(self, req, timeout):
             assert req.get_method() == "HEAD"
+            assert req.get_header("User-agent").startswith("ofertaslivros-telegram/")
             if code == 200:
                 return None
             raise tp.urllib.error.HTTPError(req.full_url, code, "x", {"Location": loc}, None)
