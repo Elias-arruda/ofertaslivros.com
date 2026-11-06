@@ -103,3 +103,20 @@ test("pedidos (texto do visitante) saem escapados e marcados como novos; vendas 
   assert.match(html, /<td>enviado<\/td><td>3<\/td><td>R\$\s?90,00<\/td><td>R\$\s?4,50<\/td>/);
   assert.match(html, /Creators API: 2 de ~10/);
 });
+
+test("CSS do painel só sai com JWT válido; gráficos viram SVG sem style inline", async () => {
+  assert.equal((await painel(new Request("https://ofertaslivros.com.br/painel/painel.css"), {}, { fetcher })).status, 403);
+  const ok200 = await painel(new Request("https://ofertaslivros.com.br/painel/painel.css", { headers: { "Cf-Access-Jwt-Assertion": await jwt(ok) } }), {}, { fetcher });
+  assert.equal(ok200.status, 200);
+  assert.match(ok200.headers.get("Content-Type"), /text\/css/);
+
+  const d1 = fakeD1(); d1.db.exec(SCHEMA);
+  const ins = d1.db.prepare("INSERT INTO daily_rollup VALUES (date('now', '-3 hours', ?), '/', 200, 'BR', 0, ?)");
+  for (let i = 1; i <= 14; i++) ins.run(`-${i} days`, i * 10);
+  globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ data: { viewer: { zones: [{ httpRequestsAdaptiveGroups: [] }] } } }) });
+  const html = render(await dados({ ANALYTICS: d1, CF_ANALYTICS_TOKEN: "t" }));
+  assert.equal((html.match(/<g class="col/g) || []).length, 15);      // 14 dias + hoje
+  assert.match(html, /class="col parcial"/);
+  assert.match(html, /▼ 64% vs 7 dias antes/);                         // 280 contra 770 (série decrescente)
+  assert.ok(!/style="|<style|<script/.test(html));                    // a CSP bloquearia
+});
