@@ -188,3 +188,17 @@ def test_admin_chat_id_invalido(run, monkeypatch, bad):
     monkeypatch.setenv("TELEGRAM_ADMIN_CHAT_ID", bad)
     with pytest.raises(build.Invalid):
         run()
+
+
+def test_resumo_wa_que_falhou_no_meio_nao_sai_de_novo(run, monkeypatch):
+    monkeypatch.delenv("TELEGRAM_CHANNEL_ID")
+    monkeypatch.setenv("TELEGRAM_ADMIN_CHAT_ID", "123456")
+
+    def cai(token, method, data):
+        raise RuntimeError("Telegram sendMessage: 502")
+    monkeypatch.setattr(tp, "telegram", cai)
+    with pytest.raises(RuntimeError):
+        run()
+    assert sum(",wa," in line for line in run.csv.read_text().splitlines()) == 2
+    monkeypatch.setattr(tp, "telegram", lambda *a: pytest.fail("reenviou o resumo"))
+    run()

@@ -137,7 +137,8 @@ def canal(token, chat, offers, log_path, now):
 
 def resumo_wa(token, admin, offers, log_path, now):
     """Resumo do WhatsApp no chat do Elias: cabeçalho, por oferta a foto do ML (sem legenda, para salvar) e o
-    texto a colar, e "fim do resumo". Conta como postado ao enviar (§6); 1 por dia, mesmo se saiu incompleto."""
+    texto a colar, e "fim do resumo". Conta como postado ao enviar (§6); 1 por dia, mesmo se saiu incompleto:
+    as linhas wa são gravadas antes do primeiro envio, então uma falha no meio não gera um segundo resumo."""
     log = read_log(log_path, "wa")
     hoje = now.astimezone(build.BRT).date()
     if any(r["at"].astimezone(build.BRT).date() == hoje for r in log):
@@ -146,6 +147,8 @@ def resumo_wa(token, admin, offers, log_path, now):
     sel = [(o, url) for o, url in sel if no_ar(url)]
     if not sel:
         return  # tenta de novo na próxima execução da janela
+    for o, _ in sel:
+        gravar(log_path, now, "wa", o)
     msg = lambda text: telegram(token, "sendMessage",  # noqa: E731
                                 {"chat_id": admin, "text": text, "link_preview_options": {"is_disabled": True}})
     msg(f"Resumo WhatsApp de {hoje:%d/%m}: {len(sel)} oferta{'s' if len(sel) > 1 else ''}")
@@ -157,7 +160,6 @@ def resumo_wa(token, admin, offers, log_path, now):
             except RuntimeError as err:
                 print(f"wa: foto recusada, vai só o texto ({err})")
         msg(build.post_text(o, url))
-        gravar(log_path, now, "wa", o)
     msg("fim do resumo")
     print(f"wa: resumo com {len(sel)} ofertas")
 

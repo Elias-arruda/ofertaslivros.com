@@ -360,6 +360,6 @@ Implementação (`telegram_post.py`, no mesmo workflow do canal):
 - Uma vez por dia, na primeira execução das 11h às 21h59 BRT com oferta disponível, o bot manda no chat do Elias (`TELEGRAM_ADMIN_CHAT_ID`, Secret do Environment `telegram`) até 5 ofertas.
 - Mesmo critério e mesma ordem do canal (`pick`). A repetição é controlada à parte, pelas linhas `wa` do `channel_posts.csv`.
 - Mensagens: cabeçalho, por oferta a foto do ML sem legenda e o texto do `build.post_text` com `/r/<id>/wa`, e "fim do resumo". Texto puro, sem prévia de link.
-- Conta como postado no envio. Se saiu incompleto, não manda outro no mesmo dia.
+- Conta como postado no envio: as linhas `wa` são gravadas antes da primeira mensagem. Se saiu incompleto ou falhou, não manda outro no mesmo dia.
 - Tag da Amazon do WhatsApp: `AMAZON_TAG_WA` (vars do Environment `production`, lida pelo deploy). Sem ela, `/wa` usa a tag do site.
 - Sem `TELEGRAM_ADMIN_CHAT_ID`, o resumo não sai e o canal do Telegram segue igual.
