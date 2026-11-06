@@ -363,13 +363,17 @@ export async function avisar(env, agora = new Date(), api = telegramApi(env)) {
   const ts = agora.toISOString();
   const saiu = new Date(agora.getTime() - SAIU_H * 3600e3).toISOString();
   const velho = new Date(agora.getTime() - RETENCAO_DIAS * 86400e3).toISOString();
+  // Livro que sai da oferta: o preço do último aviso vira 0 (a próxima entrada avisa de novo) e a linha fica até o
+  // fim do dia BRT, só para contar o limite diário (um aviso por livro por dia; avisos do dia = linhas do dia).
+  const inicioDia = `${diaBRT(agora)}T03:00:00.000Z`;
   await db.batch([ // saída antes da renovação: livro que volta depois de 6 h fora conta como nova entrada
-    db.prepare("DELETE FROM avisos WHERE book_id IN (SELECT book_id FROM em_oferta WHERE visto_em < ?1)").bind(saiu),
+    db.prepare("UPDATE avisos SET price_cents = 0 WHERE book_id IN (SELECT book_id FROM em_oferta WHERE visto_em < ?1)").bind(saiu),
     db.prepare("DELETE FROM em_oferta WHERE visto_em < ?1").bind(saiu),
     db.prepare(`INSERT INTO em_oferta (book_id, visto_em) SELECT value, ?2 FROM json_each(?1) WHERE true
       ON CONFLICT (book_id) DO UPDATE SET visto_em = excluded.visto_em`).bind(JSON.stringify(O.map(l => l.id)), ts),
     // aviso do /start de livro que saiu antes do cron (ou saiu do catálogo): nunca entrou em em_oferta
-    db.prepare("DELETE FROM avisos WHERE book_id NOT IN (SELECT book_id FROM em_oferta)"),
+    db.prepare("UPDATE avisos SET price_cents = 0 WHERE book_id NOT IN (SELECT book_id FROM em_oferta)"),
+    db.prepare("DELETE FROM avisos WHERE price_cents = 0 AND avisado_em < ?1").bind(inicioDia),
     ...["desejos", "avisos", "chats"].map(t => db.prepare(
       `DELETE FROM ${t} WHERE chat_id IN (SELECT chat_id FROM chats WHERE visto_em < ?1)`).bind(velho)),
   ]);
@@ -404,8 +408,10 @@ export async function avisar(env, agora = new Date(), api = telegramApi(env)) {
     const cands = [];
     for (const { l, cab } of m.values()) {
       const a = ultimo.get(`${chat}|${l.id}`);
-      if (a && l.preco_cents * 100 > a.price_cents * BAIXOU_MAIS) continue;
-      cands.push({ l, cabecalho: a ? "Baixou mais (está na sua lista):"
+      if (a && diaBRT(new Date(a.avisado_em)) === hoje) continue; // um aviso por livro por dia
+      const baixou = a?.price_cents > 0;                          // 0 = saiu da oferta: nova entrada
+      if (baixou && l.preco_cents * 100 > a.price_cents * BAIXOU_MAIS) continue;
+      cands.push({ l, cabecalho: baixou ? "Baixou mais (está na sua lista):"
         : cab.autor ? `Entrou em oferta, de ${cab.autor} (autor na sua lista):` : "Entrou em oferta (está na sua lista):" });
     }
     const selo = x => (x.l.texto.startsWith("Menor preço em 90 dias") ? 0 : 1);

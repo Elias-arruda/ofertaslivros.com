@@ -8,7 +8,7 @@ import { PEDIDOS_SCHEMA } from "../cron/rollup.js";
 const SEGREDO = "s3gredo_do_webhook_com_32_chars_xx";
 const CHAT = 987654321;          // sentinela: nunca pode aparecer no log
 const AGORA = new Date("2026-11-06T15:00:00Z"); // 12h BRT
-const ATE = "2026-11-06T23:00:00+00:00";
+const ATE = "2026-12-31T00:00:00+00:00";
 
 function fakeD1() {
   const db = new DatabaseSync(":memory:");
@@ -228,41 +228,52 @@ test("/lista, Tirar, pausar/voltar, parar e bloqueio (16-19)", async () => {
 
 const noDia = h => new Date(Date.UTC(2026, 10, 6, h + 3, 20)); // hora BRT -> Date
 
-test("cron: uma vez por entrada, carência de 6 h, baixou mais, prazo, janela (20-24, 28)", async () => {
+const dia = (d, h) => new Date(Date.UTC(2026, 10, d, h + 3, 20)); // dia de novembro e hora BRT -> Date
+
+test("cron: uma vez por entrada, carência de 6 h, baixou mais, um por dia, prazo, janela (20-24, 28)", async () => {
   const t = setup([TORTO]);
   await t.msg("/start torto-arado");
   const base = t.enviados().length;
-  t.env.livros = [oferta(TORTO, 4000)];
-  await avisar(t.env, noDia(12), t.api);
-  await avisar(t.env, noDia(12), t.api);
-  assert.equal(t.enviados().length, base + 1);
+  const roda = async (d, h, livros) => { t.env.livros = livros; await avisar(t.env, dia(d, h), t.api); };
+  await roda(6, 12, [oferta(TORTO, 4000)]);
+  await roda(6, 12, [oferta(TORTO, 4000)]);
+  assert.equal(t.enviados().length, base + 1);                        // 2 execuções, 1 envio
   assert.match(t.ultimo(), /^Entrou em oferta \(está na sua lista\):\n\nTorto Arado[\s\S]*\n\nTirar da lista: \/lista$/);
-  t.env.livros = [TORTO];                                    // some por 5 h e volta: nada
-  await avisar(t.env, noDia(15), t.api);
-  t.env.livros = [oferta(TORTO, 4000)];
-  await avisar(t.env, noDia(17), t.api);
+  await roda(6, 15, [TORTO]);                                          // some por 5 h e volta: nada
+  await roda(6, 17, [oferta(TORTO, 4000)]);
+  await roda(6, 18, [oferta(TORTO, 3000)]);                            // -25% no mesmo dia: espera o dia seguinte
   assert.equal(t.enviados().length, base + 1);
-  t.env.livros = [oferta(TORTO, 3880)];                      // -3%: nada
-  await avisar(t.env, noDia(17), t.api);
+  await roda(6, 23, [oferta(TORTO, 3000)]);                            // 23h: fora da janela
+  await roda(7, 2, [oferta(TORTO, 3000)]);
   assert.equal(t.enviados().length, base + 1);
-  t.env.livros = [oferta(TORTO, 3800)];                      // -5%: baixou mais
-  await avisar(t.env, noDia(18), t.api);
+  await roda(7, 8, [oferta(TORTO, 3000)]);                             // 08h20: sai o "baixou mais" pendente
   assert.match(t.ultimo(), /^Baixou mais/);
-  t.env.livros = [TORTO];                                    // some por mais de 6 h e volta: avisa
-  await avisar(t.env, noDia(19), t.api);
-  t.env.livros = [{ ...oferta(TORTO, 3800), valido_ate: "2026-11-08T00:00:00Z" }];
-  await avisar(t.env, new Date(Date.UTC(2026, 10, 7, 5, 20)), t.api); // 02h20 BRT: fora da janela, só em_oferta
+  await roda(7, 9, [oferta(TORTO, 2900)]);                             // -3%: nada
   assert.equal(t.enviados().length, base + 2);
-  assert.equal(t.q("SELECT * FROM em_oferta").length, 1);
-  await avisar(t.env, new Date(Date.UTC(2026, 10, 7, 11, 20)), t.api); // 08h20: sai o pendente
+  await roda(7, 10, [TORTO]);                                          // sai por mais de 6 h e volta no mesmo dia: espera
+  await roda(7, 17, [oferta(TORTO, 3000)]);
+  assert.equal(t.enviados().length, base + 2);
+  await roda(7, 23, [oferta(TORTO, 3000)]);
+  await roda(8, 2, [oferta(TORTO, 3000)]);
+  await roda(8, 8, [oferta(TORTO, 3000)]);                             // dia seguinte: nova entrada
   assert.equal(t.enviados().length, base + 3);
   assert.match(t.ultimo(), /^Entrou em oferta/);
-  t.env.livros = [{ ...oferta(TORTO, 3000), valido_ate: "2026-11-06T00:00:00Z" }]; // vencido
-  await avisar(t.env, new Date(Date.UTC(2026, 10, 7, 12, 20)), t.api);
+  await roda(9, 12, [{ ...oferta(TORTO, 1000), valido_ate: "2026-11-06T00:00:00Z" }]); // preço vencido
   assert.equal(t.enviados().length, base + 3);
-  t.env.livros = { version: 2 };
   t.env.ASSETS = { fetch: async () => new Response(JSON.stringify({ version: 2, livros: [] })) };
-  await assert.rejects(avisar(t.env, noDia(12), t.api));
+  await assert.rejects(avisar(t.env, dia(9, 12), t.api));
+});
+
+test("cron: o limite de 10 por dia vale mesmo com o mesmo livro (7.4)", async () => {
+  const ls = Array.from({ length: 12 }, (_, i) => livro(`l-${i}`, `Livro ${i}`, "X"));
+  const t = setup(ls);
+  for (const l of ls) await t.msg(`/start ${l.id}`);
+  const n = t.enviados().length;
+  for (let h = 8; h < 22; h++) {                                       // preço caindo a cada hora
+    t.env.livros = ls.map(l => oferta(l, 5000 - (h - 8) * 400));
+    await avisar(t.env, dia(6, h), t.api);
+  }
+  assert.equal(t.enviados().length - n, 10);
 });
 
 test("cron: pausa, limites, livro + autor = 1 aviso, 403 e 429 (17, 25-27)", async () => {
@@ -306,10 +317,10 @@ test("cron: aviso do /start de livro que sai antes do cron não fica preso (9)",
   await t.msg("/start torto-arado");                           // aviso na hora
   t.env.livros = [TORTO];                                      // saiu antes do cron
   await avisar(t.env, noDia(12), t.api);
-  assert.equal(t.q("SELECT * FROM avisos").length, 0);
-  t.env.livros = [oferta(TORTO, 4000)];                        // volta com o mesmo preço: avisa
+  assert.equal(t.q("SELECT price_cents FROM avisos")[0].price_cents, 0);
+  t.env.livros = [oferta(TORTO, 4000)];                        // volta no dia seguinte com o mesmo preço: avisa
   const n = t.enviados().length;
-  await avisar(t.env, noDia(19), t.api);
+  await avisar(t.env, new Date(Date.UTC(2026, 10, 7, 11, 20)), t.api);
   assert.equal(t.enviados().length, n + 1);
 });
 
