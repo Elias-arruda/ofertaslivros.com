@@ -297,7 +297,12 @@
   "armas-germes-e-aco|mercadolivre": "2026-11-05",
   "duna|mercadolivre": "2026-11-05",
   "quarta-asa|mercadolivre": "2026-11-05",
-  "percy-jackson-o-ladrao-de-raios|mercadolivre": "2026-11-05"
+  "percy-jackson-o-ladrao-de-raios|mercadolivre": "2026-11-05",
+  "a-empregada|mercadolivre": "2026-11-06",
+  "os-homens-que-nao-amavam-as-mulheres|mercadolivre": "2026-11-06",
+  "1984|mercadolivre": "2026-11-06",
+  "a-biblioteca-da-meia-noite|mercadolivre": "2026-11-06",
+  "torto-arado|mercadolivre": "2026-11-06"
  },
  "image_url": {
   "irmao-do-jorel": "https://http2.mlstatic.com/D_NQ_NP_948056-MLA113307591683_062026-F.jpg",
@@ -437,7 +442,12 @@
   "armas-germes-e-aco": "https://http2.mlstatic.com/D_NQ_NP_921299-MLU50461585443_062022-F.jpg",
   "duna": "https://http2.mlstatic.com/D_NQ_NP_881896-MLA113420350747_062026-F.jpg",
   "quarta-asa": "https://http2.mlstatic.com/D_NQ_NP_745474-MLU75125267112_032024-F.jpg",
-  "percy-jackson-o-ladrao-de-raios": "https://http2.mlstatic.com/D_NQ_NP_755009-MLU74094588170_012024-F.jpg"
+  "percy-jackson-o-ladrao-de-raios": "https://http2.mlstatic.com/D_NQ_NP_755009-MLU74094588170_012024-F.jpg",
+  "a-empregada": "https://http2.mlstatic.com/D_NQ_NP_733022-MLU74201861647_012024-F.jpg",
+  "os-homens-que-nao-amavam-as-mulheres": "https://http2.mlstatic.com/D_NQ_NP_750118-MLA113307017173_062026-F.jpg",
+  "1984": "https://http2.mlstatic.com/D_NQ_NP_853831-MLU77232637274_072024-F.jpg",
+  "a-biblioteca-da-meia-noite": "https://http2.mlstatic.com/D_NQ_NP_804916-MLU50455332334_062022-F.jpg",
+  "torto-arado": "https://http2.mlstatic.com/D_NQ_NP_829104-MLA112762942390_062026-F.jpg"
  },
  "curadoria": {
   "senhor-dos-aneis-box-trilogia": {
@@ -697,102 +707,102 @@
   },
   "e-assim-que-acaba": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "e-assim-que-comeca": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "todas-as-suas-im-perfeicoes": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "os-sete-maridos-de-evelyn-hugo": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "vermelho-branco-e-sangue-azul": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "teto-para-dois": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "orgulho-e-preconceito": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "como-eu-era-antes-de-voce": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "amor-teoricamente": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "um-dia": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "o-hobbit": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "harry-potter-e-a-pedra-filosofal": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "duna": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "quarta-asa": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "box-corte-de-espinhos-e-rosas": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "o-nome-do-vento": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "a-guerra-dos-tronos": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "percy-jackson-o-ladrao-de-raios": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "as-cronicas-de-narnia": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "fundacao": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "a-paciente-silenciosa": {
@@ -802,82 +812,82 @@
   },
   "a-empregada": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "o-segredo-da-empregada": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "garota-exemplar": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "e-nao-sobrou-nenhum": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "assassinato-no-expresso-do-oriente": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "o-codigo-da-vinci": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "os-homens-que-nao-amavam-as-mulheres": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "o-silencio-dos-inocentes": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "jantar-secreto": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "1984": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "a-revolucao-dos-bichos": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "o-pequeno-principe": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "a-biblioteca-da-meia-noite": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "ensaio-sobre-a-cegueira": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "cem-anos-de-solidao": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "torto-arado": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-05",
+   "ultimo_anuncio": "2026-11-06",
    "ultima_oferta": "2026-11-06"
   },
   "tudo-e-rio": {
