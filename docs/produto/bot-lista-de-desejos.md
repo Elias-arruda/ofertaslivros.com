@@ -358,7 +358,7 @@ Há também uma inconsistência que já existe e não é deste escopo: a seção
   - `rm:<n>`: `DELETE ... WHERE id = ? AND chat_id = ?`, preso ao chat de quem tocou (sem IDOR).
   - `pd`, `no` e `stop:sim`/`stop:nao`.
   - Tudo com até 64 bytes. Formato desconhecido: `answerCallbackQuery` vazio.
-  - O build já barra id com mais de 64 chars quando o bot está ligado (`tg_alert_url`). O id mais longo hoje tem 54. Com o prefixo `add:`, o limite efetivo é de 60: o build passa a barrar id com mais de 60 quando `TELEGRAM_BOT_USERNAME` existe.
+  - O build já barra id com mais de 64 chars quando o bot está ligado (`tg_alert_url`). O id mais longo hoje tem 54. Com o prefixo `add:`, o limite efetivo é de 60: o contrato do `offers.json` (`validate_offer`) passa a aceitar id de até 60 chars, com ou sem o bot ligado. Assim um id longo falha no `catalog-check`, e não só no deploy depois de ligar a var. Nenhum id real quebra: o coletor já limita a 57 (`collector/collect.py`, `ID_MAX`).
 - **Saída:**
   - texto puro, **sem `parse_mode`** (um título com `<b>` ou `*` chega literal);
   - sem prévia de link, pelo mesmo motivo do canal: o servidor do Telegram seguiria o `/r/` e geraria clique de robô no link de afiliado;
@@ -413,7 +413,7 @@ Testes do Worker em `worker/bot.test.mjs` (`node --test`, como os que já existe
 30. O `dist/bot.json` tem uma entrada por livro do `resolve`. `texto` não é nulo só com `oferta and not velho`, e é igual a `post_text(o, SITE + "/r/<id>/bot")`. `valido_ate` = o menor `checked_at + FRESH[store]` entre as lojas do livro.
 31. O `_redirects` tem `/r/<id>/bot` para cada livro, com a tag `AMAZON_TAG_BOT` na Amazon (ou a do site, sem a var) e o mesmo `ml_url` no ML.
 32. O `post_text` aceita `/r/<id>/bot` e continua recusando qualquer outro caminho e host de loja.
-33. Com `TELEGRAM_BOT_USERNAME` definido, o build falha com id de mais de 60 chars.
+33. O build falha com id de mais de 60 chars, com ou sem `TELEGRAM_BOT_USERNAME` (o deep link também recusa 61).
 34. `bot` está em `RESERVED`, e o `robots.txt` tem `Disallow: /bot.json`.
 
 **Site**
