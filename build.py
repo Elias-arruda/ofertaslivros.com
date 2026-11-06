@@ -327,7 +327,7 @@ def validate_offer(o, tag, aff):
     if o.get("genre") not in GENRES:
         raise Invalid(f"genre inválido: {o.get('genre')!r} (use um de {sorted(GENRES)})")
     oid = o.get("id")
-    if not isinstance(oid, str) or len(oid) > 80 or not ID_RE.fullmatch(oid):
+    if not isinstance(oid, str) or len(oid) > 60 or not ID_RE.fullmatch(oid):
         raise Invalid(f"id inválido: {oid!r}")
     isbn = o.get("isbn")
     if isbn is not None and (not isinstance(isbn, str) or not ISBN_RE.fullmatch(isbn)):
@@ -1643,13 +1643,15 @@ def bot_key(text):
 def bot_json(offers, now):
     """Catálogo público do bot do Telegram (docs/produto/bot-lista-de-desejos.md §7.2): busca e o aviso pronto.
     texto só com oferta no prazo (o Worker não calcula oferta nem formata preço); valido_ate = checked_at +
-    FRESH da vencedora, para o cron não mandar preço que venceu depois do deploy."""
+    FRESH da loja que vence primeiro, para o cron não mandar preço que venceu depois do deploy."""
     # ponytail: autores divididos em , ; & e " e " erram nome com " e "; campo authors no contrato se aparecer caso real
     livros = [{"id": o["id"], "titulo": o["title"], "autor": o["author"],
                "busca": bot_key(f"{o['title']} {o['author']}"),
                "autores": [k for a in re.split(r",|;|&| e ", o["author"]) if (k := bot_key(a))],
                "preco_cents": o["price_cents"],
-               "valido_ate": (o["checked_at"] + FRESH[o["store"]]).astimezone(timezone.utc).isoformat(timespec="seconds"),
+               # a loja que vence primeiro: o texto pode citar a outra ("Também no ...")
+               "valido_ate": min(s["checked_at"] + FRESH[s["store"]] for s in o["stores"]).astimezone(timezone.utc)
+                             .isoformat(timespec="seconds"),
                "texto": post_text(o, f"{SITE}/r/{o['id']}/bot") if o["oferta"] and not o["velho"] else None}
               for o in offers]
     return json.dumps({"version": 1, "gerado_em": now.astimezone(timezone.utc).isoformat(timespec="seconds"),
@@ -1999,8 +2001,13 @@ def selftest():
     duas, sem = bj["livros"]
     assert duas["texto"] == post_text(load(two)[0], f"{SITE}/r/duas/bot") and duas["texto"].endswith("/r/duas/bot")
     assert sem["texto"] is None and sem["autores"] == ["neil gaiman", "terry pratchett", "acao"]
-    assert duas["valido_ate"] == (load(two)[0]["checked_at"] + FRESH["amazon"]).astimezone(timezone.utc).isoformat(timespec="seconds")
+    assert duas["valido_ate"] == (mls_at := min(s["checked_at"] + FRESH[s["store"]] for s in load(two)[0]["stores"])) \
+        .astimezone(timezone.utc).isoformat(timespec="seconds") and mls_at < load(two)[0]["checked_at"] + FRESH["amazon"]
+    velha = load({**good, "id": "velha", "stores": [amz]}, now=NOW + timedelta(days=1))[0]  # Amazon vencida, ainda oferta
+    assert velha["oferta"] and velha["velho"]
+    assert json.loads(bot_json([velha], NOW))["livros"][0]["texto"] is None
     assert bot_key("Mangá: Ação!  Vol. 2") == "manga acao vol 2"
+    assert "Disallow: /bot.json" in (STATIC / "robots.txt").read_text()
     # canais: só com a env; validados; rel noopener noreferrer
     saved = {k: os.environ.pop(k, None) for k in ("TELEGRAM_CHANNEL_ID", "WHATSAPP_CHANNEL_ID")}
     assert channels() == [] and "/canais/" not in page(o)
