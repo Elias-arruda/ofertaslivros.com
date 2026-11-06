@@ -47,7 +47,7 @@ GENRES = {
     "manga": "Mangá e HQ",
 }
 # Rotas de dist/ que nenhum slug de nicho pode ocupar.
-RESERVED = {"r", "livro", "ofertas", "privacidade", "canais", "curadoria", "novidades", "fonts", "black-friday"}
+RESERVED = {"r", "livro", "ofertas", "privacidade", "canais", "curadoria", "novidades", "fonts", "black-friday", "bot"}
 if set(GENRES) & RESERVED:
     raise SystemExit("slug de GENRES reservado")
 
@@ -92,7 +92,7 @@ def _env_id(name, default):
 
 # Username de bot do Telegram: 5 a 32 chars, começa com letra, termina em "bot".
 TG_BOT_RE = re.compile(r"[a-z][a-z0-9_]{1,28}bot", re.I)
-TG_START_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")  # limite do ?start= do deep link
+TG_START_RE = re.compile(r"[A-Za-z0-9_-]{1,60}")  # ?start= aceita 64; 60 cabe no callback_data "add:<id>" do bot
 
 
 def tg_bot():
@@ -104,7 +104,7 @@ def tg_bot():
 
 
 def tg_alert_url(bot, oid):
-    if not TG_START_RE.fullmatch(oid):  # id até 80 no offers.json; o start aceita 64
+    if not TG_START_RE.fullmatch(oid):  # id até 80 no offers.json; o bot aceita 60
         raise Invalid(f"id não cabe no deep link do Telegram: {oid!r}")
     return f"https://t.me/{bot}?start={oid}"
 
@@ -136,11 +136,11 @@ def partner_tag():
 
 
 def channel_tags():
-    """Tag da Amazon por caminho do /r/. Sem AMAZON_TAG_TG/WA (ou vazias), usa a tag do site."""
+    """Tag da Amazon por caminho do /r/. Sem AMAZON_TAG_TG/WA/BOT (ou vazias), usa a tag do site."""
     site = partner_tag()
     return {"": site, **{f"/{c}": _env_id(f"AMAZON_TAG_{c.upper()}", site)
                          if os.environ.get(f"AMAZON_TAG_{c.upper()}") else site
-                         for c in ("tg", "wa")}}
+                         for c in ("tg", "wa", "bot")}}
 
 
 def ml_affiliate():
@@ -327,7 +327,7 @@ def validate_offer(o, tag, aff):
     if o.get("genre") not in GENRES:
         raise Invalid(f"genre inválido: {o.get('genre')!r} (use um de {sorted(GENRES)})")
     oid = o.get("id")
-    if not isinstance(oid, str) or len(oid) > 80 or not ID_RE.fullmatch(oid):
+    if not isinstance(oid, str) or len(oid) > 60 or not ID_RE.fullmatch(oid):
         raise Invalid(f"id inválido: {oid!r}")
     isbn = o.get("isbn")
     if isbn is not None and (not isinstance(isbn, str) or not ISBN_RE.fullmatch(isbn)):
@@ -541,7 +541,7 @@ def post_text(o, url):
     """Texto puro do post nos canais (sem parse_mode). url = nosso /r/<id>[/tg|/wa], nunca a da loja."""
     p = urlsplit(url)
     if (p.scheme != "https" or not p.hostname or p.hostname in ALLOWED_HOSTS
-            or p.path not in {f"/r/{o['id']}", f"/r/{o['id']}/tg", f"/r/{o['id']}/wa"}
+            or p.path not in {f"/r/{o['id']}", f"/r/{o['id']}/tg", f"/r/{o['id']}/wa", f"/r/{o['id']}/bot"}
             or p.query or p.fragment):
         raise Invalid(f"post_text só aceita o /r/ do nosso domínio: {url!r}")
     if not o.get("oferta"):
@@ -1634,20 +1634,44 @@ def canais(offers, ch, bot=None):
     return shell(offers, "Canais: Ofertas Livros", "Siga as ofertas de livros no Telegram e no WhatsApp.", body, ch, "/canais/", bot=bot)
 
 
+def bot_key(text):
+    """Chave de busca do bot: fold e só [a-z0-9] separados por espaço (worker/bot.js normaliza igual)."""
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", fold(text)).split())
+
+
+def bot_json(offers, now):
+    """Catálogo público do bot do Telegram (docs/produto/bot-lista-de-desejos.md §7.2): busca e o aviso pronto.
+    texto só com oferta no prazo (o Worker não calcula oferta nem formata preço); valido_ate = checked_at +
+    FRESH da loja que vence primeiro, para o cron não mandar preço que venceu depois do deploy."""
+    # ponytail: autores divididos em , ; & e " e " erram nome com " e "; campo authors no contrato se aparecer caso real
+    livros = [{"id": o["id"], "titulo": o["title"], "autor": o["author"],
+               "busca": bot_key(f"{o['title']} {o['author']}"),
+               "autores": [k for a in re.split(r",|;|&| e ", o["author"]) if (k := bot_key(a))],
+               "preco_cents": o["price_cents"],
+               "desconto": off(o),  # % do "de/por" (0 sem oferta): desempate dos avisos no cron do bot
+               # a loja que vence primeiro: o texto pode citar a outra ("Também no ...")
+               "valido_ate": min(s["checked_at"] + FRESH[s["store"]] for s in o["stores"]).astimezone(timezone.utc)
+                             .isoformat(timespec="seconds"),
+               "texto": post_text(o, f"{SITE}/r/{o['id']}/bot") if o["oferta"] and not o["velho"] else None}
+              for o in offers]
+    return json.dumps({"version": 1, "gerado_em": now.astimezone(timezone.utc).isoformat(timespec="seconds"),
+                       "livros": livros}, ensure_ascii=False)
+
+
 MAX_REDIRECTS = 2000  # limite de regras estáticas do _redirects na Cloudflare
 
 
 def redirects(offers):
-    """/novidades/ (página antiga) vai para /curadoria/. Por livro: /r/<id> e /r/<id>/tg|wa
+    """/novidades/ (página antiga) vai para /curadoria/. Por livro: /r/<id> e /r/<id>/tg|wa|bot
     (vencedora, com a tag do canal se for a Amazon) e /r/<id>/<loja> para cada loja elegível.
     Vencido ou loja fora do prazo cai na home pelo curinga; o livro com a Amazon vencida (velho) segue no /r/.
-    Até 5 regras por livro: cabem 399 livros com duas lojas (1.995 + curinga + /novidades/)."""
+    Até 6 regras por livro: cabem 333 livros com duas lojas (1.998 + curinga + /novidades/)."""
     tags, aff = channel_tags(), ml_affiliate()
     lines = ["/novidades/ /curadoria/ 301\n"]  # destino interno fixo, nunca vindo do JSON
     for o in offers:
         lines.append(f"/r/{o['id']} {affiliate_url(o, tags[''], aff)} 302\n")
         lines += [f"/r/{o['id']}/{s['store']} {affiliate_url(s, tags[''], aff)} 302\n" for s in o["stores"]]
-        lines += [f"/r/{o['id']}{sfx} {affiliate_url(o, tags[sfx], aff)} 302\n" for sfx in ("/tg", "/wa")]  # ML: mesmo ml_url
+        lines += [f"/r/{o['id']}{sfx} {affiliate_url(o, tags[sfx], aff)} 302\n" for sfx in ("/tg", "/wa", "/bot")]  # ML: mesmo ml_url
     lines.append("/r/* / 302\n")
     if len(lines) > MAX_REDIRECTS:
         raise Invalid(f"{len(lines)} regras no _redirects (máximo {MAX_REDIRECTS})")
@@ -1711,12 +1735,14 @@ def build(dev=False):
     bot, ch = tg_bot(), channels()
     pages = render_pages(offers, bot, ch)  # tudo validado e renderizado antes de tocar no dist/
     rules = redirects(offers)
+    catalogo_bot = bot_json(offers, now)
     shutil.rmtree(DIST, ignore_errors=True)
     shutil.copytree(STATIC, DIST)
     for path, body in pages.items():
         (DIST / path).parent.mkdir(parents=True, exist_ok=True)
         (DIST / path).write_text(body, encoding="utf-8")
     (DIST / "_redirects").write_text(rules, encoding="utf-8")
+    (DIST / "bot.json").write_text(catalogo_bot, encoding="utf-8")
     (DIST / "_headers").write_text(HEADERS, encoding="utf-8")
     print(f"ok: {len(ofertas(offers))} ofertas, {len(sem_oferta(offers))} sem oferta ({len(books) - len(offers)} fora do prazo), "
           f"{len(pages)} páginas -> {DIST}")
@@ -1882,7 +1908,7 @@ def selftest():
     if saved is not None:
         os.environ["TELEGRAM_BOT_USERNAME"] = saved
     try:
-        tg_alert_url("ofertaslivros_bot", "a" * 65)
+        tg_alert_url("ofertaslivros_bot", "a" * 61)
         raise AssertionError("id longo")
     except Invalid:
         pass
@@ -1921,18 +1947,21 @@ def selftest():
     assert all(w in pv for w in ("chat_id", "Cloudflare D1", "90 dias", "/parar", "bloquear o bot",
                                  "https://t.me/ofertaslivros_bot"))
     # _redirects: /novidades/ -> /curadoria/ (interno), 4 linhas por livro de uma loja + curinga; tag por canal
-    saved = {k: os.environ.pop(k, None) for k in ("AMAZON_TAG_TG", "AMAZON_TAG_WA")}
+    saved = {k: os.environ.pop(k, None) for k in ("AMAZON_TAG_TG", "AMAZON_TAG_WA", "AMAZON_TAG_BOT")}
     r = redirects(o).splitlines()
     t = partner_tag()
-    assert len(r) == 10 and r[0] == "/novidades/ /curadoria/ 301" and r[-1] == "/r/* / 302"
+    assert len(r) == 12 and r[0] == "/novidades/ /curadoria/ 301" and r[-1] == "/r/* / 302"
     assert [x for x in r if not x.startswith("/r/")] == ["/novidades/ /curadoria/ 301"]  # única regra fora do /r/
     assert f"/r/livro-1/amazon https://www.amazon.com.br/dp/B0ABCDEFGH?tag={t} 302" in r
     assert f"/r/livro-2/mercadolivre {ml_link} 302" in r
     assert not any("/r/livro-1/mercadolivre" in x or "/r/livro-2/amazon" in x for x in r)
     assert f"/r/livro-1/tg https://www.amazon.com.br/dp/B0ABCDEFGH?tag={t} 302" in r
     assert f"/r/livro-2/wa {ml_link} 302" in r and f"/r/livro-2 {ml_link} 302" in r
-    os.environ.update(AMAZON_TAG_TG="sitetg-20", AMAZON_TAG_WA="")
+    assert f"/r/livro-1/bot https://www.amazon.com.br/dp/B0ABCDEFGH?tag={t} 302" in r  # sem AMAZON_TAG_BOT: tag do site
+    assert f"/r/livro-2/bot {ml_link} 302" in r
+    os.environ.update(AMAZON_TAG_TG="sitetg-20", AMAZON_TAG_WA="", AMAZON_TAG_BOT="sitebot-20")
     r = redirects(o).splitlines()
+    assert "/r/livro-1/bot https://www.amazon.com.br/dp/B0ABCDEFGH?tag=sitebot-20 302" in r
     assert "/r/livro-1/tg https://www.amazon.com.br/dp/B0ABCDEFGH?tag=sitetg-20 302" in r
     assert f"/r/livro-1/wa https://www.amazon.com.br/dp/B0ABCDEFGH?tag={t} 302" in r
     # duas lojas: vencedora no /r/<id>, /tg e /wa; uma rota por loja; tag do canal só na Amazon
@@ -1941,12 +1970,12 @@ def selftest():
     amz_url = "https://www.amazon.com.br/dp/B0ABCDEFGH?tag="
     assert r[1:] == [f"/r/duas {amz_url}{t} 302", f"/r/duas/amazon {amz_url}{t} 302",
                  f"/r/duas/mercadolivre {ml_link} 302", f"/r/duas/tg {amz_url}sitetg-20 302",
-                 f"/r/duas/wa {amz_url}{t} 302", "/r/* / 302"]
+                 f"/r/duas/wa {amz_url}{t} 302", f"/r/duas/bot {amz_url}sitebot-20 302", "/r/* / 302"]
     r = redirects(load({**two, "stores": [amz, {**mls, "price_cents": 1890}]})).splitlines()
     assert f"/r/duas {ml_link} 302" in r and f"/r/duas/tg {ml_link} 302" in r
     assert f"/r/duas/amazon {amz_url}{t} 302" in r                        # loja da seta, tag do site
     r = redirects(load(two, now=datetime(2026, 10, 18, 10, 31, tzinfo=BRT))).splitlines()
-    assert "/r/duas/mercadolivre" not in "\n".join(r) and len(r) == 6      # ML fora do prazo: sem rota
+    assert "/r/duas/mercadolivre" not in "\n".join(r) and len(r) == 7      # ML fora do prazo: sem rota
     for bad in ("x&tag=evil", "a b", "x\n/r/y https://evil.com 302"):
         os.environ["AMAZON_TAG_TG"] = bad
         try:
@@ -1958,13 +1987,28 @@ def selftest():
         os.environ.pop(k, None)
         if v is not None:
             os.environ[k] = v
-    many = [{**good, "id": f"l-{n}", "stores": [amz, mls]} for n in range(400)]
+    many = [{**good, "id": f"l-{n}", "stores": [amz, mls]} for n in range(334)]
     try:
-        redirects(load(*many))  # 400 x 5 + curinga + /novidades/ = 2.002
+        redirects(load(*many))  # 334 x 6 + curinga + /novidades/ = 2.006
         raise AssertionError("limite do _redirects")
     except Invalid:
         pass
-    assert len(redirects(load(*many[:399])).splitlines()) == 1997
+    assert len(redirects(load(*many[:333])).splitlines()) == 2000
+    # bot.json: texto = post_text com /r/<id>/bot só em oferta no prazo; valido_ate = checked_at + FRESH
+    bj = json.loads(bot_json(load(two, {**good, "id": "sem", "author": "Neil Gaiman e Terry Pratchett; Ação",
+                                        "stores": [{**amz, "list_price_cents": amz["price_cents"]}]}), NOW))
+    assert bj["version"] == 1 and [b["id"] for b in bj["livros"]] == ["duas", "sem"]
+    duas, sem = bj["livros"]
+    assert duas["texto"] == post_text(load(two)[0], f"{SITE}/r/duas/bot") and duas["texto"].endswith("/r/duas/bot")
+    assert sem["texto"] is None and sem["autores"] == ["neil gaiman", "terry pratchett", "acao"]
+    assert duas["desconto"] == discount(load(two)[0]) > 0 and sem["desconto"] == 0
+    assert duas["valido_ate"] == (mls_at := min(s["checked_at"] + FRESH[s["store"]] for s in load(two)[0]["stores"])) \
+        .astimezone(timezone.utc).isoformat(timespec="seconds") and mls_at < load(two)[0]["checked_at"] + FRESH["amazon"]
+    velha = load({**good, "id": "velha", "stores": [amz]}, now=NOW + timedelta(days=1))[0]  # Amazon vencida, ainda oferta
+    assert velha["oferta"] and velha["velho"]
+    assert json.loads(bot_json([velha], NOW))["livros"][0]["texto"] is None
+    assert bot_key("Mangá: Ação!  Vol. 2") == "manga acao vol 2"
+    assert "Disallow: /bot.json" in (STATIC / "robots.txt").read_text()
     # canais: só com a env; validados; rel noopener noreferrer
     saved = {k: os.environ.pop(k, None) for k in ("TELEGRAM_CHANNEL_ID", "WHATSAPP_CHANNEL_ID")}
     assert channels() == [] and "/canais/" not in page(o)
