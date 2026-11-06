@@ -53,10 +53,16 @@ Peça ao Claude para escrever `API_KEY = "abcdefghijklmnop1234"` num arquivo .py
   npx wrangler@4.151.1 secret put TELEGRAM_BOT_TOKEN
   ```
 - O `TELEGRAM_WEBHOOK_SECRET` só existe no Worker e no `setWebhook`. Para trocar, rode de novo o lançamento (abaixo), que gera um novo.
-- Lançamento (depois do deploy do Worker com o bot). O token é lido sem eco, e nem ele nem o segredo aparecem na tela ou no `ps` (vão por descritor, fora do argv):
-  ```
-  read -rs TG && S=$(openssl rand -hex 32) && printf %s "$S" | npx wrangler@4.151.1 secret put TELEGRAM_WEBHOOK_SECRET \
-    && printf %s "$TG" | npx wrangler@4.151.1 secret put TELEGRAM_BOT_TOKEN \
-    && curl -sS -K <(printf 'url = "https://api.telegram.org/bot%s/setWebhook"\n' "$TG") -H 'Content-Type: application/json' \
-       --data @<(printf '{"url":"https://ofertaslivros.com.br/telegram","secret_token":"%s","allowed_updates":["message","callback_query","my_chat_member"],"drop_pending_updates":true}' "$S"); unset TG S
-  ```
+- Lançamento ou troca de token (depois do deploy do Worker com o bot). Copie o token no @BotFather (`/mybots` → bot → API Token) e rode na pasta do repo. O token sai da área de transferência (`pbpaste`), sem aparecer na tela nem no `ps`; o segredo do webhook é gerado na hora e também não aparece. No fim, a área de transferência é limpa.
+  1. Conferir o token (tamanho 46 e `"ok":true`). Em 2026-11-06, colar no `read -rs` deu token vazio e o Telegram respondeu 404:
+     ```
+     TG=$(pbpaste | tr -d '[:space:]'); echo "tamanho: ${#TG}"; curl -sS -K <(printf 'url = "https://api.telegram.org/bot%s/getMe"\n' "$TG"); echo
+     ```
+  2. Na mesma janela do terminal, gravar os segredos no Worker e registrar o webhook (resposta esperada: `"Webhook was set"`):
+     ```
+     S=$(openssl rand -hex 32) && printf %s "$S" | npx wrangler@4.151.1 secret put TELEGRAM_WEBHOOK_SECRET \
+       && printf %s "$TG" | npx wrangler@4.151.1 secret put TELEGRAM_BOT_TOKEN \
+       && curl -sS -K <(printf 'url = "https://api.telegram.org/bot%s/setWebhook"\n' "$TG") -H 'Content-Type: application/json' \
+          --data @<(printf '{"url":"https://ofertaslivros.com.br/telegram","secret_token":"%s","allowed_updates":["message","callback_query","my_chat_member"],"drop_pending_updates":true}' "$S"); echo; unset TG S; pbcopy </dev/null
+     ```
+  3. Se o token mudou, atualizar também o do canal: `gh secret set TELEGRAM_BOT_TOKEN --env telegram`.
