@@ -1082,6 +1082,11 @@ def feed(offers, bot=None, ch=(), full=False, pills="", items=None):
 CUR_NOTE = "Livros escolhidos por nós, ainda sem oferta. Ative o alerta e avisamos quando o preço baixar."
 
 
+def mavi():
+    """A Mavi (mascote do bot, sem o sininho) é a cara da curadoria. Decorativa: o nome vem no texto."""
+    return '<img class="mavi" src="/mavi.svg" alt="" width="640" height="640" decoding="async">'
+
+
 def da_curadoria(offers, bot=None, genre=None, skip=()):
     """"Da curadoria": até CUR_MAX livros sem oferta, com o link para a área. Sem nenhum, a seção não sai.
     skip: os que já estão no hero vão para o fim (no celular aparecem 4)."""
@@ -1091,7 +1096,7 @@ def da_curadoria(offers, bot=None, genre=None, skip=()):
         return ""
     body = ('<ul class="grid feed feed--cur feed--home">\n' + "\n".join(card(o, bot) for o in items)
             + "\n</ul>\n" + mais(f"/curadoria/{'#' + genre if genre else ''}", "Ver toda a curadoria"))
-    return section("h-da-curadoria", "Da curadoria", body, note=CUR_NOTE)
+    return section("h-da-curadoria", f"{mavi()}Da curadoria", body, note=CUR_NOTE)
 
 
 def ranked(offers):
@@ -1577,7 +1582,7 @@ def curadoria_page(offers, bot=None, ch=()):
                 f'<p class="mais"><button class="btn btn--ghost js-mais" type="button" hidden>{icon("livro", "i i-livro")}'
                 'Carregar mais livros</button></p>')
         secs.append(section(g, e(GENRES[g]), body, len(items), unit=("livro", "livros")))
-    body = (intro("Curadoria: livros que valem a leitura", CUR_INTRO)
+    body = (intro(f"{mavi()}Curadoria: livros que valem a leitura", "Oi, eu sou a Mavi, a cara da nossa curadoria. " + CUR_INTRO)
             + f'\n<nav class="ancoras" aria-label="Nichos da curadoria"><ul>{anchors}</ul></nav>\n' + "\n".join(secs))
     return shell(offers, "Curadoria: livros que valem a leitura | Ofertas Livros",
                  "Livros selecionados, com e sem oferta, por nicho.", body, ch, "/curadoria/", bot=bot, modal=True)
@@ -1904,7 +1909,7 @@ def selftest():
         assert top.count('class="carimbo carimbo--bar"') == 1 and h.count('class="carimbo carimbo--m"') == 1
         assert "tnum" not in top and 'class="live"' not in top
         assert top.index('class="brand"') < top.index("carimbo--bar") < top.index("js-busca") < top.index("pill--tg")
-    assert all((STATIC / f).is_file() for f in ("favicon.svg", "logo.svg", "logo-negativo.svg", "app.js", "grao.svg",
+    assert all((STATIC / f).is_file() for f in ("favicon.svg", "logo.svg", "logo-negativo.svg", "app.js", "grao.svg", "mavi.svg",
                                                 "fonts/fraunces-latin-full-normal.woff2", "fonts/fraunces-latin-full-italic.woff2",
                                                 "fonts/outfit-latin-wght-normal.woff2", "fonts/SOURCES.md"))
     assert "<rect" not in (STATIC / "logo-negativo.svg").read_text()  # sem caixa no tema escuro
@@ -2249,7 +2254,7 @@ def selftest():
     assert "nov-" not in hero_ and "nov-" not in ativas
     assert re.findall(r'data-id="(nov-\d)"', novs) == ["nov-3", "nov-2", "nov-1", "nov-4"]  # history_since desc, título
     assert re.search(r'id="h-ativas">Ofertas ativas</h2><span class="sec-n"[^>]*>5 ofertas no momento</span>', h)  # só ofertas
-    assert re.search(r'id="h-da-curadoria">Da curadoria</h2><p class="sec-note">Livros escolhidos por nós', h)
+    assert re.search(r'id="h-da-curadoria"><img class="mavi" src="/mavi.svg" alt=""[^>]*>Da curadoria</h2><p class="sec-note">Livros escolhidos por nós', h)
     assert '<p class="mais"><a class="btn btn--ghost" href="/curadoria/">' in novs and "Ver toda a curadoria" in novs
     assert '<span class="cur-c">5 ofertas</span>' in h                                      # "Todos" conta ofertas
     assert re.search(r'<span class="sec-n"[^>]*>1 oferta no momento</span>', vis(page(load(good))))  # singular
@@ -2286,7 +2291,7 @@ def selftest():
     mg = cv[cv.index('id="manga"'):]
     assert re.findall(r'data-id="([a-z0-9-]+)"', mg) == ["nov-3", "nov-2", "nov-1", "l-0", "l-1", "l-2", "l-3", "l-4", "nov-4"]
     assert mg.count('data-tipo="oferta"') == 5 and mg.count('data-tipo="sem-oferta"') == 4  # com e sem oferta
-    assert "<ol" not in cv and "<h1>Curadoria: livros que valem a leitura</h1>" in cv
+    assert "<ol" not in cv and 'alt="" width="640" height="640" decoding="async">Curadoria: livros que valem a leitura</h1>' in cv and "Oi, eu sou a Mavi" in cv
     assert "o preço final é o da loja" in cv[cv.index('class="intro"'):cv.index("</div>", cv.index('class="intro"'))]
     assert ("ganhamos com compras qualificadas" in cp and "o preço final é o da loja" in cp.split('class="foot-legal"')[1]
             and '<meta name="description" content="Livros selecionados, com e sem oferta, por nicho.">' in cp)

@@ -636,6 +636,8 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 .sec { margin-top: 30px; }
 .sec-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; padding: 0 4px; }
 .sec-head h2 { font-size: clamp(26px, 3.2vw, 38px); }
+/* Mavi, a cara da curadoria: avatar redondo ao lado do título, no tamanho da fonte dele */
+.mavi { display: inline-block; vertical-align: middle; width: 1.3em; height: 1.3em; margin: -.15em .3em 0 0; border-radius: 50%; box-shadow: 0 0 0 2px var(--line); }
 .sec-n { margin-left: -8px; font-size: 15px; font-weight: 600; color: var(--muted); }
 .sec-note { flex: 1 1 18rem; font-size: 14px; color: var(--muted); }
 /* Faixas de desconto (Todas / 40%+ / 50%+): links para /ofertas/<t>/, a ativa em acento */
