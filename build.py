@@ -1031,7 +1031,7 @@ def banner_bot(bot, at):
   <span class="mascote" aria-hidden="true">{icon("carimbo", "i i-carimbo")}</span>
   <p class="kicker">{icon("sino")}Alerta grátis no Telegram</p>
   <h3 class="blk-h">Escolha o livro. A gente avisa quando entrar em oferta.</h3>
-  <p>{"Toque no sino de qualquer livro e o bot avisa quando ele entrar em oferta. Para apagar, /parar." if bot
+  <p>{"Toque no sino de qualquer livro e o bot avisa quando ele entrar em oferta. Para apagar tudo, mande /parar ao bot." if bot
       else "Em breve: toque no sino de qualquer livro e o bot vai avisar quando ele entrar em oferta."}</p>
   <p>{cta(bot and f"https://t.me/{bot}", f'Ativar alertas{icon("seta")}', "go", '<span class="sr"> (abre o Telegram)</span>')}</p>{aneis()}
 </li>"""
@@ -1112,7 +1112,7 @@ def bot_block(bot):
     <h2 id="h-bot">Avisamos quando o livro entrar em oferta. <em>Você só escolhe qual.</em></h2>
     <ol class="passos">{lis}</ol>
     <p class="bot-acts">{cta(url, f'Ativar no Telegram{icon("seta")}', "go", '<span class="sr"> (abre o Telegram)</span>')}</p>
-    <p class="bot-note">{"O bot avisa uma vez por oferta, das 8h às 22h, e guarda só o número da conversa e a sua lista. Para apagar, /parar." if bot else "Quando estiver no ar, o bot vai guardar só o número da conversa e a sua lista, e para apagar bastará mandar /parar."} Veja a <a href="/privacidade/">privacidade</a>.</p>
+    <p class="bot-note">{"O bot avisa uma vez por oferta, das 8h às 22h, e guarda o número da conversa, a sua lista e quando avisou. Para apagar tudo, mande /parar ao bot." if bot else "Quando estiver no ar, o bot vai guardar o número da conversa, a sua lista e quando avisou, e para apagar tudo bastará mandar /parar ao bot."} Veja a <a href="/privacidade/">privacidade</a>.</p>
   </div>{aneis("aneis--big")}
 </section>"""
 
@@ -1609,6 +1609,7 @@ def privacy(offers, bot=None, ch=()):
 <p>Se você pedir um livro pelo bot, o pedido vai para a curadoria sem nenhum dado seu.</p>
 <h2>Onde fica</h2>
 <p>Num banco de dados Cloudflare D1, fora do código do site e sem acesso público. A Cloudflare opera esse banco para nós. As mensagens passam pelo Telegram, que tem a política de privacidade dele.</p>
+{"" if bot else "<p>Quando a lista de desejos estiver no ar, valerá o seguinte:</p>"}
 <h2>Por quanto tempo</h2>
 <p>A lista fica guardada enquanto você usa o bot. Uma conversa sem nenhuma mensagem ou toque por 12 meses é apagada por inteiro, sem aviso. O preço do último aviso de um livro é apagado quando ele sai da oferta.</p>
 <h2>Como apagar</h2>
@@ -1627,7 +1628,7 @@ def canais(offers, ch, bot=None):
             "WhatsApp": "um resumo por dia com até 5 ofertas."}
     items = "\n".join(f"<li>{ext(url, f'Canal no {name}')}: {desc[name]}</li>" for name, url in ch)
     alert = (f'<p>Quer saber de um livro só? Mande o título ao {ext(f"https://t.me/{bot}", "@" + e(bot))} '
-             'ou toque em “Me avise se baixar” na oferta: o bot avisa quando ele entrar em oferta. Para apagar, /parar.</p>'
+             'ou toque em “Me avise se baixar” na oferta: o bot avisa quando ele entrar em oferta. Para apagar tudo, mande /parar ao bot.</p>'
              if bot else "")
     body = f"""<h1 class="page-h1">Canais</h1>
 <article class="doc">
