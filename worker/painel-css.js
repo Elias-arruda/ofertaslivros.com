@@ -105,14 +105,6 @@ h3:first-of-type { margin-top: 0; }
 .funil rect { fill: var(--c1); }
 .funil .val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 .funil .passo { display: block; padding-left: calc(34% + 10px); font-size: 12.5px; color: var(--muted); }
-.disp { display: block; width: 100%; height: auto; }
-.disp .g { stroke: var(--grid); }
-.disp .tick, .disp .eixo-t { fill: var(--muted); font-size: 13px; font-family: "Outfit", system-ui, sans-serif; }
-.disp .ref { stroke: var(--muted); stroke-width: 1.5; opacity: .7; }
-.disp circle { fill: var(--c1); stroke: var(--card); stroke-width: 2; }
-.disp .abaixo circle { fill: var(--c3); }
-.disp .dot:hover circle { r: 8; }
-.disp .lbl { fill: var(--text); font-size: 13px; paint-order: stroke; stroke: var(--card); stroke-width: 4px; font-family: "Outfit", system-ui, sans-serif; }
 .seg { display: block; width: 100%; height: 26px; border-radius: 6px; overflow: hidden; }
 .seg-leg { margin-top: 8px; }
 .seg-leg b { color: var(--text); font-weight: 600; }

@@ -73,6 +73,7 @@ test("dados roda o SQL de verdade e render escapa o que vem dos caminhos", async
   const ins = d1.db.prepare("INSERT INTO daily_rollup VALUES (?, ?, ?, 'BR', ?, ?)");
   ins.run(ontem, "/r/livro-1", 302, 0, 4); ins.run(ontem, "/r/livro-1/tg", 302, 0, 2);
   ins.run(ontem, "/livro/livro-1/", 200, 0, 3); ins.run(ontem, "/manga/", 200, 0, 9); ins.run(ontem, "/", 200, 1, 50);
+  ins.run(ontem, "/livro/livro-2/", 200, 0, 20); ins.run(ontem, "/livro/livro-3/", 200, 0, 12); ins.run(ontem, "/r/livro-3", 302, 0, 6);
   globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ data: { viewer: { zones: [{ httpRequestsAdaptiveGroups: [
     { count: 5, dimensions: { clientRequestPath: "/r/<script>x</script>", edgeResponseStatus: 302, clientCountryName: "BR", userAgentBrowser: "Chrome" } },
     { count: 7, dimensions: { clientRequestPath: "/", edgeResponseStatus: 200, clientCountryName: "BR", userAgentBrowser: "Chrome" } },
@@ -81,6 +82,11 @@ test("dados roda o SQL de verdade e render escapa o que vem dos caminhos", async
   assert.ok(!html.includes("<script>") && html.includes("&lt;script&gt;"));
   assert.match(html, /<td>livro-1<\/td><td>6<\/td><td>3<\/td><td>200\.0%<\/td>/); // 6 cliques ÷ 3 views
   assert.match(html, /<td>\/manga\/<\/td><td>9<\/td>/);
+  // Muita visita, pouco clique: só livro-2 (20 views, 0 cliques; média dos livros com ≥ 10 views = 6/32); livro-1 tem só 3 views
+  const fracos = html.split("Muita visita, pouco clique")[1].split('class="card')[0];
+  assert.match(fracos, /title="livro-2">livro-2<\/span>/);
+  assert.ok(!fracos.includes("livro-3") && !fracos.includes("livro-1") && !html.includes('class="disp"'));
+  assert.match(fracos, /média deles \(18\.8%\)/);
   assert.match(html, /<td>tg<\/td><td>2<\/td>/);
   assert.match(html, /Pedidos de livro: 0 novo/);       // tabela pedidos ainda não existe: lista vazia
   assert.match(html, /Creators API: 0 de ~10/);          // sales ainda não existe

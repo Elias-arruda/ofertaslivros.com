@@ -120,30 +120,6 @@ function funil(etapas) {
   }).join("")}</ol>`;
 }
 
-/** Dispersão por livro: views da página × cliques, com a reta do CTR médio. */
-function dispersao(pts) {
-  if (!pts.length) return `<p class="vazio">Sem dados ainda.</p>`;
-  const L = 44, R = 16, T = 20, B = 40, W = 1000, H = 340;
-  const xm = nice(Math.max(1, ...pts.map(p => p.x))), ym = nice(Math.max(1, ...pts.map(p => p.y)));
-  const px = x => L + (W - L - R) * x / xm, py = y => H - B - (H - T - B) * y / ym;
-  const sx = pts.reduce((a, p) => a + p.x, 0), sy = pts.reduce((a, p) => a + p.y, 0), ctr = sx ? sy / sx : 0;
-  const fim = ctr * xm <= ym ? [xm, ctr * xm] : [ym / ctr, ym];
-  const ticks = [0, 0.5, 1].map(f => `<line class="g" x1="${L}" x2="${W - R}" y1="${py(f * ym)}" y2="${py(f * ym)}"/><text class="tick" x="${L - 6}" y="${py(f * ym) + 4}" text-anchor="end">${n(f * ym)}</text>`
-    + `<text class="tick" x="${px(f * xm)}" y="${H - B + 16}" text-anchor="middle">${n(f * xm)}</text>`).join("");
-  // Rótulo só nos extremos (mais vistos e mais acima/abaixo da reta), pulando o que colidiria com outro.
-  const dist = p => p.y - ctr * p.x, usados = [], top = new Set();
-  for (const p of [...[...pts].sort((a, b) => b.x - a.x).slice(0, 3), ...[...pts].sort((a, b) => dist(b) - dist(a)).slice(0, 2), ...[...pts].sort((a, b) => dist(a) - dist(b)).slice(0, 3)]) {
-    const [x, y] = [px(p.x), py(p.y)];
-    if (top.size < 6 && !usados.some(([ux, uy]) => Math.abs(uy - y) < 16 && x < ux + 190 && ux < x + 190)) { top.add(p.id); usados.push([x, y]); }
-  }
-  const dots = pts.map(p => `<g class="dot${p.y < ctr * p.x ? " abaixo" : ""}"><title>${esc(p.id)}: ${n(p.x)} views · ${n(p.y)} cliques · CTR ${pct(p.y, p.x)}</title><circle cx="${px(p.x).toFixed(1)}" cy="${py(p.y).toFixed(1)}" r="6"/>`
-    + (top.has(p.id) ? `<text class="lbl" x="${(px(p.x) + 10).toFixed(1)}" y="${(py(p.y) + 4).toFixed(1)}">${esc(p.id.length > 22 ? `${p.id.slice(0, 21)}…` : p.id)}</text>` : "") + "</g>").join("");
-  return legenda([["s1", "Livro com CTR acima da média"], ["s3", "Abaixo da média: muita visita, pouco clique"]])
-    + `<svg class="disp" viewBox="0 0 ${W} ${H}" role="img" aria-label="views × cliques por livro">${ticks}`
-    + (ctr ? `<line class="ref" x1="${px(0)}" y1="${py(0)}" x2="${px(fim[0]).toFixed(1)}" y2="${py(fim[1]).toFixed(1)}"><title>CTR médio ${(100 * ctr).toFixed(1)}%</title></line>` : "")
-    + `${dots}<text class="eixo-t" x="${W - R}" y="${H - 4}" text-anchor="end">views da página do livro →</text><text class="eixo-t" x="${L}" y="${T - 2}">↑ cliques</text></svg>`;
-}
-
 /** Participação: barra 100% segmentada (≤ 4 partes), com rótulo direto e espaço entre as cores. */
 function segmentos(partes) {
   const total = partes.reduce((a, p) => a + p.v, 0);
@@ -246,8 +222,12 @@ export function render(d) {
   const v30 = janela("views", -30), c30 = janela("cliques", -30);
   const ctr7 = v7 ? c7 / v7 : 0, ctr7a = v7a ? c7a / v7a : 0;
   const ult14 = dias.slice(-14);
-  const pts = [...new Set([...Object.keys(viewsLivro), ...Object.keys(porLivro)])]
-    .map(id => ({ id, x: viewsLivro[id] || 0, y: porLivro[id] || 0 })).filter(p => p.x || p.y);
+  // Muita visita, pouco clique: livros com página vista (≥ 10 views) e CTR abaixo da média dos livros, mais vistos primeiro.
+  const comPagina = Object.keys(viewsLivro).filter(id => viewsLivro[id] >= 10);
+  const vLivros = comPagina.reduce((a, id) => a + viewsLivro[id], 0), cLivros = comPagina.reduce((a, id) => a + (porLivro[id] || 0), 0);
+  const ctrLivros = vLivros ? cLivros / vLivros : 0;
+  const fracos = comPagina.filter(id => (porLivro[id] || 0) / viewsLivro[id] < ctrLivros)
+    .sort((a, b) => viewsLivro[b] - viewsLivro[a]).slice(0, 8);
 
   const pedidosHtml = d.pedidos.length ? `<ul class="pedidos">${d.pedidos.slice(0, 12).map(p =>
     `<li${p.novo ? ' class="novo"' : ""}><div><strong>${esc(p.titulo)}</strong><span>${esc(p.autor || "autor não informado")}</span></div>`
@@ -287,7 +267,8 @@ ${card("De onde vêm e para onde vão os cliques (7 dias)",
   + tabela(["Canal", "Cliques"], Object.entries(porCanal).map(([k, c]) => [k, n(c)])),
   "", "Menor preço = /r/<id>, que leva à loja mais barata do dia; a seta é o link da outra loja na página do livro.")}
 
-${card("Oportunidades por livro (7 dias)", dispersao(pts), "largo", "Cada ponto é um livro. Abaixo da reta (CTR médio), o livro recebe visita mas pouco clique: vale rever preço, capa ou oferta. Acima, converte bem: candidato a destaque e canais.")}
+${card("Muita visita, pouco clique (7 dias)", barras(fracos.map(id => ({ rot: id, v: viewsLivro[id], extra: `CTR ${pct(porLivro[id] || 0, viewsLivro[id])} · ${n(porLivro[id] || 0)} cliques` })), "Nenhum livro abaixo da média."),
+  "largo", `Livros com 10 views ou mais na página e CTR abaixo da média deles (${(100 * ctrLivros).toFixed(1)}%), do mais visto para o menos. A barra é a quantidade de views. Vale rever preço, capa ou oferta.`)}
 
 ${card("Top livros por cliques (7 dias)", barras(topLivros.map(([id, c]) => ({ rot: id, v: c, extra: viewsLivro[id] ? `CTR ${pct(c, viewsLivro[id])}` : "" })))
   + tabela(["Livro", "Cliques", "Views da página", "CTR"], topLivros.map(([id, c]) => [id, n(c), n(viewsLivro[id]), pct(c, viewsLivro[id])])),
