@@ -169,7 +169,7 @@ test("várias linhas, limite de linhas e lista cheia (13-14)", async () => {
   const t = setup([TORTO, SALVAR, DOM]);
   await t.msg("dom casmurro\nitamar\nxyzxyz");
   assert.equal(t.ultimo(), "Adicionei: Dom Casmurro.\nAchei mais de um para: itamar. Mande sozinho para eu mostrar as opções.\n"
-    + "Não achei: xyzxyz. Mande sozinho para pedir à curadoria.\nSua lista: /lista\n\nGuardo só o número desta conversa e a sua lista. "
+    + "Não achei: xyzxyz. Mande sozinho para pedir à curadoria.\nSua lista: /lista\n\nGuardo o número desta conversa, a sua lista e quando avisei. "
     + "Para apagar tudo: /parar. Privacidade: https://ofertaslivros.com.br/privacidade/");    // chat novo: leva a nota
   assert.equal(t.q("SELECT * FROM desejos").length, 1);
   await t.msg("dom casmurro\ntorto arado");

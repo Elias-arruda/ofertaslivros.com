@@ -126,7 +126,7 @@ const resposta = (m, extra = {}) => ({ reply_parameters: { message_id: m.message
 const boasVindas = c => enviar(c, "Oi, eu sou a Mavi, do Ofertas Livros.\n"
   + "Me diga um livro ou um autor e eu aviso aqui quando ele entrar em oferta no site.\n"
   + "É só mandar o título ou o nome do autor numa mensagem. Pode mandar vários, um por linha.\n"
-  + `Ajuda: /ajuda\n\nGuardo só o número desta conversa e a sua lista. Para apagar tudo: /parar. Privacidade: ${PRIVACIDADE}`,
+  + `Ajuda: /ajuda\n\nGuardo o número desta conversa, a sua lista e quando avisei. Para apagar tudo: /parar. Privacidade: ${PRIVACIDADE}`,
   { reply_markup: { inline_keyboard: [[{ text: "Ver as ofertas de hoje", url: `${SITE}/ofertas/` }]] } });
 
 const ajuda = c => enviar(c, "Como usar:\n"
@@ -160,7 +160,7 @@ async function adicionar(c, tipo, ch) {
   return { id: ins.meta.last_row_id, novo: novo.meta.changes > 0 };
 }
 
-const NOTA = `\n\nGuardo só o número desta conversa e a sua lista. Para apagar tudo: /parar. Privacidade: ${PRIVACIDADE}`;
+const NOTA = `\n\nGuardo o número desta conversa, a sua lista e quando avisei. Para apagar tudo: /parar. Privacidade: ${PRIVACIDADE}`;
 const CHEIA = `Sua lista já tem ${MAX_ITENS} itens, o máximo. Tire algum em /lista e tente de novo.`;
 
 /** Adiciona um livro e confirma; se ele já está em oferta, manda o aviso na hora (e grava, para o cron não repetir). */
