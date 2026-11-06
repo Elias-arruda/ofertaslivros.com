@@ -3,6 +3,7 @@
 // aqui, a conferência do JWT do Access. Sem JWT válido = 403, mesmo se a regra do Access sumir
 // ou se o pedido vier pelo workers.dev. HTML montado no servidor, sem JS, tudo escapado.
 import { brDay, fetchDay, toRows } from "../cron/rollup.js";
+import { CSS } from "./painel-css.js";
 
 const HOST = "ofertaslivros.com.br";
 const TEAM = "https://ofertaslivros.cloudflareaccess.com";
@@ -51,12 +52,51 @@ export function clique(path) {
   return { id, canal: suf === "tg" || suf === "wa" ? suf : "site", loja: suf && suf !== "tg" && suf !== "wa" ? suf : "vencedora" };
 }
 
-function tabela(titulo, cols, linhas, nota = "") {
+function tabela(cols, linhas) {
   const head = cols.map(c => `<th>${esc(c)}</th>`).join("");
   const body = linhas.length ? linhas.map(l => `<tr>${l.map(v => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")
     : `<tr><td colspan="${cols.length}">Sem dados.</td></tr>`;
-  return `<section><h2>${esc(titulo)}</h2>${nota ? `<p>${esc(nota)}</p>` : ""}<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></section>`;
+  return `<details><summary>Ver tabela</summary><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></details>`;
 }
+
+const dm = d => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+const pct = (a, b) => (b ? `${(100 * a / b).toFixed(1)}%` : "—");
+
+/** Colunas por dia em SVG (sem JS: tooltip pelo <title>, destaque no :hover pelo CSS). */
+function colunas(pontos, unidade) {
+  const max = Math.max(1, ...pontos.map(p => p.y)), W = pontos.length * 10 || 10;
+  const cols = pontos.map((p, i) => {
+    const h = 92 * p.y / max;
+    return `<g class="col${p.parcial ? " parcial" : ""}"><title>${esc(dm(p.x))}${p.parcial ? " (hoje, parcial)" : ""}: ${n(p.y)} ${esc(unidade)}</title>`
+      + `<rect class="hit" x="${i * 10}" y="0" width="10" height="100"/><rect class="bar" x="${i * 10 + 1.5}" y="${(100 - h).toFixed(2)}" width="7" height="${h.toFixed(2)}"/></g>`;
+  }).join("");
+  const grid = [8, 54, 100].map(y => `<line x1="0" x2="${W}" y1="${y}" y2="${y}"/>`).join("");
+  const eixo = pontos.length ? `<div class="eixo"><span>${esc(dm(pontos[0].x))}</span><span>${esc(dm(pontos.at(-1).x))}${pontos.at(-1).parcial ? " · hoje" : ""}</span></div>` : "";
+  return `<div class="plot"><span class="ymax">${n(max)}</span><svg viewBox="0 0 ${W} 100" preserveAspectRatio="none" role="img" aria-label="${esc(unidade)} por dia">${grid}${cols}</svg>${eixo}</div>`;
+}
+
+/** Barras horizontais ranqueadas: rótulo, barra (largura em % do maior) e valor. */
+function barras(linhas, vazio = "Sem dados ainda.") {
+  if (!linhas.length) return `<p class="vazio">${esc(vazio)}</p>`;
+  const max = Math.max(1, ...linhas.map(l => l.v));
+  return `<ol class="hbars">${linhas.map(l => `<li><span class="rot" title="${esc(l.rot)}">${esc(l.rot)}</span>`
+    + `<svg class="trilho" preserveAspectRatio="none"><title>${esc(l.rot)}: ${n(l.v)}${l.extra ? ` · ${esc(l.extra)}` : ""}</title><rect width="${(100 * l.v / max).toFixed(1)}%" height="100%" rx="3"/></svg>`
+    + `<span class="val">${n(l.v)}${l.extra ? `<small>${esc(l.extra)}</small>` : ""}</span></li>`).join("")}</ol>`;
+}
+
+function tile(rotulo, valor, sub = "", cls = "") {
+  return `<div class="tile ${cls}"><span class="rotulo">${esc(rotulo)}</span><strong>${esc(valor)}</strong>${sub ? `<span class="sub">${esc(sub)}</span>` : ""}</div>`;
+}
+
+/** Variação contra a janela anterior, em texto (não é cor de status). */
+function delta(atual, antes) {
+  if (!antes) return "sem base anterior";
+  const v = 100 * (atual - antes) / antes;
+  return `${v >= 0 ? "▲" : "▼"} ${Math.abs(v).toFixed(0)}% vs 7 dias antes`;
+}
+
+const card = (titulo, corpo, cls = "", nota = "") =>
+  `<section class="card ${cls}"><h2>${esc(titulo)}</h2>${corpo}${nota ? `<p class="nota">${esc(nota)}</p>` : ""}</section>`;
 
 const soma = (rows, f) => rows.filter(f).reduce((a, r) => a + r.requests, 0);
 
@@ -94,10 +134,11 @@ export async function dados(env, now = new Date()) {
 
 export function render(d) {
   const humanos = d.rowsHoje.filter(r => !r.bot);
-  const viewsHoje = soma(humanos, r => r.status === 200), cliquesHoje = soma(humanos, r => r.path.startsWith("/r/"));
+  const viewsHoje = soma(humanos, r => r.status === 200 && !r.path.startsWith("/r/"));
+  const cliquesHoje = soma(humanos, r => r.path.startsWith("/r/"));
   const topHoje = Object.entries(humanos.filter(r => r.path.startsWith("/r/"))
     .reduce((a, r) => ({ ...a, [clique(r.path).id]: (a[clique(r.path).id] || 0) + r.requests }), {}))
-    .sort((a, b) => b[1] - a[1]).slice(0, 10);
+    .filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1]).slice(0, 10);
 
   const viewsLivro = Object.fromEntries(d.livros7.map(r => [r.id, r.views]));
   const porLivro = {}, porCanal = { site: 0, tg: 0, wa: 0 }, porLoja = {};
@@ -107,35 +148,62 @@ export function render(d) {
     porCanal[c.canal] += r.requests;
     porLoja[c.loja] = (porLoja[c.loja] || 0) + r.requests;
   }
-  const topLivros = Object.entries(porLivro).sort((a, b) => b[1] - a[1]).slice(0, 20)
-    .map(([id, c]) => [id, n(c), n(viewsLivro[id]), viewsLivro[id] ? `${(100 * c / viewsLivro[id]).toFixed(1)}%` : "—"]);
-  const nichos = d.nichos7.filter(r => NICHOS.has(r.path.slice(1, -1))).sort((a, b) => b.views - a.views)
-    .map(r => [r.path, n(r.views)]);
+  const topLivros = Object.entries(porLivro).sort((a, b) => b[1] - a[1]).slice(0, 15);
+  const nichos = d.nichos7.filter(r => NICHOS.has(r.path.slice(1, -1))).sort((a, b) => b.views - a.views);
   const brl = c => (Number(c || 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const novos = d.pedidos.filter(p => p.novo).length;
   const v = (store, status) => d.vendas.find(r => r.store === store && r.status === status) || {};
   const qualificadas = (v("amazon", "enviado").itens || 0) - (v("amazon", "devolvido").itens || 0);
+  const comissao = (v("amazon", "enviado").comissao || 0) + (v("amazon", "devolvido").comissao || 0);
   const vendasAte = d.vendas.reduce((m, r) => (r.ate > m ? r.ate : m), "") || "—";
   const hora = d.geradoEm.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
 
+  // Série diária (antiga → nova) + hoje como coluna parcial.
+  const dias = [...d.porDia].reverse();
+  const serieV = dias.map(r => ({ x: r.day, y: r.views || 0 })).concat([{ x: d.hoje, y: viewsHoje, parcial: true }]);
+  const serieC = dias.map(r => ({ x: r.day, y: r.cliques || 0 })).concat([{ x: d.hoje, y: cliquesHoje, parcial: true }]);
+  const janela = (k, de, ate) => dias.slice(de, ate).reduce((a, r) => a + (r[k] || 0), 0);
+  const v7 = janela("views", -7), v7a = janela("views", -14, -7), c7 = janela("cliques", -7), c7a = janela("cliques", -14, -7);
+  const meta = Math.min(100, 10 * qualificadas);
+
+  const pedidosHtml = d.pedidos.length ? `<ul class="pedidos">${d.pedidos.slice(0, 12).map(p =>
+    `<li${p.novo ? ' class="novo"' : ""}><div><strong>${esc(p.titulo)}</strong><span>${esc(p.autor || "autor não informado")}</span></div>`
+    + `<time>${esc(p.criado_em)} UTC</time>${p.novo ? '<b class="badge">NOVO</b>' : ""}</li>`).join("")}</ul>`
+    : `<p class="vazio">Nenhum pedido nos últimos 30 dias.</p>`;
+
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="60">
-<meta name="robots" content="noindex"><title>Painel · Ofertas Livros</title><link rel="stylesheet" href="/style.css"></head>
-<body><main class="painel"><h1>Painel</h1><p>Gerado em ${esc(hora)} (atualiza a cada 60 s). Sem bots. Histórico até ${esc(d.ultimoDia || "—")}; hoje vem do GraphQL com alguns minutos de atraso.</p>
-${tabela(`Pedidos de livro: ${novos} novo(s) nas últimas 24 h`, ["Quando (UTC)", "Livro", "Autor", ""],
-  d.pedidos.map(p => [p.criado_em, p.titulo, p.autor || "—", p.novo ? "NOVO" : ""]),
-  "Pedidos do formulário \"Pedir um livro\" (também vão para pedidos@ofertaslivros.com). Ficam 30 dias.")}
-${tabela(`Hoje (${d.hoje})`, ["Views", "Cliques em /r/"], [[n(viewsHoje), n(cliquesHoje)]])}
-${tabela("Top livros hoje", ["Livro", "Cliques"], topHoje.map(([id, c]) => [id, n(c)]))}
-${tabela("Por dia (30 dias)", ["Dia", "Views", "Cliques", "Bots"], d.porDia.map(r => [r.day, n(r.views), n(r.cliques), n(r.bots)]))}
-${tabela("Top livros (7 dias)", ["Livro", "Cliques", "Views da página", "CTR"], topLivros, "CTR = cliques em /r/<id> ÷ views de /livro/<id>/. Clique vindo do canal não passa pela página, então o CTR pode passar de 100%.")}
-${tabela("Canal (7 dias)", ["Canal", "Cliques"], Object.entries(porCanal).map(([k, v]) => [k, n(v)]))}
-${tabela("Loja (7 dias)", ["Destino", "Cliques"], Object.entries(porLoja).map(([k, v]) => [k, n(v)]), "vencedora = /r/<id> (a loja com menor preço no dia); amazon/mercadolivre = a seta da outra loja.")}
-${tabela("Nichos mais vistos (7 dias)", ["Página", "Views"], nichos)}
-${tabela(`Vendas Amazon (30 dias, até ${vendasAte})`, ["Status", "Itens", "Receita", "Comissão"],
-  ["pedido", "enviado", "devolvido"].map(st => [st, n(v("amazon", st).itens), brl(v("amazon", st).receita), st === "pedido" ? "—" : brl(v("amazon", st).comissao)]),
-  `Creators API: ${qualificadas} de ~10 vendas qualificadas (enviadas − devolvidas) em 30 dias. Vem do CSV exportado pelo Chrome, D+1; o número que vale é o do painel da Amazon.`)}
-${tabela("Vendas Mercado Livre", ["Status"], [["O portal de afiliados do ML não tem exportação; acompanhe no painel do ML."]])}
+<meta name="robots" content="noindex"><title>Painel · Ofertas Livros</title><link rel="stylesheet" href="/painel/painel.css"></head>
+<body><main class="painel">
+<header class="topo"><div><p class="kicker">Ofertas Livros</p><h1>Painel</h1></div>
+<p class="meta">Atualizado ${esc(hora)} · recarrega a cada 60 s · sem bots<br>histórico até ${esc(d.ultimoDia || "—")} · hoje pelo GraphQL (minutos de atraso)</p></header>
+
+<div class="tiles">
+${tile("Views hoje", n(viewsHoje), `CTR ${pct(cliquesHoje, viewsHoje)}`)}
+${tile("Cliques hoje", n(cliquesHoje), "em /r/ (site + canais)")}
+${tile("Views 7 dias", n(v7), delta(v7, v7a))}
+${tile("Cliques 7 dias", n(c7), delta(c7, c7a))}
+${tile("Comissão Amazon 30 dias", brl(comissao), `vendas até ${vendasAte}`, "destaque")}
+${tile("Pedidos de livro", n(novos), "novos nas últimas 24 h", novos ? "alerta" : "")}
+</div>
+
+<div class="grade">
+${card("Views por dia", colunas(serieV, "views") + tabela(["Dia", "Views", "Cliques", "Bots"], d.porDia.map(r => [r.day, n(r.views), n(r.cliques), n(r.bots)])), "largo", "Páginas HTML com status 200, sem bots. A última coluna (mais clara) é hoje, ainda parcial.")}
+${card("Cliques de afiliado por dia", colunas(serieC, "cliques"), "largo", "Cada acesso a /r/ que redirecionou para a loja.")}
+
+${card("Creators API", `<p class="grande">${n(qualificadas)} <small>de ~10</small></p><svg class="medidor" preserveAspectRatio="none"><title>${n(qualificadas)} de ~10 vendas qualificadas</title><rect class="fundo" width="100%" height="100%" rx="6"/><rect width="${meta}%" height="100%" rx="6"/></svg>`
+  + tabela(["Status", "Itens", "Receita", "Comissão"], ["pedido", "enviado", "devolvido"].map(st => [st, n(v("amazon", st).itens), brl(v("amazon", st).receita), st === "pedido" ? "—" : brl(v("amazon", st).comissao)])),
+  "", `Creators API: ${qualificadas} de ~10 vendas qualificadas (enviadas − devolvidas) em 30 dias. Vem do CSV exportado pelo Chrome, D+1; o número que vale é o do painel da Amazon. ML: o portal não tem exportação.`)}
+${card(`Pedidos de livro: ${novos} novo(s) nas últimas 24 h`, pedidosHtml, "", "Formulário \"Pedir um livro\" (também vai para pedidos@ofertaslivros.com). Ficam 30 dias.")}
+
+${card("Top livros (7 dias)", barras(topLivros.map(([id, c]) => ({ rot: id, v: c, extra: viewsLivro[id] ? `CTR ${pct(c, viewsLivro[id])}` : "" })))
+  + tabela(["Livro", "Cliques", "Views da página", "CTR"], topLivros.map(([id, c]) => [id, n(c), n(viewsLivro[id]), pct(c, viewsLivro[id])])),
+  "largo", "CTR = cliques em /r/<id> ÷ views de /livro/<id>/. Clique vindo do canal não passa pela página, então pode passar de 100%.")}
+${card("Top livros hoje", barras(topHoje.map(([id, c]) => ({ rot: id, v: c })), "Nenhum clique hoje ainda."))}
+${card("Nichos mais vistos (7 dias)", barras(nichos.map(r => ({ rot: r.path, v: r.views }))) + tabela(["Página", "Views"], nichos.map(r => [r.path, n(r.views)])))}
+${card("Canal (7 dias)", barras(Object.entries(porCanal).map(([k, c]) => ({ rot: k, v: c }))) + tabela(["Canal", "Cliques"], Object.entries(porCanal).map(([k, c]) => [k, n(c)])))}
+${card("Loja (7 dias)", barras(Object.entries(porLoja).sort((a, b) => b[1] - a[1]).map(([k, c]) => ({ rot: k, v: c }))), "", "vencedora = /r/<id> (a loja com menor preço no dia); amazon/mercadolivre = a seta da outra loja.")}
+</div>
 </main></body></html>`;
 }
 
@@ -153,6 +221,9 @@ export async function painel(request, env, deps = {}) {
   const url = new URL(request.url);
   if (url.hostname !== HOST || request.method !== "GET") return negado();
   if (!await accessEmail(request.headers.get("Cf-Access-Jwt-Assertion"), deps)) return negado();
+  if (url.pathname === "/painel/painel.css") {
+    return new Response(CSS, { headers: { "Content-Type": "text/css; charset=utf-8", "Cache-Control": "private, max-age=300", "X-Content-Type-Options": "nosniff" } });
+  }
   try {
     return new Response(render(await dados(env)), { headers: HEADERS });
   } catch (e) {
