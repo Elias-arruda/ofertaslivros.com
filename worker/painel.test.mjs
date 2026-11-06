@@ -137,20 +137,22 @@ test("bot do Telegram: só contagens no painel, nenhum chat_id", async () => {
   const velho = new Date(Date.now() - 30 * 86400e3).toISOString();
   bot.db.prepare("INSERT INTO chats VALUES (?, 0, ?, ?)").run(918273645, agora, agora);
   bot.db.prepare("INSERT INTO chats VALUES (?, 1, ?, ?)").run(564738291, velho, velho);
+  bot.db.prepare("INSERT INTO chats VALUES (?, 0, ?, ?)").run(111222333, velho, velho);           // esvaziou a lista
   const ins = bot.db.prepare("INSERT INTO desejos (chat_id, tipo, chave, criado_em) VALUES (?, ?, ?, ?)");
   ins.run(918273645, "livro", "torto-arado", agora); ins.run(564738291, "livro", "torto-arado", velho);
   ins.run(918273645, "autor", "machado de assis", agora);
   bot.db.prepare("INSERT INTO avisos VALUES (?, 'torto-arado', 4000, ?)").run(918273645, agora);
   globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ data: { viewer: { zones: [{ httpRequestsAdaptiveGroups: [] }] } } }) });
   const d = await dados({ ANALYTICS: an, BOT: bot, CF_ANALYTICS_TOKEN: "t" });
-  assert.deepEqual({ chats: d.bot.chats, novos7: d.bot.novos7, ativos7: d.bot.ativos7, pausados: d.bot.pausados,
+  assert.deepEqual({ chats: d.bot.chats, comLista: d.bot.comLista, novos7: d.bot.novos7, ativos7: d.bot.ativos7, pausados: d.bot.pausados,
     livros: d.bot.livros, autores: d.bot.autores, avisosHoje: d.bot.avisosHoje },
-    { chats: 2, novos7: 1, ativos7: 1, pausados: 1, livros: 2, autores: 1, avisosHoje: 1 });
+    { chats: 3, comLista: 2, novos7: 1, ativos7: 1, pausados: 1, livros: 2, autores: 1, avisosHoje: 1 });
   const html = render(d);
   assert.match(html, /Bot do Telegram \(lista de desejos\)/);
   assert.match(html, /<td>Pessoas com lista<\/td><td>2<\/td>/);
   assert.ok(html.includes("torto-arado"));
-  assert.ok(!html.includes("918273645") && !html.includes("564738291"));
+  assert.match(html, /<td>Usaram o bot \(com ou sem lista\)<\/td><td>3<\/td>/);
+  assert.ok(!html.includes("918273645") && !html.includes("564738291") && !html.includes("111222333"));
   const semBot = render(await dados({ ANALYTICS: an, CF_ANALYTICS_TOKEN: "t" }));      // sem binding: sem seção
   assert.ok(!semBot.includes("Bot do Telegram"));
   const vazio = fakeD1();                                                            // D1 sem tabelas ainda

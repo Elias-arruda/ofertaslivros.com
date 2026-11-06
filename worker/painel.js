@@ -189,7 +189,8 @@ async function botDados(db, now, hoje) {
   const inicioHoje = `${hoje}T03:00:00.000Z`; // 00:00 em Brasília
   try {
     const [n, top] = await Promise.all([
-      db.prepare(`SELECT (SELECT COUNT(*) FROM chats) AS chats, (SELECT COUNT(*) FROM chats WHERE criado_em >= ?1) AS novos7,
+      db.prepare(`SELECT (SELECT COUNT(*) FROM chats) AS chats, (SELECT COUNT(DISTINCT chat_id) FROM desejos) AS comLista,
+        (SELECT COUNT(*) FROM chats WHERE criado_em >= ?1) AS novos7,
         (SELECT COUNT(*) FROM chats WHERE visto_em >= ?1) AS ativos7, (SELECT COUNT(*) FROM chats WHERE pausado = 1) AS pausados,
         (SELECT COUNT(*) FROM desejos WHERE tipo = 'livro') AS livros, (SELECT COUNT(*) FROM desejos WHERE tipo = 'autor') AS autores,
         (SELECT COUNT(*) FROM avisos WHERE avisado_em >= ?2) AS avisosHoje, (SELECT COUNT(*) FROM em_oferta) AS emOferta`)
@@ -268,7 +269,7 @@ ${tile("Cliques 7 dias", n(c7), delta(c7, c7a), "", spark(ult14.map(r => r.cliqu
 ${tile("CTR 7 dias", pct(c7, v7), ctr7a ? `antes: ${(100 * ctr7a).toFixed(1)}%` : "cliques ÷ views", "", spark(ult14.map(r => (r.views ? r.cliques / r.views : null))))}
 ${tile("Comissão 30 dias", brl(comissao), c30 ? `${brl(comissao / c30)} por clique` : "Amazon", "destaque")}
 ${tile("Creators API", `${n(qualificadas)} de ~10`, "vendas qualificadas, 30 dias", "", `<svg class="medidor" preserveAspectRatio="none"><title>${n(qualificadas)} de ~10</title><rect class="fundo" width="100%" height="100%" rx="4"/><rect width="${Math.min(100, 10 * qualificadas)}%" height="100%" rx="4"/></svg>`)}
-${d.bot ? tile("Bot do Telegram", n(d.bot.chats), `pessoas com lista · ${n(d.bot.avisosHoje)} avisos hoje`) : ""}
+${d.bot ? tile("Bot do Telegram", n(d.bot.comLista), `pessoas com lista · ${n(d.bot.avisosHoje)} avisos hoje`) : ""}
 ${tile("Pedidos de livro", n(novos), `novos em 24 h · hoje ${n(viewsHoje)} views, ${n(cliquesHoje)} cliques`, novos ? "alerta" : "", `<a class="sub" href="${WEBMAIL}" target="_blank" rel="noopener noreferrer">Abrir e-mail ↗</a>`)}
 </div>
 
@@ -298,7 +299,7 @@ ${card("Top livros por cliques (7 dias)", barras(topLivros.map(([id, c]) => ({ r
 ${card("Nichos mais vistos (7 dias)", barras(nichos.map(r => ({ rot: r.path, v: r.views }))) + tabela(["Página", "Views"], nichos.map(r => [r.path, n(r.views)])))}
 ${card("Top livros hoje", barras(topHoje.map(([id, c]) => ({ rot: id, v: c })), "Nenhum clique hoje ainda."))}
 ${d.bot ? card("Bot do Telegram (lista de desejos)",
-  tabela(["", "Total"], [["Pessoas com lista", n(d.bot.chats)], ["Novas em 7 dias", n(d.bot.novos7)], ["Ativas em 7 dias", n(d.bot.ativos7)],
+  tabela(["", "Total"], [["Pessoas com lista", n(d.bot.comLista)], ["Usaram o bot (com ou sem lista)", n(d.bot.chats)], ["Novas em 7 dias", n(d.bot.novos7)], ["Ativas em 7 dias", n(d.bot.ativos7)],
     ["Com avisos pausados", n(d.bot.pausados)], ["Livros nas listas", n(d.bot.livros)], ["Autores nas listas", n(d.bot.autores)],
     ["Avisos hoje", n(d.bot.avisosHoje)], ["Livros em oferta agora", n(d.bot.emOferta)]])
   + `<h3>Livros mais desejados</h3>` + barras(d.bot.top.map(r => ({ rot: r.chave, v: r.n })), "Nenhum livro nas listas ainda."),
