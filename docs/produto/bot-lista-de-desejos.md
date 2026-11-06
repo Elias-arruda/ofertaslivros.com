@@ -250,7 +250,7 @@ Tirar da lista: /lista
   {"version": 1, "gerado_em": "2026-11-06T12:00:00+00:00",
    "livros": [{"id": "torto-arado", "titulo": "Torto Arado", "autor": "Itamar Vieira Junior",
                "busca": "torto arado itamar vieira junior", "autores": ["itamar vieira junior"],
-               "preco_cents": 4290, "valido_ate": "2026-11-06T14:00:00+00:00",
+               "preco_cents": 4290, "desconto": 42, "valido_ate": "2026-11-06T14:00:00+00:00",
                "texto": "Torto Arado, de Itamar ... Link de afiliado: https://ofertaslivros.com.br/r/torto-arado/bot"}]}
   ```
 - **`texto`** só existe com `oferta and not velho`, e nos outros casos é `null`. Sai de `post_text(o, f"{SITE}/r/{o['id']}/bot")`.

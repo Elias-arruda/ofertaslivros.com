@@ -1649,6 +1649,7 @@ def bot_json(offers, now):
                "busca": bot_key(f"{o['title']} {o['author']}"),
                "autores": [k for a in re.split(r",|;|&| e ", o["author"]) if (k := bot_key(a))],
                "preco_cents": o["price_cents"],
+               "desconto": off(o),  # % do "de/por" (0 sem oferta): desempate dos avisos no cron do bot
                # a loja que vence primeiro: o texto pode citar a outra ("Também no ...")
                "valido_ate": min(s["checked_at"] + FRESH[s["store"]] for s in o["stores"]).astimezone(timezone.utc)
                              .isoformat(timespec="seconds"),
@@ -2001,6 +2002,7 @@ def selftest():
     duas, sem = bj["livros"]
     assert duas["texto"] == post_text(load(two)[0], f"{SITE}/r/duas/bot") and duas["texto"].endswith("/r/duas/bot")
     assert sem["texto"] is None and sem["autores"] == ["neil gaiman", "terry pratchett", "acao"]
+    assert duas["desconto"] == discount(load(two)[0]) > 0 and sem["desconto"] == 0
     assert duas["valido_ate"] == (mls_at := min(s["checked_at"] + FRESH[s["store"]] for s in load(two)[0]["stores"])) \
         .astimezone(timezone.utc).isoformat(timespec="seconds") and mls_at < load(two)[0]["checked_at"] + FRESH["amazon"]
     velha = load({**good, "id": "velha", "stores": [amz]}, now=NOW + timedelta(days=1))[0]  # Amazon vencida, ainda oferta
