@@ -47,10 +47,11 @@ export async function accessEmail(token, { fetcher = fetch, now = Date.now() } =
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const n = v => Number(v || 0).toLocaleString("pt-BR");
 
-/** /r/<id>[/loja|/tg|/wa] → { id, canal, loja }. */
+/** /r/<id>[/loja|/tg|/wa|/bot] → { id, canal, loja }. */
 export function clique(path) {
   const [, , id, suf] = path.split("/");
-  return { id, canal: suf === "tg" || suf === "wa" ? suf : "site", loja: suf && suf !== "tg" && suf !== "wa" ? suf : "vencedora" };
+  const canal = ["tg", "wa", "bot"].includes(suf) ? suf : "site";
+  return { id, canal, loja: suf && canal === "site" ? suf : "vencedora" };
 }
 
 function tabela(cols, linhas) {
@@ -213,7 +214,7 @@ export function render(d) {
     .filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1]).slice(0, 10);
 
   const viewsLivro = Object.fromEntries(d.livros7.map(r => [r.id, r.views]));
-  const porLivro = {}, porCanal = { site: 0, tg: 0, wa: 0 }, porLoja = {};
+  const porLivro = {}, porCanal = { site: 0, tg: 0, wa: 0, bot: 0 }, porLoja = {};
   for (const r of d.cliques7) {
     const c = clique(r.path);
     porLivro[c.id] = (porLivro[c.id] || 0) + r.requests;
@@ -282,7 +283,7 @@ ${card("Funil (30 dias)", funil([
   "", `Pedidos só da Amazon (o portal do ML não exporta) e com 1 dia de atraso; parte dos cliques vai para o ML, então a conversão real da Amazon é maior. Creators API: ${qualificadas} de ~10 vendas qualificadas (enviadas − devolvidas) em 30 dias; o número que vale é o do painel da Amazon.`)}
 ${card("De onde vêm e para onde vão os cliques (7 dias)",
   `<h3>Loja de destino</h3>${segmentos([{ rot: "Menor preço (/r/)", v: porLoja.vencedora || 0, cls: "s1" }, { rot: "Amazon (seta)", v: porLoja.amazon || 0, cls: "s2" }, { rot: "Mercado Livre (seta)", v: porLoja.mercadolivre || 0, cls: "s3" }])}`
-  + `<h3>Canal de origem</h3>${segmentos([{ rot: "Site", v: porCanal.site, cls: "s1" }, { rot: "Telegram", v: porCanal.tg, cls: "s2" }, { rot: "WhatsApp", v: porCanal.wa, cls: "s3" }])}`
+  + `<h3>Canal de origem</h3>${segmentos([{ rot: "Site", v: porCanal.site, cls: "s1" }, { rot: "Telegram", v: porCanal.tg, cls: "s2" }, { rot: "WhatsApp", v: porCanal.wa, cls: "s3" }, { rot: "Bot", v: porCanal.bot, cls: "s4" }])}`
   + tabela(["Canal", "Cliques"], Object.entries(porCanal).map(([k, c]) => [k, n(c)])),
   "", "Menor preço = /r/<id>, que leva à loja mais barata do dia; a seta é o link da outra loja na página do livro.")}
 

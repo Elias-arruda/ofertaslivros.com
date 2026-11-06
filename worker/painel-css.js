@@ -8,7 +8,7 @@ export const CSS = `
   --bg: #edf1f5; --card: #ffffff; --line: #1c2b4a1f; --grid: #1c2b4a14;
   --text: #1c2b4a; --muted: #4a5670; --mark: #b3262f; --mark-soft: #b3262f59; --track: #1c2b4a12;
   --hl: #1c2b4a; --hl-text: #edf1f5; --badge: #b3262f; --badge-ink: #fff;
-  --c1: #2f5fb3; --c2: #b3262f; --c3: #b87d00; /* categóricas validadas (dataviz) no fundo claro */
+  --c1: #2f5fb3; --c2: #b3262f; --c3: #b87d00; --c4: #23806a; /* categóricas validadas (dataviz) no fundo claro */
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -16,7 +16,7 @@ export const CSS = `
     --bg: #0f1729; --card: #18233b; --line: #e6ebf31a; --grid: #e6ebf312;
     --text: #e6ebf3; --muted: #a9b4c8; --mark: #e85a66; --mark-soft: #e85a6659; --track: #e6ebf314;
     --hl: #ff8a8f; --hl-text: #0f1729; --badge: #ff8a8f; --badge-ink: #0f1729;
-    --c1: #5b8def; --c2: #e85a66; --c3: #bd8a14; /* idem no fundo escuro; c2×c3 pede rótulo direto */
+    --c1: #5b8def; --c2: #e85a66; --c3: #bd8a14; --c4: #3fb592; /* idem no fundo escuro; c2×c3 pede rótulo direto */
     color-scheme: dark;
   }
 }
@@ -87,9 +87,9 @@ h3:first-of-type { margin-top: 0; }
 .legenda { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12.5px; color: var(--muted); }
 .legenda li { display: flex; align-items: center; gap: 6px; }
 .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
-.sw.s1 { background: var(--c1); } .sw.s2 { background: var(--c2); } .sw.s3 { background: var(--c3); }
+.sw.s1 { background: var(--c1); } .sw.s2 { background: var(--c2); } .sw.s3 { background: var(--c3); } .sw.s4 { background: var(--c4); }
 .sw.ln { height: 3px; background: var(--c2); } .sw.lm { height: 3px; background: var(--muted); }
-.col .s1, .seg .s1 { fill: var(--c1); } .col .s2, .seg .s2 { fill: var(--c2); } .seg .s3 { fill: var(--c3); }
+.col .s1, .seg .s1 { fill: var(--c1); } .col .s2, .seg .s2 { fill: var(--c2); } .seg .s3 { fill: var(--c3); } .seg .s4 { fill: var(--c4); }
 .col.parcial .s1, .col.parcial .s2 { opacity: .4; }
 .col:hover .s1, .col:hover .s2 { opacity: 1; filter: brightness(1.15); }
 .plot polyline { fill: none; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
