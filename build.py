@@ -1332,7 +1332,7 @@ def header(offers, ch):
            f'<button class="pill pill--ico js-tema" type="button" hidden aria-pressed="false">'
            f'{icon("sol", "i i-sol")}{icon("lua", "i i-lua")}<span class="sr">Tema escuro</span></button>']
     urls = chan_urls(ch)  # canal sem env: a mesma pílula, "em breve"
-    nav.append(cta(urls["Telegram"], f'{icon("tg")}<span class="pill-t">Canal no Telegram</span>', "pill pill--tg",
+    nav.append(cta(urls["Telegram"], f'{icon("tg")}<span class="pill-t">Telegram</span>', "pill pill--tg",
                    '<span class="sr"> (abre em nova aba)</span>'))
     nav.append(cta(urls["WhatsApp"], f'{icon("wa")}<span class="pill-t">Canal no WhatsApp</span>', "pill pill--wa",
                    '<span class="sr"> (abre em nova aba)</span>'))
