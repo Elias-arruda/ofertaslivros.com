@@ -53,10 +53,10 @@ Peça ao Claude para escrever `API_KEY = "abcdefghijklmnop1234"` num arquivo .py
   npx wrangler@4.151.1 secret put TELEGRAM_BOT_TOKEN
   ```
 - O `TELEGRAM_WEBHOOK_SECRET` só existe no Worker e no `setWebhook`. Para trocar, rode de novo o lançamento (abaixo), que gera um novo.
-- Lançamento (depois do deploy do Worker com o bot). O token é lido sem eco e o segredo nunca aparece na tela:
+- Lançamento (depois do deploy do Worker com o bot). O token é lido sem eco, e nem ele nem o segredo aparecem na tela ou no `ps` (vão por descritor, fora do argv):
   ```
   read -rs TG && S=$(openssl rand -hex 32) && printf %s "$S" | npx wrangler@4.151.1 secret put TELEGRAM_WEBHOOK_SECRET \
     && printf %s "$TG" | npx wrangler@4.151.1 secret put TELEGRAM_BOT_TOKEN \
-    && curl -sS "https://api.telegram.org/bot$TG/setWebhook" -H 'Content-Type: application/json' \
-       -d "{\"url\":\"https://ofertaslivros.com.br/telegram\",\"secret_token\":\"$S\",\"allowed_updates\":[\"message\",\"callback_query\",\"my_chat_member\"],\"drop_pending_updates\":true}"; unset TG S
+    && curl -sS -K <(printf 'url = "https://api.telegram.org/bot%s/setWebhook"\n' "$TG") -H 'Content-Type: application/json' \
+       --data @<(printf '{"url":"https://ofertaslivros.com.br/telegram","secret_token":"%s","allowed_updates":["message","callback_query","my_chat_member"],"drop_pending_updates":true}' "$S"); unset TG S
   ```

@@ -32,6 +32,7 @@ function setup(livros) {
   const calls = [];
   const env = {
     TELEGRAM_WEBHOOK_SECRET: SEGREDO, BOT: fakeD1(), ANALYTICS: fakeD1(),
+    BOT_LIMITE: { limit: async () => ({ success: true }) }, BOT_PEDIDOS: { limit: async () => ({ success: true }) },
     ASSETS: { fetch: async () => new Response(JSON.stringify({ version: 1, livros: env.livros })) },
     livros,
   };
@@ -69,6 +70,12 @@ test("webhook: segredo, tamanho, tipo de chat e rate limit (1-4)", async () => {
     headers: { "X-Telegram-Bot-Api-Secret-Token": SEGREDO, "Content-Length": String(big.length) } }), t.env, t.api);
   assert.equal(r.status, 413);
   assert.equal((await telegram(new Request("https://x/telegram"), t.env, t.api)).status, 405);
+  assert.equal((await telegram(new Request("https://x/telegram", { method: "POST", body: "{}",
+    headers: { "X-Telegram-Bot-Api-Secret-Token": SEGREDO } }), t.env, t.api)).status, 411);   // sem Content-Length
+  const semLimite = setup([TORTO]);
+  delete semLimite.env.BOT_LIMITE;
+  await semLimite.msg("/ajuda");
+  assert.equal(semLimite.enviados().length, 0);                                               // binding ausente: fecha
   for (const type of ["group", "supergroup", "channel"]) assert.equal((await t.msg("/start torto-arado", { type })).status, 200);
   assert.equal(t.calls.length, antes);
   assert.equal(t.q("SELECT * FROM chats").length, 0);
@@ -104,7 +111,7 @@ test("callbacks presos ao chat e validados (7)", async () => {
   const [{ id }] = t.q("SELECT id FROM desejos");
   await t.cb(`rm:${id}`, { chat: 111 });
   assert.equal(t.q("SELECT * FROM desejos").length, 1);
-  for (const d of ["add:nao-existe", "add:../x", "add:" + "a".repeat(70), "au:torto-arado:9", "lixo"]) await t.cb(d);
+  for (const d of ["add:nao-existe", "add:../x", "add:" + "a".repeat(70), "au9:torto-arado", "au:torto-arado:0", "lixo"]) await t.cb(d);
   assert.equal(t.q("SELECT * FROM desejos").length, 1);
 });
 
@@ -139,6 +146,8 @@ test("busca: único, autor, muitos, nenhum, título — autor e acento (11-12)",
   await t.msg("itamar vieira junior");
   assert.equal(t.ultimo(), "Quer aviso de qual?");
   assert.equal(t.botoes()[0].text, "Todos de Itamar Vieira Junior (2 no catálogo)");
+  assert.equal(t.botoes()[0].callback_data, "au0:torto-arado");
+  assert.ok(Buffer.byteLength(`au9:${"a".repeat(60)}`) <= 64);
   assert.equal(t.enviados().at(-1).body.reply_parameters.message_id, 10);
   await t.msg("harry potter");
   assert.match(t.ultimo(), /^Achei 7\./);
@@ -152,19 +161,25 @@ test("busca: único, autor, muitos, nenhum, título — autor e acento (11-12)",
   assert.equal(chave("Ação"), "acao");
   assert.equal(chave("Mangá"), "manga");
   assert.deepEqual(buscar([livro("acao", "Ação e Mangá", "Fulano")], "acao manga").livros.length, 1);
+  assert.equal(buscar(L, "@#$").livros.length, 0);
+  assert.equal(buscar(L, "torto — @@").livros.length, 0);
 });
 
 test("várias linhas, limite de linhas e lista cheia (13-14)", async () => {
   const t = setup([TORTO, SALVAR, DOM]);
   await t.msg("dom casmurro\nitamar\nxyzxyz");
   assert.equal(t.ultimo(), "Adicionei: Dom Casmurro.\nAchei mais de um para: itamar. Mande sozinho para eu mostrar as opções.\n"
-    + "Não achei: xyzxyz. Mande sozinho para pedir à curadoria.\nSua lista: /lista");
+    + "Não achei: xyzxyz. Mande sozinho para pedir à curadoria.\nSua lista: /lista\n\nGuardo só o número desta conversa e a sua lista. "
+    + "Para apagar tudo: /parar. Privacidade: https://ofertaslivros.com.br/privacidade/");    // chat novo: leva a nota
   assert.equal(t.q("SELECT * FROM desejos").length, 1);
-  await t.msg(Array(11).fill("dom casmurro").join("\n"));
+  await t.msg("dom casmurro\ntorto arado");
+  assert.equal(t.ultimo(), "Adicionei: Torto Arado.\nSua lista: /lista");  // repetido não entra em "Adicionei"
+  await t.msg(Array(11).fill("salvar o fogo").join("\n"));
   assert.equal(t.ultimo(), "Mande até 10 nomes por mensagem, um por linha.");
+  assert.equal(t.q("SELECT COUNT(*) n FROM desejos WHERE chave = 'salvar-o-fogo'")[0].n, 0);
   const ts = AGORA.toISOString();
-  for (let i = 0; i < 29; i++) t.env.BOT.db.prepare("INSERT INTO desejos (chat_id, tipo, chave, criado_em) VALUES (?, 'livro', ?, ?)").run(CHAT, `x-${i}`, ts);
-  await t.msg("/start torto-arado");
+  for (let i = 0; i < 28; i++) t.env.BOT.db.prepare("INSERT INTO desejos (chat_id, tipo, chave, criado_em) VALUES (?, 'livro', ?, ?)").run(CHAT, `x-${i}`, ts);
+  await t.msg("/start salvar-o-fogo");
   assert.match(t.ultimo(), /^Sua lista já tem 30 itens/);
   assert.equal(t.q("SELECT COUNT(*) n FROM desejos")[0].n, 30);
 });
@@ -187,7 +202,7 @@ test("pedido de livro: grava sem chat e com limite por minuto (15)", async () =>
 test("/lista, Tirar, pausar/voltar, parar e bloqueio (16-19)", async () => {
   const t = setup([oferta(TORTO), DOM, SALVAR]);
   await t.msg("/start dom-casmurro");
-  await t.cb("au:salvar-o-fogo:0");
+  await t.cb("au0:salvar-o-fogo");
   await t.msg("/start torto-arado");
   await t.msg("/lista");
   assert.equal(t.ultimo(), "Sua lista (3 de 30):\n• Dom Casmurro, de Machado de Assis\n• Autor: Itamar Vieira Junior (2 livros no catálogo)\n"
@@ -254,7 +269,7 @@ test("cron: pausa, limites, livro + autor = 1 aviso, 403 e 429 (17, 25-27)", asy
   const ls = Array.from({ length: 5 }, (_, i) => livro(`l-${i}`, `Livro ${i}`, "Autora X"));
   const t = setup(ls);
   for (const l of ls) await t.msg(`/start ${l.id}`);
-  await t.cb("au:l-0:0");
+  await t.cb("au0:l-0");
   await t.msg("/pausar");
   t.env.livros = ls.map(l => oferta(l));
   const base = t.enviados().length;
@@ -284,6 +299,29 @@ test("cron: pausa, limites, livro + autor = 1 aviso, 403 e 429 (17, 25-27)", asy
     assert.deepEqual(v.q("SELECT chat_id FROM chats ORDER BY chat_id").map(r => r.chat_id), chatsFicam);
     assert.equal(v.q("SELECT * FROM avisos").length, avisosGravados);
   }
+});
+
+test("cron: aviso do /start de livro que sai antes do cron não fica preso (9)", async () => {
+  const t = setup([oferta(TORTO, 4000)]);
+  await t.msg("/start torto-arado");                           // aviso na hora
+  t.env.livros = [TORTO];                                      // saiu antes do cron
+  await avisar(t.env, noDia(12), t.api);
+  assert.equal(t.q("SELECT * FROM avisos").length, 0);
+  t.env.livros = [oferta(TORTO, 4000)];                        // volta com o mesmo preço: avisa
+  const n = t.enviados().length;
+  await avisar(t.env, noDia(19), t.api);
+  assert.equal(t.enviados().length, n + 1);
+});
+
+test("cron: o limite de 40 conta tentativas, não só sucessos", async () => {
+  const u = setup([livro("a", "A", "B")]);
+  for (let i = 0; i < 60; i++) await u.msg("/start a", { chat: 1000 + i });
+  u.env.livros = [oferta(livro("a", "A", "B"))];
+  u.setResp(() => ({ ok: false, error_code: 500 }));
+  const b = u.enviados().length;
+  const c = await avisar(u.env, noDia(12), u.api);
+  assert.equal(u.enviados().length - b, 40);
+  assert.equal(c.erros, 40);
 });
 
 test("cron: retenção de 12 meses (29)", async () => {

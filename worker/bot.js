@@ -73,7 +73,9 @@ export async function telegram(request, env, api = telegramApi(env), agora = new
   if (request.method !== "POST") return new Response(null, { status: 405 });
   if (!(await segredoOk(request.headers.get("X-Telegram-Bot-Api-Secret-Token"), env.TELEGRAM_WEBHOOK_SECRET)))
     return new Response(null, { status: 401 });
-  if (Number(request.headers.get("Content-Length")) > MAX_CORPO) return new Response(null, { status: 413 });
+  const tam = Number(request.headers.get("Content-Length"));
+  if (!tam) return new Response(null, { status: 411 }); // o Telegram sempre manda; sem ele, nem lê o corpo
+  if (tam > MAX_CORPO) return new Response(null, { status: 413 });
   const corpo = await request.text();
   if (corpo.length > MAX_CORPO) return new Response(null, { status: 413 });
   try {
@@ -93,7 +95,7 @@ async function tratar(u, env, api, agora) {
     if (u.my_chat_member.new_chat_member?.status === "kicked") await apagarChat(db, chat.id);
     return;
   }
-  if (env.BOT_LIMITE && !(await env.BOT_LIMITE.limit({ key: String(chat.id) })).success) return;
+  if (!env.BOT_LIMITE || !(await env.BOT_LIMITE.limit({ key: String(chat.id) })).success) return; // sem binding: fecha
   await db.prepare("UPDATE chats SET visto_em = ?2 WHERE chat_id = ?1").bind(chat.id, agora.toISOString()).run();
   const c = { db, env, api, agora, chat: chat.id, cat: null };
   c.livros = async () => (c.cat ??= await catalogo(env));
@@ -197,6 +199,7 @@ async function startId(c, id) {
 
 // ---------- busca e cadastro por texto ----------
 
+// ponytail: título com " - " no nome ("Harry Potter - A Pedra Filosofal") vira título + autor; mandar sem o traço resolve
 const SEP = /\s+[—–-]\s+/;
 
 /** Linha -> { livros (ordenados), autor: { l, k, n } | null }. */
@@ -204,14 +207,15 @@ export function buscar(livros, linha) {
   const [t, a] = linha.split(SEP, 2);
   const pt = palavras(t), pa = a ? palavras(a) : [];
   const tem = (campo, ws) => { const cs = palavras(campo); return ws.every(w => cs.some(x => x.startsWith(w))); };
-  const achados = livros.filter(l => (a ? tem(l.titulo, pt) && tem(l.autor, pa) : tem(`${l.titulo} ${l.autor}`, pt)));
+  const achados = !pt.length || (a && !pa.length) ? [] // "@#$" ou emoji: sem palavra, sem resultado
+    : livros.filter(l => (a ? tem(l.titulo, pt) && tem(l.autor, pa) : tem(`${l.titulo} ${l.autor}`, pt)));
   const q = chave(t);
   const rank = l => { const ct = chave(l.titulo); return ct === q ? 0 : ct.startsWith(q) ? 1 : 2; };
   achados.sort((x, y) => rank(x) - rank(y) || x.titulo.localeCompare(y.titulo, "pt-BR"));
   let autor = null;
   if (!a) for (const l of livros) {
     const k = l.autores.indexOf(q);
-    if (k >= 0) { autor = { l, k, n: livros.filter(x => x.autores.includes(q)).length }; break; }
+    if (k >= 0 && k < 10) { autor = { l, k, n: livros.filter(x => x.autores.includes(q)).length }; break; } // k de 1 dígito no callback
   }
   return { livros: achados, autor };
 }
@@ -223,17 +227,19 @@ async function cadastro(c, m) {
   const { livros } = await c.livros();
   if (linhas.length === 1) return umaLinha(c, m, linhas[0], buscar(livros, linhas[0]));
   const add = [], varios = [], nada = [];
-  let cheia = false;
+  let cheia = false, novo = false;
   for (const s of linhas) {
     const r = s.length < 3 ? { livros: [], autor: null } : buscar(livros, s);
     if (r.livros.length === 1 && !r.autor) {
       const x = await adicionar(c, "livro", r.livros[0].id);
-      if (x === "cheia") cheia = true; else add.push(r.livros[0].titulo);
+      if (x === "cheia") cheia = true;
+      else if (x !== "repetido") { add.push(r.livros[0].titulo); novo ||= x.novo; }
     } else (r.livros.length || r.autor ? varios : nada).push(s);
   }
   return enviar(c, [add.length && `Adicionei: ${add.join("; ")}.`, cheia && CHEIA,
     varios.length && `Achei mais de um para: ${varios.join("; ")}. Mande sozinho para eu mostrar as opções.`,
-    nada.length && `Não achei: ${nada.join("; ")}. Mande sozinho para pedir à curadoria.`, "Sua lista: /lista"].filter(Boolean).join("\n"));
+    nada.length && `Não achei: ${nada.join("; ")}. Mande sozinho para pedir à curadoria.`, "Sua lista: /lista"].filter(Boolean).join("\n")
+    + (novo ? NOTA : ""));
 }
 
 const PERGUNTA_PEDIDO = s => `Não achei “${s}” no nosso catálogo. Quer que eu peça para a curadoria incluir?`;
@@ -244,7 +250,7 @@ function umaLinha(c, m, s, r) {
   if (s.length < 3) return enviar(c, "Mande pelo menos 3 letras do título ou do autor.");
   if (r.autor) {
     const { l, k, n } = r.autor;
-    return enviar(c, "Quer aviso de qual?", resposta(m, teclado([[[`Todos de ${autorNome(l, k)} (${n} no catálogo)`, `au:${l.id}:${k}`]],
+    return enviar(c, "Quer aviso de qual?", resposta(m, teclado([[[`Todos de ${autorNome(l, k)} (${n} no catálogo)`, `au${k}:${l.id}`]],
       ...r.livros.slice(0, 4).map(x => [opcao(x)])])));
   }
   if (r.livros.length === 1) return addLivro(c, r.livros[0], true);
@@ -288,19 +294,27 @@ async function lista(c) {
 // ---------- callbacks (callback_data é dado do cliente: validado e preso ao chat de quem tocou) ----------
 
 async function callback(c, q) {
+  const r = { aviso: "" };
+  try {
+    await acao(c, q, r);
+  } finally { // botão nunca fica girando, nem se a ação falhar
+    await c.api("answerCallbackQuery", { callback_query_id: q.id, ...(r.aviso ? { text: r.aviso } : {}) });
+  }
+}
+
+async function acao(c, q, r_) {
   const d = typeof q.data === "string" ? q.data : "";
   const msg = q.message;
-  let aviso_ = "";
   let m;
   if ((m = d.match(/^add:([a-z0-9-]{1,60})$/))) {
     const l = (await c.livros()).porId.get(m[1]);
     if (l) await addLivro(c, l);
-  } else if ((m = d.match(/^au:([a-z0-9-]{1,60}):(\d{1,2})$/))) {
-    const l = (await c.livros()).porId.get(m[1]);
-    if (l && Number(m[2]) < l.autores.length) await addAutor(c, l, Number(m[2]));
+  } else if ((m = d.match(/^au(\d):([a-z0-9-]{1,60})$/))) {
+    const l = (await c.livros()).porId.get(m[2]);
+    if (l && Number(m[1]) < l.autores.length) await addAutor(c, l, Number(m[1]));
   } else if ((m = d.match(/^rm:(\d{1,15})$/))) {
     const r = await c.db.prepare("DELETE FROM desejos WHERE id = ?1 AND chat_id = ?2").bind(Number(m[1]), c.chat).run();
-    aviso_ = r.meta.changes ? "Tirei da lista." : "";
+    r_.aviso = r.meta.changes ? "Tirei da lista." : "";
     if (msg?.text?.startsWith("Sua lista")) {
       const { text, extra } = await textoLista(c);
       const e = await c.api("editMessageText", { chat_id: c.chat, message_id: msg.message_id, text,
@@ -316,21 +330,20 @@ async function callback(c, q) {
   } else if (d === "pd") {
     await pedir(c, msg?.reply_to_message?.text);
   } else if (d === "no") {
-    aviso_ = "Tudo bem.";
+    r_.aviso = "Tudo bem.";
   } else if (d === "stop:sim") {
     await apagarChat(c.db, c.chat);
     await enviar(c, "Pronto, apaguei tudo. Se quiser voltar, é só mandar /start.");
   } else if (d === "stop:nao") {
     await enviar(c, "Nada foi apagado.");
   }
-  await c.api("answerCallbackQuery", { callback_query_id: q.id, ...(aviso_ ? { text: aviso_ } : {}) });
 }
 
 // Pedido de livro pelo bot: vai para a tabela pedidos (D1 ANALYTICS, 30 dias) sem nenhum dado do chat e sem e-mail.
 async function pedir(c, texto) {
   const s = typeof texto === "string" ? texto.replace(/[\u0000-\u001f\u007f]+/g, " ").trim() : "";
   if (!s || s.length > 150) return;
-  if (c.env.BOT_PEDIDOS && !(await c.env.BOT_PEDIDOS.limit({ key: String(c.chat) })).success)
+  if (!c.env.BOT_PEDIDOS || !(await c.env.BOT_PEDIDOS.limit({ key: String(c.chat) })).success)
     return enviar(c, "Calma, acabei de anotar um pedido seu. Tente de novo em um minuto.");
   const [titulo, autor = ""] = s.split(SEP, 2);
   const db = c.env.ANALYTICS;
@@ -355,6 +368,8 @@ export async function avisar(env, agora = new Date(), api = telegramApi(env)) {
     db.prepare("DELETE FROM em_oferta WHERE visto_em < ?1").bind(saiu),
     db.prepare(`INSERT INTO em_oferta (book_id, visto_em) SELECT value, ?2 FROM json_each(?1) WHERE true
       ON CONFLICT (book_id) DO UPDATE SET visto_em = excluded.visto_em`).bind(JSON.stringify(O.map(l => l.id)), ts),
+    // aviso do /start de livro que saiu antes do cron (ou saiu do catálogo): nunca entrou em em_oferta
+    db.prepare("DELETE FROM avisos WHERE book_id NOT IN (SELECT book_id FROM em_oferta)"),
     ...["desejos", "avisos", "chats"].map(t => db.prepare(
       `DELETE FROM ${t} WHERE chat_id IN (SELECT chat_id FROM chats WHERE visto_em < ?1)`).bind(velho)),
   ]);
@@ -394,6 +409,7 @@ export async function avisar(env, agora = new Date(), api = telegramApi(env)) {
         : cab.autor ? `Entrou em oferta, de ${cab.autor} (autor na sua lista):` : "Entrou em oferta (está na sua lista):" });
     }
     const selo = x => (x.l.texto.startsWith("Menor preço em 90 dias") ? 0 : 1);
+    // selo de 90 dias primeiro, depois o mais barato (o bot.json não traz desconto; a spec pedia "maior desconto")
     cands.sort((x, y) => selo(x) - selo(y) || x.l.preco_cents - y.l.preco_cents);
     const vagas = Math.min(POR_CHAT_EXEC, POR_CHAT_DIA - (noDia.get(chat) || 0));
     if (vagas > 0) fila.push({ chat, n: noDia.get(chat) || 0, itens: cands.slice(0, vagas) });
@@ -401,7 +417,7 @@ export async function avisar(env, agora = new Date(), api = telegramApi(env)) {
   fila.sort((x, y) => x.n - y.n);
   const c = { db, api, agora };
   envio: for (const f of fila) for (const { l, cabecalho } of f.itens) {
-    if (cont.enviados >= POR_EXEC) break envio;
+    if (cont.enviados + cont.bloqueados + cont.erros >= POR_EXEC) break envio; // toda tentativa é subrequest
     const r = await aviso({ ...c, chat: f.chat }, l, cabecalho);
     if (r?.ok) cont.enviados++;
     else if (r?.error_code === 403) { await apagarChat(db, f.chat); cont.bloqueados++; continue envio; }
