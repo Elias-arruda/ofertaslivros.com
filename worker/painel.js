@@ -103,7 +103,7 @@ const soma = (rows, f) => rows.filter(f).reduce((a, r) => a + r.requests, 0);
 export async function dados(env, now = new Date()) {
   const db = env.ANALYTICS;
   const [porDia, livros7, cliques7, nichos7, ultimo] = await Promise.all([
-    db.prepare(`SELECT day, SUM(CASE WHEN bot = 0 AND path NOT LIKE '/r/%' THEN requests END) AS views,
+    db.prepare(`SELECT day, SUM(CASE WHEN bot = 0 AND status = 200 AND path NOT LIKE '/r/%' THEN requests END) AS views,
       SUM(CASE WHEN bot = 0 AND path LIKE '/r/%' THEN requests END) AS cliques,
       SUM(CASE WHEN bot = 1 THEN requests END) AS bots
       FROM daily_rollup WHERE day >= date('now', '-3 hours', '-30 days') GROUP BY day ORDER BY day DESC`).all(),
