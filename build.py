@@ -1030,8 +1030,9 @@ def banner_bot(bot, at):
     return f"""<li class="blk blk--bot" data-at="{at}">
   <span class="mascote" aria-hidden="true">{icon("carimbo", "i i-carimbo")}</span>
   <p class="kicker">{icon("sino")}Alerta grátis no Telegram</p>
-  <h3 class="blk-h">Escolha o livro. A gente avisa quando baixar.</h3>
-  <p>Toque no sino de qualquer oferta e o bot guarda o preço de hoje.</p>
+  <h3 class="blk-h">Escolha o livro. A gente avisa quando entrar em oferta.</h3>
+  <p>{"Toque no sino de qualquer livro e o bot avisa quando ele entrar em oferta. Para apagar tudo, mande /parar ao bot." if bot
+      else "Em breve: toque no sino de qualquer livro e o bot vai avisar quando ele entrar em oferta."}</p>
   <p>{cta(bot and f"https://t.me/{bot}", f'Ativar alertas{icon("seta")}', "go", '<span class="sr"> (abre o Telegram)</span>')}</p>{aneis()}
 </li>"""
 
@@ -1063,7 +1064,7 @@ def feed(offers, bot=None, ch=(), full=False, pills="", items=None):
     if not n:
         return ('<section class="sec" aria-labelledby="h-ativas">\n<div class="sec-head"><h2 id="h-ativas">Ofertas ativas</h2></div>\n'
                 '<p class="vazio vazio--fixo">Nenhuma oferta conferida agora. Veja a <a href="/curadoria/">curadoria</a> '
-                'ou ative um alerta no sino de um livro.</p>\n</section>')
+                'ou toque no sino de um livro para ser avisado.</p>\n</section>')
     cards = [card(o, bot) for o in items]
     for at, html_ in ((8, strip_canais(ch, 8)), (4, banner_bot(bot, 4))):
         cards.insert(min(at, len(cards)), html_)
@@ -1079,7 +1080,7 @@ def feed(offers, bot=None, ch=(), full=False, pills="", items=None):
     return section("h-ativas", "Ofertas ativas", body, n, "Conferidas na loja. A que vence sai da lista.")
 
 
-CUR_NOTE = "Livros escolhidos por nós, ainda sem oferta. Ative o alerta e avisamos quando o preço baixar."
+CUR_NOTE = "Livros escolhidos por nós, ainda sem oferta. Toque no sino e avisamos quando entrar em oferta."
 
 
 def da_curadoria(offers, bot=None, genre=None, skip=()):
@@ -1102,16 +1103,16 @@ def ranked(offers):
 def bot_block(bot):
     """Capítulo marinho do alerta. Sem o bot, o botão sai "em breve". O pedido de livro é o form do fab."""
     url = bot and f"https://t.me/{bot}"
-    steps = ("Escolha o livro e toque no sino", "No Telegram, toque em Iniciar", "Quando o preço cair, avisamos")
+    steps = ("Escolha o livro e toque no sino", "No Telegram, toque em Iniciar", "Quando entrar em oferta, avisamos")
     lis = "".join(f'<li><span class="n">{k}</span>{t}</li>' for k, t in enumerate(steps, 1))
     return f"""<section class="bot" aria-labelledby="h-bot">
   <div class="bot-art" aria-hidden="true"><span class="radar radar--big"></span><span class="mascote mascote--big">{icon("carimbo", "i i-carimbo")}</span></div>
   <div class="bot-text">
     <p class="kicker">{icon("sino")}Seu alerta no Telegram</p>
-    <h2 id="h-bot">Avisamos quando o livro baixar. <em>Você só escolhe qual.</em></h2>
+    <h2 id="h-bot">Avisamos quando o livro entrar em oferta. <em>Você só escolhe qual.</em></h2>
     <ol class="passos">{lis}</ol>
     <p class="bot-acts">{cta(url, f'Ativar no Telegram{icon("seta")}', "go", '<span class="sr"> (abre o Telegram)</span>')}</p>
-    <p class="bot-note">{"O bot guarda" if bot else "Quando estiver no ar, o bot vai guardar"} só o necessário para avisar você e {"apaga" if bot else "apagar"} o alerta quando ele disparar. Veja a <a href="/privacidade/">privacidade</a>.</p>
+    <p class="bot-note">{"O bot avisa uma vez por oferta, das 8h às 22h, e guarda o número da conversa, a sua lista e quando avisou. Para apagar tudo, mande /parar ao bot." if bot else "Quando estiver no ar, o bot vai guardar o número da conversa, a sua lista e quando avisou, e para apagar tudo bastará mandar /parar ao bot."} Veja a <a href="/privacidade/">privacidade</a>.</p>
   </div>{aneis("aneis--big")}
 </section>"""
 
@@ -1141,14 +1142,16 @@ def faq(bot, ch):
            "Era no horário indicado em cada oferta. Preço muda rápido, então o preço final é sempre o da loja, "
            "na hora da compra.")]
     if bot:
-        qa.append(("Como funciona o alerta de preço?",
-                   f'Toque no sino de um livro (ou em “Me avise se baixar”) e o bot <a href="https://t.me/{e(bot)}" '
-                   'rel="noopener noreferrer" target="_blank">@' + e(bot) + '</a> guarda o preço de hoje. Quando ele cair, '
-                   'avisamos por lá. Para parar, mande /parar ao bot.'))
+        qa.append(("Como funciona o aviso de oferta?",
+                   f'Toque no sino de um livro (ou em “Me avise se baixar”), ou mande o título ou o autor ao bot '
+                   f'<a href="https://t.me/{e(bot)}" rel="noopener noreferrer" target="_blank">@' + e(bot) + '</a>. '
+                   'Ele avisa por lá quando o livro entrar em oferta, com o mesmo critério do site e do canal: uma vez '
+                   'por oferta, das 8h às 22h, e de novo se o preço cair mais. Em /lista você vê e tira livros; '
+                   'para apagar tudo, /parar.'))
     else:  # o bot ainda não responde: nada de prometer que o alerta já funciona
-        qa.append(("Como vai funcionar o alerta de preço?",
+        qa.append(("Como vai funcionar o aviso de oferta?",
                    "Em breve você poderá tocar no sino de um livro (ou em “Me avise se baixar”) e o nosso bot no "
-                   "Telegram vai guardar o preço de hoje e avisar quando ele cair. Por enquanto o alerta ainda não está no ar."))
+                   "Telegram vai avisar quando ele entrar em oferta. Por enquanto o bot ainda não está no ar."))
     if ch:
         qa.append(("Onde mais recebo as ofertas?",
                    "Nos canais " + " e ".join(n for n, _ in ch) + ', que repetem as ofertas do site. '
@@ -1493,7 +1496,7 @@ def book_page(o, offers, bot=None, ch=()):
     old = f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>' if off_ else ""
     pill = f'<span class="off-pill{" off-pill--forte" if forte(o) else ""}">−{off_}%</span>' if off_ else ""
     why = ("o último preço que vimos tem mais de 7 dias. Confira o preço atual na loja." if o["velho"]
-           else "o preço ainda não baixou o bastante. Ative o alerta e avisamos quando cair.")
+           else "o preço ainda não baixou o bastante. Toque em “Me avise se baixar” e avisamos quando entrar em oferta.")
     nov = "" if o["oferta"] else f'\n    <p class="nov-nota">Sem oferta agora: {why}</p>'
     b = badge(o)
     chips = f'<span class="chip chip--g">{icon("g-" + g)}{e(GENRES[g])}</span>' + (
@@ -1562,7 +1565,7 @@ def bf_page(offers, bot=None, ch=()):
 
 CUR_INTRO = ("Uma seleção de livros escolhidos por regras a partir de sinais públicos e por nós. Alguns estão "
              "em oferta, outros não. O preço foi verificado no horário indicado, e o preço final é o da loja. "
-             "Sem oferta agora? Crie um alerta e avisamos quando o preço baixar.")
+             "Sem oferta agora? Toque no sino e avisamos quando o livro entrar em oferta.")
 
 
 def curadoria_page(offers, bot=None, ch=()):
@@ -1591,24 +1594,28 @@ def privacy(offers, bot=None, ch=()):
 <h2>No site</h2>
 <p>O site não tem cadastro, cookies nem ferramentas de análise. Ele tem um script próprio, servido pelo próprio site, para a busca, os filtros e o tema; a única coisa que ele guarda é a sua escolha de tema claro ou escuro, no seu navegador (localStorage), e nada disso sai do aparelho. O site é hospedado na Cloudflare; o endereço ofertaslivros.com passa pelo Netlify só para redirecionar a este site. Os dois recebem os dados técnicos de cada acesso (como o endereço IP) para entregar as páginas.</p>
 <h2>No pedido de livro</h2>
-<p>O formulário “Pedir um livro” pede só o nome e o autor do livro. Ele é processado na Cloudflare, que usa o endereço IP só para barrar envios repetidos, sem guardá-lo, e envia o pedido ao nosso e-mail. O site não guarda o pedido. Apagamos os pedidos do e-mail em até 30 dias.</p>
+<p>O formulário “Pedir um livro” pede só o nome e o autor do livro. Ele é processado na Cloudflare, que usa o endereço IP só para barrar envios repetidos, sem guardá-lo, e envia o pedido ao nosso e-mail. O pedido (só o nome e o autor do livro, sem nenhum dado seu) fica guardado por 30 dias num banco de dados Cloudflare D1 e depois é apagado. Apagamos os pedidos do e-mail em até 30 dias.</p>
 <p>Ao clicar em uma oferta, você vai para a Amazon ou para o Mercado Livre. A partir daí valem as políticas de privacidade de cada loja.</p>
-<h2>No alerta de preço do Telegram</h2>
-<p>{"Quando você pede um alerta para " + bot_name + ", guardamos" if bot else "O alerta ainda não está no ar. Em breve você poderá pedir um alerta para " + bot_name + ". Quando isso funcionar, vamos guardar"} só o necessário para avisar você:</p>
+<h2>Na lista de desejos do Telegram</h2>
+<p>{"Quando você põe um livro ou um autor na sua lista com " + bot_name + ", ele avisa por lá quando o livro entrar em oferta. Para isso, guardamos" if bot else "A lista de desejos ainda não está no ar. Em breve você poderá pôr livros e autores numa lista com " + bot_name + ", que vai avisar quando eles entrarem em oferta. Quando isso funcionar, vamos guardar"} só o necessário para avisar você:</p>
 <ul>
 <li>o identificador da conversa com o bot no Telegram (chat_id);</li>
-<li>o livro e o preço-alvo do alerta;</li>
-<li>a data de criação e a data de expiração.</li>
+<li>a sua lista: os livros e os autores que você escolheu;</li>
+<li>se os avisos estão pausados;</li>
+<li>a data em que a conversa começou e a do último uso;</li>
+<li>para cada livro já avisado, o preço e a data do último aviso, para não repetir o mesmo aviso.</li>
 </ul>
-<p>Não guardamos seu nome, seu nome de usuário, seu telefone nem o texto das suas mensagens.</p>
+<p>Não guardamos seu nome, seu nome de usuário, seu telefone, seu idioma nem o texto das suas mensagens: o que você manda ao bot serve só para achar o livro na hora e é descartado.</p>
+<p>Se você pedir um livro pelo bot, o pedido vai para a curadoria sem nenhum dado seu.</p>
 <h2>Onde fica</h2>
-<p>Num banco de dados Cloudflare D1, fora do código do site e sem acesso público. A Cloudflare opera esse banco para nós.</p>
+<p>Num banco de dados Cloudflare D1, fora do código do site e sem acesso público. A Cloudflare opera esse banco para nós. As mensagens passam pelo Telegram, que tem a política de privacidade dele.</p>
+{"" if bot else "<p>Quando a lista de desejos estiver no ar, valerá o seguinte:</p>"}
 <h2>Por quanto tempo</h2>
-<p>Até o alerta disparar (ele é apagado quando a mensagem é enviada) ou por no máximo 90 dias, o que vier primeiro. Não guardamos histórico de alertas enviados.</p>
+<p>A lista fica guardada enquanto você usa o bot. Uma conversa sem nenhuma mensagem ou toque por 12 meses é apagada por inteiro, sem aviso. O preço do último aviso de um livro é apagado quando ele sai da oferta.</p>
 <h2>Como apagar</h2>
 <ul>
-<li><code>/remover</code> seguido do livro apaga um alerta;</li>
-<li><code>/parar</code> apaga todos os seus dados;</li>
+<li>em <code>/lista</code>, toque em “Tirar” para tirar um item;</li>
+<li><code>/parar</code> apaga a sua lista e todos os seus dados;</li>
 <li>bloquear o bot também apaga todos os seus dados.</li>
 </ul>
 </article>"""
@@ -1620,8 +1627,9 @@ def canais(offers, ch, bot=None):
     desc = {"Telegram": "as ofertas chegam assim que são publicadas, até 8 por dia, das 8h às 22h.",
             "WhatsApp": "um resumo por dia com até 5 ofertas."}
     items = "\n".join(f"<li>{ext(url, f'Canal no {name}')}: {desc[name]}</li>" for name, url in ch)
-    alert = (f'<p>Quer saber de um livro só? Peça um alerta de preço ao {ext(f"https://t.me/{bot}", "@" + e(bot))} '
-             'ou toque em “Me avise se baixar” na oferta.</p>' if bot else "")
+    alert = (f'<p>Quer saber de um livro só? Mande o título ao {ext(f"https://t.me/{bot}", "@" + e(bot))} '
+             'ou toque em “Me avise se baixar” na oferta: o bot avisa quando ele entrar em oferta. Para apagar tudo, mande /parar ao bot.</p>'
+             if bot else "")
     body = f"""<h1 class="page-h1">Canais</h1>
 <article class="doc">
 <p>Os canais repetem as ofertas do site, com preço conferido e o horário da verificação. São só de leitura e não pedem cadastro.</p>
@@ -1944,8 +1952,17 @@ def selftest():
     assert '<a href="/privacidade/" aria-current="page">' in privacy(o)
     pv = privacy(o, "ofertaslivros_bot")
     assert all(w in pv for w in ("No pedido de livro", "Cloudflare", "endereço IP", "30 dias"))  # pedido de livro
-    assert all(w in pv for w in ("chat_id", "Cloudflare D1", "90 dias", "/parar", "bloquear o bot",
-                                 "https://t.me/ofertaslivros_bot"))
+    assert all(w in pv for w in ("Na lista de desejos do Telegram", "chat_id", "Cloudflare D1", "12 meses", "/lista",
+                                 "/parar", "bloquear o bot", "https://t.me/ofertaslivros_bot",
+                                 "o pedido vai para a curadoria sem nenhum dado seu", "fica guardado por 30 dias"))
+    # critério 36: o modelo antigo (preço-alvo, 90 dias, /remover) sai da privacidade e dos textos do alerta
+    for b_ in ("ofertaslivros_bot", None):
+        pv_ = privacy(o, b_)
+        assert not any(w in pv_ for w in ("preço-alvo", "/remover", "90 dias", "não guarda o pedido")), b_
+        for t_ in (faq(b_, ()), banner_bot(b_, 4), bot_block(b_)):
+            assert "preço de hoje" not in t_ and "quando ele disparar" not in t_ and "entrar em oferta" in t_, b_
+    assert all("/parar" in t_ for t_ in (faq("ofertaslivros_bot", ()), banner_bot("ofertaslivros_bot", 4),
+                                          bot_block("ofertaslivros_bot")))
     # _redirects: /novidades/ -> /curadoria/ (interno), 4 linhas por livro de uma loja + curinga; tag por canal
     saved = {k: os.environ.pop(k, None) for k in ("AMAZON_TAG_TG", "AMAZON_TAG_WA", "AMAZON_TAG_BOT")}
     r = redirects(o).splitlines()
@@ -2405,8 +2422,8 @@ def selftest():
         assert k in kinds, k                                                   # header, card, hero, banner, bloco, canais, FAB, rodapé
     assert any("Canal no WhatsApp" in t for k, t in soon if k == "pill pill--wa")  # texto acessível: "Canal no WhatsApp, em breve"
     assert not re.search(r"<(?:a|button)[^>]*\bis-soon", h) and "tabindex" not in re.sub(r'<p class="sr" aria-hidden="true"><label>Não preencha .*?</p>', "", h.split("<dialog")[0])  # só o honeypot
-    assert "Em breve você poderá tocar no sino" in h and "Para parar, mande /parar" not in h  # FAQ não promete o alerta
-    assert "O alerta ainda não está no ar" in pages0["privacidade/index.html"]
+    assert "Em breve você poderá tocar no sino" in h and "Ele avisa por lá" not in h  # FAQ não promete o alerta
+    assert "A lista de desejos ainda não está no ar" in pages0["privacidade/index.html"]
     js = (STATIC / "app.js").read_text(encoding="utf-8")
     assert "is-soon" in js and "aria-disabled" in js and "em breve" in js                  # modal sem bot: sino "em breve"
     hb = render_pages(load(*ofs(2)), "ofertaslivros_bot", [("Telegram", "https://t.me/ofertaslivros"),
