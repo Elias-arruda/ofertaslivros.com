@@ -265,11 +265,12 @@ O estado fica no D1 `BOT` (seção 9). Em cada execução, **sempre**, inclusive
 1. Lê `env.ASSETS.fetch("/bot.json")` e valida `version == 1`. Se o arquivo for inválido, lança o erro (aparece no Workers Logs) e não manda nada.
 2. `O` = livros com `texto` não nulo e `agora <= valido_ate`.
 3. Atualiza `em_oferta(book_id, visto_em = agora)` para cada livro de `O`.
-4. **Saída da oferta:** livro com `em_oferta.visto_em` mais velho que **6 h** saiu. Apaga a linha dele em `em_oferta` e todas as linhas de `avisos` com aquele `book_id`. A carência de 6 h absorve o pisca-pisca (a loja do ML perde o prazo de 2 h por uma coleta, e o livro some e volta). Sem ela, o mesmo livro avisaria duas vezes no mesmo dia.
+4. **Saída da oferta:** livro com `em_oferta.visto_em` mais velho que **6 h** saiu. Apaga a linha dele em `em_oferta` e zera o `price_cents` das linhas de `avisos` com aquele `book_id` (a próxima entrada avisa de novo). A linha zerada fica até o fim do dia BRT, só para o limite diário, e é apagada na primeira execução do dia seguinte. O mesmo vale para o aviso do `/start` de livro que nunca entrou em `em_oferta`. A carência de 6 h absorve o pisca-pisca (a loja do ML perde o prazo de 2 h por uma coleta, e o livro some e volta). Sem ela, o mesmo livro avisaria duas vezes no mesmo dia.
 5. Só **dentro da janela 08h–22h BRT**, calcula os candidatos: pares `(chat, livro)` em que
    - o chat não está pausado;
    - o livro está em `O` e está na lista do chat (como livro ou por um dos `autores`);
-   - **e** não há linha em `avisos` para o par **ou** `preco_cents * 100 <= avisos.price_cents * 95`. Isso é "caiu mais": pelo menos 5% abaixo do último aviso.
+   - **e** não há linha em `avisos` para o par, **ou** a linha está zerada (saiu e voltou), **ou** `preco_cents * 100 <= avisos.price_cents * 95` ("caiu mais": pelo menos 5% abaixo do último aviso);
+   - **e** o par não foi avisado hoje (BRT): **um aviso por livro por chat por dia**. Assim as linhas de `avisos` do dia contam exatamente os avisos do dia, e o limite de 10 vale mesmo com quedas seguidas do mesmo livro.
    - O join pode usar `json_each(?1)` com `O` passado como parâmetro, sem tabela temporária.
    - O mesmo livro pela lista e pelo autor conta como **um** par.
 6. Envia, com os limites da 7.4. Depois do `ok` do Telegram, faz upsert de `avisos(chat_id, book_id, price_cents, avisado_em)`.

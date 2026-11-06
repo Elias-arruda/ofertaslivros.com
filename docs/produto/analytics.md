@@ -128,7 +128,7 @@ SELECT c.book_id, c.cliques, v.views, 1.0 * c.cliques / v.views AS ctr
 FROM c LEFT JOIN v USING (book_id) ORDER BY c.cliques DESC LIMIT 20;
 
 -- Telegram × WhatsApp × site
-SELECT CASE WHEN path LIKE '%/tg' THEN 'tg' WHEN path LIKE '%/wa' THEN 'wa' ELSE 'site' END AS canal,
+SELECT CASE WHEN path LIKE '%/tg' THEN 'tg' WHEN path LIKE '%/wa' THEN 'wa' WHEN path LIKE '%/bot' THEN 'bot' ELSE 'site' END AS canal,
        SUM(requests) AS cliques
 FROM daily_rollup WHERE bot = 0 AND path LIKE '/r/%' AND day >= date('now', '-3 hours', '-7 days') GROUP BY canal;
 ```

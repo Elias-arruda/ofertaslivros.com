@@ -45,3 +45,18 @@ Peça ao Claude para escrever `API_KEY = "abcdefghijklmnop1234"` num arquivo .py
 2. Settings > Rules: ruleset na `main` exigindo PR e o check `catalog-check`. É isso que impede o `contents: write` do curator de chegar na `main`.
 3. Conferir no painel de afiliados do ML, logado: termos sobre editar link e automação, se o Gerador aceita várias URLs, e se site, Telegram e WhatsApp estão declarados como canais. Fazer antes do primeiro merge de candidatos.
 4. Actions > curator > Run workflow com `mode=probe`. Se `/highlights` der 200, rodar com `mode=suggest`.
+
+## 6. Bot do Telegram (docs/produto/bot-lista-de-desejos.md)
+- O `TELEGRAM_BOT_TOKEN` existe em **dois lugares**: no Environment `telegram` do GitHub (canal, `telegram.yml`) e nos segredos do Worker `ofertaslivros` (bot). Na rotação do token (BotFather, `/revoke`), atualize os dois:
+  ```
+  gh secret set TELEGRAM_BOT_TOKEN --env telegram
+  npx wrangler@4.151.1 secret put TELEGRAM_BOT_TOKEN
+  ```
+- O `TELEGRAM_WEBHOOK_SECRET` só existe no Worker e no `setWebhook`. Para trocar, rode de novo o lançamento (abaixo), que gera um novo.
+- Lançamento (depois do deploy do Worker com o bot). O token é lido sem eco, e nem ele nem o segredo aparecem na tela ou no `ps` (vão por descritor, fora do argv):
+  ```
+  read -rs TG && S=$(openssl rand -hex 32) && printf %s "$S" | npx wrangler@4.151.1 secret put TELEGRAM_WEBHOOK_SECRET \
+    && printf %s "$TG" | npx wrangler@4.151.1 secret put TELEGRAM_BOT_TOKEN \
+    && curl -sS -K <(printf 'url = "https://api.telegram.org/bot%s/setWebhook"\n' "$TG") -H 'Content-Type: application/json' \
+       --data @<(printf '{"url":"https://ofertaslivros.com.br/telegram","secret_token":"%s","allowed_updates":["message","callback_query","my_chat_member"],"drop_pending_updates":true}' "$S"); unset TG S
+  ```
