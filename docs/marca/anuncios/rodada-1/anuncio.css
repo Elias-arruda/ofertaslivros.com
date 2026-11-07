@@ -1,0 +1,80 @@
+/* Anúncios da rodada 1 (Instagram). Tokens do tema escuro de static/style.css (origin/main).
+   Fontes: as mesmas OFL auto-hospedadas do site. Renderizar com render.sh. */
+@font-face { font-family: "Fraunces"; font-weight: 100 900; src: url(../../../../static/fonts/fraunces-latin-full-normal.woff2) format("woff2"); }
+@font-face { font-family: "Outfit"; font-weight: 100 900; src: url(../../../../static/fonts/outfit-latin-wght-normal.woff2) format("woff2"); }
+
+:root {
+  --bg: #0f1729; --bg2: #18233b; --wine: #1c2b4a;
+  --text: #e6ebf3; --muted: #a9b4c8; --line: #e6ebf31a; --surface2: #e6ebf314;
+  --coral: #ff8a8f; --coral-ink: #0f1729; --rose: #f2a3a8;
+  --paper: #dfe5ee; --paper-edge: #9aa7bb;
+  --serif: "Fraunces", Georgia, serif;
+  --sans: "Outfit", system-ui, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1080px; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+.peca { position: relative; width: 1080px; overflow: hidden; isolation: isolate; display: flex; flex-direction: column; }
+.feed { height: 1350px; padding: 96px 96px 88px; }
+.story { height: 1920px; padding: 270px 96px 290px; } /* safe zones: ~250px livres no topo e na base */
+
+/* Fundo do site: manchas desfocadas no acento + grão de papel */
+.peca {
+  background:
+    radial-gradient(900px circle at 0% 0%, color-mix(in srgb, var(--b1) 30%, transparent), transparent 70%),
+    radial-gradient(900px circle at 100% 100%, color-mix(in srgb, var(--b2) 30%, transparent), transparent 70%),
+    var(--bg);
+}
+.peca::after { content: ""; position: absolute; inset: 0; z-index: 5; background: url(grao.svg) repeat; background-size: 160px; opacity: .07; mix-blend-mode: overlay; pointer-events: none; }
+
+.logo { display: block; width: 400px; height: auto; }
+h1 {
+  font: 800 112px/.98 var(--serif); letter-spacing: -.02em; text-wrap: balance;
+  font-variation-settings: "SOFT" 100, "WONK" 1; margin-top: 64px;
+}
+.story h1 { font-size: 128px; margin-top: 80px; }
+.sub { font: 400 40px/1.3 var(--sans); color: var(--muted); max-width: 30ch; margin-top: 28px; text-wrap: pretty; }
+.story .sub { font-size: 44px; }
+
+/* Selo do site (.stamp), em escala de anúncio */
+.stamp {
+  display: inline-flex; align-items: center; padding: 12px 26px; border-radius: 999px;
+  font: 700 28px/1.1 var(--sans); text-transform: uppercase; letter-spacing: .05em;
+  background: var(--coral); color: var(--coral-ink); white-space: nowrap;
+  box-shadow: 0 14px 30px -12px var(--coral);
+}
+
+/* ---------- A: gráfico do histórico (docs/marca/grafico-historico.md, sem valores) ---------- */
+.hc { position: relative; margin-top: auto; background: var(--bg2); border: 2px solid var(--line); border-radius: 34px; padding: 40px 40px 28px; }
+.hc svg { display: block; width: 100%; height: auto; overflow: visible; }
+.hc .lbl { font: 600 26px var(--sans); fill: var(--muted); }
+.hc .stamp { position: absolute; right: 40px; top: 36px; }
+.story .hc { padding: 48px 44px 32px; margin-block: auto; }
+
+/* ---------- B: livros genéricos (objeto da spec 11.1) + carimbo "conferido" ---------- */
+.mesa { position: relative; margin-top: auto; height: 560px; }
+.story .mesa { height: 760px; }
+.livro { position: absolute; width: 300px; aspect-ratio: 2 / 3; }
+.livro .miolo {
+  position: absolute; inset: 3% -9% 3% 12%; border-radius: 6px 14px 14px 6px; background: var(--paper);
+  box-shadow: inset -2px 0 0 var(--paper-edge), inset -6px 0 0 var(--paper), inset -8px 0 0 var(--paper-edge), inset -12px 0 0 var(--paper), inset -14px 0 0 var(--paper-edge);
+}
+.livro .fita { position: absolute; bottom: -7%; right: 18%; width: 26px; height: 22%; background: var(--c2); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%); }
+.livro .capa {
+  position: absolute; inset: 0; border-radius: 14px; background: var(--c); overflow: hidden;
+  box-shadow: 0 40px 70px -25px #000c; padding: 34px 30px; display: flex; flex-direction: column; gap: 14px;
+}
+/* Capa desenhada pela marca: blocos de "texto" sem título nem autor */
+.capa i { display: block; height: 18px; border-radius: 999px; background: var(--ink); opacity: .82; }
+.capa i:nth-child(1) { width: 80%; height: 30px; }
+.capa i:nth-child(2) { width: 56%; height: 30px; }
+.capa i:nth-child(3) { width: 38%; margin-top: auto; opacity: .55; }
+.capa b { position: absolute; left: 50%; top: 52%; width: 120px; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; border: 10px solid var(--ink); opacity: .22; }
+
+.carimbo {
+  position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 280px; aspect-ratio: 1; border-radius: 50%; text-align: center; color: var(--coral);
+  border: 7px solid var(--coral); box-shadow: inset 0 0 0 8px var(--bg), inset 0 0 0 12px var(--coral);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  font: 600 34px/1.1 var(--sans); transform: rotate(-10deg);
+}
+.carimbo strong { font: 700 72px/1 var(--serif); font-variation-settings: "SOFT" 100, "WONK" 1; }
