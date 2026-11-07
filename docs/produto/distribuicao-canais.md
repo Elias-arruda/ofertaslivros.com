@@ -311,7 +311,7 @@ Site:
 **12.5 Operação e custo**
 - **Custo:** R$ 0. A Bot API do Telegram e o Canal do WhatsApp são grátis. O Manda Boa custaria R$ 69,90/mês, só se o gatilho disparar.
 - **Tempo do Elias:** com até 5 ofertas por dia, a estimativa é de 5 a 10 min/dia, além dos ~10 min da Amazon. É o custo real.
-- **Ban do WhatsApp:** com postagem manual pelo app oficial, o risco fica perto de zero. Ele só aparece com automação não oficial, o que a decisão 3 proíbe.
+- **Ban do WhatsApp:** com postagem manual pelo app oficial, o risco fica perto de zero. Desde 2026-11-06, o Elias aceitou o risco de o Claude postar pelo WhatsApp Web dele (seção "WhatsApp pelo navegador" e regra 5 do CLAUDE.md): a punição possível é banir o número dono do canal. Ferramentas e código que controlem o WhatsApp continuam proibidos.
 - **Volume:**
   - Com poucas ofertas elegíveis no começo, o canal pode passar dias sem post. Isso é aceitável pela curadoria, mas um canal mudo perde seguidor.
   - Acompanhar nas primeiras 2 semanas. Se ficar mudo, baixar o limiar de desconto (decisão 3), sem afrouxar o frescor.
@@ -363,3 +363,18 @@ Implementação (`telegram_post.py`, no mesmo workflow do canal):
 - Conta como postado no envio: as linhas `wa` são gravadas antes da primeira mensagem. Se saiu incompleto ou falhou, não manda outro no mesmo dia.
 - Tag da Amazon do WhatsApp: `AMAZON_TAG_WA` (vars do Environment `production`, lida pelo deploy). Sem ela, `/wa` usa a tag do site.
 - Sem `TELEGRAM_ADMIN_CHAT_ID`, o resumo não sai e o canal do Telegram segue igual.
+
+## WhatsApp pelo navegador (decisão do Elias, 2026-11-06)
+O Elias aceitou o risco de o Claude postar no Canal pelo WhatsApp Web dele (CLAUDE.md, regra 5). Isso substitui, só neste ponto, a decisão 3 da seção 1. Continua proibido qualquer código ou ferramenta que controle o WhatsApp.
+
+Fluxo, uma vez por dia, quando o Elias pedir ("posta as ofertas do WhatsApp"):
+1. No Telegram Web, abrir pela busca o chat com o @ofertaslivros_bot e copiar os textos do "Resumo WhatsApp" do dia, entre o cabeçalho e "fim do resumo". Sem resumo do dia, não posta nada.
+2. No WhatsApp Web, abrir pela busca o canal "Só Mais um Livro - Ofertas Livros" e conferir o nome no cabeçalho.
+3. Para cada texto: colar sem editar, fechar a prévia do link e enviar. Esperar cerca de 20 s antes do próximo.
+   - Limite conhecido: ao colar, o WhatsApp Web já busca a prévia do link, seguindo o `/r/<id>/wa` até a loja. Isso acontece uma vez por post, do mesmo jeito que na postagem manual. Fechar a prévia só evita que o post saia com o cartão da loja.
+   - Se isso virar problema (clique de robô contado pela loja), a saída é o texto do WhatsApp apontar para uma página do site sem redirect, e não para o `/r/`.
+4. Avisar o Elias de quantos posts saíram.
+
+O dedup e a medição continuam os do resumo (`channel_posts.csv`, linhas `wa`, e a tag `ofertaslivrwa-20`), porque o que vai ao Canal é o próprio resumo. Se o Claude não postar num dia, o Elias pode colar à mão, como antes.
+
+Risco: banimento do número dono do canal, que hoje é o WhatsApp pessoal do Elias. Para reduzir, ele pode pôr um chip separado como admin e conectar esse número no WhatsApp Web.

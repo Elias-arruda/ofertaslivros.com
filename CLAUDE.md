@@ -44,6 +44,15 @@ Domínio comprado na HostGator. A HostGator é usada SÓ para o domínio (DNS).
    - **Relatório de vendas do ML:** vale a exceção da regra 1 (2026-11-04), com as mesmas condições, no portal de afiliados. Uma API ou exportação oficial de relatório, se existir, tem prioridade. Risco: o item 7.6 dos Termos de Desenvolvedores; a punição possível é suspender a conta de afiliado e reter comissões.
 3. **Credenciais:** chaves ficam só em GitHub Secrets ou `.env` local, que está no `.gitignore`. Nunca no código, nunca em JSON público.
 4. **Transparência:** o rodapé deve ter o aviso de associado ("ganhamos com compras qualificadas") e dizer que o preço final é o da loja.
+5. **WhatsApp:** nenhum código, script ou workflow controla o WhatsApp (whatsapp-web.js, Baileys, Whapi e similares). A API oficial não posta em Canal.
+   - **Exceção decidida pelo Elias em 2026-11-06, com o risco aceito:** o Claude pode usar o Chrome do Elias (Claude in Chrome, com o WhatsApp Web já conectado pelo Elias) para postar no Canal do WhatsApp do site ("Só Mais um Livro - Ofertas Livros") as ofertas do resumo diário que o bot manda no chat do Elias no Telegram.
+     - Só quando o Elias pedir na sessão. No máximo 1 rodada por dia, com as ofertas daquele resumo (até 5).
+     - O texto é exatamente o do resumo, com o link `/r/<id>/wa`, sem edição. A prévia de link é fechada antes de enviar, para o post não sair com o cartão da loja. Limite conhecido e aceito: o WhatsApp Web busca a prévia assim que o link é colado (seguindo o `/r/` até a loja), uma vez por post, igual à postagem manual do Elias.
+     - Ritmo: uma mensagem por vez, cerca de 20 s entre posts. O canal é aberto pela busca, e o nome no cabeçalho é conferido antes de digitar.
+     - Proibido: postar ou ler em qualquer outro chat, grupo ou contato; guardar cookie, sessão ou QR; código que controle o WhatsApp Web; rodar agendado ou no GitHub Actions.
+     - QR, logout, verificação ou aviso de restrição: parar na hora, sem resolver, e avisar o Elias.
+     - Risco: os termos do WhatsApp proíbem acesso automatizado; a punição possível é banir o número dono do canal, hoje o WhatsApp pessoal do Elias. Recomendação: um chip separado como admin do canal, logado no WhatsApp Web no lugar do número pessoal.
+     - Fluxo em `docs/produto/distribuicao-canais.md`, seção "WhatsApp pelo navegador".
 
 ## Riscos de segurança específicos (ver /threat-model)
 - **Open redirect** na rota de redirecionamento de afiliado (`/r/<id>`): só redirecionar para IDs conhecidos no `offers.json` e domínios em allowlist (amazon.com.br, mercadolivre.com.br, mercadolivre.com).
