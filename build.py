@@ -455,7 +455,8 @@ def resolve(books, now):
 def sem_preco(books, now):
     """Livros que o resolve descarta (só ML, sem nenhuma loja no prazo): ganham a página permanente sem preço
     (docs/produto/pagina-permanente-livro.md). Lista à parte de offers: nunca entra na vitrine, nas contagens,
-    nos canais nem no _redirects. Campos da última leitura, só para a frase do passado e o histórico."""
+    nos canais. No _redirects, só /r/<id> → /livro/<id>/ (302), nunca a loja. Campos da última leitura,
+    só para a frase do passado e o histórico."""
     out = []
     for b in books:
         if any(fresh(s, now) or s["store"] == "amazon" for s in b["stores"]):
@@ -1829,8 +1830,13 @@ def redirects(offers, sem=(), retired=()):
     if len(lines) + 1 > MAX_REDIRECTS:
         raise Invalid(f"{len(lines) + 1} regras no _redirects (máximo {MAX_REDIRECTS})")
     # ponytail: retirado além do limite volta ao 404; se acumular, trocar por regra no Worker
-    lines += [f"/livro/{i}/ /{g}/ 301\n" for i, g in retired if _nicho_ok(i, g)][:MAX_REDIRECTS - 1 - len(lines)]
+    ret = [f"/livro/{i}/ /{g}/ 301\n" for i, g in retired if _nicho_ok(i, g)]
+    room = MAX_REDIRECTS - 1 - len(lines)
+    lines += ret[:room]
     lines.append("/r/* / 302\n")
+    if len(lines) > MAX_REDIRECTS * 0.8 or len(ret) > room:  # 80% do limite, ou retirado cortado
+        print(f"::warning::_redirects com {len(lines)} de {MAX_REDIRECTS} regras; "
+              "retirados além do limite dão 404 (pagina-permanente-livro.md §5.1)")
     return "".join(lines)
 
 
