@@ -1,6 +1,6 @@
 # Spec: página permanente do livro (`/livro/<id>/` não some quando a oferta acaba)
 
-Status: PR 1 (seções 2, 3, 6 e 7) implementado em 2026-11-07; o PR 2 (seção 5 e livro retirado) vem depois. Autor: product-manager. Pedido do Elias (2026-11-07): manter a página no ar com "sem oferta agora" e o histórico de preço, sem botão de compra ativo, e com a oferta de volta quando o preço cair.
+Status: PR 1 (seções 2, 3, 6 e 7) implementado em 2026-11-07. PR 2 (seções 5 e 5.1, decisões 1 e 3 do Elias de 2026-11-07) implementado em 2026-11-07. Autor: product-manager. Pedido do Elias (2026-11-07): manter a página no ar com "sem oferta agora" e o histórico de preço, sem botão de compra ativo, e com a oferta de volta quando o preço cair.
 
 ## 1. Problema e usuário
 
@@ -21,7 +21,7 @@ A página some, e o endereço dá 404, em três casos:
 | **B. Livro retirado do catálogo** | O `curator.retire` tira do `catalog.json` com 30 dias sem anúncio ativo (todos) ou sem oferta (só os automáticos, com `genre_source`). O coletor para de gerar o livro no `offers.json` | 0 retirados até agora. Nenhum livro tem `genre_source`, então só vale a regra "sem anúncio". A primeira retirada possível é em **2026-11-19** (o `publicado` mais antigo é 2026-10-20) |
 | **C. Última leitura com mais de 5 meses** | O `collect.summarize` lê só 5 meses do `price_history` | Na prática, o caso B acontece antes |
 
-O MVP resolve o caso A e deixa a decisão sobre o caso B para o Elias (decisão em aberto 1). O caso C se resolve junto com o B.
+O PR 1 resolve o caso A. O caso B vira 301 para a página do nicho no PR 2 (decisão 1, seção 5.1). O caso C, sem retirada, continua dando 404.
 
 ### 1.2 Referência
 
@@ -49,7 +49,7 @@ O pedido de "sem botão de compra ativo" vale para o estado **sem preço**. Ali 
 
 ### 2.3 Fora do MVP
 
-- **Livro retirado do catálogo** (caso B): decisão 1. Prazo para decidir: antes de 2026-11-19.
+- **Página para o livro retirado do catálogo** (caso B): não tem página; o endereço vira 301 para o nicho (seção 5.1).
 - **Livro sem preço na `/curadoria/`, nos nichos ou em alguma lista "fora de oferta".** A vitrine, os nichos, `/ofertas/`, as faixas, `/black-friday/` e os canais continuam só com ofertas ativas, e a `/curadoria/` continua só com livros que têm preço. A página sem preço é encontrada pelo sitemap, pelo Google e por links antigos. `aba-curadoria.md` §3 deixou isso para "quando a área piscar demais com o rodízio do coletor". O critério continua o mesmo.
 - **`<lastmod>` no sitemap**: continua sem, como no #142.
 - **Mudar a contagem de cliques do `/painel`** (ver Riscos).
@@ -82,10 +82,18 @@ Quando o livro volta a ter loja fresca, a página volta ao estado "com preço" o
 **Comportamento esperado:**
 - `/r/<id>`, `/r/<id>/tg`, `/r/<id>/wa`, `/r/<id>/bot` e `/r/<id>/<loja>` de um livro **sem preço** → **302 para `/livro/<id>/`**, que é um destino interno montado só com o `id` já validado por `ID_RE`. Nunca para a loja, porque não há preço conferido. O código é 302, e não 301, porque o endereço volta a apontar para a loja quando o preço voltar.
 - Livro com preço (em oferta ou não): sem mudança.
-- Id desconhecido ou retirado: sem mudança, continua no curinga para a home.
+- Id desconhecido ou retirado: sem mudança no `/r/`, continua no curinga para a home.
 - O número de regras não cresce. O livro sem preço usa no máximo as 6 regras que já usava com preço (`MAX_REDIRECTS` continua igual).
 
 **É PR sensível** (`_redirects`/rota `/r/`). Precisa do review do Codex e do "aprovado, pode seguir" do Elias. Por isso vai num PR separado do resto (seção 8).
+
+### 5.1 Livro retirado do catálogo: 301 para o nicho (decisão 1, Elias, 2026-11-07)
+
+- `/livro/<id>/` de um livro que está em `retirados` no `catalog.json` e saiu do `offers.json` → **301 para `/<genre>/`**. O destino é sempre um slug de `GENRES` montado no código, e o `id` sempre passa pelo `ID_RE`. Nenhum dado coletado vira destino.
+- **De onde vem o `genre`:** o `catalog.json` perde o livro na retirada, e `retirados` é só `{id: data}`. O `price_history` não tem `genre`, e o deploy faz checkout raso, sem histórico do git. Por isso o `curator.suggest`, no mesmo commit da retirada, grava o `genre` em `catalog.json` → `generos_retirados` (`{id: genre}`). O build lê o `catalog.json` da `main`. Valor com id fora do `ID_RE`, genre fora de `GENRES` ou id que não está em `retirados` é ignorado. Um registro atualizado pelo build não serviria, porque o build do deploy não commita nada.
+- Limite: o 301 do retirado usa só o que sobra de `MAX_REDIRECTS` depois das regras do `/r/`, do mais recente para o mais antigo. O que não couber volta ao 404 de antes. O build nunca falha por causa de retirado.
+- Sem regra (404, como antes): livro retirado sem `genre` no registro, ou com nicho sem nenhuma oferta (a página `/<genre>/` não existe). Livro ainda no `offers.json` nunca ganha o 301, mesmo listado em `retirados`.
+- O `/r/<id>` do retirado não muda: continua no curinga para a home.
 
 ## 6. JSON-LD sem Offer
 
@@ -122,7 +130,9 @@ Todos viram assert no `build.py --selftest`, salvo onde está indicado.
 13. Para o livro sem preço, o `_redirects` tem `/r/<id> /livro/<id>/ 302` e a mesma linha para `/tg`, `/wa`, `/bot` e cada loja que o livro tem no `offers.json`. Nenhuma dessas linhas aponta para domínio externo.
 14. Livro com preço: as linhas são idênticas às de hoje. A última linha continua sendo `/r/* / 302`.
 15. O total de linhas nunca passa de `MAX_REDIRECTS`, e o livro sem preço tem no máximo tantas linhas quanto teria com preço.
-16. (Manual, depois do deploy) `curl -sI https://ofertaslivros.com.br/r/<id>/tg` de um livro sem preço devolve 302 com `Location: /livro/<id>/`.
+16. Retirado: o `_redirects` tem `/livro/<id>/ /<genre>/ 301` só quando o id passa pelo `ID_RE`, o genre está em `GENRES` com página de nicho e o livro saiu do `offers.json`. Id inválido, genre fora de `GENRES` ou valor com URL nunca geram regra. A última linha continua sendo `/r/* / 302`.
+17. Todo destino que não é URL de afiliado de livro com preço é interno (`/`, `/curadoria/`, `/livro/<id>/` ou `/<slug>/`).
+18. (Manual, depois do deploy) `curl -sI https://ofertaslivros.com.br/r/<id>/tg` de um livro sem preço devolve 302 com `Location: /livro/<id>/`.
 
 ## 9. Divisão por agent, na ordem
 
@@ -147,10 +157,12 @@ Todos viram assert no `build.py --selftest`, salvo onde está indicado.
 
 ## 11. Decisões em aberto para o Elias
 
-1. **Livro retirado do catálogo** (primeira retirada possível em 2026-11-19):
+1. **Decidido (Elias, 2026-11-07): (b), 301 para a página do nicho.** Implementado no PR 2 (seção 5.1).
+   Contexto original: **Livro retirado do catálogo** (primeira retirada possível em 2026-11-19):
    (a) **continua dando 404, como hoje (recomendado no MVP)**: a retirada só acontece depois de 30 dias sem anúncio em nenhuma loja, então o livro dificilmente volta;
    (b) 301 para a página do nicho: preserva parte do link para o Google, mas exige guardar o `genre` em `retirados`. Mexe no `_redirects` e no `catalog.json`, então é sensível;
    (c) página "arquivada" congelada, com o histórico até a retirada e sem alerta: exige guardar os metadados e o histórico do retirado (collector-engineer). É o maior custo.
 2. **Decidido (Elias, 2026-11-07): o botão some só no livro sem preço.** O livro com preço, mesmo sem desconto, continua com o botão para a loja. Implementado no PR 1.
    Contexto original: **Botão de loja no estado "sem oferta, com preço".** O pedido diz "sem botão de compra ativo". A recomendação é aplicar isso só ao estado sem preço e manter o botão nos livros com preço sem desconto, que estão na `/curadoria/` e rendem clique (`aba-curadoria.md`). Se a intenção era tirar o botão de todo livro fora de oferta, isso muda a decisão da Curadoria e reduz cliques.
-3. **`/r/` do livro sem preço:** (a) **302 para `/livro/<id>/` (recomendado)**, aceitando a pequena inflação nos cliques do `/painel`; (b) deixar no curinga para a home, como hoje. Com (b), não existe PR 2 e nada do MVP é sensível, mas quem vem de um post antigo perde o livro de vista.
+3. **Decidido (Elias, 2026-11-07): (a), 302 para `/livro/<id>/`.** Implementado no PR 2 (seção 5).
+   Contexto original: **`/r/` do livro sem preço:** (a) **302 para `/livro/<id>/` (recomendado)**, aceitando a pequena inflação nos cliques do `/painel`; (b) deixar no curinga para a home, como hoje. Com (b), não existe PR 2 e nada do MVP é sensível, mas quem vem de um post antigo perde o livro de vista.
