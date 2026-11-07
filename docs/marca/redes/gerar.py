@@ -170,21 +170,15 @@ def pill(x, y, label, size, fill, color, ic=None, outline=False, up=True, h=None
     return bg + ico + t, w
 
 
-# ".br" desenhado no traço do ".com" do logo B: ponto, "b" (haste + bojo do "o") e "r" (o mesmo de "ofertas")
-BR = ("M 272.6 38.3 h 0.01 M 277.3 11.7 V 38.3 M 277.3 30 A 8.3 8.3 0 1 1 293.9 30 A 8.3 8.3 0 1 1 277.3 30 Z "
-      "M 299 21.7 V 38.3 M 299 27.5 C 299 23.8 301.8 21.7 305 21.7 C 306 21.7 306.6 21.9 307 22.1")
-VB_W = 311.6  # 274.07 do logo B + o ".br"
+VB_W = 311.6  # viewBox do logo B com ".br" (274.07 era a largura até ".com")
 
 
 def wordmark(x, y, width, negativo=True):
-    """O logo B (static/logo*.svg) com ".br" no fim. width é a largura da parte ofertaslivros.com,
+    """O logo B (static/logo*.svg, já com ".br"). width é a largura da parte ofertaslivros.com,
     para as letras ficarem do mesmo tamanho de antes."""
     src = (ROOT / "static" / ("logo-negativo.svg" if negativo else "logo.svg")).read_text()
     inner = re.search(r"</title>(.*)</svg>", src, re.S).group(1).strip()
     inner = re.sub(r'<rect[^>]*/>', "", inner)  # o negativo do static já vem sem fundo
-    cor = re.findall(r'stroke="(#[0-9a-fA-F]+)"', inner)[-1]  # a cor do ".com"
-    inner += (f'<path d="{BR}" fill="none" stroke="{cor}" stroke-width="2.3" stroke-linecap="round" '
-              f'stroke-linejoin="round"/>')
     w = width * VB_W / 274.07
     h = w * 32.4 / VB_W
     return (f'<svg x="{x}" y="{y}" width="{w:.1f}" height="{h:.1f}" viewBox="-3.4 8.8 {VB_W} 32.4" '

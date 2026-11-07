@@ -1,6 +1,6 @@
 # Marca: decisões (2026-10-18)
 
-> **Atualização 2026-10-19 (visual v2, `spec-visual.md`):** o site passou a usar o logo B, um wordmark "ofertas**livros**.com" em curvas: "ofertas" leve, "livros" pesado e o carimbo no lugar do "o" de livros. Ele substitui o Carimbo horizontal no topo e no favicon. Os arquivos estão em `logos/`:
+> **Atualização 2026-10-19 (visual v2, `spec-visual.md`):** o site passou a usar o logo B, um wordmark "ofertas**livros**.com" em curvas: "ofertas" leve, "livros" pesado e o carimbo no lugar do "o" de livros. Ele substitui o Carimbo horizontal no topo e no favicon. Desde 2026-11-07 (aprovado pelo Elias) o wordmark termina em ".com.br": o ".br" usa o mesmo traço (2,3) e a mesma cor do ".com", sem mudar o tamanho das letras (viewBox de 274,07 para 311,6 de largura; desenho vindo do kit de redes, `redes/gerar.py`). Os arquivos estão em `logos/`:
 >
 > | Arquivo | Uso |
 > |---|---|
