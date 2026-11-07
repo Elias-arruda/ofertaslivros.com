@@ -307,7 +307,10 @@
   "vidas-secas|mercadolivre": "2026-11-06",
   "one-piece-vol-1|mercadolivre": "2026-11-06",
   "naruto-gold-vol-1|mercadolivre": "2026-11-07",
-  "as-veias-abertas-da-america-latina|amazon": "2026-11-07"
+  "as-veias-abertas-da-america-latina|amazon": "2026-11-07",
+  "vidas-secas-2|mercadolivre": "2026-11-07",
+  "memorias-do-subsolo|mercadolivre": "2026-11-07",
+  "a-morte-de-ivan-ilitch|mercadolivre": "2026-11-07"
  },
  "image_url": {
   "irmao-do-jorel": "https://http2.mlstatic.com/D_NQ_NP_948056-MLA113307591683_062026-F.jpg",
@@ -456,38 +459,41 @@
   "capitaes-da-areia": "https://http2.mlstatic.com/D_NQ_NP_775751-MLA113420165523_062026-F.jpg",
   "vidas-secas": "https://http2.mlstatic.com/D_NQ_NP_847352-MLU73327565262_122023-F.jpg",
   "one-piece-vol-1": "https://http2.mlstatic.com/D_NQ_NP_801756-MLA114860787897_072026-F.jpg",
-  "naruto-gold-vol-1": "https://http2.mlstatic.com/D_NQ_NP_961009-MLU77441748107_072024-F.jpg"
+  "naruto-gold-vol-1": "https://http2.mlstatic.com/D_NQ_NP_961009-MLU77441748107_072024-F.jpg",
+  "vidas-secas-2": "https://http2.mlstatic.com/D_NQ_NP_708513-MLA78351272357_082024-F.jpg",
+  "memorias-do-subsolo": "https://http2.mlstatic.com/D_NQ_NP_650789-MLA113638397796_072026-F.jpg",
+  "a-morte-de-ivan-ilitch": "https://http2.mlstatic.com/D_NQ_NP_902993-MLA110349850153_042026-F.jpg"
  },
  "curadoria": {
   "senhor-dos-aneis-box-trilogia": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "irmao-do-jorel": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "verity": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-massacre-da-familia-hope": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-psicologia-financeira": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-hipotese-do-amor": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-conto-da-aia": {
    "publicado": "2026-10-20",
@@ -497,7 +503,7 @@
   "o-conto-da-aia-graphic-novel": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "bom-uso-da-tortura-o-ou-como-as-democracias-justificam": {
    "publicado": "2026-10-20",
@@ -527,7 +533,7 @@
   "como-as-democracias-morrem": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "como-morrem-os-nossos-escritores": {
    "publicado": "2026-10-20",
@@ -542,62 +548,62 @@
   "o-poder-do-habito": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "habitos-atomicos": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "mindset-a-nova-psicologia-do-sucesso": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "essencialismo": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "como-fazer-amigos-e-influenciar-pessoas": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-coragem-de-nao-agradar": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-sutil-arte-de-ligar-o-f-da-se": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "rapido-e-devagar": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "garra": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "inteligencia-emocional": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-milagre-da-manha": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "mais-esperto-que-o-diabo": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "comece-pelo-porque": {
    "publicado": "2026-10-20",
@@ -607,62 +613,62 @@
   "trabalho-focado": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "pai-rico-pai-pobre": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-homem-mais-rico-da-babilonia": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-investidor-inteligente": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "de-zero-a-um": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "do-mil-ao-milhao": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "me-poupe": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "como-salvar-a-democracia": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-elite-do-atraso": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-pobre-de-direita": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-principe": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "pequeno-manual-antirracista": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-caminho-da-servidao": {
    "publicado": "2026-10-20",
@@ -672,27 +678,27 @@
   "o-povo-contra-a-democracia": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-05"
+   "ultima_oferta": "2026-11-07"
   },
   "sapiens": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "1808": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "escravidao-volume-1": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-diario-de-anne-frank": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "eu-sou-malala": {
    "publicado": "2026-10-20",
@@ -702,7 +708,7 @@
   "steve-jobs": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "uma-breve-historia-do-tempo": {
    "publicado": "2026-10-20",
@@ -712,22 +718,22 @@
   "armas-germes-e-aco": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "e-assim-que-acaba": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "e-assim-que-comeca": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "todas-as-suas-im-perfeicoes": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "os-sete-maridos-de-evelyn-hugo": {
    "publicado": "2026-10-20",
@@ -747,22 +753,22 @@
   "orgulho-e-preconceito": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "como-eu-era-antes-de-voce": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "amor-teoricamente": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "um-dia": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-hobbit": {
    "publicado": "2026-10-20",
@@ -772,12 +778,12 @@
   "harry-potter-e-a-pedra-filosofal": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "duna": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "quarta-asa": {
    "publicado": "2026-10-20",
@@ -787,12 +793,12 @@
   "box-corte-de-espinhos-e-rosas": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-nome-do-vento": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-guerra-dos-tronos": {
    "publicado": "2026-10-20",
@@ -807,17 +813,17 @@
   "as-cronicas-de-narnia": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "fundacao": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-paciente-silenciosa": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-empregada": {
    "publicado": "2026-10-20",
@@ -837,27 +843,27 @@
   "e-nao-sobrou-nenhum": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "assassinato-no-expresso-do-oriente": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-codigo-da-vinci": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "os-homens-que-nao-amavam-as-mulheres": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-silencio-dos-inocentes": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "jantar-secreto": {
    "publicado": "2026-10-20",
@@ -867,7 +873,7 @@
   "1984": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-06",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-revolucao-dos-bichos": {
    "publicado": "2026-10-20",
@@ -877,12 +883,12 @@
   "o-pequeno-principe": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-biblioteca-da-meia-noite": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "ensaio-sobre-a-cegueira": {
    "publicado": "2026-10-20",
@@ -892,7 +898,7 @@
   "cem-anos-de-solidao": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "torto-arado": {
    "publicado": "2026-10-20",
@@ -902,7 +908,7 @@
   "tudo-e-rio": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "dom-casmurro": {
    "publicado": "2026-10-20",
@@ -912,22 +918,22 @@
   "memorias-postumas-de-bras-cubas": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "capitaes-da-areia": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "vidas-secas": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-alquimista": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "maus": {
    "publicado": "2026-10-20",
@@ -942,17 +948,17 @@
   "persepolis": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "chainsaw-man-vol-1": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-garota-do-lago": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "quem-pensa-enriquece": {
    "publicado": "2026-10-20",
@@ -961,48 +967,48 @@
   },
   "naruto-gold-vol-1": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-06",
+   "ultimo_anuncio": "2026-11-07",
    "ultima_oferta": "2026-10-27"
   },
   "a-arte-da-guerra": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "bom-dia-veronica": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "vidas-secas-2": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "memorias-do-subsolo": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-morte-de-ivan-ilitch": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "lula-volume-2-biografia": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "lula-volume-1-biografia": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": null
+   "ultima_oferta": "2026-11-07"
   },
   "crime-e-castigo": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "box-trono-de-vidro": {
    "publicado": "2026-11-04",
@@ -1012,7 +1018,7 @@
   "a-hora-da-estrela-edicao-comemorativa": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-cabeca-do-santo": {
    "publicado": "2026-11-04",
@@ -1022,57 +1028,57 @@
   "nunca-minta": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "cartas-de-um-diabo-a-seu-aprendiz-2": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "quando": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "olhos-d-agua": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-principe-cruel-o-povo-do-ar-vol-1": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "as-veias-abertas-da-america-latina": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": null
+   "ultima_oferta": "2026-11-07"
   },
   "melhor-do-que-nos-filmes": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "confiando-em-nos-dois": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "dia-da-ceifa": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-espelho-dos-finais-infinitos": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "patinando-no-amor": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "oracao-para-desaparecer": {
    "publicado": "2026-11-04",
@@ -1082,222 +1088,222 @@
   "tudo-que-deixamos-inacabado": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-ultima-carta": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "em-busca-de-sentido": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "adversaria-do-vilao": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-povo-brasileiro": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "grande-sertao-veredas-edicao-especial-70-anos": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "quarto-de-despejo-diario-de-uma-favelada": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "amanhecer-na-colheita": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "nao-e-ela": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-avesso-da-pele": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-inquilina": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "alchemised": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "chama-de-ferro": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "quebrando-o-habito-de-ser-voce-mesmo": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-cirurgia": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-poder-do-subconsciente": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "ideias-para-adiar-o-fim-do-mundo": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-contadora": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "uma-segunda-chance": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-segredo-final": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "os-miseraveis": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "coracao-de-gelo-e-rosas": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-sol-e-para-todos": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "nao-e-como-nos-filmes": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "nocticadia-edicao-especial": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-despertar-da-lua-caida-edicao-especial": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "desenhos-ocultos": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "assistente-do-vilao": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "binding-13": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "os-esquecidos-de-domingo": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-cancao-dos-dragoes-perdidos": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "agua-fresca-para-as-flores": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "o-risco": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-guerra-da-papoula": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "keeping-13": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "meridiana": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "os-imortais": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "jogo-a-longo-prazo": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "noites-brancas": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "cancao-para-ninar-menino-grande": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "eu-duvido-voce-terminar-este-livro": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "bons-tempos": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-morte-e-um-dia-que-vale-a-pena-viver": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "a-estranha-na-cama": {
    "publicado": "2026-11-04",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   }
  },
  "curadoria_ok": "2026-11-05"
