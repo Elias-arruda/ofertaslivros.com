@@ -178,6 +178,22 @@
   {"id": "a-mente-esquerdista-as-causas-psicologicas-da-loucura", "genre": "historia", "genre_source": "ml_book_genre", "title": "A mente esquerdista - As causas psicológicas da loucura política", "author": "Rossiter, Lyle H.", "ml_product_id": "MLB20537895", "pendente": true},
   {"id": "a-mente-naufragada", "genre": "historia", "genre_source": "ml_book_genre", "title": "A mente naufragada", "author": "Lilla, Mark", "ml_product_id": "MLB68530393", "pendente": true},
   {"id": "anos-2000-renascimento-marvel-vol-02", "genre": "historia", "genre_source": "ml_book_genre", "title": "ANOS 2000 RENASCIMENTO MARVEL - VOL. 02", "author": "Marvel", "ml_product_id": "MLB68503864", "pendente": true},
-  {"id": "anos-2000-renascimento-marvel-vol-10", "genre": "historia", "genre_source": "ml_book_genre", "title": "ANOS 2000 RENASCIMENTO MARVEL - VOL. 10", "author": "Marvel", "ml_product_id": "MLB68495731", "pendente": true}
+  {"id": "anos-2000-renascimento-marvel-vol-10", "genre": "historia", "genre_source": "ml_book_genre", "title": "ANOS 2000 RENASCIMENTO MARVEL - VOL. 10", "author": "Marvel", "ml_product_id": "MLB68495731", "pendente": true},
+  {"id": "o-monstro-das-cores", "isbn": "9786555000375", "genre": "ficcao", "title": "O monstro das cores", "author": "Anna Llenas", "asin": "6555000376"},
+  {"id": "box-harry-potter-edicao-pottermore", "isbn": "9786555323955", "genre": "fantasia", "title": "Box Harry Potter (edição Pottermore)", "author": "J. K. Rowling", "asin": "6555323957"},
+  {"id": "o-diario-de-uma-princesa-desastrada", "isbn": "9786555357264", "genre": "ficcao", "title": "O diário de uma princesa desastrada", "author": "Maidy Lacerda", "asin": "6555357266"},
+  {"id": "box-os-bridgertons", "isbn": "9786555651058", "genre": "romance", "title": "Box Os Bridgertons: os 9 títulos da série", "author": "Julia Quinn", "asin": "6555651059"},
+  {"id": "noiva-edicao-especial", "isbn": "9786555656121", "genre": "romance", "title": "Noiva (edição especial)", "author": "Ali Hazelwood", "asin": "6555656123"},
+  {"id": "box-livro-das-mil-e-uma-noites", "isbn": "9786558302032", "genre": "ficcao", "title": "Box Série Livro das mil e uma noites", "author": "Anônimo", "asin": "6558302039"},
+  {"id": "grande-sertao-veredas", "isbn": "9786559210572", "genre": "literatura-brasileira", "title": "Grande sertão: veredas", "author": "João Guimarães Rosa", "asin": "655921057X"},
+  {"id": "box-cidade-da-lua-crescente", "isbn": "9786559816545", "genre": "fantasia", "title": "Box Cidade da Lua Crescente", "author": "Sarah J. Maas", "asin": "6559816540"},
+  {"id": "biblioteca-estoica-grandes-mestres-volume-1", "isbn": "9786580921607", "genre": "mindset", "title": "Biblioteca Estoica: grandes mestres, volume I (box com 4 livros)", "author": "Marco Aurélio, Sêneca, Epiteto", "asin": "6580921609"},
+  {"id": "confissoes-de-santo-agostinho-edicao-de-luxo", "isbn": "9786584956391", "genre": "historia", "title": "Confissões de Santo Agostinho (edição de luxo)", "author": "Agostinho de Hipona", "asin": "6584956393"},
+  {"id": "aprendiz-do-vilao", "isbn": "9786585348782", "genre": "fantasia", "title": "Aprendiz do Vilão", "author": "Hannah Nicole Maehrer", "asin": "6585348788"},
+  {"id": "box-duologia-divinos-rivais", "isbn": "9786585348812", "genre": "fantasia", "title": "Box duologia Divinos Rivais", "author": "Rebecca Ross", "asin": "6585348818"},
+  {"id": "o-rei-perverso-o-povo-do-ar-vol-2", "isbn": "9788501118837", "genre": "fantasia", "title": "O rei perverso (O Povo do Ar, vol. 2)", "author": "Holly Black", "asin": "8501118834"},
+  {"id": "box-o-povo-do-ar", "isbn": "9788501304469", "genre": "fantasia", "title": "Box O Povo do Ar", "author": "Holly Black", "asin": "8501304468"},
+  {"id": "o-conde-de-monte-cristo-edicao-bolso-de-luxo", "isbn": "9788537808276", "genre": "ficcao", "title": "O conde de Monte Cristo (edição bolso de luxo)", "author": "Alexandre Dumas", "asin": "853780827X"},
+  {"id": "o-conde-de-monte-cristo", "isbn": "9788544001516", "genre": "ficcao", "title": "O Conde de Monte-Cristo", "author": "Alexandre Dumas", "asin": "8544001513"}
  ]
 }
