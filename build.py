@@ -1456,7 +1456,7 @@ def book_ld(o):
     if o["now"] - o["checked_at"] < OFFER_MAX:
         c = o["price_cents"]
         d["offers"] = {"@type": "Offer", "price": f"{c // 100}.{c % 100:02d}", "priceCurrency": "BRL",
-                       "availability": "https://schema.org/InStock", "url": url}
+                       "url": url}  # sem availability: não conferimos estoque
     return ld(d)
 
 
@@ -2771,7 +2771,7 @@ def selftest():
         (1, "Início", SITE + "/"), (2, "Mangá e HQ", SITE + "/manga/"), (3, capa[0]["title"], SITE + "/livro/livro-1/")]
     assert prod["@type"] == ["Product", "Book"] and prod["isbn"] == "9788547000240" and prod["image"] == img
     assert prod["author"] == {"@type": "Person", "name": "Carol S. Dweck"} and prod["url"] == SITE + "/livro/livro-1/"
-    assert prod["offers"] == {"@type": "Offer", "price": "25.75", "priceCurrency": "BRL", "availability": "https://schema.org/InStock",
+    assert prod["offers"] == {"@type": "Offer", "price": "25.75", "priceCurrency": "BRL",
                               "url": SITE + "/livro/livro-1/"}            # sem seller: somos afiliado
     assert f"<strong>R${nb}25,75</strong>" in bp                                  # o mesmo preço da página
     assert lds(book_ld({**capa[0], "price_cents": 100005}))[0]["offers"]["price"] == "1000.05"
