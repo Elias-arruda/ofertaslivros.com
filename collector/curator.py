@@ -816,6 +816,9 @@ def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
         ids = {b["id"] for b, _ in retired}
         books = [b for b in books if b["id"] not in ids]
         gone.update({i: today.isoformat() for i in ids})
+        # genre do retirado: o build manda /livro/<id>/ para o nicho (301, pagina-permanente-livro.md §5.1)
+        doc = {**doc, "generos_retirados": dict(sorted({**doc.get("generos_retirados", {}),
+                                                        **{b["id"]: b["genre"] for b, _ in retired}}.items()))}
         seen.update({b["ml_product_id"]: today.isoformat() for b, _ in retired
                      if "ml_product_id" in b})  # não volta pela descoberta por SEEN_DAYS
         print("curator: retirados " + ", ".join(f"{b['id']} ({why})" for b, why in retired))

@@ -22,10 +22,8 @@ ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data" / "offers.json"
 STATIC = ROOT / "static"
 DIST = ROOT / "dist"
+# retirados e generos_retirados (o curator grava o genre na retirada): o 301 de /livro/<id>/ para o nicho
 CATALOG = ROOT / "collector" / "catalog.json"
-# id -> genre de todo livro que já passou pelo catalog.json: o catalog perde o genre quando o curator retira o
-# livro (retirados é só {id: data}), e o 301 de /livro/<id>/ para o nicho precisa dele. Atualizado pelo build.
-GENEROS = ROOT / "data" / "generos.json"
 
 ALLOWED_HOSTS = {
     "amazon.com.br",
@@ -1829,23 +1827,15 @@ def redirects(offers, sem=(), retired=()):
     return "".join(lines)
 
 
-def retirados(books, offers, catalog, generos):
+def retirados(books, offers, catalog):
     """[(id, genre)] dos livros retirados do catálogo que saíram do offers.json, mais recente primeiro.
-    Só com genre de GENRES numa página de nicho que existe (nicho com oferta); senão, 404 como antes."""
+    genre de generos_retirados (gravado pelo curator na retirada), só slug de GENRES com página de nicho
+    (nicho com oferta). Sem isso, 404 como antes."""
     vivos, nichos = {b["id"] for b in books}, {o["genre"] for o in offers}
-    gone = catalog.get("retirados") or {}
-    gone = gone if isinstance(gone, dict) else {}
-    return [(i, generos[i]) for i, _ in sorted(gone.items(), key=lambda kv: str(kv[1]), reverse=True)
-            if i not in vivos and _nicho_ok(i, generos.get(i)) and generos[i] in nichos]
-
-
-def generos_atualizados(catalog, generos):
-    """Registro id -> genre: o salvo mais os livros do catalog.json, só com id de ID_RE e genre de GENRES."""
-    out = {i: g for i, g in generos.items() if _nicho_ok(i, g)}
-    for b in catalog.get("books") or []:
-        if isinstance(b, dict) and _nicho_ok(b.get("id"), b.get("genre")):
-            out[b["id"]] = b["genre"]
-    return dict(sorted(out.items()))
+    gone, gen = catalog.get("retirados"), catalog.get("generos_retirados")
+    gone, gen = (gone if isinstance(gone, dict) else {}), (gen if isinstance(gen, dict) else {})
+    return [(i, gen[i]) for i, _ in sorted(gone.items(), key=lambda kv: str(kv[1]), reverse=True)
+            if i not in vivos and _nicho_ok(i, gen.get(i)) and gen[i] in nichos]
 
 
 # form-action e connect-src: só o POST do pedido de livro para o Worker no SITE (/pedido, fab).
@@ -1911,11 +1901,7 @@ def build(dev=False):
     bot, ch = tg_bot(), channels()
     pages = render_pages(offers, bot, ch, sem)  # tudo validado e renderizado antes de tocar no dist/
     catalog = json.loads(CATALOG.read_text(encoding="utf-8")) if CATALOG.is_file() else {}  # dict: o collect valida
-    generos = json.loads(GENEROS.read_text(encoding="utf-8")) if GENEROS.is_file() else {}
-    novo = generos_atualizados(catalog, generos)
-    if novo != generos:  # livro novo no catálogo: entra no registro, para o 301 quando ele sair
-        GENEROS.write_text(json.dumps(novo, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    rules = redirects(offers, sem, retirados(books, offers, catalog, novo))
+    rules = redirects(offers, sem, retirados(books, offers, catalog))
     catalogo_bot = bot_json(offers, now, sem)
     shutil.rmtree(DIST, ignore_errors=True)
     shutil.copytree(STATIC, DIST)
@@ -3012,15 +2998,16 @@ def selftest():
     assert len(novas) <= len(redirects(load(good, M())).splitlines()) - len(r0)                        # 15
     # retirado (decisão 1 do Elias): 301 de /livro/<id>/ para o nicho; destino sempre interno
     so2 = sp(good, M(checked_at=velha_ml))[0]
-    cat = {"books": [{"id": "livro-1", "genre": good["genre"]}], "retirados": {"velho-1": "2026-11-19",
-           "velho-2": "2026-11-20", "livro-1": "2026-11-21", "fora": "2026-11-22", "Mau Id": "2026-11-23",
-           "sem-genero": "2026-11-24", "x\n/r/y": "2026-11-25"}}
-    gen = generos_atualizados(cat, {"velho-1": good["genre"], "velho-2": good["genre"], "fora": "nao-existe",
-                                    "Mau Id": good["genre"], "x\n/r/y": good["genre"], "outro": "../evil"})
-    assert gen == {"livro-1": good["genre"], "velho-1": good["genre"], "velho-2": good["genre"]}
-    ret = retirados(load_books({"version": 2, "offers": [good, M(checked_at=velha_ml)]}), so2, cat, gen)
+    cat = {"retirados": {"velho-1": "2026-11-19", "velho-2": "2026-11-20", "livro-1": "2026-11-21",
+           "fora": "2026-11-22", "Mau Id": "2026-11-23", "sem-genero": "2026-11-24", "x\n/r/y": "2026-11-25",
+           "url": "2026-11-26", "lista": "2026-11-27"},
+           "generos_retirados": {"velho-1": good["genre"], "velho-2": good["genre"], "livro-1": good["genre"],
+                                 "fora": "nao-existe", "Mau Id": good["genre"], "x\n/r/y": good["genre"],
+                                 "url": "https://evil.com", "lista": ["manga"], "nao-retirado": good["genre"]}}
+    ret = retirados(load_books({"version": 2, "offers": [good, M(checked_at=velha_ml)]}), so2, cat)
     assert ret == [("velho-2", good["genre"]), ("velho-1", good["genre"])]  # vivo, genre ruim, id ruim: nada
-    assert retirados([], [{"genre": "romance"}], cat, gen) == []          # nicho sem oferta não tem página: 404
+    assert retirados([], [{"genre": "romance"}], cat) == []               # nicho sem oferta não tem página: 404
+    assert retirados([], so2, {"retirados": ["x"], "generos_retirados": "x"}) == []  # formato ruim: nada
     rr = redirects(so2, retired=ret + [("Mau Id", good["genre"]), ("ok", "nao-existe"), ("ok", "https://evil.com"),
                                        ("x\n/r/y", good["genre"]), ("//evil.com", good["genre"]), ("ok", None)]).splitlines()
     assert [x for x in rr if x.startswith("/livro/")] == [f"/livro/velho-2/ /{good['genre']}/ 301",
