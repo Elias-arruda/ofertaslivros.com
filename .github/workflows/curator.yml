@@ -142,6 +142,9 @@ jobs:
           # Merge automático (decisão do Elias, 2026-11-07): PR aberto com o GITHUB_TOKEN não dispara o
           # pull_request do catalog-check, então o job o dispara no branch (workflow_dispatch). O ruleset
           # da main continua exigindo o catalog-check verde no último commit; o auto-merge espera por ele.
+          # O dispatch exige o workflow_dispatch no catalog-check.yml da main e do branch: os dois chegam no
+          # mesmo merge que este passo, e o branch do dia nasce da main (o curator.yml roda sempre com ref main).
+          # Se o dispatch falhar, o passo falha antes do auto-merge (fail closed) e o PR fica aberto.
           gh workflow run catalog-check.yml --ref "$BRANCH"
           gh pr merge "$BRANCH" --auto --squash --delete-branch
 
