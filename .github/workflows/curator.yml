@@ -1,8 +1,9 @@
 name: curator
 
-# docs/produto/curator.md. Um PR de curadoria por dia (até 50 candidatos e retirada).
-# Nada de pull_request/pull_request_target. O agendamento diário (09h BRT) é do Worker ofertaslivros-cron,
-# que dispara este workflow com mode=suggest: o schedule do GitHub perdia execuções.
+# docs/produto/curator.md. Um PR de curadoria por dia (até 50 candidatos e retirada), atualizado a cada 2 horas.
+# Nada de pull_request/pull_request_target. O agendamento (minuto 5 das horas pares UTC, a cada 2h, desde a Black Friday de
+# 2026-11-05) é do Worker ofertaslivros-cron, que dispara este workflow com mode=suggest: o schedule do GitHub
+# perdia execuções.
 on:
   workflow_dispatch:
     inputs:
@@ -44,24 +45,34 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write      # push só no branch curator/AAAA-MM-DD (a main é protegida pelo ruleset)
-      pull-requests: write # gh pr create
+      pull-requests: write # gh pr create e gh pr comment
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Um PR do curator por vez
+      # Roda a cada 2 horas (Worker ofertaslivros-cron, minuto 5). Um PR por dia, na data de Brasília
+      # (a mesma do curator.py): a 1ª rodada abre curator/AAAA-MM-DD; as seguintes acrescentam um commit
+      # ao mesmo branch (sem force-push) e comentam os novos no PR. PR aberto de outro dia: nada a fazer
+      # até ele ser fechado (como antes). PR de fork não conta.
+      - name: PR do curator do dia
         id: open
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          n=$(gh pr list --state open --base main --json headRefName \
-                --jq '[.[] | select(.headRefName | startswith("curator/"))] | length')
-          echo "abertos=$n" >> "$GITHUB_OUTPUT"
-          if [ "$n" != "0" ]; then echo "já existe PR do curator aberto; nada a fazer"; fi
+          branch="curator/$(TZ=America/Sao_Paulo date +%F)"
+          heads=$(gh pr list --state open --base main --json headRefName,isCrossRepository \
+                    --jq '[.[] | select(.isCrossRepository | not) | .headRefName
+                           | select(startswith("curator/"))] | join(" ")')
+          if [ -z "$heads" ]; then modo=novo
+          elif [ "$heads" = "$branch" ]; then modo=atualiza
+          else modo=nada; echo "PR do curator de outro dia aberto ($heads); nada a fazer"
+          fi
+          echo "modo=$modo" >> "$GITHUB_OUTPUT"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
 
       - name: Estado do coletor (price-history/state.json), usado na retirada
-        if: steps.open.outputs.abertos == '0'
+        if: steps.open.outputs.modo != 'nada'
         # Sem credencial (persist-credentials: false): funciona porque o repo é público, como no deploy.yml.
         run: |
           git fetch --no-tags --depth=1 origin \
@@ -69,8 +80,18 @@ jobs:
           mkdir -p "$RUNNER_TEMP/history"
           git show origin/price-history:state.json > "$RUNNER_TEMP/history/state.json"
 
+      # Só os dados vêm do branch do PR; o código que roda é sempre o da main.
+      - name: Partir dos dados do PR do dia
+        if: steps.open.outputs.modo == 'atualiza'
+        env:
+          BRANCH: ${{ steps.open.outputs.branch }}
+        run: |
+          git fetch --no-tags --depth=1 origin "refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
+          git checkout "origin/$BRANCH" -- collector/catalog.json collector/curator_seen.json \
+            collector/ml_links.tsv
+
       - name: Sugerir candidatos (API do ML)
-        if: steps.open.outputs.abertos == '0'
+        if: steps.open.outputs.modo != 'nada'
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
@@ -79,29 +100,44 @@ jobs:
           python3 collector/curator.py suggest --summary "$RUNNER_TEMP/curator.md" \
             --history "$RUNNER_TEMP/history"
 
-      - name: Abrir o PR
-        if: steps.open.outputs.abertos == '0'
+      - name: Abrir ou atualizar o PR
+        if: steps.open.outputs.modo != 'nada'
         env:
           GH_TOKEN: ${{ github.token }}
+          MODO: ${{ steps.open.outputs.modo }}
+          BRANCH: ${{ steps.open.outputs.branch }}
         run: |
           files="collector/catalog.json collector/curator_seen.json collector/ml_links.tsv"
-          if [ -z "$(git status --porcelain -- $files)" ]; then
-            echo "nada novo nem retirado: sem PR"; exit 0
+          if [ "$MODO" = atualiza ]; then
+            if git diff --quiet "origin/$BRANCH" -- $files; then
+              echo "nada novo nem retirado desde a última rodada: sem commit"; exit 0
+            fi
+            mkdir "$RUNNER_TEMP/out" && cp $files "$RUNNER_TEMP/out/"
+            git checkout -q -f -B "$BRANCH" "origin/$BRANCH"
+            for f in $files; do cp "$RUNNER_TEMP/out/$(basename "$f")" "$f"; done
+          else
+            if [ -z "$(git status --porcelain -- $files)" ]; then
+              echo "nada novo nem retirado: sem PR"; exit 0
+            fi
+            git switch -c "$BRANCH"
           fi
-          branch="curator/$(date -u +%F)"
-          git switch -c "$branch"
           git add -- $files # com candidato ou retirada, o suggest grava os três; arquivo faltando falha aqui (fail closed)
           git -c user.name="github-actions[bot]" \
               -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-              commit -q -m "curator: candidatos pendentes de $(date -u +%F)"
+              commit -q -m "curator: candidatos pendentes de ${BRANCH#curator/} ($(TZ=America/Sao_Paulo date +%Hh))"
           b64=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
           echo "::add-mask::$b64"
           export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="http.https://github.com/.extraheader" \
                  GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $b64"
-          git push -q origin "HEAD:refs/heads/$branch"
-          gh pr create --base main --head "$branch" \
-            --title "Curadoria: candidatos de $(date -u +%F)" \
-            --body-file "$RUNNER_TEMP/curator.md"
+          # Sem --force: se o branch andou (ex.: links aplicados), o push falha e a próxima rodada refaz.
+          git push -q origin "HEAD:refs/heads/$BRANCH"
+          if [ "$MODO" = atualiza ]; then
+            gh pr comment "$BRANCH" --body-file "$RUNNER_TEMP/curator.md"
+          else
+            gh pr create --base main --head "$BRANCH" \
+              --title "Curadoria: candidatos de ${BRANCH#curator/}" \
+              --body-file "$RUNNER_TEMP/curator.md"
+          fi
 
   ml-match:
     # Livros com isbn e sem ML: acha o MLB pelo ISBN e abre um PR com a fila ml_links.tsv

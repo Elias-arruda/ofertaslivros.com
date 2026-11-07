@@ -48,8 +48,8 @@ GENRE_MAP = {
     "13464376": "historia",    # História
     "76624759": "historia",    # Ciência
 }
-DAY_MAX = 50       # livros novos por execução diária: meta e teto (§10.8, item 5)
-GENRE_MAX = 10     # por gênero, por execução (tag não conta)
+DAY_MAX = 50       # livros novos por dia (somando as rodadas a cada 2h): meta e teto (§10.8, item 5)
+GENRE_MAX = 10     # por gênero, por dia (tag não conta)
 ACTIVE_MAX = 500   # ativos + pendentes (§10.7, decisão 4)
 PRICE_MIN, PRICE_MAX = 1500, 40000  # centavos: R$ 15 a R$ 400 (decisão 3)
 SEEN_DAYS = 180    # recusado não volta antes disso
@@ -251,11 +251,13 @@ def candidate(pid, pos, token, known_isbns, **kw):
             "off": (lst - price) * 100 // lst}, None
 
 
-def select(cands, n_catalog):
+def select(cands, n_catalog, today_genres=()):
     """Ranking (menor posição; empate: ml_product_id) com os tetos de volume. Desconto não
-    entra na escolha nem na ordem (curadoria-automatica.md §10.8, item 1): só no resumo."""
-    slots = max(0, min(DAY_MAX, ACTIVE_MAX - n_catalog))
-    per, out = Counter(), []
+    entra na escolha nem na ordem (curadoria-automatica.md §10.8, item 1): só no resumo.
+    today_genres: gênero de cada livro já sugerido hoje (rodadas anteriores do mesmo dia),
+    que conta nos tetos do dia."""
+    slots = max(0, min(DAY_MAX - len(today_genres), ACTIVE_MAX - n_catalog))
+    per, out = Counter(today_genres), []
     for x in sorted(cands, key=lambda x: (x["pos"], x["ml_product_id"])):
         if len(out) >= slots:
             break
@@ -702,13 +704,14 @@ def write_catalog(path, doc):
     tmp.replace(path)
 
 
-def retire(books, cstate, today, recent=0):
+def retire(books, cstate, today, recent=0, done_today=0):
     """-> [(livro, motivo)] pela §10.8, item 6, com as datas que o coletor mantém em
     price-history/state.json (curadoria): (a) 31+ dias sem anúncio ativo, todos;
     (b) 31+ dias sem oferta (desde a última ou, se nunca, desde a publicação), só os
     automáticos (com genre_source). Não retira nada sem coleta do ML inteira recente
     (curadoria_ok), acima de RETIRE_MAX no dia ou de RETIRE_MAX_7D na semana (recent = já
-    retirados nos últimos 7 dias), nem se fosse esvaziar o catálogo."""
+    retirados nos últimos 7 dias; done_today = já retirados hoje, em rodada anterior), nem se
+    fosse esvaziar o catálogo."""
     cu = cstate.get("curadoria") or {}
     ok = cstate.get("curadoria_ok") or ""
     if not (today - STATE_STALE).isoformat() <= ok <= today.isoformat():  # futura também não
@@ -728,7 +731,7 @@ def retire(books, cstate, today, recent=0):
             out.append((b, "sem_anuncio"))
         elif "genre_source" in b and (st["ultima_oferta"] or st["publicado"]) < limit:
             out.append((b, "sem_oferta"))
-    if len(out) > RETIRE_MAX or recent + len(out) > RETIRE_MAX_7D \
+    if done_today + len(out) > RETIRE_MAX or recent + len(out) > RETIRE_MAX_7D \
             or len(out) >= sum(not b.get("pendente") for b in books):
         print(f"::warning::curator: {len(out)} retiradas hoje e {recent} na semana (tetos "
               f"{RETIRE_MAX}/{RETIRE_MAX_7D}); nada retirado, conferir à mão")
@@ -736,7 +739,7 @@ def retire(books, cstate, today, recent=0):
     return out
 
 
-def discover(books, seen, clock):
+def discover(books, seen, clock, today_genres=()):
     """-> (escolhidos, revisar_b5, código de saída). Rede só aqui."""
     known_pids = {b["ml_product_id"] for b in books if "ml_product_id" in b} | set(seen)
     known_isbns = {b["isbn"] for b in books if "isbn" in b}
@@ -791,7 +794,7 @@ def discover(books, seen, clock):
         if x["isbn"]:
             isbns.add(x["isbn"])  # dois produtos com o mesmo ISBN: fica o primeiro
         cands.append(x)
-    picked = select(cands, len(books))
+    picked = select(cands, len(books), today_genres)
     print(f"curator: {len(ranks)} produtos novos nas listas, {len(cands)} passaram nos "
           f"filtros, {len(picked)} sugeridos; descartes: "
           + (", ".join(f"{v} {k}" for k, v in sorted(why.items())) or "nenhum"))
@@ -809,9 +812,9 @@ def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
     books = c.load_catalog(doc, include_pending=True)  # catálogo quebrado: nem começa
     seen = load_seen(seen_path, today)
     gone = dict(doc.get("retirados", {}))  # validado no load_catalog
-    week = (today - timedelta(days=7)).isoformat()
-    retired = retire(books, c.load_state(history), today,
-                     sum(d >= week for d in gone.values())) if history else []
+    week, hoje = (today - timedelta(days=7)).isoformat(), today.isoformat()
+    retired = retire(books, c.load_state(history), today, sum(d >= week for d in gone.values()),
+                     sum(d == hoje for d in gone.values())) if history else []
     if retired:
         ids = {b["id"] for b, _ in retired}
         books = [b for b in books if b["id"] not in ids]
@@ -822,11 +825,16 @@ def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
         seen.update({b["ml_product_id"]: today.isoformat() for b, _ in retired
                      if "ml_product_id" in b})  # não volta pela descoberta por SEEN_DAYS
         print("curator: retirados " + ", ".join(f"{b['id']} ({why})" for b, why in retired))
+    # Rodadas a cada 2h partem do PR do dia: o que já foi sugerido hoje (e segue no
+    # catálogo) conta nos tetos de DAY_MAX e GENRE_MAX.
+    today_genres = [b["genre"] for b in books if seen.get(b.get("ml_product_id")) == hoje]
     picked, revisar, rc = [], [], 0
     if ACTIVE_MAX - len(books) <= 0:
         print(f"curator: catálogo no teto ({len(books)}/{ACTIVE_MAX}); nada a sugerir")
+    elif len(today_genres) >= DAY_MAX:
+        print(f"curator: teto do dia atingido ({len(today_genres)}/{DAY_MAX}); nada a sugerir")
     else:
-        picked, revisar, rc = discover(books, seen, clock)
+        picked, revisar, rc = discover(books, seen, clock, today_genres)
     if not picked and not retired:
         if revisar and summary_path:  # registro da revisão mesmo sem PR (o workflow pode publicar)
             summary_path.write_text(summary([], today, revisar), encoding="utf-8")
