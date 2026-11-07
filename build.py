@@ -1862,6 +1862,9 @@ def build(dev=False):
     # esvaziar com dado parado; o deploy usa o relógio real.
     now = (max(s["checked_at"] for b in books for s in b["stores"]) if dev
            else datetime.now(timezone.utc))
+    # Nenhum livro com preço continua falhando no resolve, de propósito (fail-closed, como antes): o site supõe ao
+    # menos uma oferta (carimbo, hero) e um catálogo todo vencido é pane do coletor; o deploy anterior fica no ar,
+    # com o "visto em" de cada preço. Com a Amazon no catálogo não acontece: a Amazon vencida segura o livro (velho).
     offers, sem = resolve(books, now), sem_preco(books, now)
     bot, ch = tg_bot(), channels()
     pages = render_pages(offers, bot, ch, sem)  # tudo validado e renderizado antes de tocar no dist/
