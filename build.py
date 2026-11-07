@@ -450,6 +450,20 @@ def resolve(books, now):
     return out
 
 
+def sem_preco(books, now):
+    """Livros que o resolve descarta (só ML, sem nenhuma loja no prazo): ganham a página permanente sem preço
+    (docs/produto/pagina-permanente-livro.md). Lista à parte de offers: nunca entra na vitrine, nas contagens,
+    nos canais nem no _redirects. Campos da última leitura, só para a frase do passado e o histórico."""
+    out = []
+    for b in books:
+        if any(fresh(s, now) or s["store"] == "amazon" for s in b["stores"]):
+            continue  # tem loja no prazo, ou a Amazon segura o livro como velho: é do resolve
+        last = max(b["stores"], key=lambda s: s["checked_at"])
+        out.append({**b, **last, "stores": b["stores"], "sem_preco": True, "oferta": False, "velho": True,
+                    "novo": False, "alt": None, "seal": None, "since": None, "now": now})
+    return out
+
+
 def load_offers(doc, now):
     return resolve(load_books(doc), now)
 
@@ -606,6 +620,7 @@ def chart(o, pad="  "):
             return ""  # sem histórico no contrato: nada a dizer
         return f'\n{pad}<p class="hist">Primeira leitura em {o["checked_at"].astimezone(BRT):%d/%m}: {brl(o["price_cents"])}.</p>'
     lines, start, today = w
+    hoje = None if o.get("sem_preco") else today  # sem preço: a última leitura nunca vira "hoje", sempre com a data
     first = min(pts[0][0] for _, pts in lines)  # o texto diz a data real; start é só o eixo
     span = (today - start).days
     cs = [c for _, pts in lines for _, c in pts]
@@ -625,8 +640,8 @@ def chart(o, pad="  "):
         svg.append(f'<path class="hc-line {cls}" d="{d_}"/>')
         segs.extend((xy[i - 1], xy[i]) if not cut[i] else (xy[i], xy[i]) for i in range(len(xy)))
         last, cur = pts[-1]
-        name = STORES[s["store"]] + ("" if last == today else f", {last:%d/%m}")
-        ends.append([Y(cur), s["store"] != o["store"], name, cls + ("" if last == today else " hc-old"), cur])
+        name = STORES[s["store"]] + ("" if last == hoje else f", {last:%d/%m}")
+        ends.append([Y(cur), s["store"] != o["store"], name, cls + ("" if last == hoje else " hc-old"), cur])
         marks.append(("now", cls, [(X(last), Y(cur))], cur, s["store"] == "amazon" and o["velho"]))
         # 3 marcadores por loja: o mais alto, o degrau mais recente (o último preço antes do atual que difere
         # dele em 3% ou mais: "quanto era logo antes") e o atual. Um valor igual a outro marcador não se repete.
@@ -692,7 +707,7 @@ def chart(o, pad="  "):
     svg.append(f'<text class="hc-lbl" x="{HC_X0}" y="{HC_H - 6}">{start:%d/%m}</text>'
                f'<text class="hc-lbl" x="{HC_X1}" y="{HC_H - 6}" text-anchor="end">hoje</text>')
     return f"""\n{pad}<figure class="hc" id="historico">
-{pad}  <svg viewBox="0 0 {HC_W} {HC_H}" width="100%" role="img" aria-labelledby="hc-t" focusable="false"><title id="hc-t">{e(hc_title(lines, first, today))}</title>{"".join(svg)}</svg>
+{pad}  <svg viewBox="0 0 {HC_W} {HC_H}" width="100%" role="img" aria-labelledby="hc-t" focusable="false"><title id="hc-t">{e(hc_title(lines, first, hoje))}</title>{"".join(svg)}</svg>
 {pad}  <figcaption>{e(hc_phrase(o, first, lo, hi))}</figcaption>
 {pad}  {hc_table(lines)}
 {pad}</figure>"""
@@ -1133,7 +1148,8 @@ def faq(bot, ch):
     qa = [("Como vocês escolhem as ofertas?",
            "Acompanhamos o preço de uma lista de livros na Amazon e no Mercado Livre. Só vira oferta o livro "
            "que está mais barato do que costuma ficar, e cada preço mostra o horário em que foi conferido na loja. "
-           "Quando o preço volta a subir, o livro sai das ofertas e fica na curadoria; quando o preço fica velho, sai do site."),
+           "Quando o preço volta a subir, o livro sai das ofertas e fica na curadoria. Quando não conseguimos mais "
+           "conferir o preço, ele sai das listas, mas a página do livro continua no ar, com o histórico de preço."),
           ("O que quer dizer “menor preço em 90 dias”?",
            "Que o preço de agora é o menor que registramos nos últimos 90 dias, em todas as lojas em que o livro "
            "está à venda. O selo só aparece quando temos 90 dias de histórico de verdade; com menos, mostramos "
@@ -1447,13 +1463,15 @@ def book_ld(o):
     da Amazon não aceita preço exibido com mais de 24h, e o Google mostra o preço sem o nosso carimbo de horário.
     Sem seller: somos afiliado, não vendedor."""
     url = f"{SITE}/livro/{o['id']}/"
-    d = {"@context": "https://schema.org", "@type": ["Product", "Book"], "name": o["title"],
+    oferta = not o.get("sem_preco") and o["now"] - o["checked_at"] < OFFER_MAX
+    # sem Offer, só Book: Product sem offers/review/aggregateRating é erro no Search Console
+    d = {"@context": "https://schema.org", "@type": ["Product", "Book"] if oferta else "Book", "name": o["title"],
          "author": {"@type": "Person", "name": o["author"]}, "url": url}
     if abs_img(o):
         d["image"] = abs_img(o)
     if o["isbn"]:
         d["isbn"] = o["isbn"]
-    if o["now"] - o["checked_at"] < OFFER_MAX:
+    if oferta:
         c = o["price_cents"]
         d["offers"] = {"@type": "Offer", "price": f"{c // 100}.{c % 100:02d}", "priceCurrency": "BRL",
                        "url": url}  # sem availability: não conferimos estoque
@@ -1555,7 +1573,8 @@ def book_title(o):
     """'Título, Autor por R$ 25,75 | Ofertas Livros' (cru; escapar ao usar). Passou de TITLE_MAX: tira o
     subtítulo (depois de ':') e, se ainda não couber, corta o título na palavra com '…'. O preço e o autor nunca
     são cortados; com autor longo, o título guarda até TITLE_MIN chars, mesmo passando um pouco de TITLE_MAX."""
-    tail = f", {o['author']} por {brl(o['price_cents'])} | Ofertas Livros"
+    preco = "" if o.get("sem_preco") else f" por {brl(o['price_cents'])}"  # sem preço conferido, sem preço no título
+    tail = f", {o['author']}{preco} | Ofertas Livros"
     t, room = o["title"], max(TITLE_MAX - len(tail), TITLE_MIN)
     if len(t) > room:
         t = t.split(":")[0].strip() or t
@@ -1576,6 +1595,12 @@ def store_list(o):
             f'<span class="alt-when">{checked(a, o["now"])}</span></p>')
 
 
+def ultima_leitura(o):
+    """Frase no passado do livro sem preço. Preço da Amazon com mais de 24h nunca aparece (Associados): só a data."""
+    preco = "" if o["store"] == "amazon" else f" O último preço que vimos foi {brl(o['price_cents'])} {na(o['store'])}."
+    return f"Não conseguimos conferir o preço na loja desde {o['checked_at'].astimezone(BRT):%d/%m}.{preco}"
+
+
 def book_page(o, offers, bot=None, ch=()):
     """/livro/<id>/: a página real dos detalhes (o modal do JS é só um atalho para ela)."""
     g, t = o["genre"], e(o["title"])
@@ -1590,6 +1615,16 @@ def book_page(o, offers, bot=None, ch=()):
         f'<span class="chip chip--{b[0]}">{b[1]}</span>' if b else "")
     note = (f'<blockquote class="nota"><p>{e(o["blurb"])}</p><footer>{avatar(g)}Curadoria de {e(GENRES[g])}</footer></blockquote>'
             if o["blurb"] else "")
+    deal = f'<div class="hero-deal">{stamp_html(o)}<p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong>{old}</p>{pill}</div>'
+    meta, hist = meta_html(o), chart(o, "    ")
+    acts = f'\n    <div class="hero-acts">{go(o)}{alert_link(o, bot)}</div>\n    {store_list(o)}'
+    desc = f"{t}, de {e(o['author'])}, por {brl(o['price_cents'])} {na(o['store'])}. Preço conferido na loja."
+    if o.get("sem_preco"):  # sem preço conferido: nada de preço atual nem link para a loja; o alerta é o único CTA
+        deal = '<div class="hero-deal"><p class="sem-agora">Sem oferta agora</p></div>'
+        meta, nov = e(ultima_leitura(o)), ""
+        hist = hist if has_hc(o) else '\n    <p class="hist">Sem leitura de preço nos últimos 90 dias.</p>'
+        acts = f'\n    <div class="hero-acts">{alert_link(o, bot)}</div>' if bot else ""
+        desc = f"{t}, de {e(o['author'])}: histórico de preço e aviso quando entrar em oferta."
     body = f"""<p class="crumbs"><a href="/">Início</a> / <a href="/{g}/">{e(GENRES[g])}</a></p>
 <article class="livro" data-g="{g}">
   {obj(o, "obj hero-obj livro-obj", eager=True)}
@@ -1598,15 +1633,11 @@ def book_page(o, offers, bot=None, ch=()):
     <h1 class="livro-h1">{t}</h1>
     <p class="hero-sub">{e(o["author"])}</p>
     {note}
-    <div class="hero-deal">{stamp_html(o)}<p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong>{old}</p>{pill}</div>
-    <p class="meta">{meta_html(o)}</p>{chart(o, "    ")}{nov}
-    <div class="hero-acts">{go(o)}{alert_link(o, bot)}</div>
-    {store_list(o)}
+    {deal}
+    <p class="meta">{meta}</p>{hist}{nov}{acts}
   </div>
 </article>"""
-    return shell(offers, e(book_title(o)),
-                 f"{t}, de {e(o['author'])}, por {brl(o['price_cents'])} {na(o['store'])}. Preço conferido na loja.",
-                 body, ch, style=g, bot=bot, img=abs_img(o),
+    return shell(offers, e(book_title(o)), desc, body, ch, style=g, bot=bot, img=abs_img(o),
                  head=crumbs_ld((GENRES[g], f"/{g}/"), (o["title"], f"/livro/{o['id']}/")) + "\n" + book_ld(o))
 
 
@@ -1736,7 +1767,7 @@ def bot_key(text):
     return " ".join(re.sub(r"[^a-z0-9]+", " ", fold(text)).split())
 
 
-def bot_json(offers, now):
+def bot_json(offers, now, sem=()):
     """Catálogo público do bot do Telegram (docs/produto/bot-lista-de-desejos.md §7.2): busca e o aviso pronto.
     texto só com oferta no prazo (o Worker não calcula oferta nem formata preço); valido_ate = checked_at +
     FRESH da loja que vence primeiro, para o cron não mandar preço que venceu depois do deploy."""
@@ -1750,7 +1781,7 @@ def bot_json(offers, now):
                "valido_ate": min(s["checked_at"] + FRESH[s["store"]] for s in o["stores"]).astimezone(timezone.utc)
                              .isoformat(timespec="seconds"),
                "texto": post_text(o, f"{SITE}/r/{o['id']}/bot") if o["oferta"] and not o["velho"] else None}
-              for o in offers]
+              for o in [*offers, *sem]]  # sem: livros sem preço, para o add:<id> do alerta (texto None)
     return json.dumps({"version": 1, "gerado_em": now.astimezone(timezone.utc).isoformat(timespec="seconds"),
                        "livros": livros}, ensure_ascii=False)
 
@@ -1800,8 +1831,9 @@ def require_prod(doc):
         raise Invalid("offers.json marcado como _exemplo (build local: python3 build.py --dev)")
 
 
-def render_pages(offers, bot=None, ch=()):
-    """{caminho em dist/: HTML}. Uma página por nicho presente, por livro e a lista completa."""
+def render_pages(offers, bot=None, ch=(), sem=()):
+    """{caminho em dist/: HTML}. Uma página por nicho presente, por livro e a lista completa.
+    sem: livros sem preço (sem_preco); só ganham a própria /livro/<id>/, nenhuma lista os vê."""
     pages = {"index.html": page(offers, bot=bot, ch=ch), "privacidade/index.html": privacy(offers, bot, ch),
              "ofertas/index.html": all_page(offers, bot, ch), "curadoria/index.html": curadoria_page(offers, bot, ch)}
     for t in FAIXAS:
@@ -1812,7 +1844,7 @@ def render_pages(offers, bot=None, ch=()):
         pages["canais/index.html"] = canais(offers, ch, bot)
     if offers and campanha(offers[0]["now"]):  # antes da janela não existe; depois, só o aviso de fim
         pages["black-friday/index.html"] = bf_page(offers, bot, ch)
-    for o in offers:  # id validado por ID_RE: seguro como diretório
+    for o in [*offers, *sem]:  # id validado por ID_RE: seguro como diretório
         pages[f"livro/{o['id']}/index.html"] = book_page(o, offers, bot, ch)
     # canonical pelo caminho em dist/ (slugs de GENRES e ids de ID_RE), num lugar só para todas as páginas
     def url(k):
@@ -1830,11 +1862,14 @@ def build(dev=False):
     # esvaziar com dado parado; o deploy usa o relógio real.
     now = (max(s["checked_at"] for b in books for s in b["stores"]) if dev
            else datetime.now(timezone.utc))
-    offers = resolve(books, now)
+    # Nenhum livro com preço continua falhando no resolve, de propósito (fail-closed, como antes): o site supõe ao
+    # menos uma oferta (carimbo, hero) e um catálogo todo vencido é pane do coletor; o deploy anterior fica no ar,
+    # com o "visto em" de cada preço. Com a Amazon no catálogo não acontece: a Amazon vencida segura o livro (velho).
+    offers, sem = resolve(books, now), sem_preco(books, now)
     bot, ch = tg_bot(), channels()
-    pages = render_pages(offers, bot, ch)  # tudo validado e renderizado antes de tocar no dist/
+    pages = render_pages(offers, bot, ch, sem)  # tudo validado e renderizado antes de tocar no dist/
     rules = redirects(offers)
-    catalogo_bot = bot_json(offers, now)
+    catalogo_bot = bot_json(offers, now, sem)
     shutil.rmtree(DIST, ignore_errors=True)
     shutil.copytree(STATIC, DIST)
     for path, body in pages.items():
@@ -1844,7 +1879,7 @@ def build(dev=False):
     (DIST / "bot.json").write_text(catalogo_bot, encoding="utf-8")
     (DIST / "sitemap.xml").write_text(sitemap(pages), encoding="utf-8")
     (DIST / "_headers").write_text(HEADERS, encoding="utf-8")
-    print(f"ok: {len(ofertas(offers))} ofertas, {len(sem_oferta(offers))} sem oferta ({len(books) - len(offers)} fora do prazo), "
+    print(f"ok: {len(ofertas(offers))} ofertas, {len(sem_oferta(offers))} sem oferta ({len(sem)} sem preço), "
           f"{len(pages)} páginas -> {DIST}")
 
 
@@ -2777,7 +2812,8 @@ def selftest():
     assert lds(book_ld({**capa[0], "price_cents": 100005}))[0]["offers"]["price"] == "1000.05"
     for at, tem in (("2026-10-17T10:00:00-03:00", True), ("2026-10-17T08:00:00-03:00", False)):  # 23h e 25h antes de NOW
         b = load({**good, "stores": [{**amz, "checked_at": at}]})[0]
-        assert ("offers" in lds(book_ld(b))[0]) is tem, at   # Offer só com preço de menos de 24h
+        j = lds(book_ld(b))[0]                                # Offer só com preço de menos de 24h
+        assert ("offers" in j) is tem and j["@type"] == (["Product", "Book"] if tem else "Book"), at  # sem Offer: só Book
     local = load({**good, "isbn": isbn_capa})[0]                               # capa local vira URL absoluta do SITE
     assert abs_img(local) == f"{SITE}/capas/{isbn_capa}.jpg" and f'og:image" content="{SITE}/capas/' in book_page(local, [local])
     for t in ("T" * 200, "Um título bem comprido sem subtítulo nenhum para cortar aqui"):  # corta o título, nunca o preço
@@ -2890,6 +2926,43 @@ def selftest():
     w = post(3990)                                                        # ML vence; Amazon 7,5% mais cara
     assert w.splitlines()[2].startswith("Mercado Livre · ") and f"Também na Amazon por R${nb}42,90" in w
     assert "mercadolivre.com" not in w and "amazon.com" not in w and w.count("https://") == 1
+    # página permanente do livro sem preço (pagina-permanente-livro.md §8, itens 1 a 11)
+    def sp(*books):
+        bs = load_books({"version": 2, "offers": list(books)})
+        return resolve(bs, NOW), sem_preco(bs, NOW)
+    velha_ml = "2026-10-18T06:00:00-03:00"                                # 3h antes de NOW: fora dos 2h do ML
+    so, ss = sp(good, M(checked_at=velha_ml))
+    assert [x["id"] for x in so] == ["livro-1"] and [x["id"] for x in ss] == ["livro-2"]
+    assert sp(good, M())[1] == [] and sp(A(checked_at="2026-10-01T08:00:00-03:00"))[1] == []  # Amazon velha é do resolve
+    pg0, pgs = render_pages(so), render_pages(so, sem=ss)
+    assert set(pgs) - set(pg0) == {"livro/livro-2/index.html"}                                       # 1
+    assert all(pgs[k] == v for k, v in pg0.items())               # 5: listas, contagens, modal e menu iguais sem ele
+    sh = vis(pgs["livro/livro-2/index.html"])
+    assert '<p class="sem-agora">Sem oferta agora</p>' in sh                                         # 2
+    assert f"desde 18/10. O último preço que vimos foi R${nb}19,90 no Mercado Livre." in sh
+    for bad in ('href="/r/', 'class="go"', 'class="price"', 'class="old"', "off-pill", "stamp", 'class="other"'):
+        assert bad not in sh, bad
+    assert f"<title>T, A | Ofertas Livros</title>" in sh and "histórico de preço e aviso quando entrar em oferta" in sh
+    assert 'class="hc"' not in sh and "Sem leitura de preço nos últimos 90 dias." in sh                # 3
+    ho, hs_ = sp(good, M(checked_at=velha_ml, history_since="2026-10-01", price_points=ok_pp))
+    hcs = vis(render_pages(ho, sem=hs_)["livro/livro-2/index.html"])
+    assert 'class="hc"' in hcs and "Sem leitura de preço" not in hcs
+    assert "hoje R$" not in hcs and "Mercado Livre, 18/10" in hcs and "último R$" in hcs  # leitura de hoje cedo não vira "hoje"
+    assert "hero-acts" not in sh and "Me avise" not in sh                                             # 4: sem bot, sem CTA
+    sb = vis(render_pages(so, "ofertaslivros_bot", sem=ss)["livro/livro-2/index.html"])
+    assert sb.count(e(tg_alert_url("ofertaslivros_bot", "livro-2"))) == 1 and 'class="btn btn--ghost alert"' in sb
+    assert f"{SITE}/livro/livro-2/" in sitemap(pgs)                                                    # 6
+    sj = lds(pgs["livro/livro-2/index.html"])[1]                                                       # 7
+    assert sj["@type"] == "Book" and "offers" not in sj and sj["url"] == SITE + "/livro/livro-2/"
+    assert "offers" not in lds(book_ld({**ss[0], "checked_at": NOW}))[0]   # sem preço nunca tem Offer, nem com leitura recente
+    lv2 = next(x for x in json.loads(bot_json(so, NOW, ss))["livros"] if x["id"] == "livro-2")         # 8
+    assert lv2["texto"] is None and lv2["desconto"] == 0
+    assert "livro-2" not in redirects(so)                                                               # 9: curinga
+    vb = vis(render_pages(load(good, M()))["livro/livro-2/index.html"])                               # 10: voltou
+    assert 'class="go"' in vb and "sem-agora" not in vb
+    assert "a página do livro continua no ar, com o histórico" in faq(None, ()) and "sai do site" not in faq(None, ())  # 11
+    am = {**ss[0], "store": "amazon"}                                    # Amazon nesse estado: só a data, nunca o preço
+    assert ultima_leitura(am) == "Não conseguimos conferir o preço na loja desde 18/10."
     print("selftest ok")
 
 

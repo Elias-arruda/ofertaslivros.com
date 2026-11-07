@@ -1,6 +1,6 @@
 # Spec: página permanente do livro (`/livro/<id>/` não some quando a oferta acaba)
 
-Status: proposta, 2026-11-07. Autor: product-manager. Nada implementado. Pedido do Elias (2026-11-07): manter a página no ar com "sem oferta agora" e o histórico de preço, sem botão de compra ativo, e com a oferta de volta quando o preço cair.
+Status: PR 1 (seções 2, 3, 6 e 7) implementado em 2026-11-07; o PR 2 (seção 5 e livro retirado) vem depois. Autor: product-manager. Pedido do Elias (2026-11-07): manter a página no ar com "sem oferta agora" e o histórico de preço, sem botão de compra ativo, e com a oferta de volta quando o preço cair.
 
 ## 1. Problema e usuário
 
@@ -42,7 +42,7 @@ Interpretações consideradas:
 | Estado | Quando | O que muda |
 |---|---|---|
 | **Em oferta** | `oferta` | Nada |
-| **Sem oferta, com preço** | Loja fresca ou Amazon `velho`, sem `oferta` | Nada. Continua com o preço e o botão para a loja, porque o livro está na `/curadoria/` e o clique rende comissão (`aba-curadoria.md`). Ver decisão em aberto 2 |
+| **Sem oferta, com preço** | Loja fresca ou Amazon `velho`, sem `oferta` | Nada. Continua com o preço e o botão para a loja, porque o livro está na `/curadoria/` e o clique rende comissão (`aba-curadoria.md`). Decisão 2 (Elias, 2026-11-07) |
 | **Sem preço** (novo) | Nenhuma loja fresca e nenhuma leitura da Amazon (caso A) | A página fica no ar, conforme a seção 3 |
 
 O pedido de "sem botão de compra ativo" vale para o estado **sem preço**. Ali não há preço conferido que justifique mandar o leitor para a loja.
@@ -64,7 +64,7 @@ Mesma URL, status 200, mesmo layout de `book_page`, sem `noindex`:
 - **o histórico** (gráfico `chart` e tabela, `#historico`) com os pontos que existirem. Pela regra do coletor, o histórico cobre os últimos 90 dias até hoje (`collect.price_points`). Sem pontos na janela, a página mostra "Sem leitura de preço nos últimos 90 dias" no lugar do gráfico;
 - o botão **"Me avise se baixar"** (`alert_link`), quando o bot está configurado. É o único CTA da página;
 - **nenhum link `/r/`**: sem `go()`, sem `store_list`, sem botão de loja ativo, nem desabilitado. "Sem botão de compra ativo" quer dizer que o botão não aparece. Um botão cinza sem ação só confunde;
-- `<title>` igual ao de hoje (`book_title`). A `meta description` não tem preço: "{título}, de {autor}: histórico de preço e aviso quando entrar em oferta."
+- `<title>` pelo `book_title`, mas sem o trecho "por R$ ..." (não há preço conferido para pôr no título): "{título}, {autor} | Ofertas Livros". A `meta description` não tem preço: "{título}, de {autor}: histórico de preço e aviso quando entrar em oferta."
 
 Quando o livro volta a ter loja fresca, a página volta ao estado "com preço" ou "em oferta" no build seguinte, sem ação manual.
 
@@ -151,5 +151,6 @@ Todos viram assert no `build.py --selftest`, salvo onde está indicado.
    (a) **continua dando 404, como hoje (recomendado no MVP)**: a retirada só acontece depois de 30 dias sem anúncio em nenhuma loja, então o livro dificilmente volta;
    (b) 301 para a página do nicho: preserva parte do link para o Google, mas exige guardar o `genre` em `retirados`. Mexe no `_redirects` e no `catalog.json`, então é sensível;
    (c) página "arquivada" congelada, com o histórico até a retirada e sem alerta: exige guardar os metadados e o histórico do retirado (collector-engineer). É o maior custo.
-2. **Botão de loja no estado "sem oferta, com preço".** O pedido diz "sem botão de compra ativo". A recomendação é aplicar isso só ao estado sem preço e manter o botão nos livros com preço sem desconto, que estão na `/curadoria/` e rendem clique (`aba-curadoria.md`). Se a intenção era tirar o botão de todo livro fora de oferta, isso muda a decisão da Curadoria e reduz cliques.
+2. **Decidido (Elias, 2026-11-07): o botão some só no livro sem preço.** O livro com preço, mesmo sem desconto, continua com o botão para a loja. Implementado no PR 1.
+   Contexto original: **Botão de loja no estado "sem oferta, com preço".** O pedido diz "sem botão de compra ativo". A recomendação é aplicar isso só ao estado sem preço e manter o botão nos livros com preço sem desconto, que estão na `/curadoria/` e rendem clique (`aba-curadoria.md`). Se a intenção era tirar o botão de todo livro fora de oferta, isso muda a decisão da Curadoria e reduz cliques.
 3. **`/r/` do livro sem preço:** (a) **302 para `/livro/<id>/` (recomendado)**, aceitando a pequena inflação nos cliques do `/painel`; (b) deixar no curinga para a home, como hoje. Com (b), não existe PR 2 e nada do MVP é sensível, mas quem vem de um post antigo perde o livro de vista.
