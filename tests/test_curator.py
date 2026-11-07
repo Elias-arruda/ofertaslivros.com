@@ -694,6 +694,7 @@ def test_retirada_no_pr_e_id_nunca_volta(env, tmp_path):
     doc["books"].append({"id": "livro-1", "genre": "manga", "genre_source": "ml_book_genre",
                          "title": "Livro 1", "author": "A", "ml_product_id": "MLB777",
                          "ml_url": ML_URL.replace("ref=X", "ref=Y")})
+    doc |= {"retirados": {"velho": "2026-10-01"}, "generos_retirados": {"velho": "historia"}}
     env["cat"].write_text(json.dumps(doc))
     hist = tmp_path / "hist"
     hist.mkdir()
@@ -703,11 +704,12 @@ def test_retirada_no_pr_e_id_nunca_volta(env, tmp_path):
     assert env["suggest"](history=hist) == 0
     d = json.loads(env["cat"].read_text())
     assert [b["id"] for b in d["books"]] == ["ja-tenho", "livro-1-2"]
-    assert d["retirados"] == {"livro-1": "2026-10-19"}
-    assert d["generos_retirados"] == {"livro-1": "manga"}  # para o 301 de /livro/livro-1/ no build
+    assert d["retirados"] == {"livro-1": "2026-10-19", "velho": "2026-10-01"}
+    # para o 301 de /livro/livro-1/ no build; o nicho de quem já tinha saído não se perde
+    assert d["generos_retirados"] == {"livro-1": "manga", "velho": "historia"}
     assert json.loads(env["seen"].read_text())["MLB777"] == "2026-10-19"
     md = env["md"].read_text()
-    assert "1 retirados" in md and "`livro-1`" in md and "PR sensível" in md
+    assert "1 retirados" in md and "`livro-1`" in md and "**Retirada:**" in md
     # gate 9 também à mão: livro com id retirado não passa no load_catalog
     d["books"].append({**d["books"][0], "id": "livro-1", "isbn": isbn(5), "ml_product_id": "MLB5",
                        "ml_url": ML_URL.replace("ref=X", "ref=Z")})

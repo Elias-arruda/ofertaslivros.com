@@ -71,7 +71,7 @@ Status: proposta, 2026-10-18. Autor: product-manager. Base: `docs/produto/alerta
   Ordenação: primeiro as que têm selo, depois o maior desconto, e no desempate o `checked_at` mais recente.
 - **Canal do Telegram, automático:**
   - Um passo no workflow, depois do deploy, posta no canal pelo bot.
-  - Janela das 08h às 22h BRT. No máximo 2 posts por execução e 8 por dia.
+  - Janela das 08h às 22h BRT. No máximo 1 post por execução e 8 por dia, com pelo menos 105 min (14 h × 60 / 8) desde o último post do canal, para os posts se espalharem pelo dia (2026-11-07: com 2 por execução e o workflow rodando a cada deploy, os 8 saíam entre 08:00 e 08:32).
   - Uma oferta elegível fora da janela espera a manhã seguinte, desde que continue elegível (fresca e ativa) na hora de postar.
 - **Resumo do WhatsApp, manual:**
   - Uma vez por dia, na primeira execução depois das 11h BRT, o bot manda **para o chat privado do Elias** as até 5 melhores ofertas elegíveis, já no formato do WhatsApp (seções 6 e 8). O Elias copia e cola no Canal do WhatsApp.
@@ -97,7 +97,7 @@ Status: proposta, 2026-10-18. Autor: product-manager. Base: `docs/produto/alerta
 
 | Canal | Quando sai | Limite |
 |---|---|---|
-| Telegram | A cada execução do cron (30 min), das 08h às 22h BRT | 2 por execução, 8 por dia |
+| Telegram | A cada execução do cron (30 min), das 08h às 22h BRT | 1 por execução, 8 por dia, 105 min entre posts |
 | WhatsApp (resumo para o Elias) | 1 vez por dia, na primeira execução depois das 11h BRT | até 5 ofertas |
 
 Os horários e limites são constantes no código, não config. Quem quiser mudar, muda o número e abre PR.
@@ -230,7 +230,7 @@ Seleção e deduplicação (pytest, com relógio injetado):
 6. Rodar o passo duas vezes sobre o mesmo estado (log já com as linhas da 1ª vez) gera 0 envios na 2ª.
 
 Telegram:
-7. Fora das 08h–22h BRT, nenhum envio. Na janela, no máximo 2 por execução e 8 por dia, contados pelo `channel_posts.csv`.
+7. Fora das 08h–22h BRT, nenhum envio. Na janela, no máximo 1 por execução, 8 por dia e um post a cada 105 min, contados pelo `channel_posts.csv`.
 8. O envio não usa `parse_mode`. Um título com `<b>`, `*x*` ou `[a](b)` chega literal.
 
 WhatsApp:
@@ -341,7 +341,7 @@ Site:
 ## Respostas do Elias (2026-10-21)
 1. Canal do Telegram **com Amazon e Mercado Livre**. O Elias decidiu que a Amazon entra no canal (a decisão 1 de 2026-10-18 deixa de bloquear).
 2. Oferta postável = **o mesmo critério "em oferta" do site** (`build.em_oferta`), no lugar dos 30% da seção 5. O texto é o `build.post_text`.
-3. Janela 08h–22h, 2 por execução, 8 por dia e 7 dias sem repetir: **em avaliação.** O MVP (`telegram_post.py`) sai com esses valores como constantes.
+3. Janela 08h–22h, 1 por execução, 8 por dia, 105 min entre posts e 7 dias sem repetir: **em avaliação.** O MVP (`telegram_post.py`) sai com esses valores como constantes.
 4. Capa local `/capas/` (Open Library) no post: **em avaliação.** O MVP posta só a foto https do ML; sem ela, sai `sendMessage`.
 5. `TELEGRAM_BOT_TOKEN` passa para o Environment `telegram`, restrito à `main`.
 

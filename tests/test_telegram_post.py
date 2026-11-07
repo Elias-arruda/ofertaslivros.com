@@ -35,12 +35,12 @@ def test_janela_08h_22h():
 
 def test_limite_por_execucao_e_por_dia():
     five = [of(c) for c in "abcde"]
-    assert len(ids(five)) == 2
+    assert len(ids(five)) == 1
     hoje = [("x", NOW - timedelta(hours=1), 1)] * 7
     assert len(ids(five, log(*hoje))) == 1
     assert ids(five, log(*hoje, ("y", NOW, 1))) == []
     ontem = [("x", NOW - timedelta(days=1), 1)] * 8  # outro dia BRT não conta
-    assert len(ids(five, log(*ontem))) == 2
+    assert len(ids(five, log(*ontem))) == 1
 
 
 def test_so_oferta_com_preco_no_prazo():
@@ -62,6 +62,24 @@ def test_nao_repete_em_7_dias_salvo_preco_menor_depois_de_24h():
     assert ids(a, log(("a", NOW - timedelta(hours=24), 70))) == ["a"]
     assert ids(a, log(("a", NOW - timedelta(days=2), 60))) == []       # mesmo preço
     assert ids(a, log(("a", NOW - timedelta(days=8), 60), ("a", NOW - timedelta(days=1), 60))) == []  # vale o último
+
+
+
+def test_intervalo_espalha_os_posts_do_canal_pela_janela():
+    assert tp.INTERVALO_MIN == 105                                      # 14 h * 60 / 8
+    a = [of("a")]
+    assert tp.pick(a, log(("x", NOW - timedelta(minutes=104), 1)), NOW, intervalo_min=tp.INTERVALO_MIN) == []
+    assert ids(a, log(("x", NOW - timedelta(minutes=104), 1))) == ["a"]  # sem intervalo (o resumo wa) não trava
+    # um dia de execuções a cada 5 min: 8 posts, todos >= 105 min um do outro, o último antes das 22h
+    offers, rows = [of(f"o{i}") for i in range(20)], []
+    for m in range(0, 24 * 60, 5):
+        now = NOW.replace(hour=0, minute=0) + timedelta(minutes=m)
+        for o in tp.pick(offers, rows, now, intervalo_min=tp.INTERVALO_MIN):
+            rows.append({"offer_id": o["id"], "at": now, "price_cents": o["price_cents"]})
+    ats = [r["at"] for r in rows]
+    assert len(ats) == tp.POR_DIA
+    assert all(b - a >= timedelta(minutes=105) for a, b in zip(ats, ats[1:]))
+    assert ats[0].hour == 8 and ats[-1].hour < 22 and ats[-1] - ats[0] >= timedelta(hours=12)
 
 
 AMZ = {"store": "amazon", "asin": "B0ABCDEFGH", "price_cents": 4290, "list_price_cents": 7490,
@@ -95,7 +113,8 @@ def run(tmp_path, monkeypatch):
     return go
 
 
-def test_posta_texto_puro_com_link_tg_e_e_idempotente(run):
+def test_posta_texto_puro_com_link_tg_e_e_idempotente(run, monkeypatch):
+    monkeypatch.setattr(tp, "POR_EXECUCAO", 2)
     calls = run()
     assert [m for m, _ in calls] == ["sendMessage", "sendPhoto"]   # maior desconto primeiro; foto só do ML
     (_, msg), (_, photo) = calls
@@ -120,7 +139,8 @@ def test_sem_token_nao_posta(run, monkeypatch):
     assert run() == []
 
 
-def test_dedup_e_por_canal(run):
+def test_dedup_e_por_canal(run, monkeypatch):
+    monkeypatch.setattr(tp, "POR_EXECUCAO", 2)
     run.csv.write_text("posted_at,channel,offer_id,store,price_cents\n"
                        f"{NOW.isoformat()},wa,torto-arado,amazon,4290\n", encoding="utf-8")
     assert [d.get("text", d.get("caption")).splitlines()[0] for _, d in run()] == ["Torto *Arado* <b>, de Itamar",
@@ -128,6 +148,7 @@ def test_dedup_e_por_canal(run):
 
 
 def test_foto_recusada_vai_como_texto(run, monkeypatch):
+    monkeypatch.setattr(tp, "POR_EXECUCAO", 2)
     calls = []
 
     def fake(token, method, data):
@@ -202,3 +223,12 @@ def test_resumo_wa_que_falhou_no_meio_nao_sai_de_novo(run, monkeypatch):
     assert sum(",wa," in line for line in run.csv.read_text().splitlines()) == 2
     monkeypatch.setattr(tp, "telegram", lambda *a: pytest.fail("reenviou o resumo"))
     run()
+
+
+def test_canal_respeita_o_intervalo_entre_execucoes(run):
+    csv_path, offers = run.csv, run.csv.parent / "offers.json"
+    assert len(run()) == 1                                                # 1 por execução
+    tp.main(offers, csv_path, now=NOW + timedelta(minutes=104))
+    assert len(csv_path.read_text().splitlines()) == 2                     # cabeçalho + 1: cedo demais
+    tp.main(offers, csv_path, now=NOW + timedelta(minutes=105))
+    assert len(csv_path.read_text().splitlines()) == 3

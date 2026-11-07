@@ -24,7 +24,10 @@ UA = {"User-Agent": "ofertaslivros-capas/1.0"}
 VTEX = ("www.livrariascuritiba.com.br", "www.martinsfontespaulista.com.br")  # a 1ª costuma ter a capa plana
 JPEG = b"\xff\xd8\xff"
 # Conferidas e recusadas (só foto de brinde ou mockup com selo): ficam no placeholder.
-RECUSADAS = {"9788501303950", "9788582358894"}
+RECUSADAS = {"9788501303950", "9788582358894",
+             # carga de 2026-11-07: mockup 3D de box, foto com brinde ou selo promocional
+             "9786555323955", "9786555651058", "9786555656121", "9786558302032", "9786559816545",
+             "9786580921607", "9786584956391", "9786585348812", "9788501304469"}
 
 
 def get(url):
