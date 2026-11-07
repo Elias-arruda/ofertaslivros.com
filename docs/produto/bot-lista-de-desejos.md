@@ -9,7 +9,7 @@ Substitui, nos pontos marcados, a proposta antiga [`alerta-de-preco.md`](alerta-
 **Em uma frase:** o leitor que quer um livro específico (ou tudo de um autor), mas não vai abrir o site todo dia, monta uma lista no Telegram e recebe uma mensagem só quando aquele livro entra em oferta. O aviso chega no momento de maior intenção de compra, com o nosso link de afiliado, e a lista traz a pessoa de volta sem anúncio.
 
 - **Usuário:** quem chega pelo sino do card ("Me avise se baixar"), pelo capítulo do alerta no site, pelo canal @maviOfertaslivros ou direto pelo @ofertaslivros_bot. Sem cadastro, e-mail ou login.
-- **Por que dá dinheiro:** o canal manda tudo para todo mundo (até 8 por dia). O bot manda só o que a pessoa pediu, então a taxa de clique por mensagem é bem maior. O clique sai por `/r/<id>/bot`, com tracking ID próprio da Amazon, o que ajuda nas cerca de 10 vendas que liberam a Creators API.
+- **Por que dá dinheiro:** o canal manda tudo para todo mundo (até 8 por dia). O bot manda só o que a pessoa pediu, então a taxa de clique por mensagem é bem maior. O aviso leva à página do livro (`/livro/<id>/`), e o clique na loja sai pelo `/r/<id>` dela, o que ajuda nas cerca de 10 vendas que liberam a Creators API (até 2026-11-07, `/r/<id>/bot` com tracking ID próprio).
 - **Diferença para o canal:** o canal é um para muitos e não guarda nada. O bot guarda o `chat_id` e a lista, então tem LGPD (seção 9).
 
 ## 2. Decisões já tomadas (não reabrir)
@@ -47,7 +47,7 @@ Substitui, nos pontos marcados, a proposta antiga [`alerta-de-preco.md`](alerta-
 - Entrada pelo botão do site: `t.me/ofertaslivros_bot?start=<id>`.
 - Item de lista de dois tipos: **livro** (id do catálogo) e **autor** (nome normalizado).
 - Disparo a cada 30 min por um Cron Trigger **no próprio Worker do site**, lendo o `/bot.json` que o build publica (seção 7).
-- Aviso com o texto do `post_text` e o link `/r/<id>/bot`, com tag da Amazon própria (`AMAZON_TAG_BOT`).
+- Aviso com o texto do `post_text` e o link da `/livro/<id>/`, com prévia (capa). Até 2026-11-07: `/r/<id>/bot` com `AMAZON_TAG_BOT`.
 - Livro não encontrado: botão "Pedir este livro", que grava na tabela `pedidos` que já existe, sem `chat_id`.
 - `/privacidade/` e os textos do site atualizados, e a var `TELEGRAM_BOT_USERNAME` ligada no fim.
 
@@ -74,7 +74,7 @@ Substitui, nos pontos marcados, a proposta antiga [`alerta-de-preco.md`](alerta-
 **C. Aviso**
 1. A cada 30 min, o cron do Worker lê o `/bot.json` publicado e vê quais livros estão em oferta.
 2. Para cada chat não pausado com aquele livro (ou autor) na lista que ainda não foi avisado nesta entrada em oferta, manda uma mensagem, das 08h às 22h BRT.
-3. O usuário toca no link `/r/<id>/bot`, que leva à loja com a nossa tag.
+3. O usuário toca no link `/livro/<id>/` e, na página, no botão da loja (`/r/<id>`, com a nossa tag).
 
 **D. Sair**
 - `/lista` e o botão "Tirar" removem um item. `/pausar` e `/voltar` controlam os avisos. `/parar` apaga tudo depois de um toque de confirmação. Bloquear o bot também apaga tudo (update `my_chat_member` com `kicked`, ou erro 403 no envio).
@@ -200,13 +200,13 @@ Privacidade: https://ofertaslivros.com.br/privacidade/
 ```
 Entrou em oferta (está na sua lista):
 
-<texto do bot.json, que é o build.post_text(o, SITE + "/r/<id>/bot")>
+<texto do bot.json, que é o build.post_text(o, SITE + "/livro/<id>/")>
 
 Tirar da lista: /lista
 ```
 - Cabeçalho para item de autor: `Entrou em oferta, de <Autor> (autor na sua lista):`.
 - Cabeçalho para queda adicional: `Baixou mais (está na sua lista):`.
-- O `post_text` já traz o selo "Menor preço em 90 dias", o de/por, a loja, "preço verificado em DD/MM às HHhMM. O preço final é o da loja." e "Link de afiliado: …". O Worker **não formata preço**: só junta o cabeçalho e o rodapé ao texto pronto.
+- O `post_text` já traz o selo "Menor preço em 90 dias", o de/por, a loja, "preço verificado em DD/MM às HHhMM. O preço final é o da loja." e "Link: …/livro/<id>/". O Worker **não formata preço**: só junta o cabeçalho e o rodapé ao texto pronto.
 
 ### 6.10 Lista de comandos e descrição (BotFather / `setMyCommands`)
 | Comando | Descrição |
@@ -251,7 +251,7 @@ Tirar da lista: /lista
    "livros": [{"id": "torto-arado", "titulo": "Torto Arado", "autor": "Itamar Vieira Junior",
                "busca": "torto arado itamar vieira junior", "autores": ["itamar vieira junior"],
                "preco_cents": 4290, "desconto": 42, "valido_ate": "2026-11-06T14:00:00+00:00",
-               "texto": "Torto Arado, de Itamar ... Link de afiliado: https://ofertaslivros.com.br/r/torto-arado/bot"}]}
+               "texto": "Torto Arado, de Itamar ... Link: https://ofertaslivros.com.br/livro/torto-arado/"}]}
   ```
 - **`texto`** só existe com `oferta and not velho`, e nos outros casos é `null`. Sai de `post_text(o, f"{SITE}/r/{o['id']}/bot")`.
 - **`valido_ate`** = `checked_at + FRESH[store]` da loja que vence primeiro (o `texto` pode citar a outra loja, em "Também no..."). Assim o Worker não manda um preço que venceu entre o deploy e o cron, e não precisa conhecer o `FRESH`.
@@ -287,7 +287,7 @@ O estado fica no D1 `BOT` (seção 9). Em cada execução, **sempre**, inclusive
 
 ## 8. Medição: `/r/<id>/bot`
 
-- O `build.py` passa a gerar `/r/<id>/bot` junto de `/tg` e `/wa`. `channel_tags()` ganha `"bot"`, com a var `AMAZON_TAG_BOT`, e `post_text` aceita o caminho `/r/<id>/bot`.
+- O `build.py` passa a gerar `/r/<id>/bot` junto de `/tg` e `/wa`. `channel_tags()` ganha `"bot"`, com a var `AMAZON_TAG_BOT`, e `post_text` aceitava o caminho `/r/<id>/bot` (desde 2026-11-07 só aceita a `/livro/<id>/`).
 - Sem a var, vale a tag do site, como já acontece com `/tg` e `/wa`. No ML, o link é o mesmo `ml_url`, e os cliques ficam agregados no painel do ML.
 - **Por que tracking ID próprio:** o relatório da Amazon por tracking ID separa as vendas do bot das do canal sem nenhum código de contagem, e o `daily_rollup` já conta os 302 por caminho.
   - O `/painel` e a query "Telegram × WhatsApp × site" da `analytics.md` ganham o caso `'%/bot' → 'bot'`.
@@ -362,8 +362,8 @@ Há também uma inconsistência que já existe e não é deste escopo: a seção
   - O build já barra id com mais de 64 chars quando o bot está ligado (`tg_alert_url`). O id mais longo hoje tem 54. Com o prefixo `add:`, o limite efetivo é de 60: o contrato do `offers.json` (`validate_offer`) passa a aceitar id de até 60 chars, com ou sem o bot ligado. Assim um id longo falha no `catalog-check`, e não só no deploy depois de ligar a var. Nenhum id real quebra: o coletor já limita a 57 (`collector/collect.py`, `ID_MAX`).
 - **Saída:**
   - texto puro, **sem `parse_mode`** (um título com `<b>` ou `*` chega literal);
-  - sem prévia de link, pelo mesmo motivo do canal: o servidor do Telegram seguiria o `/r/` e geraria clique de robô no link de afiliado;
-  - o único link de loja é o `/r/<id>/bot` do nosso domínio, já validado pelo `post_text`. Nenhuma URL vinda do usuário é ecoada como link.
+  - sem prévia de link, salvo na mensagem do aviso: o link dela é a `/livro/<id>/`, sem redirect, então a prévia não passa pelo `/r/` nem gera clique de robô na loja (2026-11-07);
+  - o único link é a `/livro/<id>/` do nosso domínio, já validado pelo `post_text`. Nenhuma URL vinda do usuário é ecoada como link.
 - **SQL:** só com `prepare().bind()`, nunca interpolando texto do usuário.
 - **Front:** nada de `innerHTML` com dado do bot. O site não muda de JS: o botão é um `<a>` que o build gera.
 - **Segredos:**
@@ -411,9 +411,9 @@ Testes do Worker em `worker/bot.test.mjs` (`node --test`, como os que já existe
 29. Chat com `visto_em` de 12 meses e 1 dia atrás é apagado na limpeza diária. Chat com 11 meses fica.
 
 **Build (pytest / `build.py --selftest`)**
-30. O `dist/bot.json` tem uma entrada por livro do `resolve` e por livro sem preço (`sem_preco`, com `texto: null` e `desconto: 0`). `texto` não é nulo só com `oferta and not velho`, e é igual a `post_text(o, SITE + "/r/<id>/bot")`. `valido_ate` = o menor `checked_at + FRESH[store]` entre as lojas do livro.
+30. O `dist/bot.json` tem uma entrada por livro do `resolve` e por livro sem preço (`sem_preco`, com `texto: null` e `desconto: 0`). `texto` não é nulo só com `oferta and not velho`, e é igual a `post_text(o, SITE + "/livro/<id>/")`. `valido_ate` = o menor `checked_at + FRESH[store]` entre as lojas do livro.
 31. O `_redirects` tem `/r/<id>/bot` para cada livro, com a tag `AMAZON_TAG_BOT` na Amazon (ou a do site, sem a var) e o mesmo `ml_url` no ML.
-32. O `post_text` aceita `/r/<id>/bot` e continua recusando qualquer outro caminho e host de loja.
+32. O `post_text` aceita só a `/livro/<id>/` do próprio livro e recusa `/r/`, outro caminho e host de loja (2026-11-07).
 33. O build falha com id de mais de 60 chars, com ou sem `TELEGRAM_BOT_USERNAME` (o deep link também recusa 61).
 34. `bot` está em `RESERVED`, e o `robots.txt` tem `Disallow: /bot.json`.
 
@@ -466,7 +466,7 @@ Testes do Worker em `worker/bot.test.mjs` (`node --test`, como os que já existe
 
 - **Regra 1 (Amazon):** nada aqui faz request à Amazon. O preço vem do `offers.json` que já existe. Valem as mesmas ressalvas da exceção do navegador: o aviso usa o preço lido pelo Chrome do Elias, com "preço verificado em" e "o preço final é o da loja".
 - **Política da Amazon para link em mensagem privada:** a dúvida de 2026-10-18 (`alerta-de-preco.md` §10) nunca foi respondida para mensagem **individual**. O Elias liberou o canal público em 2026-10-21, mas o bot é outro caso. Ver a decisão 1.
-- **Transparência (regra 4):** todo aviso traz "Link de afiliado:" e "O preço final é o da loja." (pelo `post_text`), e o `/ajuda` traz o aviso de associado.
+- **Transparência (regra 4):** todo aviso traz "O preço final é o da loja." e o link da página do livro, que tem o aviso de associado no rodapé (pelo `post_text`), e o `/ajuda` traz o aviso de associado.
 - **LGPD:** seção 9. O dado pessoal é o mínimo, a finalidade é o serviço pedido, há prazo e remoção por comando, e a política sai publicada antes da coleta (etapa 6 antes da 7). Se a chave da Cloudflare vazar, ficam expostos o `chat_id` e os livros de interesse. A mitigação é um banco separado e um token da Cloudflare sem D1 no GitHub (é por isso que a recomendação é a opção A).
 - **Custo:** R$ 0.
   - Workers Free: 100 mil requests por dia. Cada mensagem é 1 request: o webhook não chega perto, salvo abuso, e o rate limit segura.
@@ -481,7 +481,7 @@ Testes do Worker em `worker/bot.test.mjs` (`node --test`, como os que já existe
 ## 14. Decisões em aberto para o Elias (com default recomendado)
 
 1. **Link da Amazon no aviso individual.** Os termos dos Associados restringem link em comunicação privada (e-mail, mensagem). O BIS faz isso no Telegram.
-   - **Default:** seguir o modelo do BIS, com o link `/r/<id>/bot` e tracking ID próprio, aceitando o risco como no canal. Se a Amazon reclamar, o aviso da Amazon passa a apontar para `/livro/<id>/` e só o ML leva o link direto.
+   - **Decidido em 2026-11-07:** o aviso aponta para a `/livro/<id>/`, nas duas lojas (ver "Link do aviso"). O link de afiliado fica só na página.
    - Confirmar ou mandar o agent conferir o Operating Agreement antes do lançamento.
 2. **Limites.** Default: 30 itens por chat, 3 avisos por chat por execução, 10 por dia, janela das 08h às 22h, "caiu mais" = 5% abaixo do último aviso e carência de 6 h para a saída da oferta. Ficam como constantes no `worker/bot-cron.js`.
 3. **Texto do pedido de livro na `/privacidade/`.** Ele diz que o site não guarda o pedido, mas o D1 guarda por 30 dias. Default: corrigir junto, no PR 4 ("guardamos o pedido, sem dado seu, por 30 dias"). O Elias tinha decidido não mexer em 2026-11-05: confirmar se mantém.
@@ -491,5 +491,4 @@ Testes do Worker em `worker/bot.test.mjs` (`node --test`, como os que já existe
 ## Link do aviso (decisão do Elias, 2026-11-07)
 O `texto` do `bot.json` passa a terminar com "Link: https://ofertaslivros.com.br/livro/<id>/", no lugar de "Link de afiliado: …/r/<id>/bot". Os canais usam o mesmo formato (`distribuicao-canais.md`, "Link para o site").
 - A mensagem do aviso sai com prévia do link (`is_disabled: false`), que mostra a capa da página. A prévia não passa pelo `/r/` nem pela loja. As outras mensagens do bot seguem sem prévia.
-- Isso substitui, onde conflitar, as menções a `/r/<id>/bot`, "Link de afiliado" e "sem prévia" no aviso (seções 3, 10 e critérios 30 a 32). As rotas `/r/<id>/bot` continuam no `_redirects` para avisos antigos. `AMAZON_TAG_BOT` deixa de medir os cliques do bot, que agora saem pelo `/r/<id>` da página.
-
+- O resto da spec já segue este formato. As menções que sobraram a `/r/<id>/bot` e `AMAZON_TAG_BOT` (seção 8, critério 31, plano de implementação) descrevem a rota, que continua no ar. As rotas `/r/<id>/bot` continuam no `_redirects` para avisos antigos. `AMAZON_TAG_BOT` deixa de medir os cliques do bot, que agora saem pelo `/r/<id>` da página.
