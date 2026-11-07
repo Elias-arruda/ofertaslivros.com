@@ -16,7 +16,7 @@ import os
 import sys
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -25,7 +25,9 @@ import build
 CHANNEL = "tg"
 # Valores iniciais da spec (§6), ainda em avaliação pelo Elias: mudar o número e abrir PR.
 JANELA = (8, 22)          # horas BRT: posta das 08:00 às 21:59
-POR_EXECUCAO, POR_DIA = 2, 8
+POR_EXECUCAO, POR_DIA = 1, 8
+# espaço mínimo entre posts do canal, para os POR_DIA se espalharem pela JANELA (105 min com 08-22h e 8/dia)
+INTERVALO_MIN = (JANELA[1] - JANELA[0]) * 60 // POR_DIA
 REPOST_DIAS = 7           # mesmo livro só volta depois disso...
 REPOST_MAIS_BARATO_H = 24  # ...ou com preço menor que o do último post, depois disso
 WA_JANELA, WA_MAX = (11, 22), 5  # resumo: 1 por dia, na 1ª execução das 11h às 21:59 BRT
@@ -43,12 +45,15 @@ def read_log(path, channel=CHANNEL):
                 for r in csv.DictReader(f) if r["channel"] == channel]
 
 
-def pick(offers, log, now, janela=None, por_execucao=None, por_dia=None):
-    """Ofertas a postar agora, na ordem, com janela, limites e repetição aplicados (padrão: os do canal)."""
+def pick(offers, log, now, janela=None, por_execucao=None, por_dia=None, intervalo_min=0):
+    """Ofertas a postar agora, na ordem, com janela, limites e repetição aplicados (padrão: os do canal).
+    intervalo_min: minutos desde o último post do log; o canal passa INTERVALO_MIN, o resumo wa não usa."""
     janela, por_execucao = janela or JANELA, por_execucao or POR_EXECUCAO
     por_dia = por_dia or POR_DIA
     h = now.astimezone(build.BRT)
     if not janela[0] <= h.hour < janela[1]:
+        return []
+    if log and now - max(r["at"] for r in log) < timedelta(minutes=intervalo_min):
         return []
     hoje = sum(r["at"].astimezone(build.BRT).date() == h.date() for r in log)
     last = {r["offer_id"]: r for r in log}  # a última linha de cada livro vence
@@ -124,7 +129,7 @@ def gravar(log_path, now, channel, o):
 
 def canal(token, chat, offers, log_path, now):
     posted = fora = 0
-    for o in pick(offers, read_log(log_path), now):
+    for o in pick(offers, read_log(log_path), now, intervalo_min=INTERVALO_MIN):
         url = f"{build.SITE}/r/{o['id']}/{CHANNEL}"
         if not no_ar(url):
             fora += 1
