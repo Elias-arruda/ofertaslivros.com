@@ -3,7 +3,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { accessEmail, painel, render, dados, clique } from "./painel.js";
-import { SCHEMA } from "../cron/rollup.js";
+import { SCHEMA, PEDIDOS_SCHEMA } from "../cron/rollup.js";
+import { execFileSync } from "node:child_process";
 
 const TEAM = "https://ofertaslivros.cloudflareaccess.com";
 const AUD = "eae97b05c067191b8a26d7e97bfbf575088be98d0e891009127728de1932779b";
@@ -72,6 +73,7 @@ test("dados roda o SQL de verdade e render escapa o que vem dos caminhos", async
   const ins = d1.db.prepare("INSERT INTO daily_rollup VALUES (?, ?, ?, 'BR', ?, ?)");
   ins.run(ontem, "/r/livro-1", 302, 0, 4); ins.run(ontem, "/r/livro-1/tg", 302, 0, 2);
   ins.run(ontem, "/livro/livro-1/", 200, 0, 3); ins.run(ontem, "/manga/", 200, 0, 9); ins.run(ontem, "/", 200, 1, 50);
+  ins.run(ontem, "/livro/livro-2/", 200, 0, 20); ins.run(ontem, "/livro/livro-3/", 200, 0, 12); ins.run(ontem, "/r/livro-3", 302, 0, 6);
   globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ data: { viewer: { zones: [{ httpRequestsAdaptiveGroups: [
     { count: 5, dimensions: { clientRequestPath: "/r/<script>x</script>", edgeResponseStatus: 302, clientCountryName: "BR", userAgentBrowser: "Chrome" } },
     { count: 7, dimensions: { clientRequestPath: "/", edgeResponseStatus: 200, clientCountryName: "BR", userAgentBrowser: "Chrome" } },
@@ -80,5 +82,79 @@ test("dados roda o SQL de verdade e render escapa o que vem dos caminhos", async
   assert.ok(!html.includes("<script>") && html.includes("&lt;script&gt;"));
   assert.match(html, /<td>livro-1<\/td><td>6<\/td><td>3<\/td><td>200\.0%<\/td>/); // 6 cliques ÷ 3 views
   assert.match(html, /<td>\/manga\/<\/td><td>9<\/td>/);
+  // Muita visita, pouco clique: só livro-2 (20 views, 0 cliques; média dos livros com ≥ 10 views = 6/32); livro-1 tem só 3 views
+  const fracos = html.split("Muita visita, pouco clique")[1].split('class="card')[0];
+  assert.match(fracos, /title="livro-2">livro-2<\/span>/);
+  assert.ok(!fracos.includes("livro-3") && !fracos.includes("livro-1") && !html.includes('class="disp"'));
+  assert.match(fracos, /média deles \(18\.8%\)/);
   assert.match(html, /<td>tg<\/td><td>2<\/td>/);
+  assert.match(html, /Pedidos de livro: 0 novo/);       // tabela pedidos ainda não existe: lista vazia
+  assert.match(html, /Creators API: 0 de ~10/);          // sales ainda não existe
+});
+
+test("pedidos (texto do visitante) saem escapados e marcados como novos; vendas somam por status", async () => {
+  const d1 = fakeD1();
+  d1.db.exec(SCHEMA); d1.db.exec(PEDIDOS_SCHEMA);
+  d1.db.prepare("INSERT INTO pedidos (criado_em, titulo, autor) VALUES (datetime('now'), ?, ?)").run('<img src=x onerror=alert(1)>', "Autor");
+  d1.db.prepare("INSERT INTO pedidos (criado_em, titulo, autor) VALUES (datetime('now', '-3 days'), 'Antigo', '')").run();
+  const schema = execFileSync("python3", ["-c", "import sys; sys.path.insert(0, 'analytics'); import vendas; print(vendas.SCHEMA)"]).toString();
+  d1.db.exec(schema);
+  const hoje = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+  const ins = d1.db.prepare("INSERT INTO sales VALUES ('amazon', ?, '', ?, 't', ?, ?, ?, ?, 'f', 'x')");
+  ins.run(hoje, "A1", 3, 9000, null, "pedido"); ins.run(hoje, "A1", 3, 9000, 450, "enviado"); ins.run(hoje, "A1", 1, 3000, -150, "devolvido");
+  globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ data: { viewer: { zones: [{ httpRequestsAdaptiveGroups: [] }] } } }) });
+  const html = render(await dados({ ANALYTICS: d1, CF_ANALYTICS_TOKEN: "t" }));
+  assert.ok(!html.includes("<img") && html.includes("&lt;img src=x onerror=alert(1)&gt;"));
+  assert.match(html, /Pedidos de livro: 1 novo/);
+  assert.match(html, /<td>enviado<\/td><td>3<\/td><td>R\$\s?90,00<\/td><td>R\$\s?4,50<\/td>/);
+  assert.match(html, /Creators API: 2 de ~10/);
+});
+
+test("CSS do painel só sai com JWT válido; gráficos viram SVG sem style inline", async () => {
+  assert.equal((await painel(new Request("https://ofertaslivros.com.br/painel/painel.css"), {}, { fetcher })).status, 403);
+  const ok200 = await painel(new Request("https://ofertaslivros.com.br/painel/painel.css", { headers: { "Cf-Access-Jwt-Assertion": await jwt(ok) } }), {}, { fetcher });
+  assert.equal(ok200.status, 200);
+  assert.match(ok200.headers.get("Content-Type"), /text\/css/);
+
+  const d1 = fakeD1(); d1.db.exec(SCHEMA);
+  const ins = d1.db.prepare("INSERT INTO daily_rollup VALUES (date('now', '-3 hours', ?), '/', 200, 'BR', 0, ?)");
+  for (let i = 1; i <= 14; i++) ins.run(`-${i} days`, i * 10);
+  globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ data: { viewer: { zones: [{ httpRequestsAdaptiveGroups: [] }] } } }) });
+  const html = render(await dados({ ANALYTICS: d1, CF_ANALYTICS_TOKEN: "t" }));
+  assert.equal((html.match(/<g class="col/g) || []).length, 15);      // 14 dias + hoje
+  assert.match(html, /class="col parcial"/);
+  assert.match(html, /▼ 64% vs 7 dias antes/);                         // 280 contra 770 (série decrescente)
+  assert.ok(!/style="|<style|<script/.test(html));                    // a CSP bloquearia
+});
+
+test("bot do Telegram: só contagens no painel, nenhum chat_id", async () => {
+  const { BOT_SCHEMA } = await import("./bot.js");
+  const an = fakeD1();
+  an.db.exec(SCHEMA);
+  const bot = fakeD1();
+  for (const s of BOT_SCHEMA) bot.db.exec(s);
+  const agora = new Date().toISOString();
+  const velho = new Date(Date.now() - 30 * 86400e3).toISOString();
+  bot.db.prepare("INSERT INTO chats VALUES (?, 0, ?, ?)").run(918273645, agora, agora);
+  bot.db.prepare("INSERT INTO chats VALUES (?, 1, ?, ?)").run(564738291, velho, velho);
+  bot.db.prepare("INSERT INTO chats VALUES (?, 0, ?, ?)").run(111222333, velho, velho);           // esvaziou a lista
+  const ins = bot.db.prepare("INSERT INTO desejos (chat_id, tipo, chave, criado_em) VALUES (?, ?, ?, ?)");
+  ins.run(918273645, "livro", "torto-arado", agora); ins.run(564738291, "livro", "torto-arado", velho);
+  ins.run(918273645, "autor", "machado de assis", agora);
+  bot.db.prepare("INSERT INTO avisos VALUES (?, 'torto-arado', 4000, ?)").run(918273645, agora);
+  globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ data: { viewer: { zones: [{ httpRequestsAdaptiveGroups: [] }] } } }) });
+  const d = await dados({ ANALYTICS: an, BOT: bot, CF_ANALYTICS_TOKEN: "t" });
+  assert.deepEqual({ chats: d.bot.chats, comLista: d.bot.comLista, novos7: d.bot.novos7, ativos7: d.bot.ativos7, pausados: d.bot.pausados,
+    livros: d.bot.livros, autores: d.bot.autores, avisosHoje: d.bot.avisosHoje },
+    { chats: 3, comLista: 2, novos7: 1, ativos7: 1, pausados: 1, livros: 2, autores: 1, avisosHoje: 1 });
+  const html = render(d);
+  assert.match(html, /Bot do Telegram \(lista de desejos\)/);
+  assert.match(html, /<td>Pessoas com lista<\/td><td>2<\/td>/);
+  assert.ok(html.includes("torto-arado"));
+  assert.match(html, /<td>Usaram o bot \(com ou sem lista\)<\/td><td>3<\/td>/);
+  assert.ok(!html.includes("918273645") && !html.includes("564738291") && !html.includes("111222333"));
+  const semBot = render(await dados({ ANALYTICS: an, CF_ANALYTICS_TOKEN: "t" }));      // sem binding: sem seção
+  assert.ok(!semBot.includes("Bot do Telegram"));
+  const vazio = fakeD1();                                                            // D1 sem tabelas ainda
+  assert.equal((await dados({ ANALYTICS: an, BOT: vazio, CF_ANALYTICS_TOKEN: "t" })).bot, null);
 });

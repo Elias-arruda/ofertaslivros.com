@@ -224,7 +224,7 @@
       acts.replaceChildren();
       (o.lojas || []).forEach(l => {
         if (!OK.r.test(l.href)) return;
-        acts.append(link(l.href, l.txt, l.main ? 'go' : 'btn btn--ghost', 'sponsored noopener noreferrer', ' (abre em nova aba)'));
+        acts.append(link(l.href, l.txt, l.main ? 'go' : 'btn btn--ghost', 'sponsored noopener', ' (abre em nova aba)'));
         if (l.w) { const w = d.createElement('span'); w.className = 'alt-when'; w.textContent = l.w; acts.append(w); }
       });
       if (o.alerta && OK.tg.test(o.alerta)) acts.append(link(o.alerta, 'Me avise se baixar (Telegram)', 'btn btn--ghost', 'noopener noreferrer', ' (abre o Telegram)'));

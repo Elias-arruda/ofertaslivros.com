@@ -1,5 +1,7 @@
 // "Pedir um livro": recebe o POST do form e manda o pedido por e-mail (Email Routing do .com.br).
-// Sem armazenamento: o pedido só existe no e-mail. Nada do visitante vai para o log.
+// O pedido (só título e autor) vai por e-mail e fica 30 dias no D1 para o /painel. Nada do visitante vai para o log.
+import { PEDIDOS_SCHEMA } from "../cron/rollup.js";
+
 const ORIGEM = "https://ofertaslivros.com.br";
 const DE = "pedidos@ofertaslivros.com.br"; // remetente precisa ser da zona com Email Routing
 const OK = "/#pedido-recebido";
@@ -32,6 +34,19 @@ export function mime(para, titulo, autor, agora = new Date()) {
 const volta = (caminho) => new Response(null, { status: 303, headers: { Location: caminho } });
 const erro = (status, texto) => new Response(texto, { status, headers: { "Content-Type": "text/plain; charset=utf-8" } });
 
+// Painel: guarda o pedido no D1 depois do e-mail. Se o D1 falhar, o pedido já está no e-mail.
+async function guardar(db, titulo, autor) {
+  if (!db) return;
+  try {
+    await db.batch([
+      db.prepare(PEDIDOS_SCHEMA),
+      db.prepare("INSERT INTO pedidos (criado_em, titulo, autor) VALUES (datetime('now'), ?1, ?2)").bind(titulo, autor),
+    ]);
+  } catch (e) {
+    console.log(`pedido: D1 falhou (${e?.name || "erro"})`); // sem o conteúdo do pedido
+  }
+}
+
 // enviar(para, raw): manda o e-mail; injetado para o teste rodar fora do Worker.
 export async function pedido(request, env, enviar) {
   if (request.method !== "POST") return erro(405, "Use o formulário do site.");
@@ -58,5 +73,6 @@ export async function pedido(request, env, enviar) {
     console.log(`pedido: envio falhou (${e?.name || "erro"})`); // sem o conteúdo do pedido
     return erro(502, "Não deu para enviar agora. Tente de novo mais tarde.");
   }
+  await guardar(env.ANALYTICS, titulo, autor); // só depois do e-mail: falha no envio não deixa registro duplicado
   return volta(OK);
 }

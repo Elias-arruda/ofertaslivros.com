@@ -2,6 +2,16 @@
 
 Status: proposta, 2026-10-18. Autor: product-manager. Implementação: ver "Divisão por agent".
 
+> **Superada em parte (2026-11-06).** O bot passou a seguir [`bot-lista-de-desejos.md`](bot-lista-de-desejos.md), decidida pelo Elias. Deixam de valer aqui:
+> - **preço-alvo** (`/alerta <id> <preço>`, `target_cents`) → o aviso é "entrou em oferta" pela regra do site (`build.em_oferta`); preço-alvo virou extra futuro;
+> - **`getUpdates` no GitHub Actions** e latência de 30–40 min → webhook na hora, na rota `/telegram` do Worker do site;
+> - **apagar o alerta ao disparar e expirar em 90 dias** → a lista fica até o usuário tirar, com aviso uma vez por entrada em oferta e limpeza após 12 meses sem uso;
+> - **`/meus_alertas` e `/remover`** → `/lista` com botão "Tirar", mais `/pausar`, `/voltar`, `/parar` e `/ajuda`;
+> - **tabelas `alerts`/`bot_state`** → D1 `ofertaslivros-bot` com `chats`, `desejos`, `avisos` e `em_oferta`;
+> - **`/monitorados/`** → o cadastro é por texto no bot, contra o catálogo publicado em `/bot.json`.
+>
+> As seções 2, 3 e 5 (estado do repo e preço da Amazon) estão desatualizadas desde então e ficam só como histórico.
+
 ## 1. Problema e usuário
 
 **Em uma frase:** o leitor que quer um livro específico, mas acha caro agora, pede para ser avisado no Telegram quando o preço cair até o valor que ele aceita pagar. Quando o aviso chega, ele clica no nosso link de afiliado no momento em que tem mais chance de comprar.

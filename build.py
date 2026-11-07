@@ -22,6 +22,8 @@ ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data" / "offers.json"
 STATIC = ROOT / "static"
 DIST = ROOT / "dist"
+# retirados e generos_retirados (o curator grava o genre na retirada): o 301 de /livro/<id>/ para o nicho
+CATALOG = ROOT / "collector" / "catalog.json"
 
 ALLOWED_HOSTS = {
     "amazon.com.br",
@@ -31,7 +33,7 @@ ALLOWED_HOSTS = {
     "mercadolivre.com",
 }
 STORES = {"amazon": "Amazon", "mercadolivre": "Mercado Livre"}
-# Domínio do <link rel="canonical"> (o site responde em .com e .com.br): o .com, decisão do Elias em 2026-10-20.
+# Domínio do <link rel="canonical">, do og:url, do JSON-LD e do sitemap.xml (o site responde em .com e .com.br): o .com.br.
 SITE = "https://ofertaslivros.com.br"
 # Conjunto fechado: o slug vira diretório em dist/, então nunca vem do JSON livre.
 GENRES = {
@@ -47,7 +49,7 @@ GENRES = {
     "manga": "Mangá e HQ",
 }
 # Rotas de dist/ que nenhum slug de nicho pode ocupar.
-RESERVED = {"r", "livro", "ofertas", "privacidade", "canais", "curadoria", "novidades", "fonts", "black-friday"}
+RESERVED = {"r", "livro", "ofertas", "privacidade", "canais", "curadoria", "novidades", "fonts", "black-friday", "bot"}
 if set(GENRES) & RESERVED:
     raise SystemExit("slug de GENRES reservado")
 
@@ -92,7 +94,7 @@ def _env_id(name, default):
 
 # Username de bot do Telegram: 5 a 32 chars, começa com letra, termina em "bot".
 TG_BOT_RE = re.compile(r"[a-z][a-z0-9_]{1,28}bot", re.I)
-TG_START_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")  # limite do ?start= do deep link
+TG_START_RE = re.compile(r"[A-Za-z0-9_-]{1,60}")  # ?start= aceita 64; 60 cabe no callback_data "add:<id>" do bot
 
 
 def tg_bot():
@@ -104,7 +106,7 @@ def tg_bot():
 
 
 def tg_alert_url(bot, oid):
-    if not TG_START_RE.fullmatch(oid):  # id até 80 no offers.json; o start aceita 64
+    if not TG_START_RE.fullmatch(oid):  # id até 80 no offers.json; o bot aceita 60
         raise Invalid(f"id não cabe no deep link do Telegram: {oid!r}")
     return f"https://t.me/{bot}?start={oid}"
 
@@ -136,11 +138,11 @@ def partner_tag():
 
 
 def channel_tags():
-    """Tag da Amazon por caminho do /r/. Sem AMAZON_TAG_TG/WA (ou vazias), usa a tag do site."""
+    """Tag da Amazon por caminho do /r/. Sem AMAZON_TAG_TG/WA/BOT (ou vazias), usa a tag do site."""
     site = partner_tag()
     return {"": site, **{f"/{c}": _env_id(f"AMAZON_TAG_{c.upper()}", site)
                          if os.environ.get(f"AMAZON_TAG_{c.upper()}") else site
-                         for c in ("tg", "wa")}}
+                         for c in ("tg", "wa", "bot")}}
 
 
 def ml_affiliate():
@@ -327,7 +329,7 @@ def validate_offer(o, tag, aff):
     if o.get("genre") not in GENRES:
         raise Invalid(f"genre inválido: {o.get('genre')!r} (use um de {sorted(GENRES)})")
     oid = o.get("id")
-    if not isinstance(oid, str) or len(oid) > 80 or not ID_RE.fullmatch(oid):
+    if not isinstance(oid, str) or len(oid) > 60 or not ID_RE.fullmatch(oid):
         raise Invalid(f"id inválido: {oid!r}")
     isbn = o.get("isbn")
     if isbn is not None and (not isinstance(isbn, str) or not ISBN_RE.fullmatch(isbn)):
@@ -450,6 +452,20 @@ def resolve(books, now):
     return out
 
 
+def sem_preco(books, now):
+    """Livros que o resolve descarta (só ML, sem nenhuma loja no prazo): ganham a página permanente sem preço
+    (docs/produto/pagina-permanente-livro.md). Lista à parte de offers: nunca entra na vitrine, nas contagens,
+    nos canais nem no _redirects. Campos da última leitura, só para a frase do passado e o histórico."""
+    out = []
+    for b in books:
+        if any(fresh(s, now) or s["store"] == "amazon" for s in b["stores"]):
+            continue  # tem loja no prazo, ou a Amazon segura o livro como velho: é do resolve
+        last = max(b["stores"], key=lambda s: s["checked_at"])
+        out.append({**b, **last, "stores": b["stores"], "sem_preco": True, "oferta": False, "velho": True,
+                    "novo": False, "alt": None, "seal": None, "since": None, "now": now})
+    return out
+
+
 def load_offers(doc, now):
     return resolve(load_books(doc), now)
 
@@ -470,6 +486,26 @@ def when(dt):
 
 def ofertas(items):
     return [o for o in items if o["oferta"]]
+
+
+FAIXAS = (40, 50)  # filtro por desconto: /ofertas/40/ e /ofertas/50/ (pedido do Elias, Black Friday 2026)
+
+
+def com_desconto(items, t):
+    """Faixa de desconto: oferta ativa, com preço no prazo e o desconto do card (off) >= t%. Só ofertas
+    (decisão do Elias, 2026-11-05): o "de" de livro fora da vitrine não vale, e o card não mostra %.
+    Sem os vencidos: desconto de preço velho não entra num filtro de "agora"."""
+    return [o for o in ofertas(items) if not o["velho"] and off(o) >= t]
+
+
+def faixas(offers, cur=None):
+    """Pílulas Todas / 40%+ / 50%+, com a contagem. São links para páginas do build: funcionam sem JS."""
+    opts = [("/ofertas/", "Todas", len(ofertas(offers)), 0)]
+    opts += [(f"/ofertas/{t}/", f"{t}%+", len(com_desconto(offers, t)), t) for t in FAIXAS]
+    cur_ = ' aria-current="page"'
+    lis = "".join(f'<li><a class="pill" href="{h}"{cur_ if t == cur else ""}>{l}'
+                  f'<span class="faixa-n">{n}<span class="sr"> livros</span></span></a></li>' for h, l, n, t in opts)
+    return f'<nav class="faixas" aria-label="Faixa de desconto"><ul>{lis}</ul></nav>'
 
 
 def recentes(items):
@@ -521,7 +557,7 @@ def post_text(o, url):
     """Texto puro do post nos canais (sem parse_mode). url = nosso /r/<id>[/tg|/wa], nunca a da loja."""
     p = urlsplit(url)
     if (p.scheme != "https" or not p.hostname or p.hostname in ALLOWED_HOSTS
-            or p.path not in {f"/r/{o['id']}", f"/r/{o['id']}/tg", f"/r/{o['id']}/wa"}
+            or p.path not in {f"/r/{o['id']}", f"/r/{o['id']}/tg", f"/r/{o['id']}/wa", f"/r/{o['id']}/bot"}
             or p.query or p.fragment):
         raise Invalid(f"post_text só aceita o /r/ do nosso domínio: {url!r}")
     if not o.get("oferta"):
@@ -586,6 +622,7 @@ def chart(o, pad="  "):
             return ""  # sem histórico no contrato: nada a dizer
         return f'\n{pad}<p class="hist">Primeira leitura em {o["checked_at"].astimezone(BRT):%d/%m}: {brl(o["price_cents"])}.</p>'
     lines, start, today = w
+    hoje = None if o.get("sem_preco") else today  # sem preço: a última leitura nunca vira "hoje", sempre com a data
     first = min(pts[0][0] for _, pts in lines)  # o texto diz a data real; start é só o eixo
     span = (today - start).days
     cs = [c for _, pts in lines for _, c in pts]
@@ -605,8 +642,8 @@ def chart(o, pad="  "):
         svg.append(f'<path class="hc-line {cls}" d="{d_}"/>')
         segs.extend((xy[i - 1], xy[i]) if not cut[i] else (xy[i], xy[i]) for i in range(len(xy)))
         last, cur = pts[-1]
-        name = STORES[s["store"]] + ("" if last == today else f", {last:%d/%m}")
-        ends.append([Y(cur), s["store"] != o["store"], name, cls + ("" if last == today else " hc-old"), cur])
+        name = STORES[s["store"]] + ("" if last == hoje else f", {last:%d/%m}")
+        ends.append([Y(cur), s["store"] != o["store"], name, cls + ("" if last == hoje else " hc-old"), cur])
         marks.append(("now", cls, [(X(last), Y(cur))], cur, s["store"] == "amazon" and o["velho"]))
         # 3 marcadores por loja: o mais alto, o degrau mais recente (o último preço antes do atual que difere
         # dele em 3% ou mais: "quanto era logo antes") e o atual. Um valor igual a outro marcador não se repete.
@@ -672,7 +709,7 @@ def chart(o, pad="  "):
     svg.append(f'<text class="hc-lbl" x="{HC_X0}" y="{HC_H - 6}">{start:%d/%m}</text>'
                f'<text class="hc-lbl" x="{HC_X1}" y="{HC_H - 6}" text-anchor="end">hoje</text>')
     return f"""\n{pad}<figure class="hc" id="historico">
-{pad}  <svg viewBox="0 0 {HC_W} {HC_H}" width="100%" role="img" aria-labelledby="hc-t" focusable="false"><title id="hc-t">{e(hc_title(lines, first, today))}</title>{"".join(svg)}</svg>
+{pad}  <svg viewBox="0 0 {HC_W} {HC_H}" width="100%" role="img" aria-labelledby="hc-t" focusable="false"><title id="hc-t">{e(hc_title(lines, first, hoje))}</title>{"".join(svg)}</svg>
 {pad}  <figcaption>{e(hc_phrase(o, first, lo, hi))}</figcaption>
 {pad}  {hc_table(lines)}
 {pad}</figure>"""
@@ -780,7 +817,7 @@ def na(store):
 
 def go(o):
     """Link de afiliado da vencedora: sempre o nosso /r/<id>, nunca a URL da loja."""
-    return (f'<a class="go" href="/r/{e(o["id"])}" rel="sponsored noopener noreferrer" target="_blank">'
+    return (f'<a class="go" href="/r/{e(o["id"])}" rel="sponsored noopener" target="_blank">'
             f'Ver {na(o["store"])} por {brl(o["price_cents"])}{icon("seta")}'
             f'<span class="sr">: {e(o["title"])} (abre em nova aba)</span></a>')
 
@@ -791,7 +828,7 @@ def alt_details(o):
     if not a:
         return ""
     return (f'<details class="alt"><summary>{icon("chev")}<span class="sr">Outra loja: {STORES[a["store"]]}</span></summary>'
-            f'<p class="alt-box"><a href="/r/{e(o["id"])}/{a["store"]}" rel="sponsored noopener noreferrer" '
+            f'<p class="alt-box"><a href="/r/{e(o["id"])}/{a["store"]}" rel="sponsored noopener" '
             f'target="_blank">Também {na(a["store"])}: {brl(a["price_cents"])}'
             f'<span class="sr">, {e(o["title"])} (abre em nova aba)</span></a>'
             f'<span class="alt-when">{checked(a, o["now"])}</span></p></details>')
@@ -804,7 +841,7 @@ def buy(o):
 
 def buy_circle(o):
     """Botão de compra do card: círculo com a seta; loja e preço no nome acessível."""
-    return (f'<a class="buy-c" href="/r/{e(o["id"])}" rel="sponsored noopener noreferrer" target="_blank">{icon("seta")}'
+    return (f'<a class="buy-c" href="/r/{e(o["id"])}" rel="sponsored noopener" target="_blank">{icon("seta")}'
             f'<span class="sr">Ver {na(o["store"])} por {brl(o["price_cents"])}: {e(o["title"])} (abre em nova aba)</span></a>')
 
 
@@ -1008,10 +1045,11 @@ def strip_canais(ch, at):
 def banner_bot(bot, at):
     """Banner do alerta em 2 colunas do grid. Sem TELEGRAM_BOT_USERNAME, o botão sai "em breve"."""
     return f"""<li class="blk blk--bot" data-at="{at}">
-  <span class="mascote" aria-hidden="true">{icon("carimbo", "i i-carimbo")}</span>
+  <span class="mascote" aria-hidden="true"><img src="/mavi.svg" alt="" width="640" height="640" decoding="async"></span>
   <p class="kicker">{icon("sino")}Alerta grátis no Telegram</p>
-  <h3 class="blk-h">Escolha o livro. A gente avisa quando baixar.</h3>
-  <p>Toque no sino de qualquer oferta e o bot guarda o preço de hoje.</p>
+  <h3 class="blk-h">Escolha o livro. A gente avisa quando entrar em oferta.</h3>
+  <p>{"Toque no sino de qualquer livro e o bot avisa quando ele entrar em oferta. Para apagar tudo, mande /parar ao bot." if bot
+      else "Em breve: toque no sino de qualquer livro e o bot vai avisar quando ele entrar em oferta."}</p>
   <p>{cta(bot and f"https://t.me/{bot}", f'Ativar alertas{icon("seta")}', "go", '<span class="sr"> (abre o Telegram)</span>')}</p>{aneis()}
 </li>"""
 
@@ -1034,16 +1072,16 @@ def ver_todas(n, home):
                 " mais--m" if n <= CAP[1] else "")  # só no celular quando o desktop já mostra todas
 
 
-def feed(offers, bot=None, ch=(), full=False):
+def feed(offers, bot=None, ch=(), full=False, pills="", items=None):
     """Ofertas ativas: ordenação (JS), grid com blocos intercalados e "Ver todas" / "carregar mais".
     Os blocos guardam a posição (data-at) para o JS recolocá-los depois de ordenar ou filtrar.
     Sem nenhuma oferta, um estado vazio que aponta para a curadoria e o alerta."""
-    items = ofertas(offers)
+    items = ofertas(offers) if items is None else items
     n = len(items)
     if not n:
         return ('<section class="sec" aria-labelledby="h-ativas">\n<div class="sec-head"><h2 id="h-ativas">Ofertas ativas</h2></div>\n'
                 '<p class="vazio vazio--fixo">Nenhuma oferta conferida agora. Veja a <a href="/curadoria/">curadoria</a> '
-                'ou ative um alerta no sino de um livro.</p>\n</section>')
+                'ou toque no sino de um livro para ser avisado.</p>\n</section>')
     cards = [card(o, bot) for o in items]
     for at, html_ in ((8, strip_canais(ch, 8)), (4, banner_bot(bot, 4))):
         cards.insert(min(at, len(cards)), html_)
@@ -1053,13 +1091,13 @@ def feed(offers, bot=None, ch=(), full=False):
     more = ver_todas(n, not full) + (
         f'<p class="mais"><button class="btn btn--ghost js-mais" type="button" hidden>{icon("livro", "i i-livro")}'
         'Carregar mais ofertas</button></p>' if full else "")
-    body = (f'{tools}\n<p class="vazio" hidden role="status">Nenhuma oferta com esse título ou autor. '
+    body = (f'{pills}{tools}\n<p class="vazio" hidden role="status">Nenhuma oferta com esse título ou autor. '
             f'Tente outro nome ou volte para Todos.</p>\n<ul class="grid feed{" feed--full" if full else " feed--home"}">\n'
             + "\n".join(cards) + f"\n</ul>\n{more}")
     return section("h-ativas", "Ofertas ativas", body, n, "Conferidas na loja. A que vence sai da lista.")
 
 
-CUR_NOTE = "Livros escolhidos por nós, ainda sem oferta. Ative o alerta e avisamos quando o preço baixar."
+CUR_NOTE = "Livros escolhidos por nós, ainda sem oferta. Toque no sino e avisamos quando entrar em oferta."
 
 
 def da_curadoria(offers, bot=None, genre=None, skip=()):
@@ -1082,16 +1120,16 @@ def ranked(offers):
 def bot_block(bot):
     """Capítulo marinho do alerta. Sem o bot, o botão sai "em breve". O pedido de livro é o form do fab."""
     url = bot and f"https://t.me/{bot}"
-    steps = ("Escolha o livro e toque no sino", "No Telegram, toque em Iniciar", "Quando o preço cair, avisamos")
+    steps = ("Escolha o livro e toque no sino", "No Telegram, toque em Iniciar", "Quando entrar em oferta, avisamos")
     lis = "".join(f'<li><span class="n">{k}</span>{t}</li>' for k, t in enumerate(steps, 1))
     return f"""<section class="bot" aria-labelledby="h-bot">
-  <div class="bot-art" aria-hidden="true"><span class="radar radar--big"></span><span class="mascote mascote--big">{icon("carimbo", "i i-carimbo")}</span></div>
+  <div class="bot-art" aria-hidden="true"><span class="radar radar--big"></span><span class="mascote mascote--big"><img src="/mavi.svg" alt="" width="640" height="640" decoding="async"></span></div>
   <div class="bot-text">
     <p class="kicker">{icon("sino")}Seu alerta no Telegram</p>
-    <h2 id="h-bot">Avisamos quando o livro baixar. <em>Você só escolhe qual.</em></h2>
+    <h2 id="h-bot">Avisamos quando o livro entrar em oferta. <em>Você só escolhe qual.</em></h2>
     <ol class="passos">{lis}</ol>
     <p class="bot-acts">{cta(url, f'Ativar no Telegram{icon("seta")}', "go", '<span class="sr"> (abre o Telegram)</span>')}</p>
-    <p class="bot-note">{"O bot guarda" if bot else "Quando estiver no ar, o bot vai guardar"} só o necessário para avisar você e {"apaga" if bot else "apagar"} o alerta quando ele disparar. Veja a <a href="/privacidade/">privacidade</a>.</p>
+    <p class="bot-note">{"O bot avisa uma vez por oferta, das 8h às 22h, e guarda o número da conversa, a sua lista e quando avisou. Para apagar tudo, mande /parar ao bot." if bot else "Quando estiver no ar, o bot vai guardar o número da conversa, a sua lista e quando avisou, e para apagar tudo bastará mandar /parar ao bot."} Veja a <a href="/privacidade/">privacidade</a>.</p>
   </div>{aneis("aneis--big")}
 </section>"""
 
@@ -1112,7 +1150,8 @@ def faq(bot, ch):
     qa = [("Como vocês escolhem as ofertas?",
            "Acompanhamos o preço de uma lista de livros na Amazon e no Mercado Livre. Só vira oferta o livro "
            "que está mais barato do que costuma ficar, e cada preço mostra o horário em que foi conferido na loja. "
-           "Quando o preço volta a subir, o livro sai das ofertas e fica na curadoria; quando o preço fica velho, sai do site."),
+           "Quando o preço volta a subir, o livro sai das ofertas e fica na curadoria. Quando não conseguimos mais "
+           "conferir o preço, ele sai das listas, mas a página do livro continua no ar, com o histórico de preço."),
           ("O que quer dizer “menor preço em 90 dias”?",
            "Que o preço de agora é o menor que registramos nos últimos 90 dias, em todas as lojas em que o livro "
            "está à venda. O selo só aparece quando temos 90 dias de histórico de verdade; com menos, mostramos "
@@ -1121,14 +1160,16 @@ def faq(bot, ch):
            "Era no horário indicado em cada oferta. Preço muda rápido, então o preço final é sempre o da loja, "
            "na hora da compra.")]
     if bot:
-        qa.append(("Como funciona o alerta de preço?",
-                   f'Toque no sino de um livro (ou em “Me avise se baixar”) e o bot <a href="https://t.me/{e(bot)}" '
-                   'rel="noopener noreferrer" target="_blank">@' + e(bot) + '</a> guarda o preço de hoje. Quando ele cair, '
-                   'avisamos por lá. Para parar, mande /parar ao bot.'))
+        qa.append(("Como funciona o aviso de oferta?",
+                   f'Toque no sino de um livro (ou em “Me avise se baixar”), ou mande o título ou o autor ao bot '
+                   f'<a href="https://t.me/{e(bot)}" rel="noopener noreferrer" target="_blank">@' + e(bot) + '</a>. '
+                   'Ele avisa por lá quando o livro entrar em oferta, com o mesmo critério do site e do canal: uma vez '
+                   'por oferta, das 8h às 22h, e de novo se o preço cair mais. Em /lista você vê e tira livros; '
+                   'para apagar tudo, /parar.'))
     else:  # o bot ainda não responde: nada de prometer que o alerta já funciona
-        qa.append(("Como vai funcionar o alerta de preço?",
+        qa.append(("Como vai funcionar o aviso de oferta?",
                    "Em breve você poderá tocar no sino de um livro (ou em “Me avise se baixar”) e o nosso bot no "
-                   "Telegram vai guardar o preço de hoje e avisar quando ele cair. Por enquanto o alerta ainda não está no ar."))
+                   "Telegram vai avisar quando ele entrar em oferta. Por enquanto o bot ainda não está no ar."))
     if ch:
         qa.append(("Onde mais recebo as ofertas?",
                    "Nos canais " + " e ".join(n for n, _ in ch) + ', que repetem as ofertas do site. '
@@ -1187,7 +1228,7 @@ def home_sections(offers, bot=None, ch=()):
                          '<ul class="grid grid--feat">\n' + "\n".join(card(o, bot) for o in feat) + "\n</ul>",
                          len(feat), "" if curated else "Primeiro o menor preço do histórico, depois o maior desconto."),
         nav(offers, None, filtro=True),
-        feed(order, bot, ch),
+        feed(order, bot, ch, pills=faixas(offers)),
         da_curadoria(offers, bot, skip=in_hero),
         bot_block(bot),
         channels_block(ch),
@@ -1247,11 +1288,11 @@ def internal(href, label, here):
 
 
 def brand(cls="brand"):
-    """Logo B (wordmark em curvas, 274x32). Duas imagens: a positiva no tema claro e a negativa
+    """Logo B (wordmark "ofertaslivros.com.br" em curvas, 308x32). Duas imagens: a positiva no tema claro e a negativa
     (sem fundo) no escuro; o CSS mostra uma só, então o leitor de tela lê um nome só."""
     return (f'<a class="{cls}" href="/"><img class="logo-claro" src="/logo.svg" alt="Ofertas Livros" '
-            'width="274" height="32"><img class="logo-escuro" src="/logo-negativo.svg" alt="Ofertas Livros" '
-            'width="274" height="32"></a>')
+            'width="308" height="32"><img class="logo-escuro" src="/logo-negativo.svg" alt="Ofertas Livros" '
+            'width="308" height="32"></a>')
 
 
 # Ícones desenhados para o site (traço 2, viewBox 24), num sprite só: cada uso é um <use>.
@@ -1309,13 +1350,12 @@ def header(offers, ch):
            f'<button class="pill pill--ico js-tema" type="button" hidden aria-pressed="false">'
            f'{icon("sol", "i i-sol")}{icon("lua", "i i-lua")}<span class="sr">Tema escuro</span></button>']
     urls = chan_urls(ch)  # canal sem env: a mesma pílula, "em breve"
-    nav.append(cta(urls["Telegram"], f'{icon("tg")}<span class="pill-t">Canal no Telegram</span>', "pill pill--tg",
+    nav.append(cta(urls["Telegram"], f'{icon("tg")}<span class="pill-t">Telegram</span>', "pill pill--tg",
                    '<span class="sr"> (abre em nova aba)</span>'))
     nav.append(cta(urls["WhatsApp"], f'{icon("wa")}<span class="pill-t">Canal no WhatsApp</span>', "pill pill--wa",
                    '<span class="sr"> (abre em nova aba)</span>'))
     return f"""<header class="top">
 <div class="top-bar">
-<span class="menu-slot" aria-hidden="true"></span>
 {brand()}
 {carimbo(offers, "carimbo--bar")}
 <nav class="acoes" aria-label="Atalhos">{"".join(nav)}</nav>
@@ -1392,6 +1432,66 @@ def data_script(offers, bot):
     return f'<script type="application/json" id="ofertas">{raw}</script>'
 
 
+def ld(obj):
+    """<script type="application/ld+json">: bloco de dados (não executa, cabe na CSP script-src 'self').
+    Sempre json.dumps, nunca f-string; < > & viram \\u003c \\u003e \\u0026, então nenhum </script> ou <!-- vindo
+    do título ou do autor sai do bloco."""
+    raw = json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
+    raw = raw.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+    return f'<script type="application/ld+json">{raw}</script>'
+
+
+def crumbs_ld(*items):
+    """BreadcrumbList: (nome, caminho) a partir de Início; caminhos internos fixos (slug de GENRES, id de ID_RE)."""
+    return ld({"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
+        {"@type": "ListItem", "position": i, "name": name, "item": SITE + path}
+        for i, (name, path) in enumerate((("Início", "/"),) + items, 1)]})
+
+
+def abs_img(o):
+    """Capa em URL absoluta https para og:image/JSON-LD: a foto do ML (já presa a https://IMG_HOST) ou a
+    capa local em /capas/ servida pelo SITE. Sem capa, None."""
+    u = o["image_url"]
+    return u and (SITE + u if u.startswith("/capas/") else u)
+
+
+OFFER_MAX = timedelta(hours=24)
+
+
+def book_ld(o):
+    """Product + Book da página /livro/<id>/. O preço é o mesmo price_cents mostrado na página, em string
+    com ponto (sem float); a url é a da própria página, nunca o /r/ nem o link de afiliado.
+    Offer só com preço conferido há menos de OFFER_MAX (decisão do Elias, 2026-11-07): a política dos Associados
+    da Amazon não aceita preço exibido com mais de 24h, e o Google mostra o preço sem o nosso carimbo de horário.
+    Sem seller: somos afiliado, não vendedor."""
+    url = f"{SITE}/livro/{o['id']}/"
+    oferta = not o.get("sem_preco") and o["now"] - o["checked_at"] < OFFER_MAX
+    # sem Offer, só Book: Product sem offers/review/aggregateRating é erro no Search Console
+    d = {"@context": "https://schema.org", "@type": ["Product", "Book"] if oferta else "Book", "name": o["title"],
+         "author": {"@type": "Person", "name": o["author"]}, "url": url}
+    if abs_img(o):
+        d["image"] = abs_img(o)
+    if o["isbn"]:
+        d["isbn"] = o["isbn"]
+    if oferta:
+        c = o["price_cents"]
+        d["offers"] = {"@type": "Offer", "price": f"{c // 100}.{c % 100:02d}", "priceCurrency": "BRL",
+                       "url": url}  # sem availability: não conferimos estoque
+    return ld(d)
+
+
+HOME_LD = ld({"@context": "https://schema.org", "@graph": [
+    {"@type": "WebSite", "name": "Ofertas Livros", "url": SITE + "/", "inLanguage": "pt-BR"},
+    {"@type": "Organization", "name": "Ofertas Livros", "url": SITE + "/", "logo": SITE + "/logo.svg"}]})
+
+
+def sitemap(pages):
+    """sitemap.xml com as páginas de render_pages (bot.json, /painel e /r/ não são páginas daqui).
+    Sem <lastmod>: não há data confiável por página (o build roda a cada rodada de preço)."""
+    urls = "".join(f"<url><loc>{e(SITE + '/' + k.removesuffix('index.html'))}</loc></url>\n" for k in sorted(pages))
+    return f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{urls}</urlset>\n'
+
+
 MODAL = f"""<dialog class="modal" id="detalhe" aria-labelledby="m-t">
 <div class="m-top"><button class="arrow js-mprev" type="button">{icon("esq")}<span class="sr">Livro anterior</span></button><span class="m-n tnum"></span><button class="arrow js-mnext" type="button">{icon("dir")}<span class="sr">Próximo livro</span></button><button class="arrow m-x js-mx" type="button">{icon("x")}<span class="sr">Fechar</span></button></div>
 <div class="m-grid">
@@ -1402,9 +1502,13 @@ MODAL = f"""<dialog class="modal" id="detalhe" aria-labelledby="m-t">
 </dialog>"""
 
 
-def shell(offers, title, desc, body, ch=(), here="", style=None, bot=None, modal=False):
-    """Esqueleto comum. title/desc/body já chegam escapados. style: nicho da página (acento global)."""
+def shell(offers, title, desc, body, ch=(), here="", style=None, bot=None, modal=False, img=None, head=""):
+    """Esqueleto comum. title/desc/body já chegam escapados. style: nicho da página (acento global).
+    img: URL absoluta da capa para og:image (crua; escapada aqui). head: JSON-LD pronto (ld()).
+    O og:url entra com o canonical em render_pages."""
     ds = f' data-style="{style}"' if style in GENRES else ""
+    og = (f'<meta property="og:image" content="{e(img)}">\n<meta name="twitter:card" content="summary_large_image">'
+          if img else '<meta name="twitter:card" content="summary">')
     return f"""<!doctype html>
 <html lang="pt-BR"{ds}>
 <head>
@@ -1412,6 +1516,12 @@ def shell(offers, title, desc, body, ch=(), here="", style=None, bot=None, modal
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title}</title>
 <meta name="description" content="{desc}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ofertas Livros">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:title" content="{title}">
+<meta property="og:description" content="{desc}">
+{og}{(chr(10) + head) if head else ""}
 <meta name="theme-color" content="#edf1f5" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0f1729" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
@@ -1453,7 +1563,27 @@ def page(all_offers, genre=None, bot=None, ch=()):
     else:
         body = (intro(e(GENRES[genre]), LEDE) + f"\n{nav(all_offers, genre)}\n{feed(offers, bot, ch, full=True)}"
                 + f"\n{da_curadoria(offers, bot, genre)}")
-    return shell(all_offers, title, desc, body, ch, style=genre, bot=bot, modal=True)
+    head = crumbs_ld((GENRES[genre], f"/{genre}/")) if genre else HOME_LD
+    return shell(all_offers, title, desc, body, ch, style=genre, bot=bot, modal=True, head=head)
+
+
+TITLE_MAX = 60  # <title> das /livro/: acima disso o Google corta
+TITLE_MIN = 20  # mas o título do livro nunca vira um toco ("O Pequeno P…")
+
+
+def book_title(o):
+    """'Título, Autor por R$ 25,75 | Ofertas Livros' (cru; escapar ao usar). Passou de TITLE_MAX: tira o
+    subtítulo (depois de ':') e, se ainda não couber, corta o título na palavra com '…'. O preço e o autor nunca
+    são cortados; com autor longo, o título guarda até TITLE_MIN chars, mesmo passando um pouco de TITLE_MAX."""
+    preco = "" if o.get("sem_preco") else f" por {brl(o['price_cents'])}"  # sem preço conferido, sem preço no título
+    tail = f", {o['author']}{preco} | Ofertas Livros"
+    t, room = o["title"], max(TITLE_MAX - len(tail), TITLE_MIN)
+    if len(t) > room:
+        t = t.split(":")[0].strip() or t
+    if len(t) > room:
+        cut = t[:room - 1]
+        t = (cut.rsplit(" ", 1)[0] if " " in cut else cut).rstrip(" ,.;-") + "…"
+    return t + tail
 
 
 def store_list(o):
@@ -1461,10 +1591,16 @@ def store_list(o):
     a = o["alt"]
     if not a:
         return ""
-    return (f'<p class="other"><a class="btn btn--ghost" href="/r/{e(o["id"])}/{a["store"]}" rel="sponsored noopener noreferrer" '
+    return (f'<p class="other"><a class="btn btn--ghost" href="/r/{e(o["id"])}/{a["store"]}" rel="sponsored noopener" '
             f'target="_blank">Também {na(a["store"])}: {brl(a["price_cents"])}{icon("seta")}'
             f'<span class="sr">, {e(o["title"])} (abre em nova aba)</span></a>'
             f'<span class="alt-when">{checked(a, o["now"])}</span></p>')
+
+
+def ultima_leitura(o):
+    """Frase no passado do livro sem preço. Preço da Amazon com mais de 24h nunca aparece (Associados): só a data."""
+    preco = "" if o["store"] == "amazon" else f" O último preço que vimos foi {brl(o['price_cents'])} {na(o['store'])}."
+    return f"Não conseguimos conferir o preço na loja desde {o['checked_at'].astimezone(BRT):%d/%m}.{preco}"
 
 
 def book_page(o, offers, bot=None, ch=()):
@@ -1474,13 +1610,23 @@ def book_page(o, offers, bot=None, ch=()):
     old = f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>' if off_ else ""
     pill = f'<span class="off-pill{" off-pill--forte" if forte(o) else ""}">−{off_}%</span>' if off_ else ""
     why = ("o último preço que vimos tem mais de 7 dias. Confira o preço atual na loja." if o["velho"]
-           else "o preço ainda não baixou o bastante. Ative o alerta e avisamos quando cair.")
+           else "o preço ainda não baixou o bastante. Toque em “Me avise se baixar” e avisamos quando entrar em oferta.")
     nov = "" if o["oferta"] else f'\n    <p class="nov-nota">Sem oferta agora: {why}</p>'
     b = badge(o)
     chips = f'<span class="chip chip--g">{icon("g-" + g)}{e(GENRES[g])}</span>' + (
         f'<span class="chip chip--{b[0]}">{b[1]}</span>' if b else "")
     note = (f'<blockquote class="nota"><p>{e(o["blurb"])}</p><footer>{avatar(g)}Curadoria de {e(GENRES[g])}</footer></blockquote>'
             if o["blurb"] else "")
+    deal = f'<div class="hero-deal">{stamp_html(o)}<p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong>{old}</p>{pill}</div>'
+    meta, hist = meta_html(o), chart(o, "    ")
+    acts = f'\n    <div class="hero-acts">{go(o)}{alert_link(o, bot)}</div>\n    {store_list(o)}'
+    desc = f"{t}, de {e(o['author'])}, por {brl(o['price_cents'])} {na(o['store'])}. Preço conferido na loja."
+    if o.get("sem_preco"):  # sem preço conferido: nada de preço atual nem link para a loja; o alerta é o único CTA
+        deal = '<div class="hero-deal"><p class="sem-agora">Sem oferta agora</p></div>'
+        meta, nov = e(ultima_leitura(o)), ""
+        hist = hist if has_hc(o) else '\n    <p class="hist">Sem leitura de preço nos últimos 90 dias.</p>'
+        acts = f'\n    <div class="hero-acts">{alert_link(o, bot)}</div>' if bot else ""
+        desc = f"{t}, de {e(o['author'])}: histórico de preço e aviso quando entrar em oferta."
     body = f"""<p class="crumbs"><a href="/">Início</a> / <a href="/{g}/">{e(GENRES[g])}</a></p>
 <article class="livro" data-g="{g}">
   {obj(o, "obj hero-obj livro-obj", eager=True)}
@@ -1489,22 +1635,34 @@ def book_page(o, offers, bot=None, ch=()):
     <h1 class="livro-h1">{t}</h1>
     <p class="hero-sub">{e(o["author"])}</p>
     {note}
-    <div class="hero-deal">{stamp_html(o)}<p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong>{old}</p>{pill}</div>
-    <p class="meta">{meta_html(o)}</p>{chart(o, "    ")}{nov}
-    <div class="hero-acts">{go(o)}{alert_link(o, bot)}</div>
-    {store_list(o)}
+    {deal}
+    <p class="meta">{meta}</p>{hist}{nov}{acts}
   </div>
 </article>"""
-    return shell(offers, f"{t}, de {e(o['author'])}: {'oferta' if o['oferta'] else 'preço'} conferid{'a' if o['oferta'] else 'o'} | Ofertas Livros",
-                 f"{t}, de {e(o['author'])}, por {brl(o['price_cents'])} {na(o['store'])}. Preço conferido na loja.",
-                 body, ch, style=g, bot=bot)
+    return shell(offers, e(book_title(o)), desc, body, ch, style=g, bot=bot, img=abs_img(o),
+                 head=crumbs_ld((GENRES[g], f"/{g}/"), (o["title"], f"/livro/{o['id']}/")) + "\n" + book_ld(o))
 
 
 def all_page(offers, bot=None, ch=()):
     """/ofertas/: a lista completa das ofertas (sem JS, é para onde o "Ver todas" leva)."""
-    body = (intro("Todas as ofertas", LEDE) + f"\n{nav(offers, None, filtro=True)}\n{feed(offers, bot, ch, full=True)}")
+    body = (intro("Todas as ofertas", LEDE) + f"\n{nav(offers, None, filtro=True)}\n"
+            + feed(offers, bot, ch, full=True, pills=faixas(offers, 0)))
     return shell(offers, "Todas as ofertas de livros | Ofertas Livros",
-                 "Todas as ofertas de livros ativas, conferidas na loja.", body, ch, "/ofertas/", bot=bot, modal=True)
+                 "Todas as ofertas de livros ativas na Amazon e no Mercado Livre, conferidas uma a uma na loja "
+                 "e comparadas com o histórico de preço de cada livro.", body, ch, "/ofertas/", bot=bot, modal=True)
+
+
+def faixa_page(offers, t, bot=None, ch=()):
+    """/ofertas/<t>/: livros com t% ou mais de desconto (com_desconto). Existe sempre, mesmo vazia."""
+    h1 = f"Livros com {t}% ou mais de desconto"
+    lede = (f"Ofertas ativas com pelo menos {t}% de desconto sobre o preço de lista da loja. "
+            "Cada livro mostra quando conferimos o preço; o preço final é o da loja.")
+    items = ranked(com_desconto(offers, t))
+    lista = (feed(offers, bot, ch, full=True, pills=faixas(offers, t), items=items) if items else
+             faixas(offers, t) + f'\n<p class="vazio vazio--fixo">Nenhum livro com {t}% ou mais de desconto agora. '
+             'Veja todas as <a href="/ofertas/">ofertas ativas</a>.</p>')
+    return shell(offers, f"{h1} | Ofertas Livros", f"{h1}, conferidos na loja.",
+                 intro(h1, lede) + f"\n{nav(items, None, filtro=True) if items else ''}\n" + lista, ch, f"/ofertas/{t}/", bot=bot, modal=True)
 
 
 BF_LEDE = ("Ofertas ativas com 30% ou mais de desconto ou no menor preço que vimos em 90 dias. "
@@ -1529,7 +1687,7 @@ def bf_page(offers, bot=None, ch=()):
 
 CUR_INTRO = ("Uma seleção de livros escolhidos por regras a partir de sinais públicos e por nós. Alguns estão "
              "em oferta, outros não. O preço foi verificado no horário indicado, e o preço final é o da loja. "
-             "Sem oferta agora? Crie um alerta e avisamos quando o preço baixar.")
+             "Sem oferta agora? Toque no sino e avisamos quando o livro entrar em oferta.")
 
 
 def curadoria_page(offers, bot=None, ch=()):
@@ -1556,26 +1714,37 @@ def privacy(offers, bot=None, ch=()):
     body = f"""<h1 class="page-h1">Privacidade</h1>
 <article class="doc">
 <h2>No site</h2>
-<p>O site não tem cadastro, cookies nem ferramentas de análise. Ele tem um script próprio, servido pelo próprio site, para a busca, os filtros e o tema; a única coisa que ele guarda é a sua escolha de tema claro ou escuro, no seu navegador (localStorage), e nada disso sai do aparelho. O site é hospedado na Cloudflare; o endereço ofertaslivros.com passa pelo Netlify só para redirecionar a este site. Os dois recebem os dados técnicos de cada acesso (como o endereço IP) para entregar as páginas.</p>
+<p>O site não tem cadastro nem ferramentas de análise no navegador, e só grava um cookie se você pedir para não ser medido nos anúncios (veja “<a href="#sem-meta">Se você chegou por um anúncio</a>”). Ele tem um script próprio, servido pelo próprio site, para a busca, os filtros e o tema; a única coisa que ele guarda é a sua escolha de tema claro ou escuro, no seu navegador (localStorage), e nada disso sai do aparelho. O site é hospedado na Cloudflare; o endereço ofertaslivros.com passa pelo Netlify só para redirecionar a este site. Os dois recebem os dados técnicos de cada acesso (como o endereço IP) para entregar as páginas.</p>
 <h2>No pedido de livro</h2>
-<p>O formulário “Pedir um livro” pede só o nome e o autor do livro. Ele é processado na Cloudflare, que usa o endereço IP só para barrar envios repetidos, sem guardá-lo, e envia o pedido ao nosso e-mail. O site não guarda o pedido. Apagamos os pedidos do e-mail em até 30 dias.</p>
+<p>O formulário “Pedir um livro” pede só o nome e o autor do livro. Ele é processado na Cloudflare, que usa o endereço IP só para barrar envios repetidos, sem guardá-lo, e envia o pedido ao nosso e-mail. O pedido (só o nome e o autor do livro, sem nenhum dado seu) fica guardado por 30 dias num banco de dados Cloudflare D1 e depois é apagado. Apagamos os pedidos do e-mail em até 30 dias.</p>
 <p>Ao clicar em uma oferta, você vai para a Amazon ou para o Mercado Livre. A partir daí valem as políticas de privacidade de cada loja.</p>
-<h2>No alerta de preço do Telegram</h2>
-<p>{"Quando você pede um alerta para " + bot_name + ", guardamos" if bot else "O alerta ainda não está no ar. Em breve você poderá pedir um alerta para " + bot_name + ". Quando isso funcionar, vamos guardar"} só o necessário para avisar você:</p>
+<h2 id="sem-meta">Se você chegou por um anúncio</h2>
+<p>Quando você chega ao site por um anúncio pago nosso no Instagram ou no Facebook e clica numa oferta, o site avisa à Meta que aquele toque no anúncio levou a uma ida à loja. Isso serve para sabermos quais anúncios funcionam e para a Meta mostrar o anúncio a quem tem mais chance de se interessar.</p>
+<p>Enviamos à Meta só: o código do clique que a própria Meta põe no endereço da página (fbclid), os dados técnicos do navegador (user agent), o horário e a página do site em que você estava. Não enviamos qual livro você clicou, nem o seu endereço IP, nome, e-mail ou telefone. O site não guarda nenhum desses dados.</p>
+<p>A base legal é o legítimo interesse (LGPD, art. 7º, IX). A Meta trata esses dados conforme a política de privacidade dela, inclusive fora do Brasil. Lá você pode ver e desligar esse uso em “Central de Contas &gt; Sua atividade fora das tecnologias da Meta”.</p>
+<p>Quem chega ao site sem ser por anúncio pago não tem nada enviado. O site também respeita o sinal Global Privacy Control (GPC) do navegador. Para não ser medido, use o botão abaixo. Ele grava no seu navegador um cookie só com essa escolha, por 12 meses.</p>
+<form class="sem-meta" method="post" action="/privacidade/sem-meta"><button class="btn btn--ghost" type="submit">Não enviar meus cliques à Meta</button></form>
+<p class="sem-meta-ok" id="sem-meta-ok" role="status">Pronto: seus cliques não serão enviados à Meta neste navegador.</p>
+<h2>Na lista de desejos do Telegram</h2>
+<p>{"Quando você põe um livro ou um autor na sua lista com " + bot_name + ", ele avisa por lá quando o livro entrar em oferta. Para isso, guardamos" if bot else "A lista de desejos ainda não está no ar. Em breve você poderá pôr livros e autores numa lista com " + bot_name + ", que vai avisar quando eles entrarem em oferta. Quando isso funcionar, vamos guardar"} só o necessário para avisar você:</p>
 <ul>
 <li>o identificador da conversa com o bot no Telegram (chat_id);</li>
-<li>o livro e o preço-alvo do alerta;</li>
-<li>a data de criação e a data de expiração.</li>
+<li>a sua lista: os livros e os autores que você escolheu;</li>
+<li>se os avisos estão pausados;</li>
+<li>a data em que a conversa começou e a do último uso;</li>
+<li>para cada livro já avisado, o preço e a data do último aviso, para não repetir o mesmo aviso.</li>
 </ul>
-<p>Não guardamos seu nome, seu nome de usuário, seu telefone nem o texto das suas mensagens.</p>
+<p>Não guardamos seu nome, seu nome de usuário, seu telefone, seu idioma nem o texto das suas mensagens: o que você manda ao bot serve só para achar o livro na hora e é descartado.</p>
+<p>Se você pedir um livro pelo bot, o pedido vai para a curadoria sem nenhum dado seu.</p>
 <h2>Onde fica</h2>
-<p>Num banco de dados Cloudflare D1, fora do código do site e sem acesso público. A Cloudflare opera esse banco para nós.</p>
+<p>Num banco de dados Cloudflare D1, fora do código do site e sem acesso público. A Cloudflare opera esse banco para nós. As mensagens passam pelo Telegram, que tem a política de privacidade dele.</p>
+{"" if bot else "<p>Quando a lista de desejos estiver no ar, valerá o seguinte:</p>"}
 <h2>Por quanto tempo</h2>
-<p>Até o alerta disparar (ele é apagado quando a mensagem é enviada) ou por no máximo 90 dias, o que vier primeiro. Não guardamos histórico de alertas enviados.</p>
+<p>A lista fica guardada enquanto você usa o bot. Uma conversa sem nenhuma mensagem ou toque por 12 meses é apagada por inteiro, sem aviso. O preço do último aviso de um livro é apagado quando ele sai da oferta.</p>
 <h2>Como apagar</h2>
 <ul>
-<li><code>/remover</code> seguido do livro apaga um alerta;</li>
-<li><code>/parar</code> apaga todos os seus dados;</li>
+<li>em <code>/lista</code>, toque em “Tirar” para tirar um item;</li>
+<li><code>/parar</code> apaga a sua lista e todos os seus dados;</li>
 <li>bloquear o bot também apaga todos os seus dados.</li>
 </ul>
 </article>"""
@@ -1587,8 +1756,9 @@ def canais(offers, ch, bot=None):
     desc = {"Telegram": "as ofertas chegam assim que são publicadas, até 8 por dia, das 8h às 22h.",
             "WhatsApp": "um resumo por dia com até 5 ofertas."}
     items = "\n".join(f"<li>{ext(url, f'Canal no {name}')}: {desc[name]}</li>" for name, url in ch)
-    alert = (f'<p>Quer saber de um livro só? Peça um alerta de preço ao {ext(f"https://t.me/{bot}", "@" + e(bot))} '
-             'ou toque em “Me avise se baixar” na oferta.</p>' if bot else "")
+    alert = (f'<p>Quer saber de um livro só? Mande o título ao {ext(f"https://t.me/{bot}", "@" + e(bot))} '
+             'ou toque em “Me avise se baixar” na oferta: o bot avisa quando ele entrar em oferta. Para apagar tudo, mande /parar ao bot.</p>'
+             if bot else "")
     body = f"""<h1 class="page-h1">Canais</h1>
 <article class="doc">
 <p>Os canais repetem as ofertas do site, com preço conferido e o horário da verificação. São só de leitura e não pedem cadastro.</p>
@@ -1601,24 +1771,78 @@ def canais(offers, ch, bot=None):
     return shell(offers, "Canais: Ofertas Livros", "Siga as ofertas de livros no Telegram e no WhatsApp.", body, ch, "/canais/", bot=bot)
 
 
+def bot_key(text):
+    """Chave de busca do bot: fold e só [a-z0-9] separados por espaço (worker/bot.js normaliza igual)."""
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", fold(text)).split())
+
+
+def bot_json(offers, now, sem=()):
+    """Catálogo público do bot do Telegram (docs/produto/bot-lista-de-desejos.md §7.2): busca e o aviso pronto.
+    texto só com oferta no prazo (o Worker não calcula oferta nem formata preço); valido_ate = checked_at +
+    FRESH da loja que vence primeiro, para o cron não mandar preço que venceu depois do deploy."""
+    # ponytail: autores divididos em , ; & e " e " erram nome com " e "; campo authors no contrato se aparecer caso real
+    livros = [{"id": o["id"], "titulo": o["title"], "autor": o["author"],
+               "busca": bot_key(f"{o['title']} {o['author']}"),
+               "autores": [k for a in re.split(r",|;|&| e ", o["author"]) if (k := bot_key(a))],
+               "preco_cents": o["price_cents"],
+               "desconto": off(o),  # % do "de/por" (0 sem oferta): desempate dos avisos no cron do bot
+               # a loja que vence primeiro: o texto pode citar a outra ("Também no ...")
+               "valido_ate": min(s["checked_at"] + FRESH[s["store"]] for s in o["stores"]).astimezone(timezone.utc)
+                             .isoformat(timespec="seconds"),
+               "texto": post_text(o, f"{SITE}/r/{o['id']}/bot") if o["oferta"] and not o["velho"] else None}
+              for o in [*offers, *sem]]  # sem: livros sem preço, para o add:<id> do alerta (texto None)
+    return json.dumps({"version": 1, "gerado_em": now.astimezone(timezone.utc).isoformat(timespec="seconds"),
+                       "livros": livros}, ensure_ascii=False)
+
+
 MAX_REDIRECTS = 2000  # limite de regras estáticas do _redirects na Cloudflare
 
 
-def redirects(offers):
-    """/novidades/ (página antiga) vai para /curadoria/. Por livro: /r/<id> e /r/<id>/tg|wa
+def _id_ok(oid):
+    return isinstance(oid, str) and len(oid) <= 60 and ID_RE.fullmatch(oid) is not None
+
+
+def _nicho_ok(oid, genre):
+    """Par (id, genre) que pode virar regra: id de ID_RE e slug de GENRES, os dois obrigatórios."""
+    return _id_ok(oid) and isinstance(genre, str) and genre in GENRES
+
+
+def redirects(offers, sem=(), retired=()):
+    """/novidades/ (página antiga) vai para /curadoria/. Por livro: /r/<id> e /r/<id>/tg|wa|bot
     (vencedora, com a tag do canal se for a Amazon) e /r/<id>/<loja> para cada loja elegível.
     Vencido ou loja fora do prazo cai na home pelo curinga; o livro com a Amazon vencida (velho) segue no /r/.
-    Até 5 regras por livro: cabem 399 livros com duas lojas (1.995 + curinga + /novidades/)."""
+    sem (livro sem preço): as mesmas rotas, 302 para a própria /livro/<id>/, nunca para a loja.
+    retired: (id, genre) de livro retirado do catálogo, 301 de /livro/<id>/ para /<genre>/, do mais recente
+    para o mais antigo, só no que sobrar do limite; o resto dá 404, como antes.
+    Até 6 regras por livro: cabem 333 livros com duas lojas (1.998 + curinga + /novidades/)."""
     tags, aff = channel_tags(), ml_affiliate()
     lines = ["/novidades/ /curadoria/ 301\n"]  # destino interno fixo, nunca vindo do JSON
     for o in offers:
         lines.append(f"/r/{o['id']} {affiliate_url(o, tags[''], aff)} 302\n")
         lines += [f"/r/{o['id']}/{s['store']} {affiliate_url(s, tags[''], aff)} 302\n" for s in o["stores"]]
-        lines += [f"/r/{o['id']}{sfx} {affiliate_url(o, tags[sfx], aff)} 302\n" for sfx in ("/tg", "/wa")]  # ML: mesmo ml_url
+        lines += [f"/r/{o['id']}{sfx} {affiliate_url(o, tags[sfx], aff)} 302\n" for sfx in ("/tg", "/wa", "/bot")]  # ML: mesmo ml_url
+    for o in sem:
+        if not _id_ok(o["id"]):
+            raise Invalid(f"id inválido no _redirects: {o['id']!r}")
+        sfxs = [f"/{s['store']}" for s in o["stores"] if s["store"] in STORES] + ["/tg", "/wa", "/bot"]
+        lines += [f"/r/{o['id']}{sfx} /livro/{o['id']}/ 302\n" for sfx in ("", *sfxs)]
+    if len(lines) + 1 > MAX_REDIRECTS:
+        raise Invalid(f"{len(lines) + 1} regras no _redirects (máximo {MAX_REDIRECTS})")
+    # ponytail: retirado além do limite volta ao 404; se acumular, trocar por regra no Worker
+    lines += [f"/livro/{i}/ /{g}/ 301\n" for i, g in retired if _nicho_ok(i, g)][:MAX_REDIRECTS - 1 - len(lines)]
     lines.append("/r/* / 302\n")
-    if len(lines) > MAX_REDIRECTS:
-        raise Invalid(f"{len(lines)} regras no _redirects (máximo {MAX_REDIRECTS})")
     return "".join(lines)
+
+
+def retirados(books, offers, catalog):
+    """[(id, genre)] dos livros retirados do catálogo que saíram do offers.json, mais recente primeiro.
+    genre de generos_retirados (gravado pelo curator na retirada), só slug de GENRES com página de nicho
+    (nicho com oferta). Sem isso, 404 como antes."""
+    vivos, nichos = {b["id"] for b in books}, {o["genre"] for o in offers}
+    gone, gen = catalog.get("retirados"), catalog.get("generos_retirados")
+    gone, gen = (gone if isinstance(gone, dict) else {}), (gen if isinstance(gen, dict) else {})
+    return [(i, gen[i]) for i, _ in sorted(gone.items(), key=lambda kv: str(kv[1]), reverse=True)
+            if i not in vivos and _nicho_ok(i, gen.get(i)) and gen[i] in nichos]
 
 
 # form-action e connect-src: só o POST do pedido de livro para o Worker no SITE (/pedido, fab).
@@ -1646,20 +1870,25 @@ def require_prod(doc):
         raise Invalid("offers.json marcado como _exemplo (build local: python3 build.py --dev)")
 
 
-def render_pages(offers, bot=None, ch=()):
-    """{caminho em dist/: HTML}. Uma página por nicho presente, por livro e a lista completa."""
+def render_pages(offers, bot=None, ch=(), sem=()):
+    """{caminho em dist/: HTML}. Uma página por nicho presente, por livro e a lista completa.
+    sem: livros sem preço (sem_preco); só ganham a própria /livro/<id>/, nenhuma lista os vê."""
     pages = {"index.html": page(offers, bot=bot, ch=ch), "privacidade/index.html": privacy(offers, bot, ch),
              "ofertas/index.html": all_page(offers, bot, ch), "curadoria/index.html": curadoria_page(offers, bot, ch)}
+    for t in FAIXAS:
+        pages[f"ofertas/{t}/index.html"] = faixa_page(offers, t, bot, ch)
     for g in {o["genre"] for o in offers}:
         pages[f"{g}/index.html"] = page(offers, g, bot, ch)
     if ch:
         pages["canais/index.html"] = canais(offers, ch, bot)
     if offers and campanha(offers[0]["now"]):  # antes da janela não existe; depois, só o aviso de fim
         pages["black-friday/index.html"] = bf_page(offers, bot, ch)
-    for o in offers:  # id validado por ID_RE: seguro como diretório
+    for o in [*offers, *sem]:  # id validado por ID_RE: seguro como diretório
         pages[f"livro/{o['id']}/index.html"] = book_page(o, offers, bot, ch)
     # canonical pelo caminho em dist/ (slugs de GENRES e ids de ID_RE), num lugar só para todas as páginas
-    return {k: v.replace('<link rel="icon"', f'<link rel="canonical" href="{e(SITE + "/" + k.removesuffix("index.html"))}">\n'
+    def url(k):
+        return e(SITE + "/" + k.removesuffix("index.html"))
+    return {k: v.replace('<link rel="icon"', f'<link rel="canonical" href="{url(k)}">\n<meta property="og:url" content="{url(k)}">\n'
                          '<link rel="icon"', 1) for k, v in pages.items()}
 
 
@@ -1672,18 +1901,25 @@ def build(dev=False):
     # esvaziar com dado parado; o deploy usa o relógio real.
     now = (max(s["checked_at"] for b in books for s in b["stores"]) if dev
            else datetime.now(timezone.utc))
-    offers = resolve(books, now)
+    # Nenhum livro com preço continua falhando no resolve, de propósito (fail-closed, como antes): o site supõe ao
+    # menos uma oferta (carimbo, hero) e um catálogo todo vencido é pane do coletor; o deploy anterior fica no ar,
+    # com o "visto em" de cada preço. Com a Amazon no catálogo não acontece: a Amazon vencida segura o livro (velho).
+    offers, sem = resolve(books, now), sem_preco(books, now)
     bot, ch = tg_bot(), channels()
-    pages = render_pages(offers, bot, ch)  # tudo validado e renderizado antes de tocar no dist/
-    rules = redirects(offers)
+    pages = render_pages(offers, bot, ch, sem)  # tudo validado e renderizado antes de tocar no dist/
+    catalog = json.loads(CATALOG.read_text(encoding="utf-8")) if CATALOG.is_file() else {}  # dict: o collect valida
+    rules = redirects(offers, sem, retirados(books, offers, catalog))
+    catalogo_bot = bot_json(offers, now, sem)
     shutil.rmtree(DIST, ignore_errors=True)
     shutil.copytree(STATIC, DIST)
     for path, body in pages.items():
         (DIST / path).parent.mkdir(parents=True, exist_ok=True)
         (DIST / path).write_text(body, encoding="utf-8")
     (DIST / "_redirects").write_text(rules, encoding="utf-8")
+    (DIST / "bot.json").write_text(catalogo_bot, encoding="utf-8")
+    (DIST / "sitemap.xml").write_text(sitemap(pages), encoding="utf-8")
     (DIST / "_headers").write_text(HEADERS, encoding="utf-8")
-    print(f"ok: {len(ofertas(offers))} ofertas, {len(sem_oferta(offers))} sem oferta ({len(books) - len(offers)} fora do prazo), "
+    print(f"ok: {len(ofertas(offers))} ofertas, {len(sem_oferta(offers))} sem oferta ({len(sem)} sem preço), "
           f"{len(pages)} páginas -> {DIST}")
 
 
@@ -1847,7 +2083,7 @@ def selftest():
     if saved is not None:
         os.environ["TELEGRAM_BOT_USERNAME"] = saved
     try:
-        tg_alert_url("ofertaslivros_bot", "a" * 65)
+        tg_alert_url("ofertaslivros_bot", "a" * 61)
         raise AssertionError("id longo")
     except Invalid:
         pass
@@ -1863,13 +2099,13 @@ def selftest():
         assert h.count('src="/logo.svg" alt="Ofertas Livros"') == 2 and h.count('src="/logo-negativo.svg" alt="Ofertas Livros"') == 2
         assert not re.search(r"https?://[^\"]*(fonts\.|googleapis|gstatic|jsdelivr|unpkg|cdn)", h)  # nenhuma fonte/script externo
         assert h.count("<h1") == 1
-    for h in every:  # header: espaço do menu (vazio e escondido), carimbo na barra e no conteúdo, sem número solto
+    for h in every:  # header: logo colado à esquerda (sem espaço de menu), carimbo na barra e no conteúdo, sem número solto
         top = h[h.index('<header class="top">'):h.index("</header>")]
-        assert '<span class="menu-slot" aria-hidden="true"></span>' in top and "<button" not in top.split("menu-slot")[0]
+        assert "menu-slot" not in top and "<button" not in top.split('class="brand"')[0]
         assert top.count('class="carimbo carimbo--bar"') == 1 and h.count('class="carimbo carimbo--m"') == 1
         assert "tnum" not in top and 'class="live"' not in top
-        assert top.index("menu-slot") < top.index('class="brand"') < top.index("carimbo--bar") < top.index("js-busca")
-    assert all((STATIC / f).is_file() for f in ("favicon.svg", "logo.svg", "logo-negativo.svg", "app.js", "grao.svg",
+        assert top.index('class="brand"') < top.index("carimbo--bar") < top.index("js-busca") < top.index("pill--tg")
+    assert all((STATIC / f).is_file() for f in ("favicon.svg", "logo.svg", "logo-negativo.svg", "app.js", "grao.svg", "mavi.svg",
                                                 "fonts/fraunces-latin-full-normal.woff2", "fonts/fraunces-latin-full-italic.woff2",
                                                 "fonts/outfit-latin-wght-normal.woff2", "fonts/SOURCES.md"))
     assert "<rect" not in (STATIC / "logo-negativo.svg").read_text()  # sem caixa no tema escuro
@@ -1883,21 +2119,44 @@ def selftest():
     assert '<a href="/privacidade/" aria-current="page">' in privacy(o)
     pv = privacy(o, "ofertaslivros_bot")
     assert all(w in pv for w in ("No pedido de livro", "Cloudflare", "endereço IP", "30 dias"))  # pedido de livro
-    assert all(w in pv for w in ("chat_id", "Cloudflare D1", "90 dias", "/parar", "bloquear o bot",
-                                 "https://t.me/ofertaslivros_bot"))
+    # CAPI (docs/produto/meta-conversions-api.md, 5.3 e 5.4): texto novo, opt-out por POST sem JS, confirmação via :target
+    assert "cadastro, cookies nem" not in pv and "não envia nenhum dado seu" not in pv
+    assert all(w in pv for w in ('<h2 id="sem-meta">Se você chegou por um anúncio</h2>', "fbclid", "legítimo interesse",
+                                 "Global Privacy Control", "por 12 meses", "Não enviamos qual livro você clicou"))
+    assert '<form class="sem-meta" method="post" action="/privacidade/sem-meta"><button class="btn btn--ghost" type="submit">' in pv
+    assert '<p class="sem-meta-ok" id="sem-meta-ok" role="status">' in pv and ".sem-meta-ok:target" in css
+    # links para o /r/: sem noreferrer (o Worker lê o Referer same-origin); o resto dos externos segue com noreferrer
+    js = (STATIC / "app.js").read_text(encoding="utf-8")
+    assert "'sponsored noopener'" in js and "sponsored noopener noreferrer" not in js
+    for h_ in (page(o), pv):
+        assert not re.search(r'href="/r/[^"]*" rel="[^"]*noreferrer', h_)
+    assert all(w in pv for w in ("Na lista de desejos do Telegram", "chat_id", "Cloudflare D1", "12 meses", "/lista",
+                                 "/parar", "bloquear o bot", "https://t.me/ofertaslivros_bot",
+                                 "o pedido vai para a curadoria sem nenhum dado seu", "fica guardado por 30 dias"))
+    # critério 36: o modelo antigo (preço-alvo, 90 dias, /remover) sai da privacidade e dos textos do alerta
+    for b_ in ("ofertaslivros_bot", None):
+        pv_ = privacy(o, b_)
+        assert not any(w in pv_ for w in ("preço-alvo", "/remover", "90 dias", "não guarda o pedido")), b_
+        for t_ in (faq(b_, ()), banner_bot(b_, 4), bot_block(b_)):
+            assert "preço de hoje" not in t_ and "quando ele disparar" not in t_ and "entrar em oferta" in t_, b_
+    assert all("/parar" in t_ for t_ in (faq("ofertaslivros_bot", ()), banner_bot("ofertaslivros_bot", 4),
+                                          bot_block("ofertaslivros_bot")))
     # _redirects: /novidades/ -> /curadoria/ (interno), 4 linhas por livro de uma loja + curinga; tag por canal
-    saved = {k: os.environ.pop(k, None) for k in ("AMAZON_TAG_TG", "AMAZON_TAG_WA")}
+    saved = {k: os.environ.pop(k, None) for k in ("AMAZON_TAG_TG", "AMAZON_TAG_WA", "AMAZON_TAG_BOT")}
     r = redirects(o).splitlines()
     t = partner_tag()
-    assert len(r) == 10 and r[0] == "/novidades/ /curadoria/ 301" and r[-1] == "/r/* / 302"
+    assert len(r) == 12 and r[0] == "/novidades/ /curadoria/ 301" and r[-1] == "/r/* / 302"
     assert [x for x in r if not x.startswith("/r/")] == ["/novidades/ /curadoria/ 301"]  # única regra fora do /r/
     assert f"/r/livro-1/amazon https://www.amazon.com.br/dp/B0ABCDEFGH?tag={t} 302" in r
     assert f"/r/livro-2/mercadolivre {ml_link} 302" in r
     assert not any("/r/livro-1/mercadolivre" in x or "/r/livro-2/amazon" in x for x in r)
     assert f"/r/livro-1/tg https://www.amazon.com.br/dp/B0ABCDEFGH?tag={t} 302" in r
     assert f"/r/livro-2/wa {ml_link} 302" in r and f"/r/livro-2 {ml_link} 302" in r
-    os.environ.update(AMAZON_TAG_TG="sitetg-20", AMAZON_TAG_WA="")
+    assert f"/r/livro-1/bot https://www.amazon.com.br/dp/B0ABCDEFGH?tag={t} 302" in r  # sem AMAZON_TAG_BOT: tag do site
+    assert f"/r/livro-2/bot {ml_link} 302" in r
+    os.environ.update(AMAZON_TAG_TG="sitetg-20", AMAZON_TAG_WA="", AMAZON_TAG_BOT="sitebot-20")
     r = redirects(o).splitlines()
+    assert "/r/livro-1/bot https://www.amazon.com.br/dp/B0ABCDEFGH?tag=sitebot-20 302" in r
     assert "/r/livro-1/tg https://www.amazon.com.br/dp/B0ABCDEFGH?tag=sitetg-20 302" in r
     assert f"/r/livro-1/wa https://www.amazon.com.br/dp/B0ABCDEFGH?tag={t} 302" in r
     # duas lojas: vencedora no /r/<id>, /tg e /wa; uma rota por loja; tag do canal só na Amazon
@@ -1906,12 +2165,12 @@ def selftest():
     amz_url = "https://www.amazon.com.br/dp/B0ABCDEFGH?tag="
     assert r[1:] == [f"/r/duas {amz_url}{t} 302", f"/r/duas/amazon {amz_url}{t} 302",
                  f"/r/duas/mercadolivre {ml_link} 302", f"/r/duas/tg {amz_url}sitetg-20 302",
-                 f"/r/duas/wa {amz_url}{t} 302", "/r/* / 302"]
+                 f"/r/duas/wa {amz_url}{t} 302", f"/r/duas/bot {amz_url}sitebot-20 302", "/r/* / 302"]
     r = redirects(load({**two, "stores": [amz, {**mls, "price_cents": 1890}]})).splitlines()
     assert f"/r/duas {ml_link} 302" in r and f"/r/duas/tg {ml_link} 302" in r
     assert f"/r/duas/amazon {amz_url}{t} 302" in r                        # loja da seta, tag do site
     r = redirects(load(two, now=datetime(2026, 10, 18, 10, 31, tzinfo=BRT))).splitlines()
-    assert "/r/duas/mercadolivre" not in "\n".join(r) and len(r) == 6      # ML fora do prazo: sem rota
+    assert "/r/duas/mercadolivre" not in "\n".join(r) and len(r) == 7      # ML fora do prazo: sem rota
     for bad in ("x&tag=evil", "a b", "x\n/r/y https://evil.com 302"):
         os.environ["AMAZON_TAG_TG"] = bad
         try:
@@ -1923,13 +2182,28 @@ def selftest():
         os.environ.pop(k, None)
         if v is not None:
             os.environ[k] = v
-    many = [{**good, "id": f"l-{n}", "stores": [amz, mls]} for n in range(400)]
+    many = [{**good, "id": f"l-{n}", "stores": [amz, mls]} for n in range(334)]
     try:
-        redirects(load(*many))  # 400 x 5 + curinga + /novidades/ = 2.002
+        redirects(load(*many))  # 334 x 6 + curinga + /novidades/ = 2.006
         raise AssertionError("limite do _redirects")
     except Invalid:
         pass
-    assert len(redirects(load(*many[:399])).splitlines()) == 1997
+    assert len(redirects(load(*many[:333])).splitlines()) == 2000
+    # bot.json: texto = post_text com /r/<id>/bot só em oferta no prazo; valido_ate = checked_at + FRESH
+    bj = json.loads(bot_json(load(two, {**good, "id": "sem", "author": "Neil Gaiman e Terry Pratchett; Ação",
+                                        "stores": [{**amz, "list_price_cents": amz["price_cents"]}]}), NOW))
+    assert bj["version"] == 1 and [b["id"] for b in bj["livros"]] == ["duas", "sem"]
+    duas, sem = bj["livros"]
+    assert duas["texto"] == post_text(load(two)[0], f"{SITE}/r/duas/bot") and duas["texto"].endswith("/r/duas/bot")
+    assert sem["texto"] is None and sem["autores"] == ["neil gaiman", "terry pratchett", "acao"]
+    assert duas["desconto"] == discount(load(two)[0]) > 0 and sem["desconto"] == 0
+    assert duas["valido_ate"] == (mls_at := min(s["checked_at"] + FRESH[s["store"]] for s in load(two)[0]["stores"])) \
+        .astimezone(timezone.utc).isoformat(timespec="seconds") and mls_at < load(two)[0]["checked_at"] + FRESH["amazon"]
+    velha = load({**good, "id": "velha", "stores": [amz]}, now=NOW + timedelta(days=1))[0]  # Amazon vencida, ainda oferta
+    assert velha["oferta"] and velha["velho"]
+    assert json.loads(bot_json([velha], NOW))["livros"][0]["texto"] is None
+    assert bot_key("Mangá: Ação!  Vol. 2") == "manga acao vol 2"
+    assert "Disallow: /bot.json" in (STATIC / "robots.txt").read_text()
     # canais: só com a env; validados; rel noopener noreferrer
     saved = {k: os.environ.pop(k, None) for k in ("TELEGRAM_CHANNEL_ID", "WHATSAPP_CHANNEL_ID")}
     assert channels() == [] and "/canais/" not in page(o)
@@ -2326,8 +2600,8 @@ def selftest():
         assert k in kinds, k                                                   # header, card, hero, banner, bloco, canais, FAB, rodapé
     assert any("Canal no WhatsApp" in t for k, t in soon if k == "pill pill--wa")  # texto acessível: "Canal no WhatsApp, em breve"
     assert not re.search(r"<(?:a|button)[^>]*\bis-soon", h) and "tabindex" not in re.sub(r'<p class="sr" aria-hidden="true"><label>Não preencha .*?</p>', "", h.split("<dialog")[0])  # só o honeypot
-    assert "Em breve você poderá tocar no sino" in h and "Para parar, mande /parar" not in h  # FAQ não promete o alerta
-    assert "O alerta ainda não está no ar" in pages0["privacidade/index.html"]
+    assert "Em breve você poderá tocar no sino" in h and "Ele avisa por lá" not in h  # FAQ não promete o alerta
+    assert "A lista de desejos ainda não está no ar" in pages0["privacidade/index.html"]
     js = (STATIC / "app.js").read_text(encoding="utf-8")
     assert "is-soon" in js and "aria-disabled" in js and "em breve" in js                  # modal sem bot: sino "em breve"
     hb = render_pages(load(*ofs(2)), "ofertaslivros_bot", [("Telegram", "https://t.me/ofertaslivros"),
@@ -2438,7 +2712,7 @@ def selftest():
     assert r["seal"] == "90d" and len(r["stores"]) == 1
     # card: compra em círculo (loja e preço no nome acessível); seta só com a segunda loja elegível
     one = vis(page(load(good)))
-    assert ('<a class="buy-c" href="/r/livro-1" rel="sponsored noopener noreferrer" target="_blank">' in one
+    assert ('<a class="buy-c" href="/r/livro-1" rel="sponsored noopener" target="_blank">' in one
             and "<span class=\"sr\">Ver na Amazon por R$\u00a019,90: T (abre em nova aba)</span>" in one and '<details class="alt"' not in one)
     two = load({**good, "stores": [amz, {**mls, "price_cents": 1890, "checked_at": "2026-10-18T08:30:00-03:00"}]})
     home12 = vis(page(load(*({**good, "id": f"x-{k}", "stores": [amz, {**mls, "price_cents": 1890}]} for k in range(12)))))
@@ -2447,7 +2721,7 @@ def selftest():
     for h in (vis(page(two)), vis(page(two, "manga")), home12):
         assert "Ver no Mercado Livre por R$\u00a018,90" in h
         assert '<span class="sr">Outra loja: Amazon</span></summary>' in h
-        assert '/amazon" rel="sponsored noopener noreferrer" target="_blank">Também na Amazon: R$\u00a019,90' in h
+        assert '/amazon" rel="sponsored noopener" target="_blank">Também na Amazon: R$\u00a019,90' in h
     h = vis(page(two))
     assert h[h.index('id="h-ativas"'):].count("visto hoje às") == 2           # no card: vencedora + a outra na seta
     assert ('<span class="store">Mercado Livre</span> <span>visto hoje às <time datetime="2026-10-18T08:30:00-03:00">08h30</time>'
@@ -2493,7 +2767,8 @@ def selftest():
     hero_ = h[:h.index('id="h-filtro"')]
     assert hero_.count('loading="eager" fetchpriority="high"') == 1 and h.count('loading="eager"') == 1
     assert hero_.index('loading="eager"') < hero_.index('loading="lazy"')
-    assert h.count("<img ") == h.count('width="120" height="180"') + 4       # + logo claro e escuro no topo e no rodapé
+    assert h.count("<img ") == h.count('width="120" height="180"') + 4 + h.count('src="/mavi.svg"')  # + logos (topo e rodapé) e a Mavi
+    assert h.count('src="/mavi.svg"') == 2 and "i-carimbo" not in h.split('class="mascote')[1][:200]  # Mavi no banner e no capítulo do bot
     r = load({**good, "image_url": img})
     assert vis(book_page(r[0], r)).count('loading="eager" fetchpriority="high"') == 1  # na página do livro a capa é a LCP
     h = vis(page(offers_n(5, {0: {"blurb": '<i>"Duas" & irmãs</i>'}})))
@@ -2510,8 +2785,9 @@ def selftest():
     h = page(load({**good, "title": evil, "author": "</SCRIPT>"}), bot="ofertaslivros_bot")
     blob = re.search(r'<script type="application/json" id="ofertas">(.*?)</script>', h, re.S).group(1)
     assert "<" not in blob and json.loads(blob)[0]["t"] == evil and json.loads(blob)[0]["a"] == "</SCRIPT>"
-    assert h.count("<script") == h.count("</script>") == 2                      # app.js + JSON, nada mais
-    assert re.findall(r"<script(?: [^>]*)?>", h) == ['<script src="/app.js" defer>', '<script type="application/json" id="ofertas">']
+    assert h.count("<script") == h.count("</script>") == 3                      # app.js + JSON-LD + JSON, nada mais
+    assert re.findall(r"<script(?: [^>]*)?>", h) == ['<script type="application/ld+json">', '<script src="/app.js" defer>',
+                                                     '<script type="application/json" id="ofertas">']
     assert "<script>" not in vis(h) and "&lt;/script&gt;&lt;script&gt;" in vis(h)
     d0 = json.loads(blob)[0]
     assert d0["lojas"][0]["href"] == "/r/livro-1" and d0["pag"] == "/livro/livro-1/" and d0["alerta"].startswith("https://t.me/")
@@ -2541,15 +2817,79 @@ def selftest():
     # páginas geradas: home, nichos, /ofertas/, /livro/<id>/ e privacidade; /canais/ só com canal
     pg = render_pages(load(good, ml))
     assert set(pg) == {"index.html", "privacidade/index.html", "ofertas/index.html", "curadoria/index.html", "manga/index.html",
+                       "ofertas/40/index.html", "ofertas/50/index.html",
                        "ficcao/index.html", "livro/livro-1/index.html", "livro/livro-2/index.html"}
     assert "canais/index.html" in render_pages(load(good), ch=[("Telegram", "https://t.me/ofertaslivros")])
     for path, h in pg.items():                                                 # canonical absoluto, um por página
         assert re.findall(r'<link rel="canonical" href="([^"]+)">', h) == [SITE + "/" + path.removesuffix("index.html")], path
     assert '<link rel="canonical" href="https://ofertaslivros.com.br/livro/livro-1/">' in pg["livro/livro-1/index.html"]
     assert '<link rel="canonical" href="https://ofertaslivros.com.br/">' in pg["index.html"]
+    # SEO: Open Graph em todas, og:url = canonical; og:image só com capa (sem arte padrão da marca em static/)
+    for path, h in pg.items():
+        head = h[:h.index("</head>")]
+        can = re.search(r'<link rel="canonical" href="([^"]+)">', head).group(1)
+        assert re.findall(r'<meta property="og:url" content="([^"]+)">', head) == [can], path
+        title = re.search(r"<title>(.*?)</title>", head).group(1)
+        desc = re.search(r'<meta name="description" content="([^"]*)">', head).group(1)
+        assert f'<meta property="og:title" content="{title}">' in head and f'<meta property="og:description" content="{desc}">' in head
+        for m in ('og:type" content="website', 'og:site_name" content="Ofertas Livros', 'og:locale" content="pt_BR'):
+            assert f'<meta property="{m}">' in head, (path, m)
+        assert ('og:image' in head) == ('twitter:card" content="summary_large_image' in head), path
+        assert 'og:image' in head or 'twitter:card" content="summary"' in head, path
+        for raw in re.findall(r'<script type="application/ld\+json">(.*?)</script>', head, re.S):
+            json.loads(raw)                                                    # JSON-LD válido
+    assert "og:image" not in pg["index.html"] and "og:image" not in pg["livro/livro-1/index.html"]  # good não tem capa
+    assert 120 <= len(html.unescape(re.search(r'<meta name="description" content="([^"]*)">', pg["ofertas/index.html"]).group(1))) <= 160
+
+    def lds(h):
+        return [json.loads(x) for x in re.findall(r'<script type="application/ld\+json">(.*?)</script>', h, re.S)]
+    home = lds(pg["index.html"])[0]["@graph"]
+    assert [x["@type"] for x in home] == ["WebSite", "Organization"] and home[1]["logo"] == SITE + "/logo.svg"
+    assert [x["@type"] for x in lds(pg["manga/index.html"])] == ["BreadcrumbList"]
+    assert [i["item"] for i in lds(pg["manga/index.html"])[0]["itemListElement"]] == [SITE + "/", SITE + "/manga/"]
+    capa = load({**good, "title": "Mindset: a nova psicologia do sucesso", "author": "Carol S. Dweck", "isbn": "9788547000240",
+                 "image_url": img, "stores": [{**amz, "price_cents": 2575}]})
+    bp = render_pages(capa)["livro/livro-1/index.html"]
+    assert f"<title>Mindset, Carol S. Dweck por R${nb}25,75 | Ofertas Livros</title>" in bp
+    assert f'<meta property="og:image" content="{e(img)}">' in bp and 'content="summary_large_image"' in bp
+    bc, prod = lds(bp)
+    assert [(i["position"], i["name"], i["item"]) for i in bc["itemListElement"]] == [
+        (1, "Início", SITE + "/"), (2, "Mangá e HQ", SITE + "/manga/"), (3, capa[0]["title"], SITE + "/livro/livro-1/")]
+    assert prod["@type"] == ["Product", "Book"] and prod["isbn"] == "9788547000240" and prod["image"] == img
+    assert prod["author"] == {"@type": "Person", "name": "Carol S. Dweck"} and prod["url"] == SITE + "/livro/livro-1/"
+    assert prod["offers"] == {"@type": "Offer", "price": "25.75", "priceCurrency": "BRL",
+                              "url": SITE + "/livro/livro-1/"}            # sem seller: somos afiliado
+    assert f"<strong>R${nb}25,75</strong>" in bp                                  # o mesmo preço da página
+    assert lds(book_ld({**capa[0], "price_cents": 100005}))[0]["offers"]["price"] == "1000.05"
+    for at, tem in (("2026-10-17T10:00:00-03:00", True), ("2026-10-17T08:00:00-03:00", False)):  # 23h e 25h antes de NOW
+        b = load({**good, "stores": [{**amz, "checked_at": at}]})[0]
+        j = lds(book_ld(b))[0]                                # Offer só com preço de menos de 24h
+        assert ("offers" in j) is tem and j["@type"] == (["Product", "Book"] if tem else "Book"), at  # sem Offer: só Book
+    local = load({**good, "isbn": isbn_capa})[0]                               # capa local vira URL absoluta do SITE
+    assert abs_img(local) == f"{SITE}/capas/{isbn_capa}.jpg" and f'og:image" content="{SITE}/capas/' in book_page(local, [local])
+    for t in ("T" * 200, "Um título bem comprido sem subtítulo nenhum para cortar aqui"):  # corta o título, nunca o preço
+        bt = book_title({**capa[0], "title": t})
+        assert len(bt) <= TITLE_MAX + 6 and bt.endswith(f", Carol S. Dweck por R${nb}25,75 | Ofertas Livros") and "…" in bt, bt
+    assert book_title({**capa[0], "title": "Um título bem comprido sem subtítulo"}).startswith("Um título bem…, Carol")
+    assert book_title({**capa[0], "title": "O Pequeno Príncipe", "author": "Antoine de Saint-Exupéry"}).startswith("O Pequeno Príncipe, ")
+    assert book_title({**capa[0], "title": "Curto"}) == f"Curto, Carol S. Dweck por R${nb}25,75 | Ofertas Livros"
+    # JSON-LD com dado coletado: nada fecha o <script>, e o JSON volta igual
+    evil = "</script><script>alert(1)</script>"
+    xp = render_pages(load({**good, "title": evil, "author": "<!-- & >"}))["livro/livro-1/index.html"]
+    blocks = re.findall(r'<script type="application/ld\+json">(.*?)</script>', xp, re.S)
+    assert len(blocks) == 2 and all("<" not in b and ">" not in b and "&" not in b for b in blocks)
+    assert "\\u003c/script\\u003e\\u003cscript\\u003ealert(1)" in blocks[1]
+    assert json.loads(blocks[1])["name"] == evil and json.loads(blocks[1])["author"]["name"] == "<!-- & >"
+    assert re.findall(r"<script(?: [^>]*)?>", xp) == ['<script type="application/ld+json">'] * 2 + ['<script src="/app.js" defer>']
+    assert "<script>alert" not in xp and "&lt;/script&gt;" in xp[:xp.index("</head>")]  # title/og:title escapados
+    # sitemap: todas as páginas, URL absoluta, sem bot.json, /painel nem /r/
+    sm = sitemap(pg)
+    assert sorted(re.findall(r"<loc>([^<]+)</loc>", sm)) == sorted(SITE + "/" + k.removesuffix("index.html") for k in pg)
+    assert "bot.json" not in sm and "/r/" not in sm and "painel" not in sm and "lastmod" not in sm
+    assert "Sitemap: https://ofertaslivros.com.br/sitemap.xml" in (STATIC / "robots.txt").read_text()
     lv = pg["livro/livro-1/index.html"]
     assert "<h1 class=\"livro-h1\">T</h1>" in lv and '<html lang="pt-BR" data-style="manga">' in lv
-    assert 'href="/r/livro-1" rel="sponsored noopener noreferrer" target="_blank"' in lv
+    assert 'href="/r/livro-1" rel="sponsored noopener" target="_blank"' in lv
     assert 'href="/livro/livro-1/" data-modal="livro-1"' in pg["index.html"]  # o modal é atalho para a página real
     assert pg["ofertas/index.html"].count('class="card"') == 2 and "feed--full" in pg["ofertas/index.html"]
     for path, h in pg.items():                                                 # rodapé obrigatório em todas
@@ -2571,6 +2911,24 @@ def selftest():
     b90 = {**good, "id": "bf-90d", "stores": pr(8000, 10000, history_since="2026-08-01")}  # 20%, mas selo de 90 dias
     bvel = {**good, "id": "bf-velho", "stores": pr(5000, 10000), "_h": 48}                # Amazon vencida: velho
     bnao = {**good, "id": "bf-nao", "stores": pr(9500, 10000)}                            # 5%: sem oferta
+    # Faixas de desconto: /ofertas/40/ e /ofertas/50/ sempre existem; sem vencidos; livro sem oferta entra
+    b50 = {**good, "id": "bf-50", "stores": pr(5000, 10000)}
+    b40 = {**good, "id": "bf-40", "stores": pr(6000, 10000)}
+    fo = bf((11, 10), b50, b40, b30, bvel, bnao)
+    fp = render_pages(fo)
+    ids = lambda h: re.findall(r'data-id="([^"]+)"', h.split('class="grid feed')[1])  # noqa: E731
+    assert ids(fp["ofertas/40/index.html"]) == ["bf-50", "bf-40"] and ids(fp["ofertas/50/index.html"]) == ["bf-50"]
+    for path in ("index.html", "ofertas/index.html", "ofertas/40/index.html", "ofertas/50/index.html"):
+        assert '<a class="pill" href="/ofertas/40/"' in fp[path] and '50%+<span class="faixa-n">1<span class="sr"> livros</span></span>' in fp[path], path
+    assert '<a class="pill" href="/ofertas/40/" aria-current="page">' in fp["ofertas/40/index.html"]
+    assert re.search(r'Todos</span>.*?2 ofertas', fp["ofertas/40/index.html"])                      # nichos contam a faixa
+    assert 'aria-current="page">Todas' in fp["ofertas/index.html"] and 'aria-current="page">Todas' not in fp["index.html"]
+    assert com_desconto([{"id": "nov", "velho": False, "oferta": False, "price_cents": 5000,
+                          "list_price_cents": 10000}], 50) == []                                 # fora da vitrine: não entra
+    assert all(len(com_desconto(fo, t)) <= len(ofertas(fo)) for t in FAIXAS)
+    assert 'data-id="bf-50"' in fp["ofertas/50/index.html"] and 'data-off="50"' in fp["ofertas/50/index.html"]
+    vazio = render_pages(bf((11, 10), b30))["ofertas/50/index.html"]
+    assert "Nenhum livro com 50% ou mais de desconto agora." in vazio and 'class="card"' not in vazio
     for day, on in (((11, 4), False), ((11, 5), True), ((12, 1), True), ((12, 2), False)):
         bo = bf(day, b30, b29, b90, bvel, bnao)
         pg = render_pages(bo)
@@ -2619,6 +2977,80 @@ def selftest():
     w = post(3990)                                                        # ML vence; Amazon 7,5% mais cara
     assert w.splitlines()[2].startswith("Mercado Livre · ") and f"Também na Amazon por R${nb}42,90" in w
     assert "mercadolivre.com" not in w and "amazon.com" not in w and w.count("https://") == 1
+    # página permanente do livro sem preço (pagina-permanente-livro.md §8, itens 1 a 11)
+    def sp(*books):
+        bs = load_books({"version": 2, "offers": list(books)})
+        return resolve(bs, NOW), sem_preco(bs, NOW)
+    velha_ml = "2026-10-18T06:00:00-03:00"                                # 3h antes de NOW: fora dos 2h do ML
+    so, ss = sp(good, M(checked_at=velha_ml))
+    assert [x["id"] for x in so] == ["livro-1"] and [x["id"] for x in ss] == ["livro-2"]
+    assert sp(good, M())[1] == [] and sp(A(checked_at="2026-10-01T08:00:00-03:00"))[1] == []  # Amazon velha é do resolve
+    pg0, pgs = render_pages(so), render_pages(so, sem=ss)
+    assert set(pgs) - set(pg0) == {"livro/livro-2/index.html"}                                       # 1
+    assert all(pgs[k] == v for k, v in pg0.items())               # 5: listas, contagens, modal e menu iguais sem ele
+    sh = vis(pgs["livro/livro-2/index.html"])
+    assert '<p class="sem-agora">Sem oferta agora</p>' in sh                                         # 2
+    assert f"desde 18/10. O último preço que vimos foi R${nb}19,90 no Mercado Livre." in sh
+    for bad in ('href="/r/', 'class="go"', 'class="price"', 'class="old"', "off-pill", "stamp", 'class="other"'):
+        assert bad not in sh, bad
+    assert f"<title>T, A | Ofertas Livros</title>" in sh and "histórico de preço e aviso quando entrar em oferta" in sh
+    assert 'class="hc"' not in sh and "Sem leitura de preço nos últimos 90 dias." in sh                # 3
+    ho, hs_ = sp(good, M(checked_at=velha_ml, history_since="2026-10-01", price_points=ok_pp))
+    hcs = vis(render_pages(ho, sem=hs_)["livro/livro-2/index.html"])
+    assert 'class="hc"' in hcs and "Sem leitura de preço" not in hcs
+    assert "hoje R$" not in hcs and "Mercado Livre, 18/10" in hcs and "último R$" in hcs  # leitura de hoje cedo não vira "hoje"
+    assert "hero-acts" not in sh and "Me avise" not in sh                                             # 4: sem bot, sem CTA
+    sb = vis(render_pages(so, "ofertaslivros_bot", sem=ss)["livro/livro-2/index.html"])
+    assert sb.count(e(tg_alert_url("ofertaslivros_bot", "livro-2"))) == 1 and 'class="btn btn--ghost alert"' in sb
+    assert f"{SITE}/livro/livro-2/" in sitemap(pgs)                                                    # 6
+    sj = lds(pgs["livro/livro-2/index.html"])[1]                                                       # 7
+    assert sj["@type"] == "Book" and "offers" not in sj and sj["url"] == SITE + "/livro/livro-2/"
+    assert "offers" not in lds(book_ld({**ss[0], "checked_at": NOW}))[0]   # sem preço nunca tem Offer, nem com leitura recente
+    lv2 = next(x for x in json.loads(bot_json(so, NOW, ss))["livros"] if x["id"] == "livro-2")         # 8
+    assert lv2["texto"] is None and lv2["desconto"] == 0
+    # PR 2 (§5, itens 13 a 15): /r/ do livro sem preço vai para a própria página, nunca para a loja
+    r0, rs = redirects(so).splitlines(), redirects(so, ss).splitlines()
+    novas = [x for x in rs if x not in r0]
+    assert novas == [f"/r/livro-2{x} /livro/livro-2/ 302" for x in ("", "/mercadolivre", "/tg", "/wa", "/bot")]  # 13
+    assert [x for x in rs if x in r0] == r0 and rs[-1] == "/r/* / 302"                                 # 14
+    assert len(novas) <= len(redirects(load(good, M())).splitlines()) - len(r0)                        # 15
+    # retirado (decisão 1 do Elias): 301 de /livro/<id>/ para o nicho; destino sempre interno
+    so2 = sp(good, M(checked_at=velha_ml))[0]
+    cat = {"retirados": {"velho-1": "2026-11-19", "velho-2": "2026-11-20", "livro-1": "2026-11-21",
+           "fora": "2026-11-22", "Mau Id": "2026-11-23", "sem-genero": "2026-11-24", "x\n/r/y": "2026-11-25",
+           "url": "2026-11-26", "lista": "2026-11-27"},
+           "generos_retirados": {"velho-1": good["genre"], "velho-2": good["genre"], "livro-1": good["genre"],
+                                 "fora": "nao-existe", "Mau Id": good["genre"], "x\n/r/y": good["genre"],
+                                 "url": "https://evil.com", "lista": ["manga"], "nao-retirado": good["genre"]}}
+    ret = retirados(load_books({"version": 2, "offers": [good, M(checked_at=velha_ml)]}), so2, cat)
+    assert ret == [("velho-2", good["genre"]), ("velho-1", good["genre"])]  # vivo, genre ruim, id ruim: nada
+    assert retirados([], [{"genre": "romance"}], cat) == []               # nicho sem oferta não tem página: 404
+    assert retirados([], so2, {"retirados": ["x"], "generos_retirados": "x"}) == []  # formato ruim: nada
+    rr = redirects(so2, retired=ret + [("Mau Id", good["genre"]), ("ok", "nao-existe"), ("ok", "https://evil.com"),
+                                       ("x\n/r/y", good["genre"]), ("//evil.com", good["genre"]), ("ok", None)]).splitlines()
+    assert [x for x in rr if x.startswith("/livro/")] == [f"/livro/velho-2/ /{good['genre']}/ 301",
+                                                          f"/livro/velho-1/ /{good['genre']}/ 301"]
+    assert rr[-1] == "/r/* / 302" and "evil" not in "\n".join(rr) and "Mau Id" not in "\n".join(rr) and "None" not in "\n".join(rr)
+    # todo destino que não é URL de afiliado (/r/<id> de livro com preço) é interno: /livro/<id>/ ou /<slug>/
+    dest = [x.split() for x in redirects(so2, ss, ret).splitlines()]
+    internos = [d for _, d, _ in dest if not d.startswith("https://")]
+    assert all(d in ("/", "/curadoria/") or re.fullmatch(r"/livro/[a-z0-9-]+/", d)
+               or d.strip("/") in GENRES for d in internos)
+    assert all(d.startswith("/") and not d.startswith("//") for d in internos)
+    assert not any(d.startswith("https://") for src, d, _ in dest if src.startswith(("/livro/", "/r/livro-2")))
+    try:
+        redirects(so2, [{**ss[0], "id": "x\n/r/y https://evil.com 302"}])  # id ruim no sem preço: falha
+        raise AssertionError("id inválido no sem preço")
+    except Invalid:
+        pass
+    cheio = redirects(load(*many[:333]), retired=ret).splitlines()     # limite: retirado só no que sobra
+    assert len(cheio) == 2000 and not any(x.startswith("/livro/") for x in cheio)
+    assert len(redirects(load(*many[:332]), retired=ret).splitlines()) == 1996  # 1.994 + 2 retirados
+    vb = vis(render_pages(load(good, M()))["livro/livro-2/index.html"])                               # 10: voltou
+    assert 'class="go"' in vb and "sem-agora" not in vb
+    assert "a página do livro continua no ar, com o histórico" in faq(None, ()) and "sai do site" not in faq(None, ())  # 11
+    am = {**ss[0], "store": "amazon"}                                    # Amazon nesse estado: só a data, nunca o preço
+    assert ultima_leitura(am) == "Não conseguimos conferir o preço na loja desde 18/10."
     print("selftest ok")
 
 

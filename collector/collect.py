@@ -125,6 +125,9 @@ def load_catalog(doc, include_pending=False):
     if not isinstance(gone, dict) or not all(isinstance(k, str) and ID_RE.fullmatch(k)
                                              and _day(v) for k, v in gone.items()):
         raise Invalid("retirados precisa ser {id: AAAA-MM-DD}")
+    gen = doc.get("generos_retirados", {})  # genre do retirado, para o 301 do build (pagina-permanente-livro.md §5.1)
+    if not isinstance(gen, dict) or not all(k in gone and isinstance(v, str) and v in GENRES for k, v in gen.items()):
+        raise Invalid("generos_retirados precisa ser {id retirado: genre de GENRES}")
     aff = ml_affiliate()
     books, seen = [], set()
     for i, b in enumerate(doc["books"]):

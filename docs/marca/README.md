@@ -1,6 +1,6 @@
 # Marca: decisões (2026-10-18)
 
-> **Atualização 2026-10-19 (visual v2, `spec-visual.md`):** o site passou a usar o logo B, um wordmark "ofertas**livros**.com" em curvas: "ofertas" leve, "livros" pesado e o carimbo no lugar do "o" de livros. Ele substitui o Carimbo horizontal no topo e no favicon. Os arquivos estão em `logos/`:
+> **Atualização 2026-10-19 (visual v2, `spec-visual.md`):** o site passou a usar o logo B, um wordmark "ofertas**livros**.com" em curvas: "ofertas" leve, "livros" pesado e o carimbo no lugar do "o" de livros. Ele substitui o Carimbo horizontal no topo e no favicon. Desde 2026-11-07 (aprovado pelo Elias) o wordmark termina em ".com.br": o ".br" usa o mesmo traço (2,3) e a mesma cor do ".com", sem mudar o tamanho das letras (viewBox de 274,07 para 311,6 de largura; desenho vindo do kit de redes, `redes/gerar.py`). Os arquivos estão em `logos/`:
 >
 > | Arquivo | Uso |
 > |---|---|
@@ -8,6 +8,9 @@
 > | `wordmark-b-negativo.svg` | blocos marinho; no `static/logo-negativo.svg` o `<rect>` de fundo foi tirado, para servir também ao tema escuro (#0f1729) sem desenhar uma caixa |
 > | `wordmark-b-mono.svg` | impressão |
 > | `favicon-32.svg` (`static/favicon.svg`), `favicon-16.svg` | favicon |
+> | `telegram-avatar-claro.svg` / `.png` (640×640) | foto do grupo/canal no Telegram, em uso desde 2026-11-06 (escolha do Elias): wordmark em duas linhas ("ofertas" / "livros.com"), dentro do círculo do recorte |
+> | `telegram-avatar.svg` / `.png` (640×640) | variante escura (fundo marinho) do avatar, guardada como alternativa: aparece como círculo também no tema claro do Telegram |
+> | `mavi-avatar.svg` / `.png` (640×640) | foto do bot do Telegram: a Mavi, mascote do bot de alertas, em cartoon (cabelo castanho, casaco preto, broche do carimbo e sininho de alerta). Escolha do Elias em 2026-11-06 (versão "sininho", v2 com cachos soltos) |
 >
 > A paleta e a tipografia v2 estão em `paletas.md` (seção "Visual v2") e em `static/fonts/SOURCES.md`. O `contraste.py` agora está no repo.
 

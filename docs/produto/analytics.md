@@ -15,7 +15,7 @@ Medir o site e mostrar ao Elias, num painel privado:
 
 - CSP `script-src 'self'`, sem script de terceiros, site completo sem JS. Nada de Google Analytics nem Web Analytics da Cloudflare, cujo beacon vem de `cloudflareinsights.com`.
 - Sem cookie, sem IP e sem user agent guardados. O país é o único dado de localização.
-- O `/r/` continua sendo o `_redirects` estático gerado pelo `build.py`, sem Worker. A allowlist, o `affiliate_url`, o `ml_url` e o `check_url` não mudam.
+- O `/r/` continua sendo o `_redirects` estático gerado pelo `build.py`. Desde a spec [`meta-conversions-api.md`](meta-conversions-api.md) (decisão 4 do Elias, 2026-11-07), o `/r/*` passa pelo Worker, que devolve a resposta do `_redirects` intacta e só lê o `Location` para decidir se manda o evento `SaidaLoja` à Meta. Para voltar ao estático, basta tirar `/r/*` do `run_worker_first`. A allowlist, o `affiliate_url`, o `ml_url` e o `check_url` não mudam.
 - O repo é público. Dado de venda e de comissão nunca vai para o repo, issue, PR ou artifact do Actions.
 
 ## Coleta
@@ -128,7 +128,7 @@ SELECT c.book_id, c.cliques, v.views, 1.0 * c.cliques / v.views AS ctr
 FROM c LEFT JOIN v USING (book_id) ORDER BY c.cliques DESC LIMIT 20;
 
 -- Telegram × WhatsApp × site
-SELECT CASE WHEN path LIKE '%/tg' THEN 'tg' WHEN path LIKE '%/wa' THEN 'wa' ELSE 'site' END AS canal,
+SELECT CASE WHEN path LIKE '%/tg' THEN 'tg' WHEN path LIKE '%/wa' THEN 'wa' WHEN path LIKE '%/bot' THEN 'bot' ELSE 'site' END AS canal,
        SUM(requests) AS cliques
 FROM daily_rollup WHERE bot = 0 AND path LIKE '/r/%' AND day >= date('now', '-3 hours', '-7 days') GROUP BY canal;
 ```
@@ -166,7 +166,7 @@ No ar com a F1b (`worker/painel.js`). O Access é a aplicação `painel-ofertasl
 - O Worker **também confere o JWT do Access**: sem um JWT válido, a resposta é 403, mesmo se a regra do Access sumir.
 - É HTML montado no servidor, sem JS, com `<meta http-equiv="refresh" content="60">`.
 - O token só de leitura (Account Analytics e Zone Analytics) e o binding do D1 ficam no Worker (segredo e binding, nunca no repo).
-- Só o `/painel*` passa pelo Worker (e o `/e`, se a F2 for aprovada). O `/r/` continua estático, então a cota do Free nunca derruba o clique de afiliado.
+- O `/painel*` passa pelo Worker (e o `/e`, se a F2 for aprovada). O `/r/*` também passa pelo Worker desde a spec da Meta Conversions API: se a cota do Free estourar, o clique de afiliado quebra (risco na seção 9 daquela spec).
 
 ## Vendas pelo navegador
 
@@ -175,7 +175,7 @@ Esta seção depende da exceção nas regras 1 e 2 do CLAUDE.md (risco aceito pe
 1. **Onde:** só no Chrome do Elias (Claude in Chrome), já logado. As páginas são a de relatórios dos Associados da Amazon e a de relatórios do portal de afiliados do ML. O navegador embutido do Orca não serve: lá, qualquer agent alcança a aba e consegue ler o cookie da sessão.
 2. **Ritmo:** uma página por vez, cerca de 20 s entre ações, no máximo 1 rodada por dia em cada painel.
 3. **Como:** o agent usa o botão de exportar do próprio painel (CSV de pedidos e ganhos) e não lê a tabela da tela linha por linha. O CSV vai para a pasta local `~/ofertaslivros-vendas/<loja>/`, fora do repo.
-4. **Importação:** um script local lê o CSV e grava na tabela `sales` do D1 com `wrangler d1 execute`. Ele soma `qty`, `revenue_cents` e `commission_cents` por `(store, order_date, item_id, tracking, status)`, porque o mesmo livro pode ter dois pedidos no mesmo dia. Depois, numa transação, apaga as linhas da loja no período que o CSV cobre e insere tudo de novo. Assim, reimportar não duplica e o status atualiza (pendente → confirmado). A chave `UNIQUE`, sem colunas que aceitam `NULL`, barra o que escapar.
+4. **Importação:** um script local lê o CSV e grava na tabela `sales` do D1 com `wrangler d1 execute`. Ele soma `qty`, `revenue_cents` e `commission_cents` por `(store, order_date, item_id, tracking, status)`, porque o mesmo livro pode ter dois pedidos no mesmo dia. Depois, num único pedido à API do D1 (que roda os statements de um pedido numa transação), apaga as linhas da loja no período que o CSV cobre e insere tudo de novo. Em seguida, confere a contagem do período. Assim, reimportar não duplica e o status atualiza (pendente → confirmado). A chave `UNIQUE`, sem colunas que aceitam `NULL`, barra o que escapar.
 5. **Proibido:**
    - guardar cookie, token ou sessão;
    - chamar API interna dos painéis;
@@ -184,7 +184,15 @@ Esta seção depende da exceção nas regras 1 e 2 do CLAUDE.md (risco aceito pe
 6. **Parada:** em captcha, verificação, 2FA ou logout, o agent para na hora, não resolve, não faz login e avisa o Elias.
 7. **ML:** antes de usar o navegador, conferir se o portal tem API ou exportação oficial de relatório. Se tiver, ela vem primeiro.
 
+**O que a primeira rodada mostrou (2026-11-05):**
+- **Amazon:** a exportação fica em "Fazer download de relatórios". O relatório **"Produto relacionado"** (Linked-Product), em CSV, traz uma linha por ASIN e por data, com as colunas `Items Ordered`, `Items Shipped`, `Items Returned`, as receitas e os ganhos. Ele agrega pelo período escolhido, então a rodada diária exporta **"Ontem"**, o que dá uma data por linha. O arquivo vem zipado e fica em `~/ofertaslivros-vendas/amazon/<dia>/`. O importador é o `analytics/vendas.py`: `python3 analytics/vendas.py amazon <csv>`, com o token `CF_D1_TOKEN` (D1 Edit) no `.env`. Cada linha vira até três registros em `sales`, um por status (`pedido`, `enviado`, `devolvido`).
+- **Mercado Livre:** o portal de afiliados (Métricas) **não tem botão de exportar**. Como a exceção só permite a exportação oficial, nada do ML entra no D1 por enquanto. O painel manda acompanhar no próprio portal do ML.
+
 A rodada só acontece com uma sessão aberta na máquina do Elias, que pode ser agendada localmente. Se a rodada falhar, o "vendas até" do painel fica parado e mostra isso.
+
+## Pedidos de livro no painel
+
+O formulário "Pedir um livro" (`worker/pedido.js`) continua mandando o e-mail para o destino do segredo `PEDIDOS_PARA` (`pedidos@ofertaslivros.com`). Além disso, grava o pedido na tabela `pedidos` do D1, só com `criado_em`, `titulo` e `autor`. Se o D1 falhar, o e-mail sai do mesmo jeito. O cron diário apaga pedidos com mais de 30 dias. O `/painel` lista os pedidos e destaca os das últimas 24 h. O texto da página de privacidade não muda, por decisão do Elias em 2026-11-05.
 
 ## Fases
 

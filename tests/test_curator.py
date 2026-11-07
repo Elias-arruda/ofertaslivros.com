@@ -704,6 +704,7 @@ def test_retirada_no_pr_e_id_nunca_volta(env, tmp_path):
     d = json.loads(env["cat"].read_text())
     assert [b["id"] for b in d["books"]] == ["ja-tenho", "livro-1-2"]
     assert d["retirados"] == {"livro-1": "2026-10-19"}
+    assert d["generos_retirados"] == {"livro-1": "manga"}  # para o 301 de /livro/livro-1/ no build
     assert json.loads(env["seen"].read_text())["MLB777"] == "2026-10-19"
     md = env["md"].read_text()
     assert "1 retirados" in md and "`livro-1`" in md and "PR sensível" in md
@@ -712,6 +713,10 @@ def test_retirada_no_pr_e_id_nunca_volta(env, tmp_path):
                        "ml_url": ML_URL.replace("ref=X", "ref=Z")})
     with pytest.raises(c.Invalid, match="retirado"):
         c.load_catalog(d)
+    d["books"].pop()
+    for bad in (["manga"], "manga", {"livro-1": "nao-existe"}, {"outro": "manga"}, {"livro-1": ["manga"]}):
+        with pytest.raises(c.Invalid, match="generos_retirados"):  # formato ruim: o curator nem começa
+            c.load_catalog({**d, "generos_retirados": bad})
 
 
 def test_so_retirada_ja_grava_o_pr(env, tmp_path):

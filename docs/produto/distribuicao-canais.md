@@ -311,7 +311,7 @@ Site:
 **12.5 Operação e custo**
 - **Custo:** R$ 0. A Bot API do Telegram e o Canal do WhatsApp são grátis. O Manda Boa custaria R$ 69,90/mês, só se o gatilho disparar.
 - **Tempo do Elias:** com até 5 ofertas por dia, a estimativa é de 5 a 10 min/dia, além dos ~10 min da Amazon. É o custo real.
-- **Ban do WhatsApp:** com postagem manual pelo app oficial, o risco fica perto de zero. Ele só aparece com automação não oficial, o que a decisão 3 proíbe.
+- **Ban do WhatsApp:** com postagem manual pelo app oficial, o risco fica perto de zero. Desde 2026-11-06, o Elias aceitou o risco de o Claude postar pelo WhatsApp Web dele (seção "WhatsApp pelo navegador" e regra 5 do CLAUDE.md): a punição possível é banir o número dono do canal. Ferramentas e código que controlem o WhatsApp continuam proibidos.
 - **Volume:**
   - Com poucas ofertas elegíveis no começo, o canal pode passar dias sem post. Isso é aceitável pela curadoria, mas um canal mudo perde seguidor.
   - Acompanhar nas primeiras 2 semanas. Se ficar mudo, baixar o limiar de desconto (decisão 3), sem afrouxar o frescor.
@@ -337,3 +337,44 @@ Site:
 4. Foto: ML com a foto do produto vinda da API. Amazon sem foto até a Creators API, quando passa a usar a imagem que ela devolver. Sem Open Library.
 5. Bot do Telegram: `@ofertaslivros_bot`.
 6. Horário do resumo do WhatsApp: em teste. Começa às 11h BRT, configurável.
+
+## Respostas do Elias (2026-10-21)
+1. Canal do Telegram **com Amazon e Mercado Livre**. O Elias decidiu que a Amazon entra no canal (a decisão 1 de 2026-10-18 deixa de bloquear).
+2. Oferta postável = **o mesmo critério "em oferta" do site** (`build.em_oferta`), no lugar dos 30% da seção 5. O texto é o `build.post_text`.
+3. Janela 08h–22h, 2 por execução, 8 por dia e 7 dias sem repetir: **em avaliação.** O MVP (`telegram_post.py`) sai com esses valores como constantes.
+4. Capa local `/capas/` (Open Library) no post: **em avaliação.** O MVP posta só a foto https do ML; sem ela, sai `sendMessage`.
+5. `TELEGRAM_BOT_TOKEN` passa para o Environment `telegram`, restrito à `main`.
+
+Implementação:
+- O workflow `telegram.yml` roda depois de cada `deploy` bem-sucedido. Antes de postar, confere com um HEAD sem seguir redirect que `/r/<id>/tg` está no ar e leva (302, https) a uma loja da allowlist.
+- O log `channel_posts.csv` fica no branch próprio `channel-posts`, e não no `price-history` (§6). Assim ele não disputa push com o pipeline, que grava sem retry.
+- O post sai sem prévia do link (`link_preview_options.is_disabled`). Com prévia, o servidor do Telegram seguiria o `/r/` até a loja e geraria um clique automatizado no link de afiliado a cada post.
+- Limites aceitos no MVP:
+  - Se o job morrer entre o ok do Telegram e o push, o post se repete uma vez.
+  - O post lê o `offers.json` do momento em que roda. Se o pipeline gravou um mais novo depois do deploy, o preço pode ser mais recente que o do site publicado.
+
+## WhatsApp: Canal manual com resumo pelo bot (2026-11-06)
+O Elias decidiu: no WhatsApp, só o Canal, seguindo o plano original (§5 a §8). Não vai ter bot de lista de desejos no WhatsApp por enquanto. A Cloud API serve para conversa um a um, mas cada aviso fora da janela de 24 h é cobrado. As ferramentas que postam em Canal (Whapi e parecidas) entram pelo número como o WhatsApp Web, o que a decisão 3 proíbe.
+
+Implementação (`telegram_post.py`, no mesmo workflow do canal):
+- Uma vez por dia, na primeira execução das 11h às 21h59 BRT com oferta disponível, o bot manda no chat do Elias (`TELEGRAM_ADMIN_CHAT_ID`, Secret do Environment `telegram`) até 5 ofertas.
+- Mesmo critério e mesma ordem do canal (`pick`). A repetição é controlada à parte, pelas linhas `wa` do `channel_posts.csv`.
+- Mensagens: cabeçalho, por oferta a foto do ML sem legenda e o texto do `build.post_text` com `/r/<id>/wa`, e "fim do resumo". Texto puro, sem prévia de link.
+- Conta como postado no envio: as linhas `wa` são gravadas antes da primeira mensagem. Se saiu incompleto ou falhou, não manda outro no mesmo dia.
+- Tag da Amazon do WhatsApp: `AMAZON_TAG_WA` (vars do Environment `production`, lida pelo deploy). Sem ela, `/wa` usa a tag do site.
+- Sem `TELEGRAM_ADMIN_CHAT_ID`, o resumo não sai e o canal do Telegram segue igual.
+
+## WhatsApp pelo navegador (decisão do Elias, 2026-11-06)
+O Elias aceitou o risco de o Claude postar no Canal pelo WhatsApp Web dele (CLAUDE.md, regra 5). Isso substitui, só neste ponto, a decisão 3 da seção 1. Continua proibido qualquer código ou ferramenta que controle o WhatsApp.
+
+Fluxo, uma vez por dia, quando o Elias pedir ("posta as ofertas do WhatsApp"):
+1. No Telegram Web, abrir pela busca o chat com o @ofertaslivros_bot e copiar os textos do "Resumo WhatsApp" do dia, entre o cabeçalho e "fim do resumo". Sem resumo do dia, não posta nada.
+2. No WhatsApp Web, abrir pela busca o canal "Só Mais um Livro - Ofertas Livros" e conferir o nome no cabeçalho.
+3. Para cada texto: colar sem editar, fechar a prévia do link e enviar. Esperar cerca de 20 s antes do próximo.
+   - Limite conhecido: ao colar, o WhatsApp Web já busca a prévia do link, seguindo o `/r/<id>/wa` até a loja. Isso acontece uma vez por post, do mesmo jeito que na postagem manual. Fechar a prévia só evita que o post saia com o cartão da loja.
+   - Se isso virar problema (clique de robô contado pela loja), a saída é o texto do WhatsApp apontar para uma página do site sem redirect, e não para o `/r/`.
+4. Avisar o Elias de quantos posts saíram.
+
+O dedup e a medição continuam os do resumo (`channel_posts.csv`, linhas `wa`, e a tag `ofertaslivrwa-20`), porque o que vai ao Canal é o próprio resumo. Se o Claude não postar num dia, o Elias pode colar à mão, como antes.
+
+Risco: banimento do número dono do canal, que hoje é o WhatsApp pessoal do Elias. Para reduzir, ele pode pôr um chip separado como admin e conectar esse número no WhatsApp Web.

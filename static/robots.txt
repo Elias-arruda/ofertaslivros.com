@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: /bot.json
+
+Sitemap: https://ofertaslivros.com.br/sitemap.xml
