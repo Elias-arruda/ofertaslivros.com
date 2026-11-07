@@ -310,7 +310,23 @@
   "as-veias-abertas-da-america-latina|amazon": "2026-11-07",
   "vidas-secas-2|mercadolivre": "2026-11-07",
   "memorias-do-subsolo|mercadolivre": "2026-11-07",
-  "a-morte-de-ivan-ilitch|mercadolivre": "2026-11-07"
+  "a-morte-de-ivan-ilitch|mercadolivre": "2026-11-07",
+  "confissoes-de-santo-agostinho-edicao-de-luxo|amazon": "2026-11-07",
+  "o-monstro-das-cores|amazon": "2026-11-07",
+  "biblioteca-estoica-grandes-mestres-volume-1|amazon": "2026-11-07",
+  "noiva-edicao-especial|amazon": "2026-11-07",
+  "box-harry-potter-edicao-pottermore|amazon": "2026-11-07",
+  "box-cidade-da-lua-crescente|amazon": "2026-11-07",
+  "box-os-bridgertons|amazon": "2026-11-07",
+  "box-o-povo-do-ar|amazon": "2026-11-07",
+  "o-conde-de-monte-cristo-edicao-bolso-de-luxo|amazon": "2026-11-07",
+  "o-rei-perverso-o-povo-do-ar-vol-2|amazon": "2026-11-07",
+  "o-diario-de-uma-princesa-desastrada|amazon": "2026-11-07",
+  "grande-sertao-veredas|amazon": "2026-11-07",
+  "o-conde-de-monte-cristo|amazon": "2026-11-07",
+  "box-duologia-divinos-rivais|amazon": "2026-11-07",
+  "aprendiz-do-vilao|amazon": "2026-11-07",
+  "box-livro-das-mil-e-uma-noites|amazon": "2026-11-07"
  },
  "image_url": {
   "irmao-do-jorel": "https://http2.mlstatic.com/D_NQ_NP_948056-MLA113307591683_062026-F.jpg",
@@ -938,7 +954,7 @@
   "maus": {
    "publicado": "2026-10-20",
    "ultimo_anuncio": "2026-11-07",
-   "ultima_oferta": "2026-11-06"
+   "ultima_oferta": "2026-11-07"
   },
   "one-piece-vol-1": {
    "publicado": "2026-10-20",
@@ -1302,6 +1318,86 @@
   },
   "a-estranha-na-cama": {
    "publicado": "2026-11-04",
+   "ultimo_anuncio": "2026-11-07",
+   "ultima_oferta": "2026-11-07"
+  },
+  "o-monstro-das-cores": {
+   "publicado": "2026-11-07",
+   "ultimo_anuncio": "2026-11-07",
+   "ultima_oferta": "2026-11-07"
+  },
+  "box-harry-potter-edicao-pottermore": {
+   "publicado": "2026-11-07",
+   "ultimo_anuncio": "2026-11-07",
+   "ultima_oferta": "2026-11-07"
+  },
+  "o-diario-de-uma-princesa-desastrada": {
+   "publicado": "2026-11-07",
+   "ultimo_anuncio": "2026-11-07",
+   "ultima_oferta": "2026-11-07"
+  },
+  "box-os-bridgertons": {
+   "publicado": "2026-11-07",
+   "ultimo_anuncio": "2026-11-07",
+   "ultima_oferta": "2026-11-07"
+  },
+  "noiva-edicao-especial": {
+   "publicado": "2026-11-07",
+   "ultimo_anuncio": "2026-11-07",
+   "ultima_oferta": "2026-11-07"
+  },
+  "box-livro-das-mil-e-uma-noites": {
+   "publicado": "2026-11-07",
+   "ultimo_anuncio": "2026-11-07",
+   "ultima_oferta": "2026-11-07"
+  },
+  "grande-sertao-veredas": {
+   "publicado": "2026-11-07",
+   "ultimo_anuncio": "2026-11-07",
+   "ultima_oferta": "2026-11-07"
+  },
+  "box-cidade-da-lua-crescente": {
+   "publicado": "2026-11-07",
+   "ultimo_anuncio": "2026-11-07",
+   "ultima_oferta": "2026-11-07"
+  },
+  "biblioteca-estoica-grandes-mestres-volume-1": {
+   "publicado": "2026-11-07",
+   "ultimo_anuncio": "2026-11-07",
+   "ultima_oferta": "2026-11-07"
+  },
+  "confissoes-de-santo-agostinho-edicao-de-luxo": {
+   "publicado": "2026-11-07",
+   "ultimo_anuncio": "2026-11-07",
+   "ultima_oferta": "2026-11-07"
+  },
+  "aprendiz-do-vilao": {
+   "publicado": "2026-11-07",
+   "ultimo_anuncio": "2026-11-07",
+   "ultima_oferta": "2026-11-07"
+  },
+  "box-duologia-divinos-rivais": {
+   "publicado": "2026-11-07",
+   "ultimo_anuncio": "2026-11-07",
+   "ultima_oferta": "2026-11-07"
+  },
+  "o-rei-perverso-o-povo-do-ar-vol-2": {
+   "publicado": "2026-11-07",
+   "ultimo_anuncio": "2026-11-07",
+   "ultima_oferta": "2026-11-07"
+  },
+  "box-o-povo-do-ar": {
+   "publicado": "2026-11-07",
+   "ultimo_anuncio": "2026-11-07",
+   "ultima_oferta": "2026-11-07"
+  },
+  "o-conde-de-monte-cristo-edicao-bolso-de-luxo": {
+   "publicado": "2026-11-07",
+   "ultimo_anuncio": "2026-11-07",
+   "ultima_oferta": "2026-11-07"
+  },
+  "o-conde-de-monte-cristo": {
+   "publicado": "2026-11-07",
    "ultimo_anuncio": "2026-11-07",
    "ultima_oferta": "2026-11-07"
   }
