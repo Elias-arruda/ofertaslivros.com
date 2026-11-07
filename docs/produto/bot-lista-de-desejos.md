@@ -253,7 +253,7 @@ Tirar da lista: /lista
                "preco_cents": 4290, "desconto": 42, "valido_ate": "2026-11-06T14:00:00+00:00",
                "texto": "Torto Arado, de Itamar ... Link: https://ofertaslivros.com.br/livro/torto-arado/"}]}
   ```
-- **`texto`** só existe com `oferta and not velho`, e nos outros casos é `null`. Sai de `post_text(o, f"{SITE}/r/{o['id']}/bot")`.
+- **`texto`** só existe com `oferta and not velho`, e nos outros casos é `null`. Sai de `post_text(o, f"{SITE}/livro/{o['id']}/")` (até 2026-11-07, `/r/<id>/bot`).
 - **`valido_ate`** = `checked_at + FRESH[store]` da loja que vence primeiro (o `texto` pode citar a outra loja, em "Também no..."). Assim o Worker não manda um preço que venceu entre o deploy e o cron, e não precisa conhecer o `FRESH`.
 - **`autores`:** o `autor` dividido em `,`, `;`, `&` e ` e `, cada parte com `fold`. Ex.: "Neil Gaiman e Terry Pratchett" → `["neil gaiman", "terry pratchett"]`.
   - `ponytail`: a divisão ingênua erra autor com " e " no nome. Corrigir com um campo `authors` no contrato se aparecer caso real.
@@ -428,7 +428,7 @@ Testes do Worker em `worker/bot.test.mjs` (`node --test`, como os que já existe
    - confirmar no BotFather que `/setjoingroups` está desligado;
    - responder às decisões da seção 14.
 1. **frontend-developer + collector-engineer**, PR 1, sensível (`_redirects`, tag, rota `/r/`). No `build.py`:
-   - `/r/<id>/bot` e `AMAZON_TAG_BOT` em `channel_tags`, e o `post_text` aceitando `/bot`;
+   - `/r/<id>/bot` e `AMAZON_TAG_BOT` em `channel_tags`, e o `post_text` aceitando `/bot` (trocado pela `/livro/<id>/` em 2026-11-07);
    - o `dist/bot.json` e `bot` em `RESERVED`;
    - o `Disallow` no robots;
    - o limite de 60 chars para o id;
