@@ -1,9 +1,10 @@
 # Kit de redes sociais
 
-Proposta do brand-designer em 2026-11-04, aguardando a aprovação do Elias. O kit não cria identidade nova. Ele usa só o que já está no site:
+Proposta do brand-designer em 2026-11-04, atualizada em 2026-11-07 (bot e Mavi, os dois canais com os nomes reais, "Pedir um livro" e o domínio .com.br), aguardando a aprovação do Elias. O kit não cria identidade nova. Ele usa só o que já está no site:
 - a paleta do `static/style.css`: marinho `#1c2b4a`, noite `#0f1729`, marfim `#edf1f5`, vermelho do carimbo `#b3262f` (`#ff8a8f` no escuro), rosa `#f2a3a8` e os acentos por nicho;
-- o logo B (`static/logo.svg` e `static/logo-negativo.svg`, embutidos sem alteração);
+- o logo B (`static/logo.svg` e `static/logo-negativo.svg`), com ".br" acrescentado no fim, no mesmo traço e na mesma cor do ".com" (ver "Pontos para o Elias decidir");
 - o símbolo do carimbo (`docs/marca/logos/carimbo-simbolo.svg`);
+- a Mavi, mascote e avatar do bot (`static/mavi.svg`, embutida sem alteração e cortada no círculo, como no avatar do Telegram);
 - as fontes OFL do repo (Fraunces com SOFT 100 e WONK 1 nos títulos, Outfit no resto);
 - o objeto da marca da `spec-visual.md` §11.1: a capa com o miolo saindo por trás e a fita na cor do nicho.
 
@@ -14,18 +15,18 @@ Os textos (bios, legendas, hashtags e descrições dos canais) estão em `social
 | Pasta | Conteúdo | Tamanho |
 |---|---|---|
 | `perfil/` | `perfil.svg` (mestre, escuro) e `perfil-claro.svg`. PNG: `instagram-320`, `tiktok-200`, `tiktok-720`, `telegram-640`, `whatsapp-640`, `perfil-claro-640` | quadrado |
-| `destaques/` | capas dos destaques do Instagram: `ofertas`, `manga`, `curadoria`, `como-funciona`, `canais` | 1080×1920 |
+| `destaques/` | capas dos destaques do Instagram: `ofertas`, `manga`, `curadoria`, `como-funciona`, `canais` (megafone), `alerta` (sino, o do bot) e `pedir` (lupa, a do botão "Pedir um livro") | 1080×1920 |
 | `canal/` | `telegram-fixada`: imagem da mensagem fixada do Telegram e do Canal do WhatsApp | 1280×720 |
 | `templates/` | `feed-oferta`, `carrossel-capa`, `carrossel-pagina`, `story-reels-tiktok`, `canal-1280x720`, com a camada de guias ligada | ver o nome |
-| `posts/` | os 9 posts da grade inicial e `grade-3x3.png` (prévia do perfil) | 1080×1350 |
-| `stories/` | `s1-chegamos`, `s2-capa-historico` (capa de reels/TikTok) e `s3-canais` | 1080×1920 |
+| `posts/` | os 12 posts da grade inicial, `grade-3x3.png` (as 9 mais novas, o que o perfil mostra primeiro) e `grade-completa.png` (as 4 linhas) | 1080×1350 |
+| `stories/` | `s1-chegamos`, `s2-capa-historico` (capa de reels/TikTok), `s3-canais` e `s4-mavi` (o alerta) | 1080×1920 |
 | `gerar.py` | gera todos os SVG e PNG de novo | |
 
 **Capa do canal:** o Telegram e o Canal do WhatsApp não têm imagem de capa, só a foto de perfil. A peça que faz esse papel é a imagem da mensagem fixada (`canal/telegram-fixada.png`), que leva o aviso de afiliado que a `distribuicao-canais.md` exige na fixada.
 
 ## Logo no perfil
 
-- **Use o símbolo do carimbo, sem o wordmark.** "ofertaslivros.com" fica ilegível em 200 px, e o nome já aparece ao lado da foto em todas as redes.
+- **Use o símbolo do carimbo, sem o wordmark.** "ofertaslivros.com.br" fica ilegível em 200 px, e o nome já aparece ao lado da foto em todas as redes.
 - **Versão padrão:** `perfil.svg`, carimbo rosa `#f2a3a8` sobre marinho `#1c2b4a`, a mesma combinação do logo negativo do site, com contraste de 7,08:1. O fundo escuro destaca a foto tanto no app claro quanto no escuro.
 - **Versão clara:** `perfil-claro.svg`, vermelho `#b3262f` sobre marfim, igual ao favicon. Use só se o Elias preferir.
 - **Margem:** o carimbo ocupa 60% do lado e fica girado -10°, como no site. O anel externo fica a cerca de 20% da borda do círculo de corte. Mantenha os 60%: assim sobra respiro em volta e o símbolo tem o mesmo tamanho em todas as redes.
@@ -38,7 +39,7 @@ Os textos (bios, legendas, hashtags e descrições dos canais) estão em `social
 - **Story/reels/TikTok 1080×1920:** zona segura de x 64 a 940 e y 250 a 1440. Em cima fica a barra do app (250 px). Embaixo ficam a legenda e os botões (480 px, a medida do TikTok, que é maior que a do Instagram). À direita, de x 940 em diante, ficam os botões do TikTok. As medidas são a prática de mercado, não número oficial das plataformas; confira com um post de teste.
 - **Canal 1280×720:** margem de 48 px. O 16:9 é o formato que o Telegram e o WhatsApp mostram inteiro, sem cortar.
 - **Destaques:** o ícone fica dentro de um círculo de 600 px no centro. O Instagram corta a capa num círculo central.
-- **Rodapé dos posts:** linha fina, logo à esquerda e, à direita, "ofertaslivros.com.br" ou, nos posts de oferta, "Link de afiliado. O preço final é o da loja."
+- **Rodapé dos posts:** linha fina e o logo à esquerda, que já diz "ofertaslivros.com.br". Nos posts de oferta, à direita, "Link de afiliado. O preço final é o da loja."
 
 ## Que template usar em cada rede
 
@@ -46,7 +47,7 @@ Os textos (bios, legendas, hashtags e descrições dos canais) estão em `social
 |---|---|---|
 | Instagram (feed) | oferta | `templates/feed-oferta.svg` |
 | Instagram (feed) | explicação em passos | `templates/carrossel-capa.svg` + `templates/carrossel-pagina.svg` (o número só quando há sequência real) |
-| Instagram (feed) | aviso, institucional | copiar um post de `posts/` (claro: 02, 04, 06, 08; escuro: 01, 05) |
+| Instagram (feed) | aviso, institucional | copiar um post de `posts/` (claro: 02, 04, 06, 08, 10, 12; escuro: 01, 05, 11) |
 | Instagram (stories), Reels, TikTok | story e capa de vídeo | `templates/story-reels-tiktok.svg` |
 | Instagram (destaques) | capa | `destaques/*.png` |
 | Telegram e WhatsApp | post manual ou anúncio | `templates/canal-1280x720.svg` |
@@ -54,7 +55,9 @@ Os textos (bios, legendas, hashtags e descrições dos canais) estão em `social
 
 As ofertas automáticas do Telegram continuam como na `distribuicao-canais.md`, com a foto do ML ou sem foto. O template de canal é para posts manuais.
 
-**Grade:** os cantos são ofertas, com o fundo escuro e o brilho do nicho. As bordas são posts claros. O centro é o post escuro "Onde seguir". Para manter o padrão depois dos 9 primeiros, alterne um escuro e um claro.
+**Grade:** um xadrez de escuro e claro. Nas 3 linhas de baixo (posts 1 a 9), os cantos são ofertas, com o fundo escuro e o brilho do nicho, as bordas são posts claros e o centro é o post escuro "Onde seguir". A linha de cima (10 a 12) segue o xadrez: "Pedir um livro" (claro), a Mavi (escuro, no centro) e os passos do alerta (claro). Para manter o padrão depois dos 12, alterne um escuro e um claro.
+
+**Nomes que aparecem nas artes** (conferidos no site no ar e nas páginas públicas em 2026-11-07): os dois canais se chamam "Só Mais um Livro - Ofertas Livros" (Telegram `t.me/maviOfertaslivros` e Canal do WhatsApp); o bot é o `@ofertaslivros_bot`, com a Mavi de avatar; os botões do site são "Canal no WhatsApp", "Canal no Telegram", "Me avise se baixar" e "Pedir um livro". As artes não mostram print de conversa nem dado de ninguém: o form do post 10 é desenhado, com os campos vazios.
 
 ## Como editar os SVG
 
@@ -65,7 +68,7 @@ As ofertas automáticas do Telegram continuam como na `distribuicao-canais.md`, 
 5. **Capa:** a capa é um placeholder (cor do nicho + inicial em itálico), como o site faz quando não tem foto. Não cole a capa real nem o logo das lojas.
 6. **Exportar:** Figma ou Inkscape, PNG em 1x. Ou rode o gerador.
 
-**Gerador:** `python3 docs/marca/redes/gerar.py` refaz todos os SVG e PNG (o `--svg` refaz só os SVG; o `--tabela` imprime o contraste). Ele usa o Google Chrome headless, porque rsvg-convert, cairosvg e inkscape não estão na máquina. O gerador sai com erro se algum par de cor ficar abaixo do mínimo WCAG. Mudança de texto dos 9 posts e dos stories: edite `posts()` e `stories()` no script, ou edite o SVG direto (o script sobrescreve o SVG se for rodado de novo).
+**Gerador:** `python3 docs/marca/redes/gerar.py` refaz todos os SVG e PNG (o `--svg` refaz só os SVG; o `--tabela` imprime o contraste). Ele usa o Google Chrome headless, porque rsvg-convert, cairosvg e inkscape não estão na máquina. Fora do macOS, aponte o binário com `CHROME=/caminho/do/chrome python3 docs/marca/redes/gerar.py`. O gerador sai com erro se algum par de cor ficar abaixo do mínimo WCAG. Mudança de texto dos 12 posts e dos stories: edite `posts()` e `stories()` no script, ou edite o SVG direto (o script sobrescreve o SVG se for rodado de novo).
 
 ## Contraste (saída do `gerar.py --tabela`)
 
@@ -86,6 +89,9 @@ Texto ≥ 4,5:1; texto grande, carimbo e UI ≥ 3:1. Todos passam.
 | texto branco sobre vermelho | #ffffff | #b3262f | 6.49:1 | 4.5 |
 | texto do botão WhatsApp | #06210f | #25d366 | 8.59:1 | 4.5 |
 | ícone Telegram sobre noite | #2aabee | #0f1729 | 6.94:1 | 3.0 |
+| @ do bot em azul Telegram sobre marinho | #2aabee | #1c2b4a | 5.46:1 | 4.5 |
+| texto do formulário sobre papel (post 10) | #1c2b4a | #fbfcfd | 13.69:1 | 4.5 |
+| rótulo do formulário sobre papel (post 10) | #4a5670 | #fbfcfd | 7.16:1 | 4.5 |
 | ink sobre acento (10 nichos) | ex.: #22040f / #e5468f | | 5.07 a 5.34:1 | 4.5 |
 | acento sobre noite (10 nichos) | | #0f1729 | 4.73 a 5.08:1 | 3.0 |
 | acento sobre marfim (10 nichos) | | #edf1f5 | 3.10 a 3.33:1 | 3.0 |
@@ -94,7 +100,9 @@ O menor texto das artes tem 26 px num quadro de 1080, o que dá cerca de 9 pt no
 
 ## Pontos para o Elias decidir
 
-1. **Domínio:** o wordmark diz "ofertaslivros.com", e o site no ar e as artes dizem "ofertaslivros.com.br". Mudar o wordmark é tarefa de marca à parte; este kit não mexe nele.
+1. **Domínio:** o kit agora mostra "ofertaslivros.com.br" no logo: o gerador acrescenta ".br" ao logo B, no traço fino e na cor do ".com". O `static/logo.svg` do site continua dizendo ".com" (e o nome do bot no Telegram é "Mavi · Ofertaslivros.com"). Se o Elias aprovar o ".br", o mesmo desenho vai para o `static/logo*.svg` e para `docs/marca/logos/wordmark-b*.svg`, numa tarefa do `frontend-developer`.
 2. **Foto de perfil:** a escura (padrão) ou a clara.
-3. **`@` das redes:** ainda não existem (ver `social.md`).
+3. **`@` das redes:** o canal do Telegram (`@maviOfertaslivros`) e o bot (`@ofertaslivros_bot`) já existem. O Instagram e o TikTok ainda não (ver `social.md`).
 4. **Ícones de Telegram e WhatsApp:** são os desenhos de linha do site (avião de papel e balão), não os logos oficiais, e aparecem só como rótulo de botão. Se preferir, dá para usar só o texto.
+5. **Descrição do canal do Telegram no ar:** "Melhor canal do melhor site de ofertas de livros do Brasil! ..." foge do tom (superlativo, exclamação) e não tem o aviso de afiliado. A sugestão está em `social.md`. O nome do bot ("Mavi · Ofertaslivros.com") também tem sugestão lá.
+6. **Grade de 12:** as 3 peças novas entraram como uma linha a mais (10 a 12), sem tirar nenhum post antigo. Se preferir ficar em 9, as candidatas a sair são o 04 (curadoria, que repete parte do 01) e o 12 (passos do alerta, que repete parte do 11).

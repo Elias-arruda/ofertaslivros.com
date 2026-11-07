@@ -7,6 +7,8 @@ Cores, logo e fontes vêm de static/ (style.css, logo*.svg, fonts/). Os SVG saem
 (<text>), então dá para editar direto no Figma/Inkscape; este script é só o jeito rápido de
 refazer tudo igual. O PNG sai do Chrome headless (rsvg/cairosvg/inkscape não estão na máquina).
 """
+import itertools
+import os
 import re
 import subprocess
 import sys
@@ -15,7 +17,7 @@ from xml.sax.saxutils import escape
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
-CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+CHROME = os.environ.get("CHROME", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
 
 # Tokens (static/style.css, tema escuro e claro). Não invente cor aqui: copie do CSS.
 NAVY, NIGHT, BG2_DARK = "#1c2b4a", "#0f1729", "#18233b"
@@ -38,6 +40,8 @@ G = {  # nicho: (rótulo do build.py, acento, acento2, ink)
 # Ícones de linha do site (build.py ICONS, grade 24x24). tg/wa são desenhos nossos, não os logos.
 ICON = {
     "seta": '<path d="M7 17 17 7M8 7h9v9"/>',
+    "busca": '<circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4.5 4.5"/>',
+    "canal": '<path d="M3 10v4h3l7 4V6l-7 4z"/><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5M19 7a7 7 0 0 1 0 10"/>',
     "sino": '<path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0"/>',
     "tg": '<path d="M21 4 3 11.2l6 2.3L18 7.5l-7 7.3.3 5.2 3-3.6 4.2 3.1z"/>',
     "wa": '<path d="M4 20l1.3-3.9A8.5 8.5 0 1 1 8.2 19z"/><path d="M9.2 8.6c-.3 2.9 3.2 6.4 6.2 6.2l.6-1.7-2-.9-.9.8a5 5 0 0 1-2.3-2.3l.8-.9-.9-2z"/>',
@@ -61,6 +65,9 @@ BOOK = ("M9.6 12.4C11.6 11.5 13.8 11.6 15.3 12.8V21.6C13.8 20.5 11.6 20.4 9.6 21
         "M22.4 12.4C20.4 11.5 18.2 11.6 16.7 12.8V21.6C18.2 20.5 20.4 20.4 22.4 21.2Z")
 
 AFILIADO = "Link de afiliado. O preço final é o da loja."
+# Nomes conferidos no site no ar e nas páginas públicas em 2026-11-07 (ver social.md).
+CANAL_NOME = "Só Mais um Livro - Ofertas Livros"
+BOT = "@ofertaslivros_bot"
 
 
 # ---------- contraste (WCAG 2.x) ----------
@@ -89,6 +96,9 @@ PARES = [  # (uso, frente, fundo, mínimo)
     ("texto branco sobre vermelho (selo claro)", "#ffffff", RED, 4.5),
     ("texto do botão WhatsApp", WA_INK, WA, 4.5),
     ("ícone Telegram sobre noite", TG, NIGHT, 3.0),
+    ("@ do bot em azul Telegram sobre marinho", TG, NAVY, 4.5),
+    ("texto do formulário sobre papel (post 10)", NAVY, PAPER, 4.5),
+    ("rótulo do formulário sobre papel (post 10)", MUTED, PAPER, 4.5),
 ] + [(f"{k}: ink sobre acento", v[3], v[1], 4.5) for k, v in G.items()] \
   + [(f"{k}: acento sobre noite", v[1], NIGHT, 3.0) for k, v in G.items()] \
   + [(f"{k}: acento sobre marfim", v[1], IVORY, 3.0) for k, v in G.items()]
@@ -160,14 +170,39 @@ def pill(x, y, label, size, fill, color, ic=None, outline=False, up=True, h=None
     return bg + ico + t, w
 
 
+# ".br" desenhado no traço do ".com" do logo B: ponto, "b" (haste + bojo do "o") e "r" (o mesmo de "ofertas")
+BR = ("M 272.6 38.3 h 0.01 M 277.3 11.7 V 38.3 M 277.3 30 A 8.3 8.3 0 1 1 293.9 30 A 8.3 8.3 0 1 1 277.3 30 Z "
+      "M 299 21.7 V 38.3 M 299 27.5 C 299 23.8 301.8 21.7 305 21.7 C 306 21.7 306.6 21.9 307 22.1")
+VB_W = 311.6  # 274.07 do logo B + o ".br"
+
+
 def wordmark(x, y, width, negativo=True):
-    """O logo B (static/logo*.svg) embutido sem alteração."""
+    """O logo B (static/logo*.svg) com ".br" no fim. width é a largura da parte ofertaslivros.com,
+    para as letras ficarem do mesmo tamanho de antes."""
     src = (ROOT / "static" / ("logo-negativo.svg" if negativo else "logo.svg")).read_text()
     inner = re.search(r"</title>(.*)</svg>", src, re.S).group(1).strip()
     inner = re.sub(r'<rect[^>]*/>', "", inner)  # o negativo do static já vem sem fundo
-    h = width * 32.4 / 274.07
-    return (f'<svg x="{x}" y="{y}" width="{width:.1f}" height="{h:.1f}" viewBox="-3.4 8.8 274.07 32.4" '
-            f'aria-label="ofertaslivros.com">{inner}</svg>')
+    cor = re.findall(r'stroke="(#[0-9a-fA-F]+)"', inner)[-1]  # a cor do ".com"
+    inner += (f'<path d="{BR}" fill="none" stroke="{cor}" stroke-width="2.3" stroke-linecap="round" '
+              f'stroke-linejoin="round"/>')
+    w = width * VB_W / 274.07
+    h = w * 32.4 / VB_W
+    return (f'<svg x="{x}" y="{y}" width="{w:.1f}" height="{h:.1f}" viewBox="-3.4 8.8 {VB_W} 32.4" '
+            f'aria-label="ofertaslivros.com.br">{inner}</svg>')
+
+
+_MAVI_ID = itertools.count(1)
+
+
+def mavi(cx, cy, d, halo=IVORY):
+    """A Mavi (static/mavi.svg) sem alteração, cortada no círculo como o avatar do bot, com o halo do site."""
+    src = (ROOT / "static" / "mavi.svg").read_text()
+    inner = re.search(r"</title>(.*)</svg>", src, re.S).group(1).strip()
+    n = next(_MAVI_ID)
+    return (f'<circle cx="{cx}" cy="{cy}" r="{d / 2 + d * .05:.1f}" fill="{halo}" fill-opacity=".08"/>'
+            f'<svg x="{cx - d / 2:.1f}" y="{cy - d / 2:.1f}" width="{d}" height="{d}" viewBox="0 0 640 640" '
+            f'aria-label="Mavi"><defs><clipPath id="mavi{n}"><circle cx="320" cy="320" r="320"/></clipPath></defs>'
+            f'<g clip-path="url(#mavi{n})">{inner}</g></svg>')
 
 
 def carimbo(cx, cy, d, color, rot=-10, thin=1.0):
@@ -297,18 +332,18 @@ def oferta(d, template=False, depth=4):
     return doc(W, H, b, f"Oferta: {' '.join(d['titulo'])}", depth=depth)
 
 
-def claro(titulo, corpo, extra="", depth=4, label=None, conteudo_y=None, tsize=104):
+def claro(titulo, corpo, extra="", depth=4, tsize=104, selo=True):
     """Post informativo claro (marfim), título em Fraunces e corpo em Outfit."""
     W, H = 1080, 1350
     b = f'<rect width="{W}" height="{H}" fill="{IVORY}"/>'
-    b += carimbo(966, 132, 120, RED)
+    if selo:
+        b += carimbo(966, 132, 120, RED)
     b += text(72, 250, titulo, tsize, "f", NAVY, lh=1.0)
     ty = 250 + round(tsize * 1.0) * (len(titulo) - 1) + 90
     b += text(72, ty, corpo, 40, "s", MUTED, 400, 1.4)
     b += extra
     b += f'<line x1="72" y1="1212" x2="1008" y2="1212" stroke="{NAVY}" stroke-opacity=".14" stroke-width="2"/>'
     b += wordmark(72, 1248, 330, negativo=False)
-    b += text(1008, 1278, "ofertaslivros.com.br", 28, "s", MUTED, 600, anchor="end")
     return doc(W, H, b, " ".join(titulo), depth=depth)
 
 
@@ -321,7 +356,6 @@ def escuro(titulo, corpo, extra="", depth=4, tsize=110, ty0=520):
     b += extra
     b += f'<line x1="72" y1="1212" x2="1008" y2="1212" stroke="{IVORY}" stroke-opacity=".14" stroke-width="2"/>'
     b += wordmark(72, 1248, 330)
-    b += text(1008, 1278, "ofertaslivros.com.br", 28, "s", MUTED_DARK, 600, anchor="end")
     return doc(W, H, b, " ".join(titulo), depth=depth)
 
 
@@ -376,6 +410,37 @@ def botoes_canais(x, y, size=34):
     return p1 + p2
 
 
+def linha_bot(x, y, d=120, cor=IVORY, cor2=TG, pergunta="Quer um livro só?"):
+    """A Mavi pequena + o @ do bot: a ponte dos canais para o alerta."""
+    return (mavi(x + d / 2, y, d)
+            + text(x + d + 32, y - 8, pergunta, 40, "s", cor, 600)
+            + text(x + d + 32, y + 44, f"A Mavi avisa: {BOT}", 36, "s", cor2, 600))
+
+
+def form_pedido(x, y, w):
+    """Desenho do form "Pedir um livro" do site (build.py fab), com os campos vazios: não é print."""
+    h = 520
+    campo = lambda yy: (f'<rect x="{x + 48}" y="{yy}" width="{w - 96}" height="76" rx="14" fill="{IVORY}" '
+                        f'stroke="{NAVY}" stroke-opacity=".25" stroke-width="2"/>')
+    b = (f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="28" fill="{PAPER}" stroke="{NAVY}" '
+         f'stroke-opacity=".13" stroke-width="2"/>'
+         + text(x + 48, y + 84, "Qual livro você quer ver aqui?", 40, "f", NAVY)
+         + text(x + 48, y + 150, "Nome do livro", 30, "s", NAVY, 600) + campo(y + 168)
+         + f'<line x1="{x + 72}" y1="{y + 188}" x2="{x + 72}" y2="{y + 224}" stroke="{NAVY}" stroke-width="3"/>'
+         + text(x + 48, y + 300, "Autor do livro", 30, "s", NAVY, 600)
+         + text(x + 48 + tw("Autor do livro", 30, .5) + 4, y + 300, "(opcional)", 30, "s", MUTED, 500)
+         + campo(y + 318))
+    btn, _ = pill(x + 48, y + 428, "Enviar pedido", 30, NAVY, IVORY, up=False, h=68)
+    fab, fw = pill(0, 0, "Pedir um livro", 30, NAVY, IVORY, "busca", up=False, h=72)
+    return b + btn + f'<g transform="translate({x + w - fw - 24} {y - 36})">{fab}</g>'
+
+
+def passos(x, y, itens, gap=150):
+    """Lista numerada: só para sequência real (os passos do alerta, os mesmos do site)."""
+    return "".join(text(x, y + i * gap, str(i + 1), 96, "fi", RED, 800)
+                   + text(x + 92, y + i * gap - 8, t, 40, "s", NAVY, 600) for i, t in enumerate(itens))
+
+
 def story(fundo, titulo, corpo, extra="", template=False, depth=4, ty0=760, tsize=124, cor=None):
     W, H = 1080, 1920
     escuro_ = fundo != IVORY
@@ -408,7 +473,7 @@ def canal_1280(d=None, template=False, depth=4):
         b += wordmark(80, 80, 460)
         b += text(80, 290, ["Ofertas de livros", "conferidas na loja."], 76, "f", IVORY, lh=1.02)
         b += text(80, 460, ["Poucas por dia, com o preço e o horário da conferência.",
-                            "Alerta de um livro só: @ofertaslivros_bot"], 32, "s", MUTED_DARK, 400, 1.45)
+                            f"Quer um livro só? A Mavi avisa: {BOT}"], 32, "s", MUTED_DARK, 400, 1.45)
         b += text(80, 640, "Link de afiliado: ganhamos com compras qualificadas. O preço final é o da loja.",
                   26, "s", IVORY, 500)
         b += carimbo(1090, 250, 250, ROSE)
@@ -483,7 +548,7 @@ TEMPLATE_OFERTA = dict(g="fantasia", titulo=["Título do livro", "em até 2 linh
 
 
 def posts():
-    """Os 9 posts na ordem de publicação. O 1 fica no canto inferior direito da grade, o 9 no superior esquerdo."""
+    """Os 12 posts na ordem de publicação (4 linhas de 3). O 1 fica no canto inferior direito, o 12 no superior esquerdo."""
     nichos = ["manga", "romance", "fantasia", "suspense", "literatura-brasileira", "ficcao", "mindset",
               "negocios", "historia", "politica"]
     return [
@@ -501,8 +566,15 @@ def posts():
                                                            "Ele é comparado com os últimos 90 dias.",
                                                            "Oferta vencida sai da lista."], RED, NAVY))),
         ("05-onde-seguir", escuro(["As ofertas", "no seu celular."],
-                                  ["Canais gratuitos e só de leitura, sem", "cadastro. Os links estão na bio."],
-                                  extra=botoes_canais(72, 820) + carimbo(860, 230, 220, ROSE), ty0=440)),
+                                  ["Os dois canais se chamam", CANAL_NOME + "."],
+                                  extra=botoes_canais(72, 640)
+                                  + text(540, 694, "um resumo por dia", 30, "s", MUTED_DARK, 500)
+                                  + text(540, 806, "até 8 por dia, das 8h às 22h", 30, "s", MUTED_DARK, 500)
+                                  + f'<line x1="72" y1="930" x2="1008" y2="930" stroke="{IVORY}" stroke-opacity=".14" stroke-width="2"/>'
+                                  + linha_bot(72, 1050)
+                                  + text(72, 1170, "Grátis, só de leitura e sem cadastro. Os links estão na bio.",
+                                         30, "s", MUTED_DARK, 400),
+                                  ty0=300)),
         ("06-nichos", claro(["Do mangá", "ao Machado."],
                             ["Uma página por nicho no site. Siga o seu."],
                             extra=chips(72, 620, 936, nichos))),
@@ -512,6 +584,28 @@ def posts():
                                     "ganhamos com compras qualificadas.", "", "O preço final é o da loja: mostramos o",
                                     "horário em que conferimos, e ele pode", "mudar depois disso."])),
         ("09-oferta-o-hobbit", oferta(OFERTAS["hobbit"])),
+        ("10-pedir-um-livro", claro(["Não achou", "o seu livro?"],
+                                    ["Toque em Pedir um livro no site e escreva o",
+                                     "nome e o autor. O pedido vai para a curadoria",
+                                     "e não leva nenhum dado seu."],
+                                    extra=form_pedido(72, 650, 936))),
+        ("11-mavi-alerta", escuro(["Escolha o livro.", "A Mavi avisa."],
+                                  ["Quando o livro entrar em oferta, ela manda",
+                                   "uma mensagem no Telegram. Vale para um",
+                                   "autor também. Grátis, das 8h às 22h."],
+                                  extra=mavi(770, 330, 400)
+                                  + pill(72, 300, "Me avise se baixar", 30, IVORY, IVORY, "sino", outline=True,
+                                         up=False, h=80)[0]
+                                  + text(72, 1150, BOT, 44, "s", TG, 700),
+                                  ty0=760, tsize=100)),
+        ("12-alerta-passos", claro(["Alerta em", "três passos."], [], selo=False,
+                                   extra=mavi(930, 150, 170, NAVY)
+                                   + passos(72, 620, ["No site, toque no sino do livro.",
+                                                      "No Telegram, toque em Iniciar.",
+                                                      "Quando entrar em oferta, a Mavi avisa."])
+                                   + text(72, 1040, ["Também dá para mandar o título ou o autor",
+                                                    f"direto ao {BOT}. Em /lista você vê",
+                                                    "e tira livros; /parar apaga tudo."], 36, "s", MUTED, 400, 1.4))),
     ]
 
 
@@ -525,8 +619,12 @@ def stories():
                                     ["Em 30 segundos: como o histórico de", "90 dias mostra a resposta."],
                                     extra=carimbo(880, 560, 200, RED), ty0=720, tsize=120)),
         ("s3-canais", story(NAVY, ["Siga o canal."],
-                            ["Telegram ou WhatsApp, sem cadastro.", "Os links estão na bio."],
-                            extra=botoes_canais(72, 1060, 38), ty0=720)),
+                            [CANAL_NOME + ",", "no Telegram ou no WhatsApp. Sem cadastro."],
+                            extra=botoes_canais(72, 1000, 38), ty0=720)),
+        ("s4-mavi", story(NAVY, ["Me avise", "se baixar."],
+                          ["Toque no sino de um livro no site.", "Quando ele entrar em oferta, a Mavi",
+                           f"avisa no Telegram: {BOT}."],
+                          extra=mavi(540, 590, 420), ty0=960, tsize=110)),
     ]
 
 
@@ -563,7 +661,7 @@ def main(only_svg=False):
     # 2. destaques do Instagram
     for nome, ic, cor in [("ofertas", "tag", RED_DARK), ("manga", "g-manga", G["manga"][1]),
                           ("curadoria", "carimbo", ROSE), ("como-funciona", "grafico", RED_DARK),
-                          ("canais", "sino", WA)]:
+                          ("canais", "canal", WA), ("alerta", "sino", TG), ("pedir", "busca", ROSE)]:
         p = write(f"destaques/{nome}.svg", destaque(nome, ic, cor))
         jobs.append((p, p.with_suffix(".png"), 1080, 1920))
     p = write("canal/telegram-fixada.svg", canal_1280(None, depth=4))
@@ -602,13 +700,15 @@ def main(only_svg=False):
     for t in HERE.glob("perfil/.tmp-*.svg"):
         t.unlink()
 
-    # grade 3x3 como aparece no perfil (o post 9 no canto superior esquerdo)
+    # grade como aparece no perfil (o post mais novo no canto superior esquerdo): as 9 mais novas e a completa
     ordem = [n for n, _ in posts()][::-1]
-    cells = "".join(f'<img src="{(HERE / "posts" / (n + ".png")).as_uri()}">' for n in ordem)
-    html = write("posts/.grade.html", "<style>body{margin:0;background:#fff;display:grid;grid-template-columns:"
-                 "repeat(3,360px);gap:4px}img{width:360px;height:450px;display:block}</style>" + cells)
-    png(html, HERE / "posts/grade-3x3.png", 1088, 1358)
-    html.unlink()
+    for nome, lista in [("grade-3x3", ordem[:9]), ("grade-completa", ordem)]:
+        cells = "".join(f'<img src="{(HERE / "posts" / (n + ".png")).as_uri()}">' for n in lista)
+        html = write("posts/.grade.html", "<style>body{margin:0;background:#fff;display:grid;grid-template-columns:"
+                     "repeat(3,360px);gap:4px}img{width:360px;height:450px;display:block}</style>" + cells)
+        linhas = len(lista) // 3
+        png(html, HERE / f"posts/{nome}.png", 1088, linhas * 454 - 4)
+        html.unlink()
 
 
 if __name__ == "__main__":
