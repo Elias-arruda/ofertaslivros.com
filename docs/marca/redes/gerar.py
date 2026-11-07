@@ -627,8 +627,8 @@ def posts():
                                   ty0=760, tsize=100)),
         ("08-pedir-um-livro", claro(["Não achou", "o seu livro?"],
                                     ["Toque em Pedir um livro no site e escreva o",
-                                     "nome e o autor. O pedido vai para a curadoria",
-                                     "e não leva nenhum dado seu."],
+                                     "nome e o autor. O pedido vai para a curadoria,",
+                                     "sem e-mail, telefone nem cadastro."],
                                     extra=form_pedido(72, 650, 936))),
         ("09-alerta-passos", tela_alerta()),
     ]

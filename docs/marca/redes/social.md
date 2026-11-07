@@ -124,7 +124,7 @@ Oferta real, a de maior desconto no site em 07/11/2026: na Amazon por R$ 25,75 (
 `#livros #ofertasdelivros #listadedesejos #leitura`
 
 ### 8. Pedir um livro (`posts/08-pedir-um-livro`)
-> Não achou o livro que você quer? No site, toque em "Pedir um livro" e escreva o nome e o autor. Só isso: não pedimos nenhum dado seu.
+> Não achou o livro que você quer? No site, toque em "Pedir um livro" e escreva o nome e o autor. Só isso: não pedimos e-mail, telefone nem cadastro. O site usa o endereço IP só para barrar envios repetidos, sem guardá-lo (veja ofertaslivros.com.br/privacidade/).
 > O pedido vai para a curadoria. Se o livro entrar em oferta, ele aparece no site e nos canais.
 > Link na bio.
 
