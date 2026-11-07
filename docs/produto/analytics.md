@@ -15,7 +15,7 @@ Medir o site e mostrar ao Elias, num painel privado:
 
 - CSP `script-src 'self'`, sem script de terceiros, site completo sem JS. Nada de Google Analytics nem Web Analytics da Cloudflare, cujo beacon vem de `cloudflareinsights.com`.
 - Sem cookie, sem IP e sem user agent guardados. O país é o único dado de localização.
-- O `/r/` continua sendo o `_redirects` estático gerado pelo `build.py`, sem Worker. A allowlist, o `affiliate_url`, o `ml_url` e o `check_url` não mudam.
+- O `/r/` continua sendo o `_redirects` estático gerado pelo `build.py`. Desde a spec [`meta-conversions-api.md`](meta-conversions-api.md) (decisão 4 do Elias, 2026-11-07), o `/r/*` passa pelo Worker, que devolve a resposta do `_redirects` intacta e só lê o `Location` para decidir se manda o evento `SaidaLoja` à Meta. Para voltar ao estático, basta tirar `/r/*` do `run_worker_first`. A allowlist, o `affiliate_url`, o `ml_url` e o `check_url` não mudam.
 - O repo é público. Dado de venda e de comissão nunca vai para o repo, issue, PR ou artifact do Actions.
 
 ## Coleta
@@ -166,7 +166,7 @@ No ar com a F1b (`worker/painel.js`). O Access é a aplicação `painel-ofertasl
 - O Worker **também confere o JWT do Access**: sem um JWT válido, a resposta é 403, mesmo se a regra do Access sumir.
 - É HTML montado no servidor, sem JS, com `<meta http-equiv="refresh" content="60">`.
 - O token só de leitura (Account Analytics e Zone Analytics) e o binding do D1 ficam no Worker (segredo e binding, nunca no repo).
-- Só o `/painel*` passa pelo Worker (e o `/e`, se a F2 for aprovada). O `/r/` continua estático, então a cota do Free nunca derruba o clique de afiliado.
+- O `/painel*` passa pelo Worker (e o `/e`, se a F2 for aprovada). O `/r/*` também passa pelo Worker desde a spec da Meta Conversions API: se a cota do Free estourar, o clique de afiliado quebra (risco na seção 9 daquela spec).
 
 ## Vendas pelo navegador
 

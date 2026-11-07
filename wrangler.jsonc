@@ -3,17 +3,25 @@
   "main": "worker/index.js",
   "compatibility_date": "2026-10-18",
   "workers_dev": true,
+  // Workers Logs desligado: a Cloudflare não guarda Referer, User-Agent nem fbclid do /r/ (spec da Meta CAPI §5.1).
+  // Já estava desligado no painel (script-settings sem observability em 2026-11-07); o wrangler tail segue funcionando.
+  "observability": { "enabled": false },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
-    // Só o POST do "Pedir um livro", o /painel e o webhook do bot rodam o Worker; o resto sai direto dos assets.
+    // Só o POST do "Pedir um livro", o /painel, o webhook do bot, o /r/* e o opt-out da Meta rodam o Worker;
+    // o resto sai direto dos assets. No /r/* o Worker devolve a resposta do _redirects intacta e, para anúncio
+    // pago, manda o evento SaidaLoja à Meta (docs/produto/meta-conversions-api.md). Para voltar ao /r/ estático,
+    // basta tirar "/r/*" daqui.
     // /telegram não é segredo (este arquivo é público): o controle é o header X-Telegram-Bot-Api-Secret-Token.
-    "run_worker_first": ["/pedido", "/painel", "/painel/*", "/telegram"]
+    "run_worker_first": ["/pedido", "/painel", "/painel/*", "/telegram", "/r/*", "/privacidade/sem-meta"]
   },
   // /painel (Access + JWT conferido no Worker): lê o daily_rollup do D1 e o GraphQL da zona.
   // Segredo CF_ANALYTICS_TOKEN (só leitura de analytics) no painel: Worker > Settings > Variables and Secrets.
   // BOT: lista de desejos do Telegram (chat_id e itens), separado do analytics (docs/produto/bot-lista-de-desejos.md §9).
   // Segredos TELEGRAM_BOT_TOKEN e TELEGRAM_WEBHOOK_SECRET no Worker: Settings > Variables and Secrets.
+  // Meta Conversions API: segredos META_CAPI_TOKEN, META_DATASET_ID e META_TEST_CODE (temporário) no Worker,
+  // tipo Secret. Sem eles, o /r/ só redireciona. Apagar META_CAPI_TOKEN desliga o envio sem deploy.
   "d1_databases": [
     { "binding": "ANALYTICS", "database_name": "ofertaslivros-analytics", "database_id": "aa8a7b0d-e44f-4c1c-8c11-b6e204460e32" },
     { "binding": "BOT", "database_name": "ofertaslivros-bot", "database_id": "9dccfcf7-1342-4d88-bec8-7f32d75cd1ca" }
