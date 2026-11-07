@@ -10,10 +10,12 @@ Proposta do brand-designer em 2026-11-04, atualizada em 2026-11-07, para o Elias
 5. Pouco e bom: se não baixou de verdade, não posta.
 
 **Regras fixas para qualquer post de oferta**
-- O preço vem do site no dia, com a data e a hora da conferência. Nos 3 exemplos abaixo, o preço é placeholder (`R$ 00,00`) e o post só vai ao ar com o preço trocado.
+- O preço vem do site, com a data e a hora da conferência. Ele é o daquele horário e pode mudar: se o post sair depois, confira no site e troque (ou refaça o post com `gerar.py --captura`).
 - O selo "Menor preço em 90 dias" só entra se o site mostrar o selo para aquele livro naquele dia.
 - Toda legenda de oferta termina com "Link de afiliado" e "O preço final é o da loja".
-- Sem capa real e sem logo da Amazon ou do Mercado Livre na arte: a loja aparece por escrito ("na Amazon", "no Mercado Livre").
+- A capa é a mesma imagem que o site mostra (o `image_url` do `offers.json`), nunca baixada da Amazon. Sem logo da Amazon ou do Mercado Livre na arte: a loja aparece por escrito ("na Amazon", "no Mercado Livre").
+- O selo é o que o site mostra para o livro naquele horário: "Menor preço em 90 dias" só com 90 dias de histórico; com menos, "Menor preço desde DD/MM"; sem nenhum dos dois, sem selo.
+- Toda arte com preço leva no rodapé "Link de afiliado. O preço final é o da loja."
 
 **Regras fixas para falar do bot (a Mavi)**
 - O bot avisa quando o livro **entrar em oferta**, com o mesmo critério do site e do canal. Não dizer "avisa quando o preço baixar" nem "avisa no preço que você quiser" (preço-alvo não existe).
@@ -66,9 +68,9 @@ Os limites do bot (64, 120 e 512) são os da Bot API (`setMyName`, `setMyShortDe
 > Não achou um livro? Peça no site, no botão "Pedir um livro".
 > Todas as ofertas: https://ofertaslivros.com.br
 
-## Os 12 posts do feed
+## Os 9 posts do feed
 
-A ordem é a de publicação. O post 1 fica no canto inferior direito da grade e o 12 no superior esquerdo (veja `posts/grade-completa.png`; a `grade-3x3.png` mostra as 9 mais novas, que é o que aparece primeiro no perfil). Publique nesta ordem. Sugestão: fixar no perfil os posts 5 (onde seguir), 11 (a Mavi) e 8 (transparência).
+A ordem é a de publicação. O post 1 fica no canto inferior direito da grade e o 9 no superior esquerdo (veja `posts/grade-3x3.png`). A grade é um xadrez: os ímpares são escuros (cantos e centro) e os pares, claros. Publique nesta ordem. Sugestão: fixar no perfil os posts 5 (onde seguir), 7 (a Mavi) e 9 (alerta em três passos).
 
 Hashtags: de 3 a 5 por post, só de assunto. O Instagram recomenda poucas e relevantes.
 
@@ -86,13 +88,13 @@ Hashtags: de 3 a 5 por post, só de assunto. O Instagram recomenda poucas e rele
 
 `#livros #ofertasdelivros #dicasdeleitura #leitura`
 
-### 3. Oferta de exemplo: Torto arado (`posts/03-oferta-torto-arado`)
-Antes de publicar: troque os `R$ 00,00`, o desconto e o carimbo `DD/MM às HHhMM` pelos dados do site no dia, e tire a linha "Preço ilustrativo" do SVG.
-> Torto arado, de Itamar Vieira Junior, por R$ [preço] na Amazon (de R$ [preço anterior]).
-> Preço conferido em [DD/MM] às [HHhMM]. O preço muda rápido: confira antes de comprar.
+### 3. Oferta: Mindset (`posts/03-oferta-mindset`)
+Oferta real, a de maior desconto no site em 07/11/2026: na Amazon por R$ 25,75 (de R$ 69,90, −63%), conferida em 07/11 às 09h28, com o selo "Menor preço desde 20/10" que o site mostrava. O preço é o daquele horário e pode mudar: confira no site antes de publicar e, se mudou, troque os números (ou escolha outra oferta e rode `gerar.py --captura`).
+> Mindset: a nova psicologia do sucesso, de Carol S. Dweck, por R$ 25,75 na Amazon (de R$ 69,90). É o menor preço desde 20/10.
+> Preço conferido em 07/11 às 09h28. O preço muda rápido e pode já ser outro: confira no site antes de comprar.
 > Link na bio. Link de afiliado. O preço final é o da loja.
 
-`#tortoarado #literaturabrasileira #livros #ofertasdelivros`
+`#mindset #caroldweck #desenvolvimentopessoal #livros #ofertasdelivros`
 
 ### 4. Curadoria, não despejo (`posts/04-curadoria`)
 > Tem perfil que posta cem ofertas por dia. A gente posta poucas.
@@ -114,44 +116,22 @@ Antes de publicar: troque os `R$ 00,00`, o desconto e o carimbo `DD/MM às HHhMM
 
 `#manga #romance #fantasia #literaturabrasileira #livros`
 
-### 7. Oferta de exemplo: One Piece vol. 1 (`posts/07-oferta-one-piece`)
-Antes de publicar: os mesmos campos do post 3.
-> One Piece vol. 1, de Eiichiro Oda, por R$ [preço] na Amazon (de R$ [preço anterior]).
-> Preço conferido em [DD/MM] às [HHhMM].
-> Link na bio. Link de afiliado. O preço final é o da loja.
-
-`#onepiece #manga #mangabrasil #ofertasdelivros`
-
-### 8. Transparência (`posts/08-transparencia`)
-> Como o Ofertas Livros se paga: os links são de afiliado. Como associados da Amazon e afiliados do Mercado Livre, ganhamos com compras qualificadas.
-> O preço final é o da loja. A gente mostra o horário em que conferiu, mas o preço pode mudar depois disso.
-> Nenhuma loja escolhe o que aparece aqui: entra o livro que passa pela curadoria (preço conferido na loja e comparado com o histórico).
-
-`#livros #ofertasdelivros #transparencia`
-
-### 9. Oferta de exemplo: O Hobbit (`posts/09-oferta-o-hobbit`)
-Antes de publicar: os mesmos campos do post 3. O selo "Menor preço em 90 dias" só fica se o site mostrar o selo para O Hobbit no dia; se não mostrar, apague o grupo do selo no SVG.
-> O Hobbit, de J.R.R. Tolkien, por R$ [preço] no Mercado Livre (de R$ [preço anterior]). [Se tiver o selo: É o menor preço dos últimos 90 dias.]
-> Preço conferido em [DD/MM] às [HHhMM].
-> Link na bio. Link de afiliado. O preço final é o da loja.
-
-`#ohobbit #tolkien #fantasia #livros #ofertasdelivros`
-
-### 10. Pedir um livro (`posts/10-pedir-um-livro`)
-> Não achou o livro que você quer? No site, toque em "Pedir um livro" e escreva o nome e o autor. Só isso: não pedimos nenhum dado seu.
-> O pedido vai para a curadoria. Se o livro entrar em oferta, ele aparece no site e nos canais.
-> Link na bio.
-
-`#livros #ofertasdelivros #leitura #bookstagrambrasil`
-
-### 11. A Mavi avisa (`posts/11-mavi-alerta`)
+### 7. A Mavi avisa (`posts/07-mavi-alerta`)
 > Esta é a Mavi, a assistente do Ofertas Livros no Telegram.
 > Escolha um livro (ou um autor) e ela avisa quando ele entrar em oferta, com o mesmo critério do site: preço conferido na loja. Os avisos chegam das 8h às 22h, e /parar apaga tudo.
 > É grátis: @ofertaslivros_bot. Link na bio. Os links dos avisos são de afiliado, e o preço final é o da loja.
 
 `#livros #ofertasdelivros #listadedesejos #leitura`
 
-### 12. Alerta em três passos (`posts/12-alerta-passos`)
+### 8. Pedir um livro (`posts/08-pedir-um-livro`)
+> Não achou o livro que você quer? No site, toque em "Pedir um livro" e escreva o nome e o autor. Só isso: não pedimos nenhum dado seu.
+> O pedido vai para a curadoria. Se o livro entrar em oferta, ele aparece no site e nos canais.
+> Link na bio.
+
+`#livros #ofertasdelivros #leitura #bookstagrambrasil`
+
+### 9. Alerta em três passos (`posts/09-alerta-passos`)
+A imagem é a página real do livro no site (captura do Chrome headless em 07/11 às 09h28), com o botão "Me avise se baixar" marcado. Os passos 2 e 3 acontecem no Telegram e não têm print.
 > 1. No site, toque no sino "Me avise se baixar" do livro.
 > 2. No Telegram, toque em Iniciar.
 > 3. Quando o livro entrar em oferta, a Mavi avisa.
@@ -184,8 +164,8 @@ Adesivo de link para `https://t.me/ofertaslivros_bot`, colocado entre o texto e 
 |---|---|
 | `ofertas` | os stories de oferta |
 | `manga` | ofertas de mangá e HQ |
-| `curadoria` | como escolhemos (post 4, S2) |
+| `curadoria` | como escolhemos (post 4) |
 | `como-funciona` | o histórico de 90 dias (post 2, S2) |
 | `canais` | S3 |
-| `alerta` | S4 e os passos do post 12 |
-| `pedir` | um story com o post 10 e o adesivo de link para `https://ofertaslivros.com.br` |
+| `alerta` | S4 e os passos do post 9 |
+| `pedir` | um story com o post 8 e o adesivo de link para `https://ofertaslivros.com.br` |

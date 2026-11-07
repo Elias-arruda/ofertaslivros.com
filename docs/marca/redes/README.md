@@ -1,6 +1,6 @@
 # Kit de redes sociais
 
-Proposta do brand-designer em 2026-11-04, atualizada em 2026-11-07 (bot e Mavi, os dois canais com os nomes reais, "Pedir um livro" e o domínio .com.br), aguardando a aprovação do Elias. O kit não cria identidade nova. Ele usa só o que já está no site:
+Proposta do brand-designer em 2026-11-04, atualizada em 2026-11-07 (bot e Mavi, os dois canais com os nomes reais, "Pedir um livro", o domínio .com.br e, na rodada 2 do Elias, a grade de volta a 9, com um post de oferta real e a tela real do site no post do alerta), aguardando a aprovação do Elias. O kit não cria identidade nova. Ele usa só o que já está no site:
 - a paleta do `static/style.css`: marinho `#1c2b4a`, noite `#0f1729`, marfim `#edf1f5`, vermelho do carimbo `#b3262f` (`#ff8a8f` no escuro), rosa `#f2a3a8` e os acentos por nicho;
 - o logo B (`static/logo.svg` e `static/logo-negativo.svg`), com ".br" acrescentado no fim, no mesmo traço e na mesma cor do ".com" (ver "Pontos para o Elias decidir");
 - o símbolo do carimbo (`docs/marca/logos/carimbo-simbolo.svg`);
@@ -18,7 +18,8 @@ Os textos (bios, legendas, hashtags e descrições dos canais) estão em `social
 | `destaques/` | capas dos destaques do Instagram: `ofertas`, `manga`, `curadoria`, `como-funciona`, `canais` (megafone), `alerta` (sino, o do bot) e `pedir` (lupa, a do botão "Pedir um livro") | 1080×1920 |
 | `canal/` | `telegram-fixada`: imagem da mensagem fixada do Telegram e do Canal do WhatsApp | 1280×720 |
 | `templates/` | `feed-oferta`, `carrossel-capa`, `carrossel-pagina`, `story-reels-tiktok`, `canal-1280x720`, com a camada de guias ligada | ver o nome |
-| `posts/` | os 12 posts da grade inicial, `grade-3x3.png` (as 9 mais novas, o que o perfil mostra primeiro) e `grade-completa.png` (as 4 linhas) | 1080×1350 |
+| `posts/` | os 9 posts da grade inicial e `grade-3x3.png` (prévia do perfil) | 1080×1350 |
+| `posts/fontes/` | `capa-livro.jpg` (a capa que o site mostra, do `image_url` do `offers.json`) e `tela-livro.jpg` (a página do livro no site, pelo Chrome headless, recortada no card). Os SVG dos posts 3 e 9 apontam para elas por caminho relativo | |
 | `stories/` | `s1-chegamos`, `s2-capa-historico` (capa de reels/TikTok), `s3-canais` e `s4-mavi` (o alerta) | 1080×1920 |
 | `gerar.py` | gera todos os SVG e PNG de novo | |
 
@@ -47,7 +48,7 @@ Os textos (bios, legendas, hashtags e descrições dos canais) estão em `social
 |---|---|---|
 | Instagram (feed) | oferta | `templates/feed-oferta.svg` |
 | Instagram (feed) | explicação em passos | `templates/carrossel-capa.svg` + `templates/carrossel-pagina.svg` (o número só quando há sequência real) |
-| Instagram (feed) | aviso, institucional | copiar um post de `posts/` (claro: 02, 04, 06, 08, 10, 12; escuro: 01, 05, 11) |
+| Instagram (feed) | aviso, institucional | copiar um post de `posts/` (claro: 02, 04, 06, 08; escuro: 01, 05, 07) |
 | Instagram (stories), Reels, TikTok | story e capa de vídeo | `templates/story-reels-tiktok.svg` |
 | Instagram (destaques) | capa | `destaques/*.png` |
 | Telegram e WhatsApp | post manual ou anúncio | `templates/canal-1280x720.svg` |
@@ -55,20 +56,20 @@ Os textos (bios, legendas, hashtags e descrições dos canais) estão em `social
 
 As ofertas automáticas do Telegram continuam como na `distribuicao-canais.md`, com a foto do ML ou sem foto. O template de canal é para posts manuais.
 
-**Grade:** um xadrez de escuro e claro. Nas 3 linhas de baixo (posts 1 a 9), os cantos são ofertas, com o fundo escuro e o brilho do nicho, as bordas são posts claros e o centro é o post escuro "Onde seguir". A linha de cima (10 a 12) segue o xadrez: "Pedir um livro" (claro), a Mavi (escuro, no centro) e os passos do alerta (claro). Para manter o padrão depois dos 12, alterne um escuro e um claro.
+**Grade:** um xadrez de escuro e claro, com os ímpares escuros. Cantos: o que é (1), a oferta real (3), a Mavi (7) e o alerta com a tela do site (9). Centro: "Onde seguir" (5). Bordas, claras: histórico (2), curadoria (4), nichos (6) e "Pedir um livro" (8). Para manter o padrão depois dos 9, alterne um escuro e um claro.
 
-**Nomes que aparecem nas artes** (conferidos no site no ar e nas páginas públicas em 2026-11-07): os dois canais se chamam "Só Mais um Livro - Ofertas Livros" (Telegram `t.me/maviOfertaslivros` e Canal do WhatsApp); o bot é o `@ofertaslivros_bot`, com a Mavi de avatar; os botões do site são "Canal no WhatsApp", "Canal no Telegram", "Me avise se baixar" e "Pedir um livro". As artes não mostram print de conversa nem dado de ninguém: o form do post 10 é desenhado, com os campos vazios.
+**Nomes que aparecem nas artes** (conferidos no site no ar e nas páginas públicas em 2026-11-07): os dois canais se chamam "Só Mais um Livro - Ofertas Livros" (Telegram `t.me/maviOfertaslivros` e Canal do WhatsApp); o bot é o `@ofertaslivros_bot`, com a Mavi de avatar; os botões do site são "Canal no WhatsApp", "Canal no Telegram", "Me avise se baixar" e "Pedir um livro". As artes não mostram print de conversa nem dado de ninguém: o form do post 8 é desenhado, com os campos vazios, e a tela do post 9 é a página pública de um livro, sem conta, conversa ou dado pessoal.
 
 ## Como editar os SVG
 
 1. **Fontes:** os SVG chamam a Fraunces e a Outfit de `static/fonts/` por caminho relativo. Isso funciona no Chrome e no Inkscape a partir do repo. No Figma, instale antes os dois `.woff2` de `static/fonts/`, que são OFL e podem ser instalados. Se a fonte faltar, o texto cai para Georgia/system-ui e a medida muda.
 2. **Texto:** todo texto é `<text>` vivo, com uma `<tspan>` por linha. Para mudar o título, edite as linhas. Não há quebra automática: título com até 2 linhas no feed e 3 no story.
 3. **Guias:** nos templates, as guias ficam no grupo `id="guias"`. Esconda ou apague esse grupo antes de exportar.
-4. **Post de oferta:** troque o título, o autor, a inicial da capa e o nicho. O preço, o desconto e o carimbo `DD/MM às HHhMM` vêm do site no dia. Apague o grupo `id="ilustrativo"`. Apague o grupo `id="selo"` se o site não mostrar o selo "Menor preço em 90 dias" para aquele livro.
-5. **Capa:** a capa é um placeholder (cor do nicho + inicial em itálico), como o site faz quando não tem foto. Não cole a capa real nem o logo das lojas.
+4. **Post de oferta:** o post 3 usa uma oferta real: Mindset, de Carol S. Dweck, na Amazon por R$ 25,75 (de R$ 69,90, −63%), conferida em 07/11 às 09h28, a de maior desconto entre as ofertas ativas com preço no prazo no `offers.json` do branch `price-history` (commit 8e95708), lido com o `resolve` do `build.py`. **O preço é o do horário conferido e pode mudar.** Antes de publicar, confira no site; se mudou, troque `OFERTA` no `gerar.py`. O selo é o que o site mostra para o livro: "Menor preço em 90 dias" só com 90 dias de histórico; aqui é "Menor preço desde 20/10". Sem selo no site, sem o grupo `id="selo"`.
+5. **Capa:** no post de oferta real, a capa é a imagem que o site já usa (o `image_url` do `offers.json`, servida pelo CDN do Mercado Livre), nunca baixada da Amazon (regra 1). No template, segue o placeholder (cor do nicho + inicial em itálico), como o site faz quando não tem foto. Nunca o logo das lojas.
 6. **Exportar:** Figma ou Inkscape, PNG em 1x. Ou rode o gerador.
 
-**Gerador:** `python3 docs/marca/redes/gerar.py` refaz todos os SVG e PNG (o `--svg` refaz só os SVG; o `--tabela` imprime o contraste). Ele usa o Google Chrome headless, porque rsvg-convert, cairosvg e inkscape não estão na máquina. Fora do macOS, aponte o binário com `CHROME=/caminho/do/chrome python3 docs/marca/redes/gerar.py`. O gerador sai com erro se algum par de cor ficar abaixo do mínimo WCAG. Mudança de texto dos 12 posts e dos stories: edite `posts()` e `stories()` no script, ou edite o SVG direto (o script sobrescreve o SVG se for rodado de novo).
+**Gerador:** `python3 docs/marca/redes/gerar.py` refaz todos os SVG e PNG (o `--svg` refaz só os SVG; o `--tabela` imprime o contraste). Ele usa o Google Chrome headless, porque rsvg-convert, cairosvg e inkscape não estão na máquina. Fora do macOS, aponte o binário com `CHROME=/caminho/do/chrome python3 docs/marca/redes/gerar.py`. O `--captura` baixa de novo a capa e tira de novo a tela do site (`posts/fontes/`); rode junto com a troca de `OFERTA`, para a tela e os números baterem. O recorte usa o `sips` do macOS e um enquadramento fixo do card: confira a imagem se o layout do site mudar. O gerador sai com erro se algum par de cor ficar abaixo do mínimo WCAG. Mudança de texto dos 9 posts e dos stories: edite `posts()` e `stories()` no script, ou edite o SVG direto (o script sobrescreve o SVG se for rodado de novo).
 
 ## Contraste (saída do `gerar.py --tabela`)
 
@@ -90,8 +91,8 @@ Texto ≥ 4,5:1; texto grande, carimbo e UI ≥ 3:1. Todos passam.
 | texto do botão WhatsApp | #06210f | #25d366 | 8.59:1 | 4.5 |
 | ícone Telegram sobre noite | #2aabee | #0f1729 | 6.94:1 | 3.0 |
 | @ do bot em azul Telegram sobre marinho | #2aabee | #1c2b4a | 5.46:1 | 4.5 |
-| texto do formulário sobre papel (post 10) | #1c2b4a | #fbfcfd | 13.69:1 | 4.5 |
-| rótulo do formulário sobre papel (post 10) | #4a5670 | #fbfcfd | 7.16:1 | 4.5 |
+| texto do formulário sobre papel (post 8) | #1c2b4a | #fbfcfd | 13.69:1 | 4.5 |
+| rótulo do formulário sobre papel (post 8) | #4a5670 | #fbfcfd | 7.16:1 | 4.5 |
 | ink sobre acento (10 nichos) | ex.: #22040f / #e5468f | | 5.07 a 5.34:1 | 4.5 |
 | acento sobre noite (10 nichos) | | #0f1729 | 4.73 a 5.08:1 | 3.0 |
 | acento sobre marfim (10 nichos) | | #edf1f5 | 3.10 a 3.33:1 | 3.0 |
@@ -105,4 +106,4 @@ O menor texto das artes tem 26 px num quadro de 1080, o que dá cerca de 9 pt no
 3. **`@` das redes:** o canal do Telegram (`@maviOfertaslivros`) e o bot (`@ofertaslivros_bot`) já existem. O Instagram e o TikTok ainda não (ver `social.md`).
 4. **Ícones de Telegram e WhatsApp:** são os desenhos de linha do site (avião de papel e balão), não os logos oficiais, e aparecem só como rótulo de botão. Se preferir, dá para usar só o texto.
 5. **Descrição do canal do Telegram no ar:** "Melhor canal do melhor site de ofertas de livros do Brasil! ..." foge do tom (superlativo, exclamação) e não tem o aviso de afiliado. A sugestão está em `social.md`. O nome do bot ("Mavi · Ofertaslivros.com") também tem sugestão lá.
-6. **Grade de 12:** as 3 peças novas entraram como uma linha a mais (10 a 12), sem tirar nenhum post antigo. Se preferir ficar em 9, as candidatas a sair são o 04 (curadoria, que repete parte do 01) e o 12 (passos do alerta, que repete parte do 11).
+6. **Transparência sem post próprio:** o post "Como a gente ganha" saiu (rodada 2). O aviso de afiliado continua nas bios, na mensagem fixada, nas legendas de oferta e no rodapé de toda arte com preço.

@@ -231,7 +231,7 @@ def aneis(cx, cy, color, n=7, r0=120, step=70, op=0.07):
                    f'stroke-opacity="{op}" stroke-width="2"/>' for i in range(n))
 
 
-def livro(x, y, w, accent, ink, inicial, rot=-3, ribbon=None):
+def livro(x, y, w, accent, ink, inicial, rot=-3, ribbon=None, img=None):
     """O objeto da marca: capa com miolo saindo por trás e fita marcadora na cor do nicho.
     A capa é o placeholder do site (cor do nicho + inicial em itálico): não finge ser a capa real."""
     h = w * 1.5
@@ -243,10 +243,17 @@ def livro(x, y, w, accent, ink, inicial, rot=-3, ribbon=None):
     fita_x = x + pg + w * .74
     fita = (f'<path d="M{fita_x} {y + h * .9} h{w * .1} v{h * .16} l{-w * .05} {-h * .04} l{-w * .05} {h * .04}z" fill="{ribbon}"/>')
     sombra = f'<rect x="{x + 10}" y="{y + 24}" width="{w}" height="{h}" rx="{w * .05}" fill="#000" fill-opacity=".35"/>'
-    capa = (f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{w * .05}" fill="{accent}"/>'
-            f'<rect x="{x + w * .045}" y="{y}" width="{w * .02}" height="{h}" fill="#000" fill-opacity=".12"/>'
-            + text(x + w * .5, y + h * .6, inicial, round(w * .62), "fi", ink, 800, anchor="middle",
-                   extra=' fill-opacity=".72"'))
+    if img:  # capa real: a mesma imagem que o site mostra (image_url do offers.json), cortada nos cantos
+        cid = f"capa{next(_MAVI_ID)}"
+        capa = (f'<defs><clipPath id="{cid}"><rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{w * .05}"/></clipPath></defs>'
+                f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{w * .05}" fill="{PAPER}"/>'
+                f'<image href="{img}" x="{x}" y="{y}" width="{w}" height="{h}" preserveAspectRatio="xMidYMid slice" '
+                f'clip-path="url(#{cid})"/>')
+    else:
+        capa = (f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{w * .05}" fill="{accent}"/>'
+                f'<rect x="{x + w * .045}" y="{y}" width="{w * .02}" height="{h}" fill="#000" fill-opacity=".12"/>'
+                + text(x + w * .5, y + h * .6, inicial, round(w * .62), "fi", ink, 800, anchor="middle",
+                       extra=' fill-opacity=".72"'))
     cx, cy = x + w / 2, y + h / 2
     return f'<g transform="rotate({rot} {cx} {cy})">{fita}{pages}{sombra}{capa}</g>'
 
@@ -302,14 +309,14 @@ def oferta(d, template=False, depth=4):
     topo_preco = preco_y - 92
     sy = topo_preco - 70 if d.get("selo") else topo_preco
     autor_y = sy - 40
-    n = len(d["titulo"])
-    t1 = autor_y - 62 - 90 * (n - 1)
+    n, ts = len(d["titulo"]), d.get("tsize", 88)
+    t1 = autor_y - 62 - round(ts * 1.02) * (n - 1)
     lw = min(380, (t1 - 80 - 60 - 150) / 1.62)
-    b += livro(545 - lw * 1.16 / 2, 150, lw, acc, ink, d["inicial"], ribbon=acc2)
-    b += text(72, t1, d["titulo"], 88, "f", IVORY, lh=1.02)
+    b += livro(545 - lw * 1.16 / 2, 150, lw, acc, ink, d.get("inicial", ""), ribbon=acc2, img=d.get("capa"))
+    b += text(72, t1, d["titulo"], ts, "f", IVORY, lh=1.02)
     b += text(72, autor_y, d["autor"], 42, "fi", MUTED_DARK)
     if d.get("selo"):
-        s, _ = pill(72, sy, "Menor preço em 90 dias", 24, RED_DARK, NIGHT)
+        s, _ = pill(72, sy, d.get("selo_txt", "Menor preço em 90 dias"), 24, RED_DARK, NIGHT)
         b += f'<g id="selo">{s}</g>'
     b += text(72, preco_y, d["preco"], 100, "s", IVORY, 700)
     b += text(72, de_y, d["de"], 36, "s", MUTED_DARK, 500, extra=' text-decoration="line-through"')
@@ -441,6 +448,39 @@ def passos(x, y, itens, gap=150):
                    + text(x + 92, y + i * gap - 8, t, 40, "s", NAVY, 600) for i, t in enumerate(itens))
 
 
+def tela_alerta():
+    """Post 9: a página real do livro no site (posts/fontes/tela-livro.jpg, de --captura), com o botão do sino
+    marcado, e os três passos ao lado. Os passos 2 e 3 acontecem no Telegram: sem print de conversa."""
+    W, H = 1080, 1350
+    x, y, w = 72, 300, 520
+    k = w / 1120  # a captura tem 1120x1440 (600 px de largura do celular, escala 2, recortada no card)
+    h = 1440 * k
+    by0, by1, bx0, bx1 = y + 1300 * k, y + 1385 * k, x + 46 * k, x + 1073 * k  # o botão "Me avise se baixar"
+    b = f'<rect width="{W}" height="{H}" fill="{NAVY}"/>' + aneis(1080, 0, IVORY, 7, 160, 90, .05)
+    b += text(72, 150, ["Alerta em", "três passos."], 96, "f", IVORY, lh=1.0)
+    b += (f'<defs><clipPath id="tela"><rect x="{x}" y="{y}" width="{w}" height="{h:.0f}" rx="22"/></clipPath></defs>'
+          f'<image href="fontes/tela-livro.jpg" x="{x}" y="{y}" width="{w}" height="{h:.0f}" clip-path="url(#tela)"/>'
+          f'<rect x="{x}" y="{y}" width="{w}" height="{h:.0f}" rx="22" fill="none" stroke="{IVORY}" stroke-opacity=".2" stroke-width="2"/>'
+          f'<rect x="{bx0 - 8:.0f}" y="{by0 - 8:.0f}" width="{bx1 - bx0 + 16:.0f}" height="{by1 - by0 + 16:.0f}" '
+          f'rx="{(by1 - by0 + 16) / 2:.0f}" fill="none" stroke="{RED_DARK}" stroke-width="5"/>')
+    num = lambda cx, cy, n: (f'<circle cx="{cx}" cy="{cy}" r="28" fill="{RED_DARK}"/>'
+                             + text(cx, cy + 12, str(n), 34, "s", NIGHT, 800, anchor="middle"))
+    b += num(bx1 + 8, (by0 + by1) / 2, 1)
+    for i, (n, linhas) in enumerate([(1, ["No site, toque em", "Me avise se baixar."]),
+                                     (2, ["No Telegram, toque", "em Iniciar."]),
+                                     (3, ["Quando o livro entrar", "em oferta, a Mavi", "avisa."])]):
+        yy = 400 + i * 200
+        b += num(668, yy - 12, n) + text(716, yy, linhas, 32, "s", IVORY, 600, 1.3)
+    b += text(x, y + h + 40, "Página do livro no site em 07/11 às 09h28.", 26, "s", MUTED_DARK, 500)
+    b += text(72, 1080, ["Também dá para mandar o título ou o autor direto",
+                         f"ao {BOT}. /lista mostra a lista; /parar apaga tudo."], 32, "s", MUTED_DARK, 400, 1.4)
+    b += f'<line x1="72" y1="1212" x2="1008" y2="1212" stroke="{IVORY}" stroke-opacity=".14" stroke-width="2"/>'
+    b += wordmark(72, 1248, 330)
+    # a tela mostra preço: rodapé de afiliado, como nos posts de oferta
+    b += text(1008, 1268, ["Link de afiliado.", "O preço final é o da loja."], 26, "s", MUTED_DARK, 500, 1.25, "end")
+    return doc(W, H, b, "Alerta em três passos")
+
+
 def story(fundo, titulo, corpo, extra="", template=False, depth=4, ty0=760, tsize=124, cor=None):
     W, H = 1080, 1920
     escuro_ = fundo != IVORY
@@ -531,24 +571,22 @@ def carrossel(capa, template=False, depth=4, n="1/5"):
 
 
 # ---------- conteúdo ----------
-OFERTAS = {  # livros reais do collector/catalog.json; preço sempre placeholder/ilustrativo
-    "torto": dict(g="literatura-brasileira", titulo=["Torto arado"], autor="Itamar Vieira Junior", inicial="T",
-                  preco="R$ 00,00", de="R$ 00,00", loja="na Amazon", desconto="−00%", data="DD/MM",
-                  hora="às HHhMM", ilustrativo=True),
-    "onepiece": dict(g="manga", titulo=["One Piece", "vol. 1"], autor="Eiichiro Oda", inicial="O",
-                     preco="R$ 00,00", de="R$ 00,00", loja="na Amazon", desconto="−00%", data="DD/MM",
-                     hora="às HHhMM", ilustrativo=True),
-    "hobbit": dict(g="fantasia", titulo=["O Hobbit"], autor="J.R.R. Tolkien", inicial="H", selo=True,
-                   preco="R$ 00,00", de="R$ 00,00", loja="no Mercado Livre", desconto="−00%", data="DD/MM",
-                   hora="às HHhMM", ilustrativo=True),
-}
+# O post de livro usa uma oferta real. Fonte: offers.json do branch price-history (commit 8e95708, 2026-11-07 14h31 UTC),
+# passado pelo build.resolve/ofertas: o maior desconto entre as ofertas ativas com preço no prazo. O preço é o do horário
+# conferido e pode mudar; o selo é o que o site mostrava ("menor preço desde", não o de 90 dias). Para trocar o livro,
+# mude OFERTA e LIVRO_URL e rode --captura, que baixa a capa (image_url do offers.json, a mesma do site) e a tela do site.
+OFERTA = dict(g="mindset", titulo=["Mindset: a nova", "psicologia do sucesso"], tsize=70, autor="Carol S. Dweck",
+              capa="fontes/capa-livro.jpg", selo=True, selo_txt="Menor preço desde 20/10",
+              preco="R$ 25,75", de="R$ 69,90", loja="na Amazon", desconto="−63%", data="07/11", hora="às 09h28")
+CAPA_URL = "https://http2.mlstatic.com/D_NQ_NP_796076-MLA112164434634_062026-F.jpg"
+LIVRO_URL = "https://ofertaslivros.com.br/livro/mindset-a-nova-psicologia-do-sucesso/"
 TEMPLATE_OFERTA = dict(g="fantasia", titulo=["Título do livro", "em até 2 linhas"], autor="Nome do autor",
                        inicial="A", selo=True, preco="R$ 00,00", de="R$ 00,00", loja="na loja", desconto="−00%",
                        data="DD/MM", hora="às HHhMM")
 
 
 def posts():
-    """Os 12 posts na ordem de publicação (4 linhas de 3). O 1 fica no canto inferior direito, o 12 no superior esquerdo."""
+    """Os 9 posts na ordem de publicação, em xadrez (ímpares escuros). O 1 fica no canto inferior direito, o 9 no superior esquerdo."""
     nichos = ["manga", "romance", "fantasia", "suspense", "literatura-brasileira", "ficcao", "mindset",
               "negocios", "historia", "politica"]
     return [
@@ -559,7 +597,7 @@ def posts():
         ("02-historico", claro(["Desconto de", "verdade se vê", "no histórico."],
                                ["Guardamos o preço de cada livro todo dia.", "Desconto sobre preço inflado não conta."],
                                extra=grafico(108, 820, 864, 190), tsize=100)),
-        ("03-oferta-torto-arado", oferta(OFERTAS["torto"])),
+        ("03-oferta-mindset", oferta(OFERTA)),
         ("04-curadoria", claro(["Curadoria,", "não despejo."],
                                ["Poucas ofertas por dia. Cada uma passa", "por três conferências:"],
                                extra=lista_check(72, 760, ["O preço foi visto na loja, com horário.",
@@ -578,18 +616,7 @@ def posts():
         ("06-nichos", claro(["Do mangá", "ao Machado."],
                             ["Uma página por nicho no site. Siga o seu."],
                             extra=chips(72, 620, 936, nichos))),
-        ("07-oferta-one-piece", oferta(OFERTAS["onepiece"])),
-        ("08-transparencia", claro(["Como a gente", "ganha."],
-                                   ["Os links são de afiliado. Como associados", "da Amazon e afiliados do Mercado Livre,",
-                                    "ganhamos com compras qualificadas.", "", "O preço final é o da loja: mostramos o",
-                                    "horário em que conferimos, e ele pode", "mudar depois disso."])),
-        ("09-oferta-o-hobbit", oferta(OFERTAS["hobbit"])),
-        ("10-pedir-um-livro", claro(["Não achou", "o seu livro?"],
-                                    ["Toque em Pedir um livro no site e escreva o",
-                                     "nome e o autor. O pedido vai para a curadoria",
-                                     "e não leva nenhum dado seu."],
-                                    extra=form_pedido(72, 650, 936))),
-        ("11-mavi-alerta", escuro(["Escolha o livro.", "A Mavi avisa."],
+        ("07-mavi-alerta", escuro(["Escolha o livro.", "A Mavi avisa."],
                                   ["Quando o livro entrar em oferta, ela manda",
                                    "uma mensagem no Telegram. Vale para um",
                                    "autor também. Grátis, das 8h às 22h."],
@@ -598,14 +625,12 @@ def posts():
                                          up=False, h=80)[0]
                                   + text(72, 1150, BOT, 44, "s", TG, 700),
                                   ty0=760, tsize=100)),
-        ("12-alerta-passos", claro(["Alerta em", "três passos."], [], selo=False,
-                                   extra=mavi(930, 150, 170, NAVY)
-                                   + passos(72, 620, ["No site, toque no sino do livro.",
-                                                      "No Telegram, toque em Iniciar.",
-                                                      "Quando entrar em oferta, a Mavi avisa."])
-                                   + text(72, 1040, ["Também dá para mandar o título ou o autor",
-                                                    f"direto ao {BOT}. Em /lista você vê",
-                                                    "e tira livros; /parar apaga tudo."], 36, "s", MUTED, 400, 1.4))),
+        ("08-pedir-um-livro", claro(["Não achou", "o seu livro?"],
+                                    ["Toque em Pedir um livro no site e escreva o",
+                                     "nome e o autor. O pedido vai para a curadoria",
+                                     "e não leva nenhum dado seu."],
+                                    extra=form_pedido(72, 650, 936))),
+        ("09-alerta-passos", tela_alerta()),
     ]
 
 
@@ -628,6 +653,23 @@ def stories():
     ]
 
 
+# ---------- fontes reais (capa e tela do site) ----------
+def captura():
+    """Atualiza posts/fontes/: a capa (CAPA_URL, a image_url do offers.json, que o site já usa; nunca a Amazon)
+    e a tela da página do livro no nosso site, pelo Chrome headless, recortada no card (sips, do macOS)."""
+    import urllib.request
+    f = HERE / "posts" / "fontes"
+    f.mkdir(parents=True, exist_ok=True)
+    urllib.request.urlretrieve(CAPA_URL, f / "capa-livro.jpg")
+    tmp = f / ".tela.png"
+    subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=2",
+                    "--window-size=600,1100", f"--screenshot={tmp}", LIVRO_URL], check=True, capture_output=True, timeout=180)
+    # ponytail: recorte fixo no card da página do livro; confira a imagem se o layout do site mudar
+    subprocess.run(["sips", "-s", "format", "jpeg", "-s", "formatOptions", "85", "-c", "1440", "1120",
+                    "--cropOffset", "350", "40", str(tmp), "--out", str(f / "tela-livro.jpg")], check=True, capture_output=True)
+    tmp.unlink()
+
+
 # ---------- saída ----------
 def write(rel, svg):
     p = HERE / rel
@@ -636,11 +678,21 @@ def write(rel, svg):
     return p
 
 
-def png(svg_path, out, w, h):
+def png(svg_path, out, w, h, tentativas=2):
+    """Perfil próprio e temporário: não briga com o Chrome aberto do Elias. Uma nova tentativa se travar."""
+    import tempfile
     out.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--allow-file-access-from-files",
-                    "--force-device-scale-factor=1", f"--window-size={w},{h}", f"--screenshot={out}",
-                    svg_path.as_uri()], check=True, capture_output=True, timeout=60)
+    for i in range(tentativas):
+        with tempfile.TemporaryDirectory() as perfil_:
+            try:
+                subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run",
+                                f"--user-data-dir={perfil_}", "--allow-file-access-from-files",
+                                "--force-device-scale-factor=1", f"--window-size={w},{h}", f"--screenshot={out}",
+                                svg_path.as_uri()], check=True, capture_output=True, timeout=120)
+                return
+            except subprocess.TimeoutExpired:
+                if i == tentativas - 1:
+                    raise
 
 
 def main(only_svg=False):
@@ -700,9 +752,9 @@ def main(only_svg=False):
     for t in HERE.glob("perfil/.tmp-*.svg"):
         t.unlink()
 
-    # grade como aparece no perfil (o post mais novo no canto superior esquerdo): as 9 mais novas e a completa
+    # grade como aparece no perfil (o post mais novo no canto superior esquerdo)
     ordem = [n for n, _ in posts()][::-1]
-    for nome, lista in [("grade-3x3", ordem[:9]), ("grade-completa", ordem)]:
+    for nome, lista in [("grade-3x3", ordem)]:
         cells = "".join(f'<img src="{(HERE / "posts" / (n + ".png")).as_uri()}">' for n in lista)
         html = write("posts/.grade.html", "<style>body{margin:0;background:#fff;display:grid;grid-template-columns:"
                      "repeat(3,360px);gap:4px}img{width:360px;height:450px;display:block}</style>" + cells)
@@ -712,4 +764,6 @@ def main(only_svg=False):
 
 
 if __name__ == "__main__":
+    if "--captura" in sys.argv:
+        captura()
     main(only_svg="--svg" in sys.argv)
