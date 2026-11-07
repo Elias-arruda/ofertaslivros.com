@@ -1270,11 +1270,11 @@ def internal(href, label, here):
 
 
 def brand(cls="brand"):
-    """Logo B (wordmark em curvas, 274x32). Duas imagens: a positiva no tema claro e a negativa
+    """Logo B (wordmark "ofertaslivros.com.br" em curvas, 308x32). Duas imagens: a positiva no tema claro e a negativa
     (sem fundo) no escuro; o CSS mostra uma só, então o leitor de tela lê um nome só."""
     return (f'<a class="{cls}" href="/"><img class="logo-claro" src="/logo.svg" alt="Ofertas Livros" '
-            'width="274" height="32"><img class="logo-escuro" src="/logo-negativo.svg" alt="Ofertas Livros" '
-            'width="274" height="32"></a>')
+            'width="308" height="32"><img class="logo-escuro" src="/logo-negativo.svg" alt="Ofertas Livros" '
+            'width="308" height="32"></a>')
 
 
 # Ícones desenhados para o site (traço 2, viewBox 24), num sprite só: cada uso é um <use>.
