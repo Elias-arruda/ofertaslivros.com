@@ -24,6 +24,7 @@ import sys
 import tempfile
 import textwrap
 import time
+import unicodedata
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -42,6 +43,7 @@ API = "https://graph.instagram.com/v24.0"
 USER_AGENT = "ofertaslivros-instagram/1.0 (+https://ofertaslivros.com.br)"
 USER_ID_RE = re.compile(r"\d{1,25}")
 CAPA_MAX = 2_000_000
+CAPTION_MAX = 2200  # limite da legenda na API
 
 
 # ---------- escolha ----------
@@ -67,11 +69,10 @@ def nome(o):
 
 def caption(o):
     """Texto puro. Sem @ nem # vindos do dado coletado: virariam menção ou hashtag."""
-    limpo = lambda s: re.sub(r"[@#]", "", s)  # noqa: E731
     d = o["checked_at"].astimezone(build.BRT)
     off = build.discount(o)
     lines = ["Menor preço em 90 dias"] if o["seal"] == "90d" else []
-    lines += [f"{limpo(o['title'])}, de {limpo(o['author'])}",
+    lines += [f"{limpo(o['title'], 200)}, de {limpo(o['author'], 120)}",
               build.brl(o["price_cents"]) + (f" (de {build.brl(o['list_price_cents'])}, -{off}%)" if off else "")
               + f" {build.na(o['store'])}",
               f"Conferido às {d:%H}h{d:%M} de {d:%d/%m}, o preço pode mudar.",
@@ -80,7 +81,16 @@ def caption(o):
               "Link de afiliado: como associado, ganhamos com compras qualificadas. O preço final é o da loja.",
               "",
               f"#livros #ofertasdelivros #{o['genre'].replace('-', '')}"]
-    return "\n".join(lines)
+    t = "\n".join(lines)
+    if len(t) > CAPTION_MAX:  # não acontece com os cortes de limpo(); garantia para a oferta não travar o canal
+        raise build.Invalid("legenda acima de 2200 caracteres")
+    return t
+
+
+def limpo(s, n):
+    """NFKC antes (＠ ＃ ﹫ ﹟ viram @ #), sem @ nem # e com no máximo n caracteres."""
+    s = re.sub(r"[@#]", "", unicodedata.normalize("NFKC", s)).strip()
+    return s if len(s) <= n else s[:n - 1].rstrip() + "…"
 
 
 # ---------- imagem (modelo aprovado: docs/marca/redes/gerar.py, oferta(), branch do PR #86) ----------
@@ -246,7 +256,7 @@ def svg_post(o, capa):
             + font_css() + b + "\n</svg>\n")
 
 
-MAGIC = {b"\xff\xd8\xff": "image/jpeg", b"\x89PNG": "image/png", b"RIFF": "image/webp"}
+MAGIC = {b"\xff\xd8\xff": "image/jpeg", b"\x89PNG": "image/png"}
 
 
 def capa(o):
@@ -266,6 +276,8 @@ def capa(o):
         print(f"ig: capa indisponível, vai o placeholder ({type(err).__name__})")
         return None
     mime = next((m for k, m in MAGIC.items() if raw.startswith(k)), None)
+    if raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+        mime = "image/webp"
     if not mime or len(raw) > CAPA_MAX:
         print("ig: capa em formato inesperado, vai o placeholder")
         return None
@@ -285,10 +297,15 @@ def render(o, out_dir):
     with tempfile.TemporaryDirectory() as tmp:
         svg, jpg = Path(tmp) / "post.svg", Path(tmp) / "post.jpg"  # a extensão .jpg faz o Chrome sair em JPEG
         svg.write_text(svg_post(o, capa(o)), encoding="utf-8")
-        subprocess.run([chrome(), "--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run",
-                        f"--user-data-dir={tmp}/perfil", "--host-resolver-rules=MAP * ~NOTFOUND",
-                        "--force-device-scale-factor=1", "--window-size=1080,1350", f"--screenshot={jpg}",
-                        svg.as_uri()], check=True, capture_output=True, timeout=120)
+        try:
+            subprocess.run([chrome(), "--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run",
+                            f"--user-data-dir={tmp}/perfil", "--host-resolver-rules=MAP * ~NOTFOUND",
+                            "--proxy-server=127.0.0.1:9", "--force-device-scale-factor=1",
+                            "--window-size=1080,1350", f"--screenshot={jpg}", svg.as_uri()],
+                           check=True, capture_output=True, timeout=120)
+        except subprocess.CalledProcessError as e:  # com continue-on-error no deploy, o motivo precisa ir ao log
+            fim = "\n".join((e.stderr or b"").decode(errors="replace").splitlines()[-15:])
+            raise RuntimeError(f"Chrome saiu com {e.returncode}:\n{fim}") from None
         if not jpg.is_file() or not jpg.read_bytes().startswith(b"\xff\xd8\xff"):
             raise RuntimeError("o Chrome não gerou JPEG")
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -314,7 +331,8 @@ def graph(token, path, data=None):
                                  headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json",
                                           "User-Agent": USER_AGENT})
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
+        # sem seguir redirect: o Bearer só vai ao graph.instagram.com
+        with urllib.request.build_opener(tp._NoRedirect).open(req, timeout=10) as r:
             return json.load(r)
     except urllib.error.HTTPError as e:
         try:

@@ -74,7 +74,11 @@ O deploy gera o JPEG do post do dia em `/ig/` (`instagram_post.py --render`); o 
 - **Cadastro (uma vez):**
   1. No app da Meta (developers.facebook.com, portfólio "ofertaslivros.com.br"), produto **Instagram > API setup with Instagram login**, com as permissões `instagram_business_basic` e `instagram_business_content_publish`. A conta @ofertaslivros.com.br precisa ter papel no app (dona ou testadora): para publicar na própria conta não precisa de App Review.
   2. Em "Generate access tokens", adicionar a conta e gerar o token (já é o de longa duração, 60 dias). Guardar o token no gerenciador de senhas (a renovação usa ele) e anotar o **ID da conta** que aparece ao lado (só números).
-  3. No GitHub: Settings > Environments > New environment `instagram`, com "Deployment branches" = **Selected branches: `main`**. Dentro dele:
+  3. **Antes** de gravar o secret, criar o Environment no GitHub: Settings > Environments > New environment `instagram`, com "Deployment branches" = **Selected branches: `main`**. Conferir (a resposta não pode ser `null`):
+     ```
+     gh api repos/Elias-arruda/ofertaslivros.com/environments/instagram --jq .deployment_branch_policy
+     ```
+     Só então gravar o token e o ID dentro dele:
      ```
      pbpaste | tr -d '[:space:]' | gh secret set INSTAGRAM_TOKEN --env instagram; pbcopy </dev/null
      gh variable set INSTAGRAM_USER_ID --env instagram --body '<id numérico da conta>'

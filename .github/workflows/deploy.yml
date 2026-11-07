@@ -82,6 +82,8 @@ jobs:
       # A API do Instagram só aceita image_url pública: o JPEG do post do dia vai junto com o site, em /ig/.
       # Só na janela e se ainda não postou hoje (log do branch instagram-posts, só leitura). Falha aqui não
       # derruba o deploy: o instagram.yml só posta se achar o arquivo no ar. Chrome: já vem no ubuntu-24.04.
+      # Nunca --no-sandbox. Se o log mostrar "No usable sandbox" (AppArmor do 24.04), o caminho é pôr antes do
+      # python3: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 (só neste runner descartável).
       - name: Gerar a imagem do post do Instagram
         continue-on-error: true
         run: |

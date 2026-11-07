@@ -5,6 +5,8 @@ name: instagram
 # Janela (10h–20h BRT), 1 por dia e repetição (14 dias) ficam no instagram_post.py. O estado é o instagram_posts.csv
 # do branch instagram-posts, gravado só por este workflow (não disputa push com o telegram nem com o pipeline).
 # Sem INSTAGRAM_TOKEN ou INSTAGRAM_USER_ID o job sai com ::warning:: e não posta.
+# Encadeamento: pipeline -> deploy -> instagram já são os 3 níveis de workflow_run que o GitHub dispara;
+# um workflow novo encadeado depois deste não rodaria.
 on:
   workflow_run:
     workflows: [deploy]
@@ -23,7 +25,8 @@ jobs:
     # INSTAGRAM_TOKEN (secret) e INSTAGRAM_USER_ID (variável) ficam no Environment instagram, restrito à main.
     environment: instagram
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    # pior caso do script: ~3 min (graph com timeout de 10 s, 12 consultas de status a cada 5 s); folga para o log
+    timeout-minutes: 10
     permissions:
       contents: write # só para o push do instagram_posts.csv no branch instagram-posts
     env:

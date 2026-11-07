@@ -230,9 +230,47 @@ def test_graph_token_so_no_header_e_fora_do_erro(monkeypatch):
         seen["url"], seen["auth"] = req.full_url, req.get_header("Authorization")
         body = io.BytesIO(json.dumps({"error": {"code": 190, "message": "token IGAAsegredo inválido"}}).encode())
         raise ig.urllib.error.HTTPError(req.full_url, 400, "x", {}, body)
-    monkeypatch.setattr(ig.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(ig.urllib.request, "build_opener",
+                        lambda *h: type("O", (), {"open": lambda self, req, timeout: urlopen(req, timeout)})())
     with pytest.raises(RuntimeError) as e:
         ig.graph("IGAAsegredo", "123/media", {"image_url": "u", "caption": "c"})
     assert "IGAAsegredo" not in str(e.value) and "190" in str(e.value)
     assert "IGAAsegredo" not in seen["url"] and seen["auth"] == "Bearer IGAAsegredo"
     assert seen["url"].startswith("https://graph.instagram.com/")
+
+
+def test_graph_nao_segue_redirect(monkeypatch):
+    handlers = []
+
+    def opener(*h):
+        handlers.extend(h)
+
+        class O:
+            def open(self, req, timeout):
+                raise ig.urllib.error.HTTPError(req.full_url, 302, "x", {"Location": "https://evil.example/"},
+                                                io.BytesIO(b""))
+        return O()
+    monkeypatch.setattr(ig.urllib.request, "build_opener", opener)
+    with pytest.raises(RuntimeError, match="302"):
+        ig.graph("t", "1/media", {})
+    assert ig.tp._NoRedirect in handlers
+
+
+def test_legenda_cabe_em_2200_e_normaliza_arroba_e_cerquilha():
+    t = ig.caption({**OFERTA, "seal": None, "title": "\uff20perfil \ufe5ftag " + "x" * 5000, "author": "\ufe6ba" * 3000})
+    assert len(t) <= ig.CAPTION_MAX and not any(c in t.rsplit("\n", 1)[0] for c in "@#\uff20\uff03\ufe5f\ufe6b")
+    assert t.splitlines()[0].startswith("perfil tag xxx") and "…, de " in t.splitlines()[0]
+
+
+def test_render_mostra_o_erro_do_chrome(tmp_path, monkeypatch):
+    monkeypatch.setenv("CHROME", "/bin/chrome")
+
+    def falha(cmd, **kw):
+        raise ig.subprocess.CalledProcessError(1, cmd, stderr=b"linha 1\nNo usable sandbox!")
+    monkeypatch.setattr(ig.subprocess, "run", falha)
+    with pytest.raises(RuntimeError, match="No usable sandbox"):
+        ig.render(OFERTA, tmp_path / "ig")
+
+
+def test_webp_exige_assinatura_completa():
+    assert all(not k.startswith(b"RIFF") for k in ig.MAGIC)  # RIFF sozinho (ex.: WAV) não passa
