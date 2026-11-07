@@ -352,3 +352,14 @@ Implementação:
 - Limites aceitos no MVP:
   - Se o job morrer entre o ok do Telegram e o push, o post se repete uma vez.
   - O post lê o `offers.json` do momento em que roda. Se o pipeline gravou um mais novo depois do deploy, o preço pode ser mais recente que o do site publicado.
+
+## WhatsApp: Canal manual com resumo pelo bot (2026-11-06)
+O Elias decidiu: no WhatsApp, só o Canal, seguindo o plano original (§5 a §8). Não vai ter bot de lista de desejos no WhatsApp por enquanto. A Cloud API serve para conversa um a um, mas cada aviso fora da janela de 24 h é cobrado. As ferramentas que postam em Canal (Whapi e parecidas) entram pelo número como o WhatsApp Web, o que a decisão 3 proíbe.
+
+Implementação (`telegram_post.py`, no mesmo workflow do canal):
+- Uma vez por dia, na primeira execução das 11h às 21h59 BRT com oferta disponível, o bot manda no chat do Elias (`TELEGRAM_ADMIN_CHAT_ID`, Secret do Environment `telegram`) até 5 ofertas.
+- Mesmo critério e mesma ordem do canal (`pick`). A repetição é controlada à parte, pelas linhas `wa` do `channel_posts.csv`.
+- Mensagens: cabeçalho, por oferta a foto do ML sem legenda e o texto do `build.post_text` com `/r/<id>/wa`, e "fim do resumo". Texto puro, sem prévia de link.
+- Conta como postado no envio: as linhas `wa` são gravadas antes da primeira mensagem. Se saiu incompleto ou falhou, não manda outro no mesmo dia.
+- Tag da Amazon do WhatsApp: `AMAZON_TAG_WA` (vars do Environment `production`, lida pelo deploy). Sem ela, `/wa` usa a tag do site.
+- Sem `TELEGRAM_ADMIN_CHAT_ID`, o resumo não sai e o canal do Telegram segue igual.

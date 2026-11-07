@@ -1,6 +1,7 @@
 name: telegram
 
-# Posta no canal do Telegram depois de cada deploy bem-sucedido (o /r/<id>/tg já está no ar).
+# Posta no canal do Telegram depois de cada deploy bem-sucedido (o /r/<id>/tg já está no ar) e manda,
+# 1 vez por dia, o resumo do WhatsApp no chat privado do Elias (link /r/<id>/wa).
 # Janela, limites e repetição ficam no telegram_post.py. O estado é o channel_posts.csv do branch
 # channel-posts, gravado só por este workflow: não disputa push com o pipeline no price-history.
 # Encadeamento: pipeline -> deploy -> telegram já são os 3 níveis de workflow_run que o GitHub dispara.
@@ -53,6 +54,8 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ vars.TELEGRAM_CHANNEL_ID }}
+          # chat privado do Elias, para o resumo diário do WhatsApp; sem ele, o resumo não sai
+          TELEGRAM_ADMIN_CHAT_ID: ${{ secrets.TELEGRAM_ADMIN_CHAT_ID }}
           ML_AFFILIATE_ID: ${{ vars.ML_AFFILIATE_ID }}
           AMAZON_PARTNER_TAG: ${{ vars.AMAZON_PARTNER_TAG }}
         run: python3 telegram_post.py "$RUNNER_TEMP/offers.json" posts/channel_posts.csv
