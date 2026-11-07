@@ -31,7 +31,7 @@ ALLOWED_HOSTS = {
     "mercadolivre.com",
 }
 STORES = {"amazon": "Amazon", "mercadolivre": "Mercado Livre"}
-# Domínio do <link rel="canonical"> (o site responde em .com e .com.br): o .com, decisão do Elias em 2026-10-20.
+# Domínio do <link rel="canonical">, do og:url, do JSON-LD e do sitemap.xml (o site responde em .com e .com.br): o .com.br.
 SITE = "https://ofertaslivros.com.br"
 # Conjunto fechado: o slug vira diretório em dist/, então nunca vem do JSON livre.
 GENRES = {
@@ -1414,6 +1414,60 @@ def data_script(offers, bot):
     return f'<script type="application/json" id="ofertas">{raw}</script>'
 
 
+def ld(obj):
+    """<script type="application/ld+json">: bloco de dados (não executa, cabe na CSP script-src 'self').
+    Sempre json.dumps, nunca f-string; < > & viram \\u003c \\u003e \\u0026, então nenhum </script> ou <!-- vindo
+    do título ou do autor sai do bloco."""
+    raw = json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
+    raw = raw.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+    return f'<script type="application/ld+json">{raw}</script>'
+
+
+def crumbs_ld(*items):
+    """BreadcrumbList: (nome, caminho) a partir de Início; caminhos internos fixos (slug de GENRES, id de ID_RE)."""
+    return ld({"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
+        {"@type": "ListItem", "position": i, "name": name, "item": SITE + path}
+        for i, (name, path) in enumerate((("Início", "/"),) + items, 1)]})
+
+
+def abs_img(o):
+    """Capa em URL absoluta https para og:image/JSON-LD: a foto do ML (já presa a https://IMG_HOST) ou a
+    capa local em /capas/ servida pelo SITE. Sem capa, None."""
+    u = o["image_url"]
+    return u and (SITE + u if u.startswith("/capas/") else u)
+
+
+def book_ld(o):
+    """Product + Book da página /livro/<id>/. O preço é o mesmo price_cents mostrado na página, em string
+    com ponto (sem float); a url é a da própria página, nunca o /r/ nem o link de afiliado.
+    Sem Offer quando o preço é velho (mais de 7 dias): não afirmamos preço nem estoque que não conferimos."""
+    url = f"{SITE}/livro/{o['id']}/"
+    d = {"@context": "https://schema.org", "@type": ["Product", "Book"], "name": o["title"],
+         "author": {"@type": "Person", "name": o["author"]}, "url": url}
+    if abs_img(o):
+        d["image"] = abs_img(o)
+    if o["isbn"]:
+        d["isbn"] = o["isbn"]
+    if not o["velho"]:
+        c = o["price_cents"]
+        d["offers"] = {"@type": "Offer", "price": f"{c // 100}.{c % 100:02d}", "priceCurrency": "BRL",
+                       "availability": "https://schema.org/InStock", "url": url,
+                       "seller": {"@type": "Organization", "name": STORES[o["store"]]}}
+    return ld(d)
+
+
+HOME_LD = ld({"@context": "https://schema.org", "@graph": [
+    {"@type": "WebSite", "name": "Ofertas Livros", "url": SITE + "/", "inLanguage": "pt-BR"},
+    {"@type": "Organization", "name": "Ofertas Livros", "url": SITE + "/", "logo": SITE + "/logo.svg"}]})
+
+
+def sitemap(pages):
+    """sitemap.xml com as páginas de render_pages (bot.json, /painel e /r/ não são páginas daqui).
+    Sem <lastmod>: não há data confiável por página (o build roda a cada rodada de preço)."""
+    urls = "".join(f"<url><loc>{e(SITE + '/' + k.removesuffix('index.html'))}</loc></url>\n" for k in sorted(pages))
+    return f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{urls}</urlset>\n'
+
+
 MODAL = f"""<dialog class="modal" id="detalhe" aria-labelledby="m-t">
 <div class="m-top"><button class="arrow js-mprev" type="button">{icon("esq")}<span class="sr">Livro anterior</span></button><span class="m-n tnum"></span><button class="arrow js-mnext" type="button">{icon("dir")}<span class="sr">Próximo livro</span></button><button class="arrow m-x js-mx" type="button">{icon("x")}<span class="sr">Fechar</span></button></div>
 <div class="m-grid">
@@ -1424,9 +1478,13 @@ MODAL = f"""<dialog class="modal" id="detalhe" aria-labelledby="m-t">
 </dialog>"""
 
 
-def shell(offers, title, desc, body, ch=(), here="", style=None, bot=None, modal=False):
-    """Esqueleto comum. title/desc/body já chegam escapados. style: nicho da página (acento global)."""
+def shell(offers, title, desc, body, ch=(), here="", style=None, bot=None, modal=False, img=None, head=""):
+    """Esqueleto comum. title/desc/body já chegam escapados. style: nicho da página (acento global).
+    img: URL absoluta da capa para og:image (crua; escapada aqui). head: JSON-LD pronto (ld()).
+    O og:url entra com o canonical em render_pages."""
     ds = f' data-style="{style}"' if style in GENRES else ""
+    og = (f'<meta property="og:image" content="{e(img)}">\n<meta name="twitter:card" content="summary_large_image">'
+          if img else '<meta name="twitter:card" content="summary">')
     return f"""<!doctype html>
 <html lang="pt-BR"{ds}>
 <head>
@@ -1434,6 +1492,12 @@ def shell(offers, title, desc, body, ch=(), here="", style=None, bot=None, modal
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title}</title>
 <meta name="description" content="{desc}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ofertas Livros">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:title" content="{title}">
+<meta property="og:description" content="{desc}">
+{og}{(chr(10) + head) if head else ""}
 <meta name="theme-color" content="#edf1f5" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0f1729" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
@@ -1475,7 +1539,26 @@ def page(all_offers, genre=None, bot=None, ch=()):
     else:
         body = (intro(e(GENRES[genre]), LEDE) + f"\n{nav(all_offers, genre)}\n{feed(offers, bot, ch, full=True)}"
                 + f"\n{da_curadoria(offers, bot, genre)}")
-    return shell(all_offers, title, desc, body, ch, style=genre, bot=bot, modal=True)
+    head = crumbs_ld((GENRES[genre], f"/{genre}/")) if genre else HOME_LD
+    return shell(all_offers, title, desc, body, ch, style=genre, bot=bot, modal=True, head=head)
+
+
+TITLE_MAX = 60  # <title> das /livro/: acima disso o Google corta
+TITLE_MIN = 20  # mas o título do livro nunca vira um toco ("O Pequeno P…")
+
+
+def book_title(o):
+    """'Título, Autor por R$ 25,75 | Ofertas Livros' (cru; escapar ao usar). Passou de TITLE_MAX: tira o
+    subtítulo (depois de ':') e, se ainda não couber, corta o título na palavra com '…'. O preço e o autor nunca
+    são cortados; com autor longo, o título guarda até TITLE_MIN chars, mesmo passando um pouco de TITLE_MAX."""
+    tail = f", {o['author']} por {brl(o['price_cents'])} | Ofertas Livros"
+    t, room = o["title"], max(TITLE_MAX - len(tail), TITLE_MIN)
+    if len(t) > room:
+        t = t.split(":")[0].strip() or t
+    if len(t) > room:
+        cut = t[:room - 1]
+        t = (cut.rsplit(" ", 1)[0] if " " in cut else cut).rstrip(" ,.;-") + "…"
+    return t + tail
 
 
 def store_list(o):
@@ -1517,9 +1600,10 @@ def book_page(o, offers, bot=None, ch=()):
     {store_list(o)}
   </div>
 </article>"""
-    return shell(offers, f"{t}, de {e(o['author'])}: {'oferta' if o['oferta'] else 'preço'} conferid{'a' if o['oferta'] else 'o'} | Ofertas Livros",
+    return shell(offers, e(book_title(o)),
                  f"{t}, de {e(o['author'])}, por {brl(o['price_cents'])} {na(o['store'])}. Preço conferido na loja.",
-                 body, ch, style=g, bot=bot)
+                 body, ch, style=g, bot=bot, img=abs_img(o),
+                 head=crumbs_ld((GENRES[g], f"/{g}/"), (o["title"], f"/livro/{o['id']}/")) + "\n" + book_ld(o))
 
 
 def all_page(offers, bot=None, ch=()):
@@ -1527,7 +1611,8 @@ def all_page(offers, bot=None, ch=()):
     body = (intro("Todas as ofertas", LEDE) + f"\n{nav(offers, None, filtro=True)}\n"
             + feed(offers, bot, ch, full=True, pills=faixas(offers, 0)))
     return shell(offers, "Todas as ofertas de livros | Ofertas Livros",
-                 "Todas as ofertas de livros ativas, conferidas na loja.", body, ch, "/ofertas/", bot=bot, modal=True)
+                 "Todas as ofertas de livros ativas na Amazon e no Mercado Livre, conferidas uma a uma na loja "
+                 "e comparadas com o histórico de preço de cada livro.", body, ch, "/ofertas/", bot=bot, modal=True)
 
 
 def faixa_page(offers, t, bot=None, ch=()):
@@ -1726,7 +1811,9 @@ def render_pages(offers, bot=None, ch=()):
     for o in offers:  # id validado por ID_RE: seguro como diretório
         pages[f"livro/{o['id']}/index.html"] = book_page(o, offers, bot, ch)
     # canonical pelo caminho em dist/ (slugs de GENRES e ids de ID_RE), num lugar só para todas as páginas
-    return {k: v.replace('<link rel="icon"', f'<link rel="canonical" href="{e(SITE + "/" + k.removesuffix("index.html"))}">\n'
+    def url(k):
+        return e(SITE + "/" + k.removesuffix("index.html"))
+    return {k: v.replace('<link rel="icon"', f'<link rel="canonical" href="{url(k)}">\n<meta property="og:url" content="{url(k)}">\n'
                          '<link rel="icon"', 1) for k, v in pages.items()}
 
 
@@ -1751,6 +1838,7 @@ def build(dev=False):
         (DIST / path).write_text(body, encoding="utf-8")
     (DIST / "_redirects").write_text(rules, encoding="utf-8")
     (DIST / "bot.json").write_text(catalogo_bot, encoding="utf-8")
+    (DIST / "sitemap.xml").write_text(sitemap(pages), encoding="utf-8")
     (DIST / "_headers").write_text(HEADERS, encoding="utf-8")
     print(f"ok: {len(ofertas(offers))} ofertas, {len(sem_oferta(offers))} sem oferta ({len(books) - len(offers)} fora do prazo), "
           f"{len(pages)} páginas -> {DIST}")
@@ -2607,8 +2695,9 @@ def selftest():
     h = page(load({**good, "title": evil, "author": "</SCRIPT>"}), bot="ofertaslivros_bot")
     blob = re.search(r'<script type="application/json" id="ofertas">(.*?)</script>', h, re.S).group(1)
     assert "<" not in blob and json.loads(blob)[0]["t"] == evil and json.loads(blob)[0]["a"] == "</SCRIPT>"
-    assert h.count("<script") == h.count("</script>") == 2                      # app.js + JSON, nada mais
-    assert re.findall(r"<script(?: [^>]*)?>", h) == ['<script src="/app.js" defer>', '<script type="application/json" id="ofertas">']
+    assert h.count("<script") == h.count("</script>") == 3                      # app.js + JSON-LD + JSON, nada mais
+    assert re.findall(r"<script(?: [^>]*)?>", h) == ['<script type="application/ld+json">', '<script src="/app.js" defer>',
+                                                     '<script type="application/json" id="ofertas">']
     assert "<script>" not in vis(h) and "&lt;/script&gt;&lt;script&gt;" in vis(h)
     d0 = json.loads(blob)[0]
     assert d0["lojas"][0]["href"] == "/r/livro-1" and d0["pag"] == "/livro/livro-1/" and d0["alerta"].startswith("https://t.me/")
@@ -2645,6 +2734,66 @@ def selftest():
         assert re.findall(r'<link rel="canonical" href="([^"]+)">', h) == [SITE + "/" + path.removesuffix("index.html")], path
     assert '<link rel="canonical" href="https://ofertaslivros.com.br/livro/livro-1/">' in pg["livro/livro-1/index.html"]
     assert '<link rel="canonical" href="https://ofertaslivros.com.br/">' in pg["index.html"]
+    # SEO: Open Graph em todas, og:url = canonical; og:image só com capa (sem arte padrão da marca em static/)
+    for path, h in pg.items():
+        head = h[:h.index("</head>")]
+        can = re.search(r'<link rel="canonical" href="([^"]+)">', head).group(1)
+        assert re.findall(r'<meta property="og:url" content="([^"]+)">', head) == [can], path
+        title = re.search(r"<title>(.*?)</title>", head).group(1)
+        desc = re.search(r'<meta name="description" content="([^"]*)">', head).group(1)
+        assert f'<meta property="og:title" content="{title}">' in head and f'<meta property="og:description" content="{desc}">' in head
+        for m in ('og:type" content="website', 'og:site_name" content="Ofertas Livros', 'og:locale" content="pt_BR'):
+            assert f'<meta property="{m}">' in head, (path, m)
+        assert ('og:image' in head) == ('twitter:card" content="summary_large_image' in head), path
+        assert 'og:image' in head or 'twitter:card" content="summary"' in head, path
+        for raw in re.findall(r'<script type="application/ld\+json">(.*?)</script>', head, re.S):
+            json.loads(raw)                                                    # JSON-LD válido
+    assert "og:image" not in pg["index.html"] and "og:image" not in pg["livro/livro-1/index.html"]  # good não tem capa
+    assert 120 <= len(html.unescape(re.search(r'<meta name="description" content="([^"]*)">', pg["ofertas/index.html"]).group(1))) <= 160
+
+    def lds(h):
+        return [json.loads(x) for x in re.findall(r'<script type="application/ld\+json">(.*?)</script>', h, re.S)]
+    home = lds(pg["index.html"])[0]["@graph"]
+    assert [x["@type"] for x in home] == ["WebSite", "Organization"] and home[1]["logo"] == SITE + "/logo.svg"
+    assert [x["@type"] for x in lds(pg["manga/index.html"])] == ["BreadcrumbList"]
+    assert [i["item"] for i in lds(pg["manga/index.html"])[0]["itemListElement"]] == [SITE + "/", SITE + "/manga/"]
+    capa = load({**good, "title": "Mindset: a nova psicologia do sucesso", "author": "Carol S. Dweck", "isbn": "9788547000240",
+                 "image_url": img, "stores": [{**amz, "price_cents": 2575}]})
+    bp = render_pages(capa)["livro/livro-1/index.html"]
+    assert f"<title>Mindset, Carol S. Dweck por R${nb}25,75 | Ofertas Livros</title>" in bp
+    assert f'<meta property="og:image" content="{e(img)}">' in bp and 'content="summary_large_image"' in bp
+    bc, prod = lds(bp)
+    assert [(i["position"], i["name"], i["item"]) for i in bc["itemListElement"]] == [
+        (1, "Início", SITE + "/"), (2, "Mangá e HQ", SITE + "/manga/"), (3, capa[0]["title"], SITE + "/livro/livro-1/")]
+    assert prod["@type"] == ["Product", "Book"] and prod["isbn"] == "9788547000240" and prod["image"] == img
+    assert prod["author"] == {"@type": "Person", "name": "Carol S. Dweck"} and prod["url"] == SITE + "/livro/livro-1/"
+    assert prod["offers"] == {"@type": "Offer", "price": "25.75", "priceCurrency": "BRL", "availability": "https://schema.org/InStock",
+                              "url": SITE + "/livro/livro-1/", "seller": {"@type": "Organization", "name": "Amazon"}}
+    assert f"<strong>R${nb}25,75</strong>" in bp                                  # o mesmo preço da página
+    assert lds(book_ld({**capa[0], "price_cents": 100005}))[0]["offers"]["price"] == "1000.05"
+    assert "offers" not in lds(book_ld({**capa[0], "velho": True}))[0]        # preço velho: sem Offer
+    local = load({**good, "isbn": isbn_capa})[0]                               # capa local vira URL absoluta do SITE
+    assert abs_img(local) == f"{SITE}/capas/{isbn_capa}.jpg" and f'og:image" content="{SITE}/capas/' in book_page(local, [local])
+    for t in ("T" * 200, "Um título bem comprido sem subtítulo nenhum para cortar aqui"):  # corta o título, nunca o preço
+        bt = book_title({**capa[0], "title": t})
+        assert len(bt) <= TITLE_MAX + 6 and bt.endswith(f", Carol S. Dweck por R${nb}25,75 | Ofertas Livros") and "…" in bt, bt
+    assert book_title({**capa[0], "title": "Um título bem comprido sem subtítulo"}).startswith("Um título bem…, Carol")
+    assert book_title({**capa[0], "title": "O Pequeno Príncipe", "author": "Antoine de Saint-Exupéry"}).startswith("O Pequeno Príncipe, ")
+    assert book_title({**capa[0], "title": "Curto"}) == f"Curto, Carol S. Dweck por R${nb}25,75 | Ofertas Livros"
+    # JSON-LD com dado coletado: nada fecha o <script>, e o JSON volta igual
+    evil = "</script><script>alert(1)</script>"
+    xp = render_pages(load({**good, "title": evil, "author": "<!-- & >"}))["livro/livro-1/index.html"]
+    blocks = re.findall(r'<script type="application/ld\+json">(.*?)</script>', xp, re.S)
+    assert len(blocks) == 2 and all("<" not in b and ">" not in b and "&" not in b for b in blocks)
+    assert "\\u003c/script\\u003e\\u003cscript\\u003ealert(1)" in blocks[1]
+    assert json.loads(blocks[1])["name"] == evil and json.loads(blocks[1])["author"]["name"] == "<!-- & >"
+    assert re.findall(r"<script(?: [^>]*)?>", xp) == ['<script type="application/ld+json">'] * 2 + ['<script src="/app.js" defer>']
+    assert "<script>alert" not in xp and "&lt;/script&gt;" in xp[:xp.index("</head>")]  # title/og:title escapados
+    # sitemap: todas as páginas, URL absoluta, sem bot.json, /painel nem /r/
+    sm = sitemap(pg)
+    assert sorted(re.findall(r"<loc>([^<]+)</loc>", sm)) == sorted(SITE + "/" + k.removesuffix("index.html") for k in pg)
+    assert "bot.json" not in sm and "/r/" not in sm and "painel" not in sm and "lastmod" not in sm
+    assert "Sitemap: https://ofertaslivros.com.br/sitemap.xml" in (STATIC / "robots.txt").read_text()
     lv = pg["livro/livro-1/index.html"]
     assert "<h1 class=\"livro-h1\">T</h1>" in lv and '<html lang="pt-BR" data-style="manga">' in lv
     assert 'href="/r/livro-1" rel="sponsored noopener noreferrer" target="_blank"' in lv
