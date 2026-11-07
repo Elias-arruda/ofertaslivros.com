@@ -487,3 +487,9 @@ Testes do Worker em `worker/bot.test.mjs` (`node --test`, como os que já existe
 3. **Texto do pedido de livro na `/privacidade/`.** Ele diz que o site não guarda o pedido, mas o D1 guarda por 30 dias. Default: corrigir junto, no PR 4 ("guardamos o pedido, sem dado seu, por 30 dias"). O Elias tinha decidido não mexer em 2026-11-05: confirmar se mantém.
 4. **Retenção por inatividade.** Default: 12 meses sem nenhuma mensagem ou toque apagam tudo, sem aviso prévio. A alternativa é avisar uma semana antes, o que exige mais um estado e mais um envio.
 5. **Disparo:** confirmar a opção A (Cron Trigger no Worker do site lendo o `/bot.json`) em vez do `telegram.yml` lendo o D1.
+
+## Link do aviso (decisão do Elias, 2026-11-07)
+O `texto` do `bot.json` passa a terminar com "Link: https://ofertaslivros.com.br/livro/<id>/", no lugar de "Link de afiliado: …/r/<id>/bot". Os canais usam o mesmo formato (`distribuicao-canais.md`, "Link para o site").
+- A mensagem do aviso sai com prévia do link (`is_disabled: false`), que mostra a capa da página. A prévia não passa pelo `/r/` nem pela loja. As outras mensagens do bot seguem sem prévia.
+- Isso substitui, onde conflitar, as menções a `/r/<id>/bot`, "Link de afiliado" e "sem prévia" no aviso (seções 3, 10 e critérios 30 a 32). As rotas `/r/<id>/bot` continuam no `_redirects` para avisos antigos. `AMAZON_TAG_BOT` deixa de medir os cliques do bot, que agora saem pelo `/r/<id>` da página.
+
