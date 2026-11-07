@@ -1437,10 +1437,15 @@ def abs_img(o):
     return u and (SITE + u if u.startswith("/capas/") else u)
 
 
+OFFER_MAX = timedelta(hours=24)
+
+
 def book_ld(o):
     """Product + Book da página /livro/<id>/. O preço é o mesmo price_cents mostrado na página, em string
     com ponto (sem float); a url é a da própria página, nunca o /r/ nem o link de afiliado.
-    Sem Offer quando o preço é velho (mais de 7 dias): não afirmamos preço nem estoque que não conferimos."""
+    Offer só com preço conferido há menos de OFFER_MAX (decisão do Elias, 2026-11-07): a política dos Associados
+    da Amazon não aceita preço exibido com mais de 24h, e o Google mostra o preço sem o nosso carimbo de horário.
+    Sem seller: somos afiliado, não vendedor."""
     url = f"{SITE}/livro/{o['id']}/"
     d = {"@context": "https://schema.org", "@type": ["Product", "Book"], "name": o["title"],
          "author": {"@type": "Person", "name": o["author"]}, "url": url}
@@ -1448,11 +1453,10 @@ def book_ld(o):
         d["image"] = abs_img(o)
     if o["isbn"]:
         d["isbn"] = o["isbn"]
-    if not o["velho"]:
+    if o["now"] - o["checked_at"] < OFFER_MAX:
         c = o["price_cents"]
         d["offers"] = {"@type": "Offer", "price": f"{c // 100}.{c % 100:02d}", "priceCurrency": "BRL",
-                       "availability": "https://schema.org/InStock", "url": url,
-                       "seller": {"@type": "Organization", "name": STORES[o["store"]]}}
+                       "availability": "https://schema.org/InStock", "url": url}
     return ld(d)
 
 
@@ -2768,10 +2772,12 @@ def selftest():
     assert prod["@type"] == ["Product", "Book"] and prod["isbn"] == "9788547000240" and prod["image"] == img
     assert prod["author"] == {"@type": "Person", "name": "Carol S. Dweck"} and prod["url"] == SITE + "/livro/livro-1/"
     assert prod["offers"] == {"@type": "Offer", "price": "25.75", "priceCurrency": "BRL", "availability": "https://schema.org/InStock",
-                              "url": SITE + "/livro/livro-1/", "seller": {"@type": "Organization", "name": "Amazon"}}
+                              "url": SITE + "/livro/livro-1/"}            # sem seller: somos afiliado
     assert f"<strong>R${nb}25,75</strong>" in bp                                  # o mesmo preço da página
     assert lds(book_ld({**capa[0], "price_cents": 100005}))[0]["offers"]["price"] == "1000.05"
-    assert "offers" not in lds(book_ld({**capa[0], "velho": True}))[0]        # preço velho: sem Offer
+    for at, tem in (("2026-10-17T10:00:00-03:00", True), ("2026-10-17T08:00:00-03:00", False)):  # 23h e 25h antes de NOW
+        b = load({**good, "stores": [{**amz, "checked_at": at}]})[0]
+        assert ("offers" in lds(book_ld(b))[0]) is tem, at   # Offer só com preço de menos de 24h
     local = load({**good, "isbn": isbn_capa})[0]                               # capa local vira URL absoluta do SITE
     assert abs_img(local) == f"{SITE}/capas/{isbn_capa}.jpg" and f'og:image" content="{SITE}/capas/' in book_page(local, [local])
     for t in ("T" * 200, "Um título bem comprido sem subtítulo nenhum para cortar aqui"):  # corta o título, nunca o preço
