@@ -136,6 +136,12 @@ B. **Links do ML gerados pelo navegador** (regra 2, exceção de 2026-11-04):
 - a descrição do PR lista, por livro, o `book_id`, o MLB esperado e o MLB visto ao abrir o link, e os dois MLB são iguais;
 - o título do PR começa com "Links do ML: lote de".
 
+C. **PR diário do curador** (decisão do Elias, 2026-11-07): entra por **merge automático do próprio `curator.yml`**, sem review do Codex e sem o "aprovado" do Elias, com o `catalog-check` verde. Inclui a retirada, limitada pelas travas do curator (`docs/produto/curator.md` §9). Vale só quando:
+- o branch é `curator/AAAA-MM-DD`, o autor é `github-actions[bot]` e o título começa com "Curadoria: candidatos de";
+- o diff toca só `collector/catalog.json`, `collector/curator_seen.json` e `collector/ml_links.tsv`;
+- livro novo entra com `"pendente": true` (fica fora do ar até ganhar loja), e livro só sai do catálogo pela retirada (`retirados`).
+Commit de outro autor no branch tira o PR do caso C: ele volta ao fluxo normal.
+
 Continua sensível o PR desses fluxos que também:
 - apague ou altere linha existente;
 - toque a allowlist, a tag ou o ID de afiliado, o `build.py`, o `ML_LABELS` ou a rota `/r/`;

@@ -389,8 +389,8 @@ def amazon_todo(catalog=None, path=None, today=None):
 def summary(picked, today, revisar=(), retired=()):
     lines = [f"## Curadoria {today.isoformat()}: {len(picked)} candidatos"
              + (f", {len(retired)} retirados" if retired else ""),
-             *([f"> **PR sensível:** apaga {len(retired)} livro(s) do catálogo. Merge só "
-                "depois do \"aprovado, pode seguir\" do Elias na sessão (CLAUDE.md, PR e merge).",
+             *([f"> **Retirada:** apaga {len(retired)} livro(s) do catálogo, dentro das travas "
+                "do curator. Entra com o merge automático do PR (CLAUDE.md, PR e merge, caso C).",
                 ""] if retired else []),
              "",
              f"Fonte: `/highlights` da categoria `{CATEGORY}` e termos do `/trends` "

@@ -707,7 +707,7 @@ def test_retirada_no_pr_e_id_nunca_volta(env, tmp_path):
     assert d["generos_retirados"] == {"livro-1": "manga"}  # para o 301 de /livro/livro-1/ no build
     assert json.loads(env["seen"].read_text())["MLB777"] == "2026-10-19"
     md = env["md"].read_text()
-    assert "1 retirados" in md and "`livro-1`" in md and "PR sensível" in md
+    assert "1 retirados" in md and "`livro-1`" in md and "**Retirada:**" in md
     # gate 9 também à mão: livro com id retirado não passa no load_catalog
     d["books"].append({**d["books"][0], "id": "livro-1", "isbn": isbn(5), "ml_product_id": "MLB5",
                        "ml_url": ML_URL.replace("ref=X", "ref=Z")})

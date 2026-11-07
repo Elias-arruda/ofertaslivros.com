@@ -5,6 +5,9 @@ name: catalog-check
 on:
   pull_request:
     branches: [main]
+  # Disparado pelo curator.yml no branch curator/AAAA-MM-DD: PR aberto pelo GITHUB_TOKEN não dispara o
+  # pull_request. Mesmo job, mesmas permissões (contents: read), sem secrets.
+  workflow_dispatch:
 
 permissions: {}
 
