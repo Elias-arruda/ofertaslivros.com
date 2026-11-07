@@ -32,7 +32,7 @@ O texto principal fica dentro de 125 caracteres e o título dentro de 40. O avis
 ### Peça 1, Black Friday geral → `https://ofertaslivros.com.br/black-friday/`
 - **Arte:** "Black Friday de livros sem desconto falso." + "Comparamos cada preço com o nosso histórico." + selo "30% off ou mais" + lombadas: Mindset, É assim que acaba, Harry Potter e a pedra filosofal, O homem mais rico da Babilônia, O pequeno príncipe e, nos Stories, Torto arado.
 - **Texto principal** (118 car.): `Black Friday de livros: só entra livro com 30% off ou no menor preço que vimos. Link de afiliado; preço final na loja.`
-- **Título** (39 car.): `Black Friday de livros: 30% off ou mais`
+- **Título** (40 car.): `Black Friday de livros sem desconto falso` (o selo "30% off ou mais" fica só na arte, e o `gerar.py --conferir` exige `data-off >= 30` em cada título dela)
 - **Descrição** (40 car.): `Comparado com o nosso histórico de preço`
 - **CTA:** Ver ofertas. A página é uma lista, e o livro se escolhe lá.
 - **Público sugerido:** Brasil, 18+. Interesses: Livros, Leitura, Literatura, Clube do livro, BookTok, Black Friday, Compras online.

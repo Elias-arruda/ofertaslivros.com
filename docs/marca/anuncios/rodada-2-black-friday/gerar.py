@@ -87,18 +87,28 @@ def pagina(p, fmt):
 
 
 def conferir():
-    """Confere no site no ar se cada título ainda é oferta ativa na página de destino. Sai com 1 se algum saiu."""
+    """Confere no site no ar se cada título ainda é oferta ativa na página de destino. Sai com 1 se algum saiu.
+    Na peça black-friday, cujo selo promete "30% off ou mais", cada título também precisa ter data-off >= 30."""
     falta = 0
     for nome, *_, livros in PECAS:
         url = "https://ofertaslivros.com.br" + DESTINO[nome]
         req = urllib.request.Request(url, headers={"User-Agent": "ofertaslivros-anuncios"})
         page = urllib.request.urlopen(req, timeout=30).read().decode()
-        ativos = [unescape(t) for t in re.findall(
-            r'<li class="card"[^>]*data-tipo="oferta">.*?card-title"><a[^>]*>(.*?)</a>', page, re.S)]
+        ativos = []
+        for tag, t in re.findall(r'(<li class="card"[^>]*data-tipo="oferta">).*?card-title"><a[^>]*>(.*?)</a>', page, re.S):
+            off = re.search(r'data-off="(\d+)"', tag)
+            ativos.append((unescape(t), int(off.group(1)) if off else 0))
+        minimo = 30 if nome == "1-black-friday" else 0
         for livro in livros:
-            ok = any(livro[0] in t for t in ativos)
-            falta += not ok
-            print(("ok   " if ok else "SAIU ") + f"{DESTINO[nome]:16} {livro[0]}")
+            offs = [off for t, off in ativos if livro[0] in t]
+            if not offs:
+                status = "SAIU "
+            elif max(offs) < minimo:
+                status = f"<{minimo}%"
+            else:
+                status = "ok   "
+            falta += status != "ok   "
+            print(f"{status} {DESTINO[nome]:16} {livro[0]}" + (f" ({max(offs)}%)" if offs else ""))
     sys.exit(1 if falta else 0)
 
 
