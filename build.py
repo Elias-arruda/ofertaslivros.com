@@ -22,6 +22,10 @@ ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data" / "offers.json"
 STATIC = ROOT / "static"
 DIST = ROOT / "dist"
+CATALOG = ROOT / "collector" / "catalog.json"
+# id -> genre de todo livro que já passou pelo catalog.json: o catalog perde o genre quando o curator retira o
+# livro (retirados é só {id: data}), e o 301 de /livro/<id>/ para o nicho precisa dele. Atualizado pelo build.
+GENEROS = ROOT / "data" / "generos.json"
 
 ALLOWED_HOSTS = {
     "amazon.com.br",
@@ -1789,10 +1793,22 @@ def bot_json(offers, now, sem=()):
 MAX_REDIRECTS = 2000  # limite de regras estáticas do _redirects na Cloudflare
 
 
-def redirects(offers):
+def _id_ok(oid):
+    return isinstance(oid, str) and len(oid) <= 60 and ID_RE.fullmatch(oid) is not None
+
+
+def _nicho_ok(oid, genre):
+    """Par (id, genre) que pode virar regra: id de ID_RE e slug de GENRES, os dois obrigatórios."""
+    return _id_ok(oid) and isinstance(genre, str) and genre in GENRES
+
+
+def redirects(offers, sem=(), retired=()):
     """/novidades/ (página antiga) vai para /curadoria/. Por livro: /r/<id> e /r/<id>/tg|wa|bot
     (vencedora, com a tag do canal se for a Amazon) e /r/<id>/<loja> para cada loja elegível.
     Vencido ou loja fora do prazo cai na home pelo curinga; o livro com a Amazon vencida (velho) segue no /r/.
+    sem (livro sem preço): as mesmas rotas, 302 para a própria /livro/<id>/, nunca para a loja.
+    retired: (id, genre) de livro retirado do catálogo, 301 de /livro/<id>/ para /<genre>/, do mais recente
+    para o mais antigo, só no que sobrar do limite; o resto dá 404, como antes.
     Até 6 regras por livro: cabem 333 livros com duas lojas (1.998 + curinga + /novidades/)."""
     tags, aff = channel_tags(), ml_affiliate()
     lines = ["/novidades/ /curadoria/ 301\n"]  # destino interno fixo, nunca vindo do JSON
@@ -1800,10 +1816,36 @@ def redirects(offers):
         lines.append(f"/r/{o['id']} {affiliate_url(o, tags[''], aff)} 302\n")
         lines += [f"/r/{o['id']}/{s['store']} {affiliate_url(s, tags[''], aff)} 302\n" for s in o["stores"]]
         lines += [f"/r/{o['id']}{sfx} {affiliate_url(o, tags[sfx], aff)} 302\n" for sfx in ("/tg", "/wa", "/bot")]  # ML: mesmo ml_url
+    for o in sem:
+        if not _id_ok(o["id"]):
+            raise Invalid(f"id inválido no _redirects: {o['id']!r}")
+        sfxs = [f"/{s['store']}" for s in o["stores"] if s["store"] in STORES] + ["/tg", "/wa", "/bot"]
+        lines += [f"/r/{o['id']}{sfx} /livro/{o['id']}/ 302\n" for sfx in ("", *sfxs)]
+    if len(lines) + 1 > MAX_REDIRECTS:
+        raise Invalid(f"{len(lines) + 1} regras no _redirects (máximo {MAX_REDIRECTS})")
+    # ponytail: retirado além do limite volta ao 404; se acumular, trocar por regra no Worker
+    lines += [f"/livro/{i}/ /{g}/ 301\n" for i, g in retired if _nicho_ok(i, g)][:MAX_REDIRECTS - 1 - len(lines)]
     lines.append("/r/* / 302\n")
-    if len(lines) > MAX_REDIRECTS:
-        raise Invalid(f"{len(lines)} regras no _redirects (máximo {MAX_REDIRECTS})")
     return "".join(lines)
+
+
+def retirados(books, offers, catalog, generos):
+    """[(id, genre)] dos livros retirados do catálogo que saíram do offers.json, mais recente primeiro.
+    Só com genre de GENRES numa página de nicho que existe (nicho com oferta); senão, 404 como antes."""
+    vivos, nichos = {b["id"] for b in books}, {o["genre"] for o in offers}
+    gone = catalog.get("retirados") or {}
+    gone = gone if isinstance(gone, dict) else {}
+    return [(i, generos[i]) for i, _ in sorted(gone.items(), key=lambda kv: str(kv[1]), reverse=True)
+            if i not in vivos and _nicho_ok(i, generos.get(i)) and generos[i] in nichos]
+
+
+def generos_atualizados(catalog, generos):
+    """Registro id -> genre: o salvo mais os livros do catalog.json, só com id de ID_RE e genre de GENRES."""
+    out = {i: g for i, g in generos.items() if _nicho_ok(i, g)}
+    for b in catalog.get("books") or []:
+        if isinstance(b, dict) and _nicho_ok(b.get("id"), b.get("genre")):
+            out[b["id"]] = b["genre"]
+    return dict(sorted(out.items()))
 
 
 # form-action e connect-src: só o POST do pedido de livro para o Worker no SITE (/pedido, fab).
@@ -1868,7 +1910,12 @@ def build(dev=False):
     offers, sem = resolve(books, now), sem_preco(books, now)
     bot, ch = tg_bot(), channels()
     pages = render_pages(offers, bot, ch, sem)  # tudo validado e renderizado antes de tocar no dist/
-    rules = redirects(offers)
+    catalog = json.loads(CATALOG.read_text(encoding="utf-8")) if CATALOG.is_file() else {}  # dict: o collect valida
+    generos = json.loads(GENEROS.read_text(encoding="utf-8")) if GENEROS.is_file() else {}
+    novo = generos_atualizados(catalog, generos)
+    if novo != generos:  # livro novo no catálogo: entra no registro, para o 301 quando ele sair
+        GENEROS.write_text(json.dumps(novo, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    rules = redirects(offers, sem, retirados(books, offers, catalog, novo))
     catalogo_bot = bot_json(offers, now, sem)
     shutil.rmtree(DIST, ignore_errors=True)
     shutil.copytree(STATIC, DIST)
@@ -2957,7 +3004,43 @@ def selftest():
     assert "offers" not in lds(book_ld({**ss[0], "checked_at": NOW}))[0]   # sem preço nunca tem Offer, nem com leitura recente
     lv2 = next(x for x in json.loads(bot_json(so, NOW, ss))["livros"] if x["id"] == "livro-2")         # 8
     assert lv2["texto"] is None and lv2["desconto"] == 0
-    assert "livro-2" not in redirects(so)                                                               # 9: curinga
+    # PR 2 (§5, itens 13 a 15): /r/ do livro sem preço vai para a própria página, nunca para a loja
+    r0, rs = redirects(so).splitlines(), redirects(so, ss).splitlines()
+    novas = [x for x in rs if x not in r0]
+    assert novas == [f"/r/livro-2{x} /livro/livro-2/ 302" for x in ("", "/mercadolivre", "/tg", "/wa", "/bot")]  # 13
+    assert [x for x in rs if x in r0] == r0 and rs[-1] == "/r/* / 302"                                 # 14
+    assert len(novas) <= len(redirects(load(good, M())).splitlines()) - len(r0)                        # 15
+    # retirado (decisão 1 do Elias): 301 de /livro/<id>/ para o nicho; destino sempre interno
+    so2 = sp(good, M(checked_at=velha_ml))[0]
+    cat = {"books": [{"id": "livro-1", "genre": good["genre"]}], "retirados": {"velho-1": "2026-11-19",
+           "velho-2": "2026-11-20", "livro-1": "2026-11-21", "fora": "2026-11-22", "Mau Id": "2026-11-23",
+           "sem-genero": "2026-11-24", "x\n/r/y": "2026-11-25"}}
+    gen = generos_atualizados(cat, {"velho-1": good["genre"], "velho-2": good["genre"], "fora": "nao-existe",
+                                    "Mau Id": good["genre"], "x\n/r/y": good["genre"], "outro": "../evil"})
+    assert gen == {"livro-1": good["genre"], "velho-1": good["genre"], "velho-2": good["genre"]}
+    ret = retirados(load_books({"version": 2, "offers": [good, M(checked_at=velha_ml)]}), so2, cat, gen)
+    assert ret == [("velho-2", good["genre"]), ("velho-1", good["genre"])]  # vivo, genre ruim, id ruim: nada
+    assert retirados([], [{"genre": "romance"}], cat, gen) == []          # nicho sem oferta não tem página: 404
+    rr = redirects(so2, retired=ret + [("Mau Id", good["genre"]), ("ok", "nao-existe"), ("ok", "https://evil.com"),
+                                       ("x\n/r/y", good["genre"]), ("//evil.com", good["genre"]), ("ok", None)]).splitlines()
+    assert [x for x in rr if x.startswith("/livro/")] == [f"/livro/velho-2/ /{good['genre']}/ 301",
+                                                          f"/livro/velho-1/ /{good['genre']}/ 301"]
+    assert rr[-1] == "/r/* / 302" and "evil" not in "\n".join(rr) and "Mau Id" not in "\n".join(rr) and "None" not in "\n".join(rr)
+    # todo destino que não é URL de afiliado (/r/<id> de livro com preço) é interno: /livro/<id>/ ou /<slug>/
+    dest = [x.split() for x in redirects(so2, ss, ret).splitlines()]
+    internos = [d for _, d, _ in dest if not d.startswith("https://")]
+    assert all(d in ("/", "/curadoria/") or re.fullmatch(r"/livro/[a-z0-9-]+/", d)
+               or d.strip("/") in GENRES for d in internos)
+    assert all(d.startswith("/") and not d.startswith("//") for d in internos)
+    assert not any(d.startswith("https://") for src, d, _ in dest if src.startswith(("/livro/", "/r/livro-2")))
+    try:
+        redirects(so2, [{**ss[0], "id": "x\n/r/y https://evil.com 302"}])  # id ruim no sem preço: falha
+        raise AssertionError("id inválido no sem preço")
+    except Invalid:
+        pass
+    cheio = redirects(load(*many[:333]), retired=ret).splitlines()     # limite: retirado só no que sobra
+    assert len(cheio) == 2000 and not any(x.startswith("/livro/") for x in cheio)
+    assert len(redirects(load(*many[:332]), retired=ret).splitlines()) == 1996  # 1.994 + 2 retirados
     vb = vis(render_pages(load(good, M()))["livro/livro-2/index.html"])                               # 10: voltou
     assert 'class="go"' in vb and "sem-agora" not in vb
     assert "a página do livro continua no ar, com o histórico" in faq(None, ()) and "sai do site" not in faq(None, ())  # 11
