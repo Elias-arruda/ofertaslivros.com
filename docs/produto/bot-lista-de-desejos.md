@@ -245,7 +245,7 @@ Tirar da lista: /lista
 
 ### 7.2 O `bot.json` (gerado pelo `build.py`, publicado em `dist/bot.json`)
 - Só dado que já é público no site. Sem dado de usuário.
-- Formato, uma entrada por livro do `resolve` (os mesmos que têm `/livro/<id>/`):
+- Formato, uma entrada por livro que tem `/livro/<id>/`: os do `resolve` e os sem preço do `sem_preco` (`pagina-permanente-livro.md`, 2026-11-07). O livro sem preço vai com `texto: null`, `desconto: 0`, `preco_cents` e `valido_ate` da última leitura (já no passado), então o `emOferta` do Worker nunca o trata como oferta; ele existe para a busca e o `add:<id>`:
   ```json
   {"version": 1, "gerado_em": "2026-11-06T12:00:00+00:00",
    "livros": [{"id": "torto-arado", "titulo": "Torto Arado", "autor": "Itamar Vieira Junior",
@@ -411,7 +411,7 @@ Testes do Worker em `worker/bot.test.mjs` (`node --test`, como os que já existe
 29. Chat com `visto_em` de 12 meses e 1 dia atrás é apagado na limpeza diária. Chat com 11 meses fica.
 
 **Build (pytest / `build.py --selftest`)**
-30. O `dist/bot.json` tem uma entrada por livro do `resolve`. `texto` não é nulo só com `oferta and not velho`, e é igual a `post_text(o, SITE + "/r/<id>/bot")`. `valido_ate` = o menor `checked_at + FRESH[store]` entre as lojas do livro.
+30. O `dist/bot.json` tem uma entrada por livro do `resolve` e por livro sem preço (`sem_preco`, com `texto: null` e `desconto: 0`). `texto` não é nulo só com `oferta and not velho`, e é igual a `post_text(o, SITE + "/r/<id>/bot")`. `valido_ate` = o menor `checked_at + FRESH[store]` entre as lojas do livro.
 31. O `_redirects` tem `/r/<id>/bot` para cada livro, com a tag `AMAZON_TAG_BOT` na Amazon (ou a do site, sem a var) e o mesmo `ml_url` no ML.
 32. O `post_text` aceita `/r/<id>/bot` e continua recusando qualquer outro caminho e host de loja.
 33. O build falha com id de mais de 60 chars, com ou sem `TELEGRAM_BOT_USERNAME` (o deep link também recusa 61).
