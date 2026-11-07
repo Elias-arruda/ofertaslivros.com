@@ -311,7 +311,7 @@ Site:
 **12.5 Operação e custo**
 - **Custo:** R$ 0. A Bot API do Telegram e o Canal do WhatsApp são grátis. O Manda Boa custaria R$ 69,90/mês, só se o gatilho disparar.
 - **Tempo do Elias:** com até 5 ofertas por dia, a estimativa é de 5 a 10 min/dia, além dos ~10 min da Amazon. É o custo real.
-- **Ban do WhatsApp:** com postagem manual pelo app oficial, o risco fica perto de zero. Ele só aparece com automação não oficial, o que a decisão 3 proíbe.
+- **Ban do WhatsApp:** com postagem manual pelo app oficial, o risco fica perto de zero. Desde 2026-11-06, o Elias aceitou o risco de o Claude postar pelo WhatsApp Web dele (seção "WhatsApp pelo navegador" e regra 5 do CLAUDE.md): a punição possível é banir o número dono do canal. Ferramentas e código que controlem o WhatsApp continuam proibidos.
 - **Volume:**
   - Com poucas ofertas elegíveis no começo, o canal pode passar dias sem post. Isso é aceitável pela curadoria, mas um canal mudo perde seguidor.
   - Acompanhar nas primeiras 2 semanas. Se ficar mudo, baixar o limiar de desconto (decisão 3), sem afrouxar o frescor.
