@@ -820,6 +820,10 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 .doc h2:first-child { margin-top: 0; }
 .doc p, .doc ul { margin: 0 0 12px; line-height: 1.6; }
 .doc ul { padding-left: 1.25rem; list-style: disc; }
+/* Opt-out da Meta (privacidade): o POST volta em /privacidade/#sem-meta-ok e o :target mostra a confirmação, sem JS */
+.sem-meta { margin: 4px 0 12px; }
+.sem-meta-ok { display: none; }
+.sem-meta-ok:target { display: block; padding: 12px 16px; border-radius: 14px; background: var(--ivory); color: var(--wine); font-weight: 600; }
 .doc a { text-decoration-color: var(--accent); text-underline-offset: 3px; }
 @media (max-width: 900px) {
   .foot-grid { grid-template-columns: 1fr; }

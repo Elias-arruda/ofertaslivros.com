@@ -800,7 +800,7 @@ def na(store):
 
 def go(o):
     """Link de afiliado da vencedora: sempre o nosso /r/<id>, nunca a URL da loja."""
-    return (f'<a class="go" href="/r/{e(o["id"])}" rel="sponsored noopener noreferrer" target="_blank">'
+    return (f'<a class="go" href="/r/{e(o["id"])}" rel="sponsored noopener" target="_blank">'
             f'Ver {na(o["store"])} por {brl(o["price_cents"])}{icon("seta")}'
             f'<span class="sr">: {e(o["title"])} (abre em nova aba)</span></a>')
 
@@ -811,7 +811,7 @@ def alt_details(o):
     if not a:
         return ""
     return (f'<details class="alt"><summary>{icon("chev")}<span class="sr">Outra loja: {STORES[a["store"]]}</span></summary>'
-            f'<p class="alt-box"><a href="/r/{e(o["id"])}/{a["store"]}" rel="sponsored noopener noreferrer" '
+            f'<p class="alt-box"><a href="/r/{e(o["id"])}/{a["store"]}" rel="sponsored noopener" '
             f'target="_blank">Também {na(a["store"])}: {brl(a["price_cents"])}'
             f'<span class="sr">, {e(o["title"])} (abre em nova aba)</span></a>'
             f'<span class="alt-when">{checked(a, o["now"])}</span></p></details>')
@@ -824,7 +824,7 @@ def buy(o):
 
 def buy_circle(o):
     """Botão de compra do card: círculo com a seta; loja e preço no nome acessível."""
-    return (f'<a class="buy-c" href="/r/{e(o["id"])}" rel="sponsored noopener noreferrer" target="_blank">{icon("seta")}'
+    return (f'<a class="buy-c" href="/r/{e(o["id"])}" rel="sponsored noopener" target="_blank">{icon("seta")}'
             f'<span class="sr">Ver {na(o["store"])} por {brl(o["price_cents"])}: {e(o["title"])} (abre em nova aba)</span></a>')
 
 
@@ -1483,7 +1483,7 @@ def store_list(o):
     a = o["alt"]
     if not a:
         return ""
-    return (f'<p class="other"><a class="btn btn--ghost" href="/r/{e(o["id"])}/{a["store"]}" rel="sponsored noopener noreferrer" '
+    return (f'<p class="other"><a class="btn btn--ghost" href="/r/{e(o["id"])}/{a["store"]}" rel="sponsored noopener" '
             f'target="_blank">Também {na(a["store"])}: {brl(a["price_cents"])}{icon("seta")}'
             f'<span class="sr">, {e(o["title"])} (abre em nova aba)</span></a>'
             f'<span class="alt-when">{checked(a, o["now"])}</span></p>')
@@ -1592,10 +1592,17 @@ def privacy(offers, bot=None, ch=()):
     body = f"""<h1 class="page-h1">Privacidade</h1>
 <article class="doc">
 <h2>No site</h2>
-<p>O site não tem cadastro, cookies nem ferramentas de análise. Ele tem um script próprio, servido pelo próprio site, para a busca, os filtros e o tema; a única coisa que ele guarda é a sua escolha de tema claro ou escuro, no seu navegador (localStorage), e nada disso sai do aparelho. O site é hospedado na Cloudflare; o endereço ofertaslivros.com passa pelo Netlify só para redirecionar a este site. Os dois recebem os dados técnicos de cada acesso (como o endereço IP) para entregar as páginas.</p>
+<p>O site não tem cadastro nem ferramentas de análise no navegador, e só grava um cookie se você pedir para não ser medido nos anúncios (veja “<a href="#sem-meta">Se você chegou por um anúncio</a>”). Ele tem um script próprio, servido pelo próprio site, para a busca, os filtros e o tema; a única coisa que ele guarda é a sua escolha de tema claro ou escuro, no seu navegador (localStorage), e nada disso sai do aparelho. O site é hospedado na Cloudflare; o endereço ofertaslivros.com passa pelo Netlify só para redirecionar a este site. Os dois recebem os dados técnicos de cada acesso (como o endereço IP) para entregar as páginas.</p>
 <h2>No pedido de livro</h2>
 <p>O formulário “Pedir um livro” pede só o nome e o autor do livro. Ele é processado na Cloudflare, que usa o endereço IP só para barrar envios repetidos, sem guardá-lo, e envia o pedido ao nosso e-mail. O pedido (só o nome e o autor do livro, sem nenhum dado seu) fica guardado por 30 dias num banco de dados Cloudflare D1 e depois é apagado. Apagamos os pedidos do e-mail em até 30 dias.</p>
 <p>Ao clicar em uma oferta, você vai para a Amazon ou para o Mercado Livre. A partir daí valem as políticas de privacidade de cada loja.</p>
+<h2 id="sem-meta">Se você chegou por um anúncio</h2>
+<p>Quando você chega ao site por um anúncio pago nosso no Instagram ou no Facebook e clica numa oferta, o site avisa à Meta que aquele toque no anúncio levou a uma ida à loja. Isso serve para sabermos quais anúncios funcionam e para a Meta mostrar o anúncio a quem tem mais chance de se interessar.</p>
+<p>Enviamos à Meta só: o código do clique que a própria Meta põe no endereço da página (fbclid), os dados técnicos do navegador (user agent), o horário e a página do site em que você estava. Não enviamos qual livro você clicou, nem o seu endereço IP, nome, e-mail ou telefone. O site não guarda nenhum desses dados.</p>
+<p>A base legal é o legítimo interesse (LGPD, art. 7º, IX). A Meta trata esses dados conforme a política de privacidade dela, inclusive fora do Brasil. Lá você pode ver e desligar esse uso em “Central de Contas &gt; Sua atividade fora das tecnologias da Meta”.</p>
+<p>Quem chega ao site sem ser por anúncio pago não tem nada enviado. O site também respeita o sinal Global Privacy Control (GPC) do navegador. Para não ser medido, use o botão abaixo. Ele grava no seu navegador um cookie só com essa escolha, por 12 meses.</p>
+<form class="sem-meta" method="post" action="/privacidade/sem-meta"><button class="btn btn--ghost" type="submit">Não enviar meus cliques à Meta</button></form>
+<p class="sem-meta-ok" id="sem-meta-ok" role="status">Pronto: seus cliques não serão enviados à Meta neste navegador.</p>
 <h2>Na lista de desejos do Telegram</h2>
 <p>{"Quando você põe um livro ou um autor na sua lista com " + bot_name + ", ele avisa por lá quando o livro entrar em oferta. Para isso, guardamos" if bot else "A lista de desejos ainda não está no ar. Em breve você poderá pôr livros e autores numa lista com " + bot_name + ", que vai avisar quando eles entrarem em oferta. Quando isso funcionar, vamos guardar"} só o necessário para avisar você:</p>
 <ul>
@@ -1952,6 +1959,17 @@ def selftest():
     assert '<a href="/privacidade/" aria-current="page">' in privacy(o)
     pv = privacy(o, "ofertaslivros_bot")
     assert all(w in pv for w in ("No pedido de livro", "Cloudflare", "endereço IP", "30 dias"))  # pedido de livro
+    # CAPI (docs/produto/meta-conversions-api.md, 5.3 e 5.4): texto novo, opt-out por POST sem JS, confirmação via :target
+    assert "cadastro, cookies nem" not in pv and "não envia nenhum dado seu" not in pv
+    assert all(w in pv for w in ('<h2 id="sem-meta">Se você chegou por um anúncio</h2>', "fbclid", "legítimo interesse",
+                                 "Global Privacy Control", "por 12 meses", "Não enviamos qual livro você clicou"))
+    assert '<form class="sem-meta" method="post" action="/privacidade/sem-meta"><button class="btn btn--ghost" type="submit">' in pv
+    assert '<p class="sem-meta-ok" id="sem-meta-ok" role="status">' in pv and ".sem-meta-ok:target" in css
+    # links para o /r/: sem noreferrer (o Worker lê o Referer same-origin); o resto dos externos segue com noreferrer
+    js = (STATIC / "app.js").read_text(encoding="utf-8")
+    assert "'sponsored noopener'" in js and "sponsored noopener noreferrer" not in js
+    for h_ in (page(o), pv):
+        assert not re.search(r'href="/r/[^"]*" rel="[^"]*noreferrer', h_)
     assert all(w in pv for w in ("Na lista de desejos do Telegram", "chat_id", "Cloudflare D1", "12 meses", "/lista",
                                  "/parar", "bloquear o bot", "https://t.me/ofertaslivros_bot",
                                  "o pedido vai para a curadoria sem nenhum dado seu", "fica guardado por 30 dias"))
@@ -2534,7 +2552,7 @@ def selftest():
     assert r["seal"] == "90d" and len(r["stores"]) == 1
     # card: compra em círculo (loja e preço no nome acessível); seta só com a segunda loja elegível
     one = vis(page(load(good)))
-    assert ('<a class="buy-c" href="/r/livro-1" rel="sponsored noopener noreferrer" target="_blank">' in one
+    assert ('<a class="buy-c" href="/r/livro-1" rel="sponsored noopener" target="_blank">' in one
             and "<span class=\"sr\">Ver na Amazon por R$\u00a019,90: T (abre em nova aba)</span>" in one and '<details class="alt"' not in one)
     two = load({**good, "stores": [amz, {**mls, "price_cents": 1890, "checked_at": "2026-10-18T08:30:00-03:00"}]})
     home12 = vis(page(load(*({**good, "id": f"x-{k}", "stores": [amz, {**mls, "price_cents": 1890}]} for k in range(12)))))
@@ -2543,7 +2561,7 @@ def selftest():
     for h in (vis(page(two)), vis(page(two, "manga")), home12):
         assert "Ver no Mercado Livre por R$\u00a018,90" in h
         assert '<span class="sr">Outra loja: Amazon</span></summary>' in h
-        assert '/amazon" rel="sponsored noopener noreferrer" target="_blank">Também na Amazon: R$\u00a019,90' in h
+        assert '/amazon" rel="sponsored noopener" target="_blank">Também na Amazon: R$\u00a019,90' in h
     h = vis(page(two))
     assert h[h.index('id="h-ativas"'):].count("visto hoje às") == 2           # no card: vencedora + a outra na seta
     assert ('<span class="store">Mercado Livre</span> <span>visto hoje às <time datetime="2026-10-18T08:30:00-03:00">08h30</time>'
@@ -2647,7 +2665,7 @@ def selftest():
     assert '<link rel="canonical" href="https://ofertaslivros.com.br/">' in pg["index.html"]
     lv = pg["livro/livro-1/index.html"]
     assert "<h1 class=\"livro-h1\">T</h1>" in lv and '<html lang="pt-BR" data-style="manga">' in lv
-    assert 'href="/r/livro-1" rel="sponsored noopener noreferrer" target="_blank"' in lv
+    assert 'href="/r/livro-1" rel="sponsored noopener" target="_blank"' in lv
     assert 'href="/livro/livro-1/" data-modal="livro-1"' in pg["index.html"]  # o modal é atalho para a página real
     assert pg["ofertas/index.html"].count('class="card"') == 2 and "feed--full" in pg["ofertas/index.html"]
     for path, h in pg.items():                                                 # rodapé obrigatório em todas
