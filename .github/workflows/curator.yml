@@ -44,8 +44,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
-      contents: write      # push só no branch curator/AAAA-MM-DD (a main é protegida pelo ruleset)
-      pull-requests: write # gh pr create e gh pr comment
+      contents: write      # push só no branch curator/AAAA-MM-DD e merge do PR (a main é protegida pelo ruleset)
+      pull-requests: write # gh pr create, gh pr comment e gh pr merge --auto
+      actions: write       # gh workflow run catalog-check.yml no branch do PR
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -53,8 +54,8 @@ jobs:
 
       # Roda a cada 2 horas (Worker ofertaslivros-cron, minuto 5). Um PR por dia, na data de Brasília
       # (a mesma do curator.py): a 1ª rodada abre curator/AAAA-MM-DD; as seguintes acrescentam um commit
-      # ao mesmo branch (sem force-push) e comentam os novos no PR. PR aberto de outro dia: nada a fazer
-      # até ele ser fechado (como antes). PR de fork não conta.
+      # ao mesmo branch (sem force-push) e comentam os novos no PR. O PR entra sozinho com o catalog-check
+      # verde. PR aberto de outro dia (check vermelho): nada a fazer até ele ser fechado. PR de fork não conta.
       - name: PR do curator do dia
         id: open
         env:
@@ -138,6 +139,11 @@ jobs:
               --title "Curadoria: candidatos de ${BRANCH#curator/}" \
               --body-file "$RUNNER_TEMP/curator.md"
           fi
+          # Merge automático (decisão do Elias, 2026-11-07): PR aberto com o GITHUB_TOKEN não dispara o
+          # pull_request do catalog-check, então o job o dispara no branch (workflow_dispatch). O ruleset
+          # da main continua exigindo o catalog-check verde no último commit; o auto-merge espera por ele.
+          gh workflow run catalog-check.yml --ref "$BRANCH"
+          gh pr merge "$BRANCH" --auto --squash --delete-branch
 
   ml-match:
     # Livros com isbn e sem ML: acha o MLB pelo ISBN e abre um PR com a fila ml_links.tsv
