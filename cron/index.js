@@ -1,6 +1,9 @@
 // Dispara workflows no GitHub pelo Cron Trigger. Sem handler fetch: não há rota pública.
 // O schedule do GitHub atrasa ou perde execuções; o Cron Trigger da Cloudflare não.
+import { rollup } from "./rollup.js";
+
 const REPO = "https://api.github.com/repos/Elias-arruda/ofertaslivros.com/actions/workflows";
+const ROLLUP = "15 3 * * *"; // 00:15 em Brasília: grava no D1 o analytics do dia anterior
 const POR_CRON = {
   "*/30 * * * *": { workflow: "pipeline.yml", body: { ref: "main" } },
   "0 12 * * *": { workflow: "curator.yml", body: { ref: "main", inputs: { mode: "suggest" } } },
@@ -8,6 +11,7 @@ const POR_CRON = {
 
 export default {
   async scheduled(event, env, ctx) {
+    if (event.cron === ROLLUP) return rollup(env);
     const alvo = POR_CRON[event.cron];
     if (!alvo) throw new Error(`cron sem workflow: ${event.cron}`);
     // Sem token, falha visível (Workers Logs e métricas de erro), em vez de só um log.

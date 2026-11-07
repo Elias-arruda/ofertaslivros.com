@@ -1,0 +1,4 @@
+book_id,store,price_cents,desde,ate,motivo
+a-psicologia-financeira,mercadolivre,200,2026-10-01T00:00:00-03:00,2026-11-05T23:59:59-03:00,isca no /items: R$ 2 contra R$ 19,90 (PR #94)
+dom-casmurro,mercadolivre,800,2026-10-01T00:00:00-03:00,2026-11-05T23:59:59-03:00,isca no /items: R$ 8 em todas as leituras (PR #94)
+pequeno-manual-antirracista,mercadolivre,800,2026-10-01T00:00:00-03:00,2026-11-05T23:59:59-03:00,isca no /items: R$ 8 contra cerca de R$ 30 (PR #94)

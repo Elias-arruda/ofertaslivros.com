@@ -68,6 +68,7 @@
   --line: #1c2b4a21;
   --text: #1c2b4a;
   --muted: #4a5670;
+  --hc-ml: #946400;    /* Mercado Livre no gráfico do histórico: âmbar da família negócios (4,74:1 no --bg2) */
   --shadow: 0 30px 60px -34px #1c2b4a73;
   --paper: #fbfcfd;    /* miolo do livro */
   --paper-edge: #d5dde7;
@@ -89,7 +90,7 @@
   --coral: #ff8a8f; --coral-ink: #0f1729;
   --bg: #0f1729; --bg2: #18233b; --tint: #1d2a45;
   --surface: #e6ebf30b; --surface2: #e6ebf314; --line: #e6ebf31a;
-  --text: #e6ebf3; --muted: #a9b4c8;
+  --text: #e6ebf3; --muted: #a9b4c8; --hc-ml: #f2c14e;
   --shadow: 0 30px 60px -30px #000000b3;
   --paper: #dfe5ee; --paper-edge: #9aa7bb;
   color-scheme: dark;
@@ -99,7 +100,7 @@
     --coral: #ff8a8f; --coral-ink: #0f1729;
     --bg: #0f1729; --bg2: #18233b; --tint: #1d2a45;
     --surface: #e6ebf30b; --surface2: #e6ebf314; --line: #e6ebf31a;
-    --text: #e6ebf3; --muted: #a9b4c8;
+    --text: #e6ebf3; --muted: #a9b4c8; --hc-ml: #f2c14e;
     --shadow: 0 30px 60px -30px #000000b3;
     --paper: #dfe5ee; --paper-edge: #9aa7bb;
     color-scheme: dark;
@@ -152,9 +153,9 @@ em { font-style: italic; font-family: var(--serif); font-variation-settings: "SO
 @media (max-width: 640px) { body { font-size: 15px; } }
 
 /* ---------- 2. Logo B ---------- */
-/* Wordmark 8,5:1, alinhado à esquerda logo depois do espaço do menu. Altura: 44 px no desktop
-   (o carimbo-"o" com ~28 px), 36 px até 1100 px e, até 640 px, pela largura que sobra (mín. ~15 px
-   de altura, o "o" com ~10 px). */
+/* Wordmark 8,5:1, colado à esquerda da barra (o espaço do menu saiu em 2026-11-06, pedido do Elias). Altura: 44 px no desktop
+   (o carimbo-"o" com ~28 px), 36 px até 1100 px e, até 640 px, pela largura que sobra (mín. 112 px
+   de largura, ~13 px de altura). */
 .brand { display: inline-flex; align-items: center; min-height: 44px; flex: none; }
 .brand img { height: 44px; width: auto; }
 .logo-escuro { display: none; }
@@ -165,7 +166,9 @@ em { font-style: italic; font-family: var(--serif); font-variation-settings: "SO
   :root:not([data-theme="light"]) .logo-escuro { display: block; }
 }
 @media (max-width: 1100px) { .brand img { height: 36px; } }
-@media (max-width: 640px) { .brand img { height: auto; width: clamp(120px, 100vw - 246px, 200px); } }
+/* Celular: o logo encolhe para o espaço que os botões deixam (200 a 112 px, ~13 px de altura), sem depender de vw.
+   O carimbo da barra some aqui; com 4 botões (> 360 px) sobram ≥ 120 px, com 3 (≤ 360 px) ≥ 132 px em 320. */
+@media (max-width: 640px) { .brand { flex: 0 1 200px; min-width: 112px; } .brand img { height: auto; width: 100%; } }
 
 /* ---------- 3. Fundo e textura (spec 2.8) ---------- */
 /* Três manchas desfocadas no acento atual: trocar de nicho muda o clima da página inteira */
@@ -201,8 +204,6 @@ body::after {
   display: inline-flex; align-items: center; gap: 8px; border-radius: 999px;
   background: var(--surface2); white-space: nowrap;
 }
-/* Lugar reservado do futuro menu (44x44): vazio, fora do foco e do leitor de tela */
-.menu-slot { flex: none; width: 44px; height: 44px; }
 /* Carimbo "conferido": girado, no vermelho do carimbo (5,7:1 no claro; #ff8a8f, 7,9:1 no escuro), não clicável */
 .carimbo {
   flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -260,13 +261,19 @@ body::after {
 /* Faixa da campanha (docs/produto/black-friday-2026.md): uma linha marinha sob o header, não fixa.
    Marfim 12,4:1 e rosado 7,1:1 sobre o marinho, nos dois temas; a borda separa do fundo escuro. */
 .sazonal { background: var(--wine); color: var(--ivory); border-bottom: 1px solid var(--line); text-align: center; }
-.sazonal a { display: block; padding: 10px var(--pad); font: 600 14px/16px var(--sans); text-decoration: none; }
-.sazonal em { color: var(--rose); font-size: 15px; text-underline-offset: 3px; }
-.sazonal a:hover em { text-decoration: underline; }
+.sazonal a { display: block; padding: 13px var(--pad); font: 600 15px/26px var(--sans); text-decoration: none; }
+/* CTA em pílula rosada (marinho sobre rosado, 7,1:1), com seta */
+.sazonal em {
+  display: inline-block; margin-left: 6px; padding: 0 14px; border-radius: 999px;
+  background: var(--rose); color: var(--wine); font: 700 15px/26px var(--sans); font-style: normal;
+  box-shadow: 0 6px 18px -8px var(--rose); transition: background-color .2s var(--ease);
+}
+.sazonal em::after { content: " →"; }
+.sazonal a:hover em { background: var(--ivory); }
 .sazonal a:focus-visible { outline-color: var(--ivory); outline-offset: -5px; }  /* o acento some no marinho */
 .saz-m { display: none; }
 @media (max-width: 640px) {
-  .sazonal a { padding-block: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }  /* 44 px de toque */
+  .sazonal a { padding-block: 9px; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }  /* 44 px de toque */
   .saz-d { display: none; }
   .saz-m { display: inline; }
 }
@@ -281,9 +288,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
   .top-bar { gap: 8px; }
   .js-busca { width: 44px; padding: 0; justify-content: center; }
   .js-busca .pill-t, .pill--wa .pill-t { display: none; }
-  /* O logo B é largo: o Telegram sai do topo no celular (fica no bloco de canais e no rodapé)
-     e o WhatsApp vira círculo antes dos 350 px da spec */
-  .pill--tg { display: none; }
+  /* Telegram e WhatsApp viram círculos de 44 px (o Telegram já é círculo desde 900 px) */
   .pill--wa { width: 44px; padding: 0; justify-content: center; }
 }
 
@@ -615,7 +620,17 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 900px) {
   .rail { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent); }
+  /* Seta quase transparente: "tem mais para o lado". Some no fim da rolagem (scroll-driven; sem suporte, fica) */
+  .filtros nav { position: relative; timeline-scope: --rail; }
+  .rail { scroll-timeline: --rail x; }
+  .filtros nav::after {
+    content: ""; position: absolute; right: 8px; top: 57px; width: 10px; height: 10px; pointer-events: none;
+    border: solid var(--text); border-width: 2.5px 2.5px 0 0; transform: rotate(45deg); opacity: .4;
+    animation: rail-fim linear both; animation-timeline: --rail; animation-range: 85% 100%;
+  }
 }
+@media (max-width: 640px) { .filtros nav::after { top: 45px; } }
+@keyframes rail-fim { to { opacity: 0; } }
 
 /* ---------- 8. Feed e blocos intercalados (spec 8) ---------- */
 .sec { margin-top: 30px; }
@@ -623,6 +638,11 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 .sec-head h2 { font-size: clamp(26px, 3.2vw, 38px); }
 .sec-n { margin-left: -8px; font-size: 15px; font-weight: 600; color: var(--muted); }
 .sec-note { flex: 1 1 18rem; font-size: 14px; color: var(--muted); }
+/* Faixas de desconto (Todas / 40%+ / 50%+): links para /ofertas/<t>/, a ativa em acento */
+.faixas ul { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; padding: 0 4px; }
+.faixas .pill { color: var(--text); }
+.faixas .pill[aria-current] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.faixa-n { font-weight: 500; font-size: 12.5px; opacity: .75; font-variant-numeric: tabular-nums; }
 .feed-tools { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 0 4px; font-size: 14px; color: var(--muted); }
 .feed-tools select {
   height: 46px; padding: 0 44px 0 18px; border-radius: 999px; appearance: none;
@@ -681,6 +701,8 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 :root[data-theme="dark"] .mascote { color: #b3262f; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mascote { color: #b3262f; } }
 .i-carimbo { width: 74%; height: 74%; transform: rotate(-10deg); }
+/* A Mavi, cara do bot (a mesma foto do bot no Telegram), ocupa o círculo do mascote */
+.mascote img { display: block; width: 100%; height: 100%; border-radius: 50%; }
 @keyframes float { 50% { transform: translateY(-14px) rotate(3deg); } }
 @media (max-width: 900px) { .blk--canais { grid-template-columns: auto 1fr; } .blk-acts { grid-column: 1 / -1; } }
 @media (max-width: 640px) {
@@ -819,12 +841,35 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 .nota p { font: 400 18px/1.4 var(--serif); font-variation-settings: "SOFT" 100, "WONK" 1; }
 .nota footer { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: var(--muted); }
 .other { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 14px; }
-/* Histórico em SVG inline: linha em texto secundário, ponto no acento */
-.hist { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.spark { flex: none; overflow: visible; }
-.spark-line { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
-.spark-base { stroke: var(--line); stroke-width: 1; }
-.spark-dot { fill: var(--coral); }
+/* Histórico (docs/marca/grafico-historico.md): painel neutro, uma linha por loja, nome na ponta */
+.hist { margin-top: 10px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hc { margin: 16px 0 0; max-width: 452px; padding: 14px; background: var(--bg2); border: 1px solid var(--line); border-radius: 18px; color: var(--text); }
+.hc svg { display: block; width: 100%; max-width: 420px; height: auto; overflow: visible; font: 600 13px var(--sans); font-variant-numeric: tabular-nums; }
+.hc-line { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.hc-line.hc-amz { stroke: var(--text); }
+.hc-line.hc-ml { stroke: var(--hc-ml); stroke-width: 2; }
+.hc-min { stroke: var(--coral); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.hc-lbl { fill: var(--muted); }
+.hc-lbl--min { fill: var(--coral); }
+.hc-name.hc-amz { fill: var(--text); }
+.hc-name.hc-ml { fill: var(--hc-ml); }
+.hc-name.hc-old { fill: var(--muted); }
+.hc-now-lbl { fill: var(--coral); font-weight: 700; }
+.hc-pt.hc-amz, .hc-val.hc-amz { fill: var(--text); }
+.hc-pt.hc-ml, .hc-val.hc-ml { fill: var(--hc-ml); }
+.hc-pt { stroke: var(--bg2); stroke-width: 1.5; }
+.hc-now { fill: var(--coral); stroke: var(--bg2); stroke-width: 2; }
+.hc-now--velho { fill: var(--bg2); stroke: var(--coral); }
+.hc figcaption { margin-top: 10px; font-size: 15px; font-weight: 600; }
+.hc-tab { margin-top: 6px; font-size: 14px; }
+.hc-tab summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--muted); font-weight: 600; }
+.hc-tab table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.hc-tab th, .hc-tab td { padding: 4px 8px 4px 0; text-align: left; border-top: 1px solid var(--line); }
+.ver-hist { position: relative; z-index: 2; align-self: flex-start; display: inline-flex; align-items: center; min-height: 32px; padding: 0 2px;
+  font-size: 12.5px; font-weight: 600; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.ver-hist:hover { color: var(--text); }
+.m-hc .hc { margin-top: 12px; }
+.hc-tab thead th { color: var(--muted); font-weight: 600; border-top: 0; }
 @media (max-width: 900px) { .livro { grid-template-columns: 1fr; } .livro-obj { max-width: 300px; justify-self: center; } }
 @media (max-width: 640px) { .livro { border-radius: 26px; padding: 18px; } .livro-obj { max-width: 200px; } }
 
@@ -962,7 +1007,9 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
   .foot-t { margin-bottom: 0; }
   .foot-legal { margin-top: 16px; padding-top: 14px; }
   .card .obj { aspect-ratio: 3 / 2; }
-  .card .stamp { white-space: nowrap; letter-spacing: .02em; padding: 3px 7px; }
+  /* Selo: a fonte acompanha a largura do card (9,5 a 8 px) para caber numa linha; se nem assim couber, quebra.
+     100cqi é o card sem o padding dele; tira 8 px do padding do .card-body e 14 px de padding+borda; texto até ≈ 14 em */
+  .card .stamp { white-space: normal; max-width: 100%; letter-spacing: .02em; padding: 3px 6px; font-size: clamp(8px, calc((100cqi - 23px) / 14.2), 9.5px); }
   .cur-d { display: none; }
   .faq summary { min-height: 46px; padding: 7px 16px; font-size: 15.5px; }
   .kicker--muted { margin-bottom: 6px; }
@@ -984,7 +1031,6 @@ main { max-width: 1440px; margin: 0 auto; padding: 0 var(--pad) 120px; }
 @media (max-width: 360px) {
   .top-bar { gap: 6px; }
   .pill--wa { display: none; }
-  .card .stamp { white-space: normal; }  /* o selo não cabe numa linha no card de 140 px */
 }
 @media (max-width: 640px) {
   main { position: relative; }

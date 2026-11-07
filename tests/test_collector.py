@@ -365,7 +365,8 @@ def test_offers_v2_contrato(env):
     amz, ml = d["stores"]
     assert amz == {"store": "amazon", "asin": "B0ABCDEFGH", "price_cents": 2990,
                    "list_price_cents": 4990, "lowest_90d_cents": 2990,
-                   "history_since": "2026-10-18", "checked_at": "2026-10-18T11:00:00+00:00"}
+                   "history_since": "2026-10-18", "checked_at": "2026-10-18T11:00:00+00:00",
+                   "price_points": [{"date": "2026-10-18", "price_cents": 2990}]}
     assert ml["ml_product_id"] == "MLB11" and ml["ml_url"] == ML_URL
     assert ml["price_cents"] == 3990 and ml["list_price_cents"] == 5990
     assert [s["store"] for s in o["livro-ml-2"]["stores"]] == ["mercadolivre"]
@@ -590,6 +591,54 @@ def test_items_pagina_todas_as_listagens_para_escolher_menor(env):
     assert any(r.startswith("livro-duplo,mercadolivre,2500,2500,") for r in rows(env["hist"]))
     assert [p for p in env["fake"].paths if p.endswith("/items")] == [
         "/products/MLB11/items", "/products/MLB11/items"]
+
+
+def test_best_listing_descarta_isca_abaixo_da_metade_da_mediana():
+    D = Decimal  # o JSON real vem com parse_float=Decimal; float é recusado
+    # caso a-psicologia-financeira: um anúncio de R$ 2 entre vários de ~R$ 20 a R$ 45
+    res = [item("MLB8001", 2), item("MLB8002", D("19.9")), item("MLB8003", D("24.9")),
+           item("MLB8004", D("29.9")), item("MLB8005", 45), item("MLB8006", 8, cond="used")]
+    it, n, sus = c.best_listing({"results": res})
+    assert (it["item_id"], n, sus) == ("MLB8002", 5, 1)
+
+
+def test_best_listing_promocao_legitima_fica():
+    # 60% da mediana não é isca: continua valendo como menor preço
+    it, n, sus = c.best_listing({"results": [item("MLB8001", 18), item("MLB8002", 30),
+                                             item("MLB8003", 31)]})
+    assert (it["item_id"], n, sus) == ("MLB8001", 3, 0)
+
+
+def test_best_listing_um_so_anuncio_e_vazio():
+    assert c.best_listing({"results": [item("MLB8001", 8)]})[1:] == (1, 0)
+    assert c.best_listing({"results": [item("MLB8001", 8, cond="used")]}) == (None, 0, 0)
+
+
+def test_best_listing_mediana_par_sem_float():
+    # mediana de 1249, 1250, 3750 e 4000 centavos = 2500 (par); o piso é 1250 exato
+    res = [item("MLB8001", D2) for D2 in (Decimal("12.49"), Decimal("12.50"),
+                                          Decimal("37.50"), 40)]
+    it, n, sus = c.best_listing({"results": res})
+    assert (it["price"], n, sus) == (Decimal("12.50"), 4, 1)
+
+
+def test_items_isca_nao_entra_no_historico_e_conta(env, capsys):
+    p = prod()
+    p["buy_box_winner"] = None
+    env["fake"].products["MLB11"] = p
+    env["fake"].items["MLB11"] = {"results": [
+        item("MLB7001", 8), item("MLB7002", 2), item("MLB7003", 29.9),
+        item("MLB7004", 31), item("MLB7005", 35)]}
+    assert env["run"]() == 0
+    hist = rows(env["hist"])
+    assert any(r.startswith("livro-duplo,mercadolivre,2990,2990,") for r in hist)
+    assert not any(r.startswith(("livro-duplo,mercadolivre,800,",
+                                 "livro-duplo,mercadolivre,200,")) for r in hist)
+    out = capsys.readouterr().out
+    assert ("ML diag: livro-duplo /products=200 buy_box=não /items=5 novos_brl=5 "
+            "caminho=items suspeitos=2") in out
+    assert "2 anuncios_suspeitos" in out
+    assert "MLB700" not in out
 
 
 def test_items_total_acima_do_limite_falha_fechado(env):
@@ -904,3 +953,75 @@ def test_state_com_campo_de_tipo_errado_e_descartado(env, bad):
 def test_dia_so_na_forma_canonica(v):
     assert not c._day(v)
     assert c._day("2026-10-18")
+
+
+def test_price_points_menor_do_dia_ate_90_dias(env):
+    """Gráfico do histórico: um ponto por dia BRT (o menor), em ordem, sem dia com mais de
+    90 dias e aceito pelo contrato do build."""
+    hist = env["hist"]
+    (hist / "price_history").mkdir(parents=True)
+    head = ",".join(c.HISTORY_COLS) + "\n"
+    (hist / "price_history" / "2026-07.csv").write_text(
+        head + "livro-ml-2,mercadolivre,1000,1000,2026-07-10T12:00:00+00:00,ml_api\n")  # > 90 dias
+    (hist / "price_history" / "2026-10.csv").write_text(head + "".join(
+        f"livro-ml-2,mercadolivre,{p},9990,{ts},ml_api\n" for p, ts in [
+            (5000, "2026-10-01T12:00:00+00:00"), (4500, "2026-10-01T20:00:00+00:00"),
+            (4800, "2026-10-11T02:00:00+00:00"),  # 10/10 em BRT
+            (5200, "2026-10-12T12:00:00+00:00")]))
+    env["run"]()
+    ml = offers(hist)["livro-ml-2"]["stores"][0]
+    hoje = ml["price_points"][-1]
+    assert ml["price_points"][:-1] == [{"date": "2026-10-01", "price_cents": 4500},
+                                       {"date": "2026-10-10", "price_cents": 4800},
+                                       {"date": "2026-10-12", "price_cents": 5200}]
+    assert hoje["date"] == "2026-10-18"
+    assert len(ml["price_points"]) <= c.build.MAX_POINTS
+    assert all(p["price_cents"] >= ml["lowest_90d_cents"] for p in ml["price_points"])
+    o = c.build.load_offers(json.loads((hist / "offers.json").read_text()), NOW)
+    assert o  # o build aceita a série
+
+
+def test_price_points_limites():
+    from datetime import date, timedelta
+    today = date(2026, 10, 18)
+    days = {today - timedelta(days=n): 3000 + n for n in range(0, 120)}
+    pts = c.price_points(days, "2026-01-01", "2026-10-18T12:00:00+00:00", today)
+    assert len(pts) == 90 and pts[0]["date"] == "2026-07-21" and pts[-1]["date"] == "2026-10-18"
+    assert [p["date"] for p in c.price_points(days, "2026-10-15", "2026-10-18T12:00:00+00:00", today)] \
+        == ["2026-10-15", "2026-10-16", "2026-10-17", "2026-10-18"]  # desde o history_since
+    # Amazon vencida: termina no dia da leitura e não volta além de hoje - 89
+    old = c.price_points(days, "2026-01-01", "2026-10-10T12:00:00+00:00", today)
+    assert old[0]["date"] == "2026-07-21" and old[-1]["date"] == "2026-10-10"
+
+
+def test_leituras_excluidas_nao_entram_no_calculo(tmp_path):
+    """ml_excluded.csv: a isca já gravada não puxa latest/lowest_90d/price_points; o
+    price_history não muda."""
+    hist = tmp_path / "h"
+    (hist / "price_history").mkdir(parents=True)
+    head = ",".join(c.HISTORY_COLS) + "\n"
+    f = hist / "price_history" / "2026-10.csv"
+    f.write_text(head + "".join(f"livro-ml-2,mercadolivre,{p},9990,{ts},ml_api\n" for p, ts in [
+        (3000, "2026-10-10T12:00:00+00:00"), (200, "2026-10-11T12:00:00+00:00"),
+        (200, "2026-10-17T12:00:00+00:00")]))
+    antes = f.read_text()
+    ex = tmp_path / "ex.csv"
+    ex.write_text("book_id,store,price_cents,desde,ate,motivo\n"
+                  "livro-ml-2,mercadolivre,200,2026-10-01T00:00:00-03:00,2026-10-12T23:59:59-03:00,isca\n")
+    latest, low, _, daily = c.summarize(hist, NOW, ex)
+    k = ("livro-ml-2", "mercadolivre")
+    assert low[k] == 200 and latest[k]["price_cents"] == "200"  # 17/10 fica fora do intervalo
+    assert c.date(2026, 10, 11) not in daily[k]
+    ex.write_text(ex.read_text().replace("2026-10-12T23", "2026-10-17T23"))
+    latest, low, _, daily = c.summarize(hist, NOW, ex)
+    assert low[k] == 3000 and latest[k]["price_cents"] == "3000" and list(daily[k]) == [c.date(2026, 10, 10)]
+    assert f.read_text() == antes
+    ex.write_text("book_id,store,price_cents,desde,ate,motivo\nlivro-ml-2,mercadolivre,x,a,b,c\n")
+    with pytest.raises(c.Invalid, match="linha inválida"):
+        c.summarize(hist, NOW, ex)
+
+
+def test_arquivo_de_exclusoes_do_repo_e_valido():
+    regras = c.load_excluded()
+    ids = {b["id"] for b in json.loads(c.CATALOG.read_text())["books"]}
+    assert regras and all(b in ids and st in ("amazon", "mercadolivre") and z > a for b, st, _, a, z in regras)

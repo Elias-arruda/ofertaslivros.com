@@ -16,8 +16,9 @@ Mercado Livre: o link do painel aponta para PRODUTO de catálogo (/p/MLB...). Po
      status=active com buy_box_winner null: sem vencedor não quer dizer sem anúncio.
      GTIN diferente do ISBN do catálogo: o preço do ML daquele livro é descartado.
   1b. Sem buy_box_winner: GET /products/{id}/items (anúncios que competem no produto).
-     Elegível: condition=new, BRL, status ausente/active, item_id válido. O de menor
-     price vale, com price/original_price do próprio resultado (sale_price dá 403 com
+     Elegível: condition=new, BRL, status ausente/active, item_id válido. Elegível abaixo
+     de metade da mediana dos elegíveis é descartado (isca/kit/e-book). O de menor
+     price que sobra vale, com price/original_price do próprio resultado (sale_price dá 403 com
      token de app, run 39178554200). Nenhum elegível (ou 404) = "inativo".
   2. Só no buy_box: GET /items/{item_id}/sale_price?context=channel_marketplace ->
      amount/regular_amount (doc "Preços de produtos", 14/10/2026). 403: cai para
@@ -44,7 +45,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from http.client import HTTPException
 from pathlib import Path
-from statistics import median_low
+from statistics import median, median_low
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -57,6 +58,7 @@ from build import (ASIN_RE, BRT, GENRES, ID_RE, MLB_RE, STORE_COMMON, Invalid, _
                    check_url, ml_affiliate, ml_url)
 
 CATALOG = HERE / "catalog.json"
+EXCLUDED = HERE / "ml_excluded.csv"  # leituras gravadas que o cálculo ignora (price_history fica intacto)
 MANUAL_CSV = HERE / "amazon_prices.csv"
 
 ID_MAX = 57  # deep link do Telegram aceita 64; folga para prefixo futuro
@@ -82,6 +84,7 @@ AMAZON_COVERAGE_MIN = 0.8  # provisório (curator.md 5.7): série manual esparsa
 # O build rejeita campo de loja desconhecido: só emite a mediana quando ele já a aceita.
 # ponytail: tirar o teste quando o build com median_90d_cents estiver na main.
 EMIT_MEDIAN = "median_90d_cents" in STORE_COMMON
+EMIT_POINTS = "price_points" in STORE_COMMON
 
 ML_HOST = "api.mercadolibre.com"  # único host que o coletor chama
 UA = "ofertaslivros-coletor/0.1 (+https://ofertaslivros.com)"
@@ -91,6 +94,9 @@ MAX_BYTES = 5_000_000
 ML_DEADLINE_S = 40  # orçamento do ML inteiro (token incluso): job abaixo de 1 min
 ITEMS_PAGE_SIZE = 50
 ITEMS_MAX_TOTAL = 1000  # falha fechada se um produto exceder o teto de coleta
+# /items: anúncio abaixo desta fração da mediana dos elegíveis do mesmo produto é isca,
+# kit, e-book ou anúncio errado (R$ 2 e R$ 8 entre ~200 anúncios, 2026-11-05): descarta.
+ITEMS_MIN_FRACTION_OF_MEDIAN = Decimal("0.5")
 _urlopen = urlopen  # ponto de mock dos testes
 
 
@@ -257,6 +263,32 @@ def read_history(hist_dir, months):
         if p.exists():
             with p.open(newline="", encoding="utf-8") as f:
                 yield from csv.DictReader(f)
+
+
+def load_excluded(path=None):
+    """Leituras ruins já gravadas (isca etc.), por (book_id, store, price_cents) num intervalo
+    de checked_at. O price_history é append-only: em vez de apagar, o summarize as ignora.
+    Linha malformada é erro (fail-closed: arquivo versionado, revisado em PR)."""
+    p = Path(path or EXCLUDED)
+    if not p.exists():
+        return []
+    out = []
+    with p.open(newline="", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            try:
+                a, z = _dt(r["desde"], "desde"), _dt(r["ate"], "ate")
+                out.append((r["book_id"], r["store"], int(r["price_cents"]), a, z))
+            except (KeyError, TypeError, ValueError, Invalid) as e:
+                raise Invalid(f"{p.name}: linha inválida {r!r}: {e}") from None
+    return out
+
+
+def excluded(h, rules):
+    if not rules:
+        return False
+    t = datetime.fromisoformat(h["checked_at"])
+    return any(h["book_id"] == b and h["store"] == st and int(h["price_cents"]) == c and a <= t <= z
+               for b, st, c, a, z in rules)
 
 
 def recent_months(now, n=4):
@@ -443,13 +475,15 @@ def winner(prod):
 
 
 def best_listing(body):
-    """De /products/{id}/items -> (anúncio elegível de menor price ou None, nº de elegíveis).
-    Elegível: condition == "new" (ausente = descarta: livro usado não entra), BRL, status
-    ausente ou "active", item_id no MLB_RE, price válido."""
+    """De /products/{id}/items -> (anúncio elegível de menor price ou None, nº de elegíveis,
+    nº de suspeitos). Elegível: condition == "new" (ausente = descarta: livro usado não
+    entra), BRL, status ausente ou "active", item_id no MLB_RE, price válido.
+    Suspeito: elegível com price abaixo de ITEMS_MIN_FRACTION_OF_MEDIAN x a mediana dos
+    elegíveis; não vale como menor preço (o menor entre ~200 anúncios é quase sempre isca)."""
     res = body.get("results") if isinstance(body, dict) else None
     if not isinstance(res, list):
         raise MLError("/items malformado")
-    best, n = None, 0
+    ok = []
     for it in res:
         if not isinstance(it, dict) or it.get("condition") != "new" \
                 or it.get("currency_id") != "BRL" \
@@ -460,10 +494,12 @@ def best_listing(body):
             c = to_cents(it.get("price"))
         except Invalid:
             continue
-        n += 1
-        if best is None or c < best[0]:
-            best = (c, it)
-    return (best and best[1]), n
+        ok.append((c, it))
+    if not ok:
+        return None, 0, 0
+    floor = median(Decimal(c) for c, _ in ok) * ITEMS_MIN_FRACTION_OF_MEDIAN  # sem float
+    sane = [x for x in ok if x[0] >= floor]  # nunca vazio: a mediana >= o menor
+    return min(sane, key=lambda x: x[0])[1], len(ok), len(ok) - len(sane)
 
 
 def listing_row(book_id, it, now):
@@ -598,11 +634,13 @@ def collect_ml(books, token, now, deadline, start=0, clock=time.monotonic, sleep
         k = start % len(ml)
         ml = ml[k:] + ml[:k]
     rows, images = [], {}
-    n = {"ok": 0, "inativo": 0, "gtin_divergente": 0, "erro": 0, "adiado": 0, "auth": 0}
+    n = {"ok": 0, "inativo": 0, "gtin_divergente": 0, "erro": 0, "adiado": 0, "auth": 0,
+         "anuncios_suspeitos": 0}
     kw = {"deadline": deadline, "clock": clock, "sleep": sleep}
     for i, b in enumerate(ml):
         # diagnóstico (log público): só id do livro, status HTTP, contagens e caminho
-        d = {"http": "-", "buy_box": "não", "items": "-", "novos_brl": "-", "caminho": "erro"}
+        d = {"http": "-", "buy_box": "não", "items": "-", "novos_brl": "-", "caminho": "erro",
+             "suspeitos": "-"}
         try:
             try:
                 prod = ml_request(f"/products/{b['ml_product_id']}", token, **kw)
@@ -633,7 +671,8 @@ def collect_ml(books, token, now, deadline, start=0, clock=time.monotonic, sleep
                     r = listing_row(b["id"], w, now)  # sem price: Invalid, conta como erro
             else:
                 body, d["items"] = product_items(b["ml_product_id"], token, **kw)
-                it, d["novos_brl"] = best_listing(body)
+                it, d["novos_brl"], d["suspeitos"] = best_listing(body)
+                n["anuncios_suspeitos"] += d["suspeitos"]
                 if it is None:
                     n["inativo"] += 1
                     d["caminho"] = "inativo"
@@ -653,7 +692,8 @@ def collect_ml(books, token, now, deadline, start=0, clock=time.monotonic, sleep
                 n["auth"] += 1
         finally:
             print(f"ML diag: {b['id']} /products={d['http']} buy_box={d['buy_box']} "
-                  f"/items={d['items']} novos_brl={d['novos_brl']} caminho={d['caminho']}")
+                  f"/items={d['items']} novos_brl={d['novos_brl']} caminho={d['caminho']} "
+                  f"suspeitos={d['suspeitos']}")
     return rows, n, images
 
 
@@ -730,15 +770,19 @@ def track_curadoria(state, books, latest, offers, now, ml_ok=False):
         del cur[k]  # saiu do catálogo (ou voltou a pendente)
 
 
-def summarize(hist_dir, now):
+def summarize(hist_dir, now, excluded_path=None):
     """Por (livro, loja): última linha, menor preço em 90 dias, primeira data vista e o
-    menor preço de cada dia BRT da janela da mediana ({date: cents})."""
+    menor preço de cada dia BRT dos últimos 90 dias até hoje ({date: cents}): a mediana
+    filtra a janela dela, e o price_points usa os dias até hoje."""
     since = utc_iso(now - WINDOW)
     today = now.astimezone(BRT).date()
     lo, hi = (today - timedelta(days=n) for n in reversed(MEDIAN_DAYS))
     latest, low, first, daily = {}, {}, {}, {}
     # 5 meses UTC: 4 não cobrem o dia 90 BRT em todo começo de mês (ex.: 1º/05)
+    rules = load_excluded(excluded_path)
     for h in read_history(hist_dir, recent_months(now, 5)):
+        if excluded(h, rules):
+            continue
         k = (h["book_id"], h["store"])
         p = int(h["price_cents"])
         if k not in latest or h["checked_at"] >= latest[k]["checked_at"]:  # empate: a última gravada
@@ -747,7 +791,7 @@ def summarize(hist_dir, now):
             low[k] = min(low.get(k, p), p)
         first[k] = min(first.get(k, h["checked_at"]), h["checked_at"])
         d = datetime.fromisoformat(h["checked_at"]).astimezone(BRT).date()
-        if lo <= d <= hi:
+        if lo <= d <= today:
             days = daily.setdefault(k, {})
             days[d] = min(days.get(d, p), p)
     return latest, low, first, daily
@@ -764,6 +808,18 @@ def median_90d(days, history_since, today, store):
                     and len(vals) < AMAZON_COVERAGE_MIN * ((hi - lo).days + 1)):
         return None
     return median_low(vals)
+
+
+def price_points(days, history_since, checked_at, today):
+    """Gráfico do histórico: menor preço de cada dia BRT, em ordem, só os dias entre o
+    history_since e o dia do checked_at e com menos de 90 dias até ele (contrato do
+    build.price_points: até 90 pontos e nada abaixo do lowest_90d_cents, que cobre essa
+    janela; o limite por hoje vale para o preço vencido da Amazon)."""
+    end = datetime.fromisoformat(checked_at).astimezone(BRT).date()
+    lo = max(end - timedelta(days=build.MAX_POINTS - 1), today - timedelta(days=build.MAX_POINTS - 1),
+             date.fromisoformat(history_since))
+    return [{"date": d.isoformat(), "price_cents": p} for d, p in sorted(days.items())
+            if lo <= d <= end]
 
 
 def build_offers(books, latest, low, state, daily, today):
@@ -788,6 +844,9 @@ def build_offers(books, latest, low, state, daily, today):
                 if EMIT_MEDIAN else None
             if med is not None:
                 s["median_90d_cents"] = med
+            if EMIT_POINTS:
+                s["price_points"] = price_points(daily.get(k, {}), s["history_since"],
+                                                 r["checked_at"], today)
             stores.append(s)
         if stores:
             o = {"id": b["id"]}
@@ -820,7 +879,7 @@ def _int_cents(s, k):
 
 STORE_OUT = {"amazon": {"store", "asin"}, "mercadolivre": {"store", "ml_product_id", "ml_url"}}
 STORE_NUM = {"price_cents", "list_price_cents", "lowest_90d_cents", "history_since", "checked_at"}
-STORE_OPT = {"median_90d_cents"}
+STORE_OPT = {"median_90d_cents", "price_points"}
 OFFER_KEYS = {"id", "isbn", "genre", "title", "author", "image_url", "stores"}
 
 
@@ -870,6 +929,11 @@ def validate_offers(doc):
                     raise Invalid("precisa list >= price >= lowest_90d")
                 if "median_90d_cents" in s:
                     _int_cents(s, "median_90d_cents")
+                pts = s.get("price_points", [])
+                if not isinstance(pts, list) or len(pts) > build.MAX_POINTS or any(
+                        not isinstance(x, dict) or set(x) != {"date", "price_cents"}
+                        or _int_cents(x, "price_cents") < lo for x in pts):
+                    raise Invalid("price_points fora do contrato")
                 ca = _dt(s["checked_at"], "checked_at")
                 try:
                     since = date.fromisoformat(s["history_since"])
@@ -935,8 +999,8 @@ def probe(ids):
             print(f"  sem buy_box_winner; /items -> {st} itens="
                   f"{len(res) if isinstance(res, list) else '-'}")
             try:
-                it, ne = best_listing(body) if st != 404 else (None, 0)
-                print(f"  novos_brl={ne}")
+                it, ne, ns = best_listing(body) if st != 404 else (None, 0, 0)
+                print(f"  novos_brl={ne} suspeitos={ns}")
                 if it is None:
                     print("  resultado: inativo (nenhum anúncio novo em BRL)")
                     continue

@@ -47,7 +47,7 @@ GENRES = {
     "manga": "Mangá e HQ",
 }
 # Rotas de dist/ que nenhum slug de nicho pode ocupar.
-RESERVED = {"r", "livro", "ofertas", "privacidade", "canais", "curadoria", "novidades", "fonts", "black-friday"}
+RESERVED = {"r", "livro", "ofertas", "privacidade", "canais", "curadoria", "novidades", "fonts", "black-friday", "bot"}
 if set(GENRES) & RESERVED:
     raise SystemExit("slug de GENRES reservado")
 
@@ -92,7 +92,7 @@ def _env_id(name, default):
 
 # Username de bot do Telegram: 5 a 32 chars, começa com letra, termina em "bot".
 TG_BOT_RE = re.compile(r"[a-z][a-z0-9_]{1,28}bot", re.I)
-TG_START_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")  # limite do ?start= do deep link
+TG_START_RE = re.compile(r"[A-Za-z0-9_-]{1,60}")  # ?start= aceita 64; 60 cabe no callback_data "add:<id>" do bot
 
 
 def tg_bot():
@@ -104,7 +104,7 @@ def tg_bot():
 
 
 def tg_alert_url(bot, oid):
-    if not TG_START_RE.fullmatch(oid):  # id até 80 no offers.json; o start aceita 64
+    if not TG_START_RE.fullmatch(oid):  # id até 80 no offers.json; o bot aceita 60
         raise Invalid(f"id não cabe no deep link do Telegram: {oid!r}")
     return f"https://t.me/{bot}?start={oid}"
 
@@ -136,11 +136,11 @@ def partner_tag():
 
 
 def channel_tags():
-    """Tag da Amazon por caminho do /r/. Sem AMAZON_TAG_TG/WA (ou vazias), usa a tag do site."""
+    """Tag da Amazon por caminho do /r/. Sem AMAZON_TAG_TG/WA/BOT (ou vazias), usa a tag do site."""
     site = partner_tag()
     return {"": site, **{f"/{c}": _env_id(f"AMAZON_TAG_{c.upper()}", site)
                          if os.environ.get(f"AMAZON_TAG_{c.upper()}") else site
-                         for c in ("tg", "wa")}}
+                         for c in ("tg", "wa", "bot")}}
 
 
 def ml_affiliate():
@@ -327,7 +327,7 @@ def validate_offer(o, tag, aff):
     if o.get("genre") not in GENRES:
         raise Invalid(f"genre inválido: {o.get('genre')!r} (use um de {sorted(GENRES)})")
     oid = o.get("id")
-    if not isinstance(oid, str) or len(oid) > 80 or not ID_RE.fullmatch(oid):
+    if not isinstance(oid, str) or len(oid) > 60 or not ID_RE.fullmatch(oid):
         raise Invalid(f"id inválido: {oid!r}")
     isbn = o.get("isbn")
     if isbn is not None and (not isinstance(isbn, str) or not ISBN_RE.fullmatch(isbn)):
@@ -472,6 +472,26 @@ def ofertas(items):
     return [o for o in items if o["oferta"]]
 
 
+FAIXAS = (40, 50)  # filtro por desconto: /ofertas/40/ e /ofertas/50/ (pedido do Elias, Black Friday 2026)
+
+
+def com_desconto(items, t):
+    """Faixa de desconto: oferta ativa, com preço no prazo e o desconto do card (off) >= t%. Só ofertas
+    (decisão do Elias, 2026-11-05): o "de" de livro fora da vitrine não vale, e o card não mostra %.
+    Sem os vencidos: desconto de preço velho não entra num filtro de "agora"."""
+    return [o for o in ofertas(items) if not o["velho"] and off(o) >= t]
+
+
+def faixas(offers, cur=None):
+    """Pílulas Todas / 40%+ / 50%+, com a contagem. São links para páginas do build: funcionam sem JS."""
+    opts = [("/ofertas/", "Todas", len(ofertas(offers)), 0)]
+    opts += [(f"/ofertas/{t}/", f"{t}%+", len(com_desconto(offers, t)), t) for t in FAIXAS]
+    cur_ = ' aria-current="page"'
+    lis = "".join(f'<li><a class="pill" href="{h}"{cur_ if t == cur else ""}>{l}'
+                  f'<span class="faixa-n">{n}<span class="sr"> livros</span></span></a></li>' for h, l, n, t in opts)
+    return f'<nav class="faixas" aria-label="Faixa de desconto"><ul>{lis}</ul></nav>'
+
+
 def recentes(items):
     """Entrada mais recente no histórico primeiro, depois o título. Nunca score nem ranking."""
     def key(o):
@@ -521,7 +541,7 @@ def post_text(o, url):
     """Texto puro do post nos canais (sem parse_mode). url = nosso /r/<id>[/tg|/wa], nunca a da loja."""
     p = urlsplit(url)
     if (p.scheme != "https" or not p.hostname or p.hostname in ALLOWED_HOSTS
-            or p.path not in {f"/r/{o['id']}", f"/r/{o['id']}/tg", f"/r/{o['id']}/wa"}
+            or p.path not in {f"/r/{o['id']}", f"/r/{o['id']}/tg", f"/r/{o['id']}/wa", f"/r/{o['id']}/bot"}
             or p.query or p.fragment):
         raise Invalid(f"post_text só aceita o /r/ do nosso domínio: {url!r}")
     if not o.get("oferta"):
@@ -556,13 +576,12 @@ def stamp_html(o):
             if kind == "since" else "")
 
 
-def series(o):
-    """Pontos do gráfico da vencedora: os anteriores ao dia da verificação + o preço atual,
-    que vale para hoje. Sem price_points, ou com menos de 2, não há gráfico."""
-    if len(o["price_points"]) < 2:
-        return []
-    day = o["checked_at"].astimezone(BRT).date()
-    return [(d, c) for d, c in o["price_points"] if d < day] + [(day, o["price_cents"])]
+def series(s):
+    """Série diária de uma loja (ou da vencedora, que traz os campos dela): os pontos anteriores ao dia
+    da verificação + o preço atual, que vale para esse dia. Sem nenhum dia anterior, não há série."""
+    day = s["checked_at"].astimezone(BRT).date()
+    old = [(d, c) for d, c in s["price_points"] if d < day]
+    return old + [(day, s["price_cents"])] if old else []
 
 
 def chart_label(o, pts):
@@ -573,25 +592,176 @@ def chart_label(o, pts):
     return f"{when_}: {brl(lo)}" + (f" a {brl(hi)}" if hi > lo else "")
 
 
+HC_W, HC_H, HC_X0, HC_X1, HC_Y0, HC_Y1 = 300, 164, 4, 204, 30, 118  # viewBox 300x164; nomes e preços atuais em x >= 210
+HC_GAP = 7  # dias sem leitura que quebram a linha (Amazon lida à mão tem buracos)
+
+
 def chart(o, pad="  "):
-    """Sparkline em SVG inline (sem JS, sem style=): x pela data, y pelo preço, ponto vermelho no atual."""
-    pts = series(o)
-    if not pts:
-        return ""
-    W, H, M = 120, 32, 3
-    first, span = pts[0][0], max((pts[-1][0] - pts[0][0]).days, 1)
-    lo, hi = min(c for _, c in pts), max(c for _, c in pts)
-    xy = [(M + (d - first).days / span * (W - 2 * M),
-           M + ((hi - c) / (hi - lo) if hi > lo else .5) * (H - 2 * M)) for d, c in pts]
-    line = " ".join(f"{x:.1f},{y:.1f}" for x, y in xy)
-    label = chart_label(o, pts)
-    title = f"Preço {na(o['store'])} de {first:%d/%m} a {pts[-1][0]:%d/%m}: {label.split(': ', 1)[1]}"
-    return (f'\n{pad}<p class="hist"><svg class="spark" viewBox="0 0 {W} {H}" width="{W}" height="{H}" '
-            f'aria-hidden="true" focusable="false"><title>{e(title)}</title>'
-            f'<line class="spark-base" x1="0" y1="{H - .5}" x2="{W}" y2="{H - .5}"/>'
-            f'<polyline class="spark-line" points="{line}"/>'
-            f'<circle class="spark-dot" cx="{xy[-1][0]:.1f}" cy="{xy[-1][1]:.1f}" r="3"/></svg>'
-            f'<span>{e(label)}</span></p>')
+    """Histórico da página do livro (docs/marca/grafico-historico.md): uma linha por loja elegível,
+    tracejado no menor preço mostrado, ponto no preço atual da vencedora. SVG estático, sem JS e sem
+    style= (CSP). A frase vem do selo, nunca do desenho; a tabela por dia é o equivalente acessível."""
+    w = hc_window(o)
+    if not w:
+        if not any(s["price_points"] for s in o["stores"]):
+            return ""  # sem histórico no contrato: nada a dizer
+        return f'\n{pad}<p class="hist">Primeira leitura em {o["checked_at"].astimezone(BRT):%d/%m}: {brl(o["price_cents"])}.</p>'
+    lines, start, today = w
+    first = min(pts[0][0] for _, pts in lines)  # o texto diz a data real; start é só o eixo
+    span = (today - start).days
+    cs = [c for _, pts in lines for _, c in pts]
+    lo, hi = min(cs), max(cs)
+    X = lambda d: HC_X0 + (d - start).days / span * (HC_X1 - HC_X0)
+    Y = lambda c: HC_Y0 + ((hi - c) / (hi - lo) if hi > lo else 1) * (HC_Y1 - HC_Y0)
+    svg, ends, segs, boxes, marks = [], [], [], [], []
+    svg.append(f'<line class="hc-min" x1="{HC_X0}" y1="{HC_Y1}" x2="{HC_X1}" y2="{HC_Y1}"/>')
+    segs.append(((HC_X0, HC_Y1), (HC_X1, HC_Y1)))
+    for s, pts in lines:
+        cls = "hc-ml" if s["store"] == "mercadolivre" else "hc-amz"  # ML amarelo, Amazon no --text (Elias, 2026-11-04)
+        cut = [i == 0 or (d - pts[i - 1][0]).days > HC_GAP for i, (d, _) in enumerate(pts)] + [True]
+        xy = [(X(d), Y(c)) for d, c in pts]
+        # linha lisa; ponto solto (entre buracos) vira traço de comprimento zero, que a ponta redonda pinta
+        d_ = "".join(f'{"M" if cut[i] else "L"}{x:.1f} {y:.1f}' + ("h0" if cut[i] and cut[i + 1] else "")
+                     for i, (x, y) in enumerate(xy))
+        svg.append(f'<path class="hc-line {cls}" d="{d_}"/>')
+        segs.extend((xy[i - 1], xy[i]) if not cut[i] else (xy[i], xy[i]) for i in range(len(xy)))
+        last, cur = pts[-1]
+        name = STORES[s["store"]] + ("" if last == today else f", {last:%d/%m}")
+        ends.append([Y(cur), s["store"] != o["store"], name, cls + ("" if last == today else " hc-old"), cur])
+        marks.append(("now", cls, [(X(last), Y(cur))], cur, s["store"] == "amazon" and o["velho"]))
+        # 3 marcadores por loja: o mais alto, o degrau mais recente (o último preço antes do atual que difere
+        # dele em 3% ou mais: "quanto era logo antes") e o atual. Um valor igual a outro marcador não se repete.
+        # Cada marcador tenta os pontos do seu patamar (o rótulo vai no primeiro que tiver espaço).
+        top = max(c for _, c in pts)
+        if top > cur:
+            marks.append(("max", cls, [(X(d), Y(c)) for d, c in pts if c == top], top, False))
+        i = next((i for i in reversed(range(len(pts))) if abs(pts[i][1] - cur) >= .03 * cur), None)
+        if i is not None and pts[i][1] != top:
+            j = i
+            while j > 0 and pts[j - 1][1] == pts[i][1]:
+                j -= 1
+            marks.append(("mid", cls, [(X(d), Y(c)) for d, c in reversed(pts[j:i + 1])], pts[i][1], False))
+    for k, _, at, _, _ in marks:  # o ponto atual é obstáculo para os rótulos
+        if k == "now":
+            boxes.extend((x - 6, y - 6, x + 6, y + 6) for x, y in at)
+
+    def label(txt, x, y, cls):
+        """Primeira posição livre (em cima, embaixo, à direita, à esquerda do ponto): dentro da área,
+        sem cobrir linha, ponto ou outro rótulo. Nenhuma livre: False, e o marcador sai."""
+        w = 7.2 * len(txt)
+        for cx, base, anchor in ((x, y - 8, "middle"), (x, y + 17, "middle"), (x + 7, y + 4.5, "start"), (x - 7, y + 4.5, "end")):
+            if anchor == "middle":
+                cx = min(max(cx, HC_X0 + w / 2), HC_X1 - w / 2)
+            x0 = cx - w / 2 if anchor == "middle" else cx if anchor == "start" else cx - w
+            box = (x0 - 2, base - 12, x0 + w + 2, base + 3)
+            if box[0] < 0 or box[2] > 207 or box[1] < 2 or box[3] > HC_Y1 + 22:
+                continue
+            if any(hc_hits(box, p, q) for p, q in segs) or any(
+                    box[0] < b[2] and b[0] < box[2] and box[1] < b[3] and b[1] < box[3] for b in boxes):
+                continue
+            boxes.append(box)
+            svg.append(f'<text class="{cls}" x="{cx:.1f}" y="{base:.1f}" text-anchor="{anchor}">{txt}</text>')
+            return True
+        return False
+
+    shown = {m[3] for m in marks if m[0] == "now"}
+    for kind in ("max", "mid"):  # o mais alto tem prioridade; se não couber, o intermediário sai primeiro
+        for k, cls, at, c, _ in marks:
+            if k != kind:
+                continue
+            for x, y in at:
+                boxes.append((x - 5, y - 5, x + 5, y + 5))  # o próprio ponto não pode ficar sob o rótulo
+                if label(brl(c), x, y, f"hc-val {cls}"):
+                    svg.append(f'<circle class="hc-pt {cls}" cx="{x:.1f}" cy="{y:.1f}" r="3.5"/>')
+                    shown.add(c)
+                    break
+                boxes.pop()
+    if lo not in shown:  # o menor só ganha rótulo se não estiver num marcador visível
+        label(f"menor {brl(lo)}", HC_X0 + 3.6 * len(f"menor {brl(lo)}"), HC_Y1, "hc-lbl hc-lbl--min")
+    for k, cls, at, c, velho in marks:  # o atual de cada loja, em vermelho/rosa, por cima das linhas
+        if k == "now":
+            x, y = at[0]
+            svg.append(f'<circle class="hc-now{" hc-now--velho" if velho else ""}" cx="{x:.1f}" cy="{y:.1f}" r="5"/>')
+    ends.sort()  # no empate de altura, a vencedora fica em cima
+    for i in range(1, len(ends)):  # blocos de nome + preço atual (30u) sem colidir
+        ends[i][0] = max(ends[i][0], ends[i - 1][0] + 30)
+    for i in reversed(range(len(ends))):  # e sem descer até a linha das datas: a pilha sobe se precisar
+        ends[i][0] = min(ends[i][0], HC_Y1 + 2 if i == len(ends) - 1 else ends[i + 1][0] - 30)
+    for y, _, name, cls, cur in ends:
+        svg.append(f'<text class="hc-name {cls}" x="210" y="{y + 4.5:.1f}">{e(name)}</text>'
+                   f'<text class="hc-now-lbl" x="210" y="{y + 18.5:.1f}">{brl(cur)}</text>')
+    svg.append(f'<text class="hc-lbl" x="{HC_X0}" y="{HC_H - 6}">{start:%d/%m}</text>'
+               f'<text class="hc-lbl" x="{HC_X1}" y="{HC_H - 6}" text-anchor="end">hoje</text>')
+    return f"""\n{pad}<figure class="hc" id="historico">
+{pad}  <svg viewBox="0 0 {HC_W} {HC_H}" width="100%" role="img" aria-labelledby="hc-t" focusable="false"><title id="hc-t">{e(hc_title(lines, first, today))}</title>{"".join(svg)}</svg>
+{pad}  <figcaption>{e(hc_phrase(o, first, lo, hi))}</figcaption>
+{pad}  {hc_table(lines)}
+{pad}</figure>"""
+
+
+def hc_hits(box, p, q):
+    """O segmento p-q passa pelo retângulo? Amostragem a cada ~2u: basta para rótulos de 13u."""
+    n = max(1, int(max(abs(q[0] - p[0]), abs(q[1] - p[1])) / 2))
+    return any(box[0] <= p[0] + (q[0] - p[0]) * k / n <= box[2] and box[1] <= p[1] + (q[1] - p[1]) * k / n <= box[3]
+               for k in range(n + 1))
+
+
+def hc_window(o):
+    """(linhas [(loja, pontos)], início do eixo, hoje) ou None. Janela de 90 dias até hoje, eixo mínimo de 7.
+    Amazon vencida há mais de 90 dias fica sem ponto na janela: sem gráfico (e sem link no card)."""
+    lines = [(s, pts) for s in o["stores"] if (pts := series(s))]
+    if not lines:
+        return None
+    # checked_at até 5 min no futuro (SKEW) pode cair no dia seguinte: o eixo vai até o último ponto
+    today = max(o["now"].astimezone(BRT).date(), max(pts[-1][0] for _, pts in lines))
+    start = max(min(pts[0][0] for _, pts in lines), today - timedelta(days=89))
+    start = min(start, today - timedelta(days=6))  # eixo mínimo de 7 dias: histórico novo fica à direita
+    lines = [(s, kept) for s, pts in lines if (kept := [(d, c) for d, c in pts if d >= start])]
+    return (lines, start, today) if lines else None
+
+
+def has_hc(o):
+    return hc_window(o) is not None
+
+
+def card_hist(o):
+    """Selo do card + link "ver histórico" logo abaixo (decisão do Elias, 2026-11-04). Só com gráfico de verdade
+    (has_hc): sem price_points, nada de link para gráfico vazio. Sem JS vai à âncora; com JS abre o modal."""
+    if not has_hc(o):
+        return stamp_html(o)
+    oid = e(o["id"])
+    return (f'{stamp_html(o)}<a class="ver-hist" href="/livro/{oid}/#historico" data-modal="{oid}">'
+            f'ver histórico<span class="sr"> de preço: {e(o["title"])}</span></a>')
+
+
+def hc_title(lines, start, today):
+    out = [f"Preço desde {start:%d/%m}."]
+    for s, pts in lines:
+        cs = [c for _, c in pts]
+        d, c = pts[-1]
+        now_ = f"hoje {brl(c)}" if d == today else f"último {brl(c)} em {d:%d/%m}"
+        out.append(f"{STORES[s['store']]}: menor {brl(min(cs))}, maior {brl(max(cs))}, {now_}.")
+    return " ".join(out).replace("\u00a0", " ")
+
+
+def hc_phrase(o, start, lo, hi):
+    """Frase do selo (seal_of), para o gráfico nunca contradizer o selo do card."""
+    quem = "O último preço visto é" if o["velho"] else "Hoje é"
+    if o["seal"] == "90d":
+        return f"{quem} o menor preço dos últimos 90 dias."
+    if o["seal"] == "since":
+        return f"{quem} o menor preço desde {o['since']:%d/%m}."
+    return f"Desde {start:%d/%m}: {brl(lo)}" + (f" a {brl(hi)}." if hi > lo else ".")
+
+
+def hc_table(lines):
+    """Menor preço do dia por loja, do dia mais novo ao mais velho, só dias com leitura."""
+    by = [dict(pts) for _, pts in lines]
+    head = "".join(f'<th scope="col">{STORES[s["store"]]}</th>' for s, _ in lines)
+    sem = '<span aria-hidden="true">—</span><span class="sr">sem leitura</span>'
+    rows = "".join(f'<tr><th scope="row">{d:%d/%m}</th>' + "".join(f"<td>{brl(m[d]) if d in m else sem}</td>" for m in by) + "</tr>"
+                   for d in sorted(set().union(*by), reverse=True))
+    return (f'<details class="hc-tab"><summary>Ver preços por dia</summary><table><caption class="sr">Menor preço do dia, por loja</caption>'
+            f'<thead><tr><th scope="col">Dia</th>{head}</tr></thead><tbody>{rows}</tbody></table></details>')
 
 
 def checked_txt(s, now):
@@ -684,7 +854,7 @@ def card(o, bot=None, h=3):
     <p class="card-meta">{avatar(g, "av av--sm")}<span><span class="store">{STORES[o["store"]]}</span> <span>{checked(o, o["now"])}</span>{velho}</span></p>
     <h{h} class="card-title"><a href="/livro/{oid}/" data-modal="{oid}">{t}</a></h{h}>
     <p class="card-sub">{e(o["author"])}</p>
-    {stamp_html(o)}
+    {card_hist(o)}
     <div class="card-foot"><p class="price"><span class="sr">Por </span><strong>{brl(o["price_cents"])}</strong>{old}</p>{alt_details(o)}{buy_circle(o)}</div>
   </div>
 </li>"""
@@ -858,10 +1028,11 @@ def strip_canais(ch, at):
 def banner_bot(bot, at):
     """Banner do alerta em 2 colunas do grid. Sem TELEGRAM_BOT_USERNAME, o botão sai "em breve"."""
     return f"""<li class="blk blk--bot" data-at="{at}">
-  <span class="mascote" aria-hidden="true">{icon("carimbo", "i i-carimbo")}</span>
+  <span class="mascote" aria-hidden="true"><img src="/mavi.svg" alt="" width="640" height="640" decoding="async"></span>
   <p class="kicker">{icon("sino")}Alerta grátis no Telegram</p>
-  <h3 class="blk-h">Escolha o livro. A gente avisa quando baixar.</h3>
-  <p>Toque no sino de qualquer oferta e o bot guarda o preço de hoje.</p>
+  <h3 class="blk-h">Escolha o livro. A gente avisa quando entrar em oferta.</h3>
+  <p>{"Toque no sino de qualquer livro e o bot avisa quando ele entrar em oferta. Para apagar tudo, mande /parar ao bot." if bot
+      else "Em breve: toque no sino de qualquer livro e o bot vai avisar quando ele entrar em oferta."}</p>
   <p>{cta(bot and f"https://t.me/{bot}", f'Ativar alertas{icon("seta")}', "go", '<span class="sr"> (abre o Telegram)</span>')}</p>{aneis()}
 </li>"""
 
@@ -884,16 +1055,16 @@ def ver_todas(n, home):
                 " mais--m" if n <= CAP[1] else "")  # só no celular quando o desktop já mostra todas
 
 
-def feed(offers, bot=None, ch=(), full=False):
+def feed(offers, bot=None, ch=(), full=False, pills="", items=None):
     """Ofertas ativas: ordenação (JS), grid com blocos intercalados e "Ver todas" / "carregar mais".
     Os blocos guardam a posição (data-at) para o JS recolocá-los depois de ordenar ou filtrar.
     Sem nenhuma oferta, um estado vazio que aponta para a curadoria e o alerta."""
-    items = ofertas(offers)
+    items = ofertas(offers) if items is None else items
     n = len(items)
     if not n:
         return ('<section class="sec" aria-labelledby="h-ativas">\n<div class="sec-head"><h2 id="h-ativas">Ofertas ativas</h2></div>\n'
                 '<p class="vazio vazio--fixo">Nenhuma oferta conferida agora. Veja a <a href="/curadoria/">curadoria</a> '
-                'ou ative um alerta no sino de um livro.</p>\n</section>')
+                'ou toque no sino de um livro para ser avisado.</p>\n</section>')
     cards = [card(o, bot) for o in items]
     for at, html_ in ((8, strip_canais(ch, 8)), (4, banner_bot(bot, 4))):
         cards.insert(min(at, len(cards)), html_)
@@ -903,13 +1074,13 @@ def feed(offers, bot=None, ch=(), full=False):
     more = ver_todas(n, not full) + (
         f'<p class="mais"><button class="btn btn--ghost js-mais" type="button" hidden>{icon("livro", "i i-livro")}'
         'Carregar mais ofertas</button></p>' if full else "")
-    body = (f'{tools}\n<p class="vazio" hidden role="status">Nenhuma oferta com esse título ou autor. '
+    body = (f'{pills}{tools}\n<p class="vazio" hidden role="status">Nenhuma oferta com esse título ou autor. '
             f'Tente outro nome ou volte para Todos.</p>\n<ul class="grid feed{" feed--full" if full else " feed--home"}">\n'
             + "\n".join(cards) + f"\n</ul>\n{more}")
     return section("h-ativas", "Ofertas ativas", body, n, "Conferidas na loja. A que vence sai da lista.")
 
 
-CUR_NOTE = "Livros escolhidos por nós, ainda sem oferta. Ative o alerta e avisamos quando o preço baixar."
+CUR_NOTE = "Livros escolhidos por nós, ainda sem oferta. Toque no sino e avisamos quando entrar em oferta."
 
 
 def da_curadoria(offers, bot=None, genre=None, skip=()):
@@ -932,16 +1103,16 @@ def ranked(offers):
 def bot_block(bot):
     """Capítulo marinho do alerta. Sem o bot, o botão sai "em breve". O pedido de livro é o form do fab."""
     url = bot and f"https://t.me/{bot}"
-    steps = ("Escolha o livro e toque no sino", "No Telegram, toque em Iniciar", "Quando o preço cair, avisamos")
+    steps = ("Escolha o livro e toque no sino", "No Telegram, toque em Iniciar", "Quando entrar em oferta, avisamos")
     lis = "".join(f'<li><span class="n">{k}</span>{t}</li>' for k, t in enumerate(steps, 1))
     return f"""<section class="bot" aria-labelledby="h-bot">
-  <div class="bot-art" aria-hidden="true"><span class="radar radar--big"></span><span class="mascote mascote--big">{icon("carimbo", "i i-carimbo")}</span></div>
+  <div class="bot-art" aria-hidden="true"><span class="radar radar--big"></span><span class="mascote mascote--big"><img src="/mavi.svg" alt="" width="640" height="640" decoding="async"></span></div>
   <div class="bot-text">
     <p class="kicker">{icon("sino")}Seu alerta no Telegram</p>
-    <h2 id="h-bot">Avisamos quando o livro baixar. <em>Você só escolhe qual.</em></h2>
+    <h2 id="h-bot">Avisamos quando o livro entrar em oferta. <em>Você só escolhe qual.</em></h2>
     <ol class="passos">{lis}</ol>
     <p class="bot-acts">{cta(url, f'Ativar no Telegram{icon("seta")}', "go", '<span class="sr"> (abre o Telegram)</span>')}</p>
-    <p class="bot-note">{"O bot guarda" if bot else "Quando estiver no ar, o bot vai guardar"} só o necessário para avisar você e {"apaga" if bot else "apagar"} o alerta quando ele disparar. Veja a <a href="/privacidade/">privacidade</a>.</p>
+    <p class="bot-note">{"O bot avisa uma vez por oferta, das 8h às 22h, e guarda o número da conversa, a sua lista e quando avisou. Para apagar tudo, mande /parar ao bot." if bot else "Quando estiver no ar, o bot vai guardar o número da conversa, a sua lista e quando avisou, e para apagar tudo bastará mandar /parar ao bot."} Veja a <a href="/privacidade/">privacidade</a>.</p>
   </div>{aneis("aneis--big")}
 </section>"""
 
@@ -971,14 +1142,16 @@ def faq(bot, ch):
            "Era no horário indicado em cada oferta. Preço muda rápido, então o preço final é sempre o da loja, "
            "na hora da compra.")]
     if bot:
-        qa.append(("Como funciona o alerta de preço?",
-                   f'Toque no sino de um livro (ou em “Me avise se baixar”) e o bot <a href="https://t.me/{e(bot)}" '
-                   'rel="noopener noreferrer" target="_blank">@' + e(bot) + '</a> guarda o preço de hoje. Quando ele cair, '
-                   'avisamos por lá. Para parar, mande /parar ao bot.'))
+        qa.append(("Como funciona o aviso de oferta?",
+                   f'Toque no sino de um livro (ou em “Me avise se baixar”), ou mande o título ou o autor ao bot '
+                   f'<a href="https://t.me/{e(bot)}" rel="noopener noreferrer" target="_blank">@' + e(bot) + '</a>. '
+                   'Ele avisa por lá quando o livro entrar em oferta, com o mesmo critério do site e do canal: uma vez '
+                   'por oferta, das 8h às 22h, e de novo se o preço cair mais. Em /lista você vê e tira livros; '
+                   'para apagar tudo, /parar.'))
     else:  # o bot ainda não responde: nada de prometer que o alerta já funciona
-        qa.append(("Como vai funcionar o alerta de preço?",
+        qa.append(("Como vai funcionar o aviso de oferta?",
                    "Em breve você poderá tocar no sino de um livro (ou em “Me avise se baixar”) e o nosso bot no "
-                   "Telegram vai guardar o preço de hoje e avisar quando ele cair. Por enquanto o alerta ainda não está no ar."))
+                   "Telegram vai avisar quando ele entrar em oferta. Por enquanto o bot ainda não está no ar."))
     if ch:
         qa.append(("Onde mais recebo as ofertas?",
                    "Nos canais " + " e ".join(n for n, _ in ch) + ', que repetem as ofertas do site. '
@@ -1037,7 +1210,7 @@ def home_sections(offers, bot=None, ch=()):
                          '<ul class="grid grid--feat">\n' + "\n".join(card(o, bot) for o in feat) + "\n</ul>",
                          len(feat), "" if curated else "Primeiro o menor preço do histórico, depois o maior desconto."),
         nav(offers, None, filtro=True),
-        feed(order, bot, ch),
+        feed(order, bot, ch, pills=faixas(offers)),
         da_curadoria(offers, bot, skip=in_hero),
         bot_block(bot),
         channels_block(ch),
@@ -1159,13 +1332,12 @@ def header(offers, ch):
            f'<button class="pill pill--ico js-tema" type="button" hidden aria-pressed="false">'
            f'{icon("sol", "i i-sol")}{icon("lua", "i i-lua")}<span class="sr">Tema escuro</span></button>']
     urls = chan_urls(ch)  # canal sem env: a mesma pílula, "em breve"
-    nav.append(cta(urls["Telegram"], f'{icon("tg")}<span class="pill-t">Canal no Telegram</span>', "pill pill--tg",
+    nav.append(cta(urls["Telegram"], f'{icon("tg")}<span class="pill-t">Telegram</span>', "pill pill--tg",
                    '<span class="sr"> (abre em nova aba)</span>'))
     nav.append(cta(urls["WhatsApp"], f'{icon("wa")}<span class="pill-t">Canal no WhatsApp</span>', "pill pill--wa",
                    '<span class="sr"> (abre em nova aba)</span>'))
     return f"""<header class="top">
 <div class="top-bar">
-<span class="menu-slot" aria-hidden="true"></span>
 {brand()}
 {carimbo(offers, "carimbo--bar")}
 <nav class="acoes" aria-label="Atalhos">{"".join(nav)}</nav>
@@ -1230,7 +1402,7 @@ def offer_json(o, bot):
                      f"Menor preço desde {o['since']:%d/%m}" if kind == "since" else None), "desde": kind == "since",
             "meta": f"{STORES[o['store']]}, {checked_txt(o, o['now'])}"
                     + (f". Caiu {brl(dr[0])} desde {dr[1]:%d/%m}" if dr else "") + (f". {VELHO}" if o["velho"] else ""),
-            "hist": chart_label(o, pts) if pts else None, "lojas": lojas,
+            "hist": chart_label(o, pts) if pts else None, "hc": has_hc(o), "lojas": lojas,
             "alerta": tg_alert_url(bot, o["id"]) if bot else None, "pag": f"/livro/{o['id']}/"}
 
 
@@ -1246,7 +1418,7 @@ MODAL = f"""<dialog class="modal" id="detalhe" aria-labelledby="m-t">
 <div class="m-top"><button class="arrow js-mprev" type="button">{icon("esq")}<span class="sr">Livro anterior</span></button><span class="m-n tnum"></span><button class="arrow js-mnext" type="button">{icon("dir")}<span class="sr">Próximo livro</span></button><button class="arrow m-x js-mx" type="button">{icon("x")}<span class="sr">Fechar</span></button></div>
 <div class="m-grid">
 <div class="obj hero-obj m-obj"><span class="pages" aria-hidden="true"></span><div class="cover"><img class="m-img" alt="" width="120" height="180" decoding="async"><span class="ini m-ini" aria-hidden="true"></span></div></div>
-<div class="m-body"><p class="chips"><span class="chip chip--g"><svg class="i" aria-hidden="true" focusable="false"><use class="m-gi" href="#i-carimbo"/></svg><span class="m-g"></span></span></p><h2 class="m-t" id="m-t"></h2><p class="hero-sub m-a"></p><blockquote class="nota m-nota"><p class="m-blurb"></p></blockquote><p class="m-selo"><span class="stamp"></span></p><p class="meta m-meta"></p><p class="hist m-hist"></p></div>
+<div class="m-body"><p class="chips"><span class="chip chip--g"><svg class="i" aria-hidden="true" focusable="false"><use class="m-gi" href="#i-carimbo"/></svg><span class="m-g"></span></span></p><h2 class="m-t" id="m-t"></h2><p class="hero-sub m-a"></p><blockquote class="nota m-nota"><p class="m-blurb"></p></blockquote><p class="m-selo"><span class="stamp"></span></p><p class="meta m-meta"></p><p class="hist m-hist"></p><div class="m-hc"></div></div>
 </div>
 <div class="m-foot"><p class="price"><strong class="m-p"></strong> <s class="old m-de"></s> <span class="off-pill m-off"></span></p><div class="m-acts"></div></div>
 </dialog>"""
@@ -1324,7 +1496,7 @@ def book_page(o, offers, bot=None, ch=()):
     old = f' <s class="old"><span class="sr">De </span>{brl(o["list_price_cents"])}</s>' if off_ else ""
     pill = f'<span class="off-pill{" off-pill--forte" if forte(o) else ""}">−{off_}%</span>' if off_ else ""
     why = ("o último preço que vimos tem mais de 7 dias. Confira o preço atual na loja." if o["velho"]
-           else "o preço ainda não baixou o bastante. Ative o alerta e avisamos quando cair.")
+           else "o preço ainda não baixou o bastante. Toque em “Me avise se baixar” e avisamos quando entrar em oferta.")
     nov = "" if o["oferta"] else f'\n    <p class="nov-nota">Sem oferta agora: {why}</p>'
     b = badge(o)
     chips = f'<span class="chip chip--g">{icon("g-" + g)}{e(GENRES[g])}</span>' + (
@@ -1352,9 +1524,23 @@ def book_page(o, offers, bot=None, ch=()):
 
 def all_page(offers, bot=None, ch=()):
     """/ofertas/: a lista completa das ofertas (sem JS, é para onde o "Ver todas" leva)."""
-    body = (intro("Todas as ofertas", LEDE) + f"\n{nav(offers, None, filtro=True)}\n{feed(offers, bot, ch, full=True)}")
+    body = (intro("Todas as ofertas", LEDE) + f"\n{nav(offers, None, filtro=True)}\n"
+            + feed(offers, bot, ch, full=True, pills=faixas(offers, 0)))
     return shell(offers, "Todas as ofertas de livros | Ofertas Livros",
                  "Todas as ofertas de livros ativas, conferidas na loja.", body, ch, "/ofertas/", bot=bot, modal=True)
+
+
+def faixa_page(offers, t, bot=None, ch=()):
+    """/ofertas/<t>/: livros com t% ou mais de desconto (com_desconto). Existe sempre, mesmo vazia."""
+    h1 = f"Livros com {t}% ou mais de desconto"
+    lede = (f"Ofertas ativas com pelo menos {t}% de desconto sobre o preço de lista da loja. "
+            "Cada livro mostra quando conferimos o preço; o preço final é o da loja.")
+    items = ranked(com_desconto(offers, t))
+    lista = (feed(offers, bot, ch, full=True, pills=faixas(offers, t), items=items) if items else
+             faixas(offers, t) + f'\n<p class="vazio vazio--fixo">Nenhum livro com {t}% ou mais de desconto agora. '
+             'Veja todas as <a href="/ofertas/">ofertas ativas</a>.</p>')
+    return shell(offers, f"{h1} | Ofertas Livros", f"{h1}, conferidos na loja.",
+                 intro(h1, lede) + f"\n{nav(items, None, filtro=True) if items else ''}\n" + lista, ch, f"/ofertas/{t}/", bot=bot, modal=True)
 
 
 BF_LEDE = ("Ofertas ativas com 30% ou mais de desconto ou no menor preço que vimos em 90 dias. "
@@ -1379,7 +1565,7 @@ def bf_page(offers, bot=None, ch=()):
 
 CUR_INTRO = ("Uma seleção de livros escolhidos por regras a partir de sinais públicos e por nós. Alguns estão "
              "em oferta, outros não. O preço foi verificado no horário indicado, e o preço final é o da loja. "
-             "Sem oferta agora? Crie um alerta e avisamos quando o preço baixar.")
+             "Sem oferta agora? Toque no sino e avisamos quando o livro entrar em oferta.")
 
 
 def curadoria_page(offers, bot=None, ch=()):
@@ -1408,24 +1594,28 @@ def privacy(offers, bot=None, ch=()):
 <h2>No site</h2>
 <p>O site não tem cadastro, cookies nem ferramentas de análise. Ele tem um script próprio, servido pelo próprio site, para a busca, os filtros e o tema; a única coisa que ele guarda é a sua escolha de tema claro ou escuro, no seu navegador (localStorage), e nada disso sai do aparelho. O site é hospedado na Cloudflare; o endereço ofertaslivros.com passa pelo Netlify só para redirecionar a este site. Os dois recebem os dados técnicos de cada acesso (como o endereço IP) para entregar as páginas.</p>
 <h2>No pedido de livro</h2>
-<p>O formulário “Pedir um livro” pede só o nome e o autor do livro. Ele é processado na Cloudflare, que usa o endereço IP só para barrar envios repetidos, sem guardá-lo, e envia o pedido ao nosso e-mail. O site não guarda o pedido. Apagamos os pedidos do e-mail em até 30 dias.</p>
+<p>O formulário “Pedir um livro” pede só o nome e o autor do livro. Ele é processado na Cloudflare, que usa o endereço IP só para barrar envios repetidos, sem guardá-lo, e envia o pedido ao nosso e-mail. O pedido (só o nome e o autor do livro, sem nenhum dado seu) fica guardado por 30 dias num banco de dados Cloudflare D1 e depois é apagado. Apagamos os pedidos do e-mail em até 30 dias.</p>
 <p>Ao clicar em uma oferta, você vai para a Amazon ou para o Mercado Livre. A partir daí valem as políticas de privacidade de cada loja.</p>
-<h2>No alerta de preço do Telegram</h2>
-<p>{"Quando você pede um alerta para " + bot_name + ", guardamos" if bot else "O alerta ainda não está no ar. Em breve você poderá pedir um alerta para " + bot_name + ". Quando isso funcionar, vamos guardar"} só o necessário para avisar você:</p>
+<h2>Na lista de desejos do Telegram</h2>
+<p>{"Quando você põe um livro ou um autor na sua lista com " + bot_name + ", ele avisa por lá quando o livro entrar em oferta. Para isso, guardamos" if bot else "A lista de desejos ainda não está no ar. Em breve você poderá pôr livros e autores numa lista com " + bot_name + ", que vai avisar quando eles entrarem em oferta. Quando isso funcionar, vamos guardar"} só o necessário para avisar você:</p>
 <ul>
 <li>o identificador da conversa com o bot no Telegram (chat_id);</li>
-<li>o livro e o preço-alvo do alerta;</li>
-<li>a data de criação e a data de expiração.</li>
+<li>a sua lista: os livros e os autores que você escolheu;</li>
+<li>se os avisos estão pausados;</li>
+<li>a data em que a conversa começou e a do último uso;</li>
+<li>para cada livro já avisado, o preço e a data do último aviso, para não repetir o mesmo aviso.</li>
 </ul>
-<p>Não guardamos seu nome, seu nome de usuário, seu telefone nem o texto das suas mensagens.</p>
+<p>Não guardamos seu nome, seu nome de usuário, seu telefone, seu idioma nem o texto das suas mensagens: o que você manda ao bot serve só para achar o livro na hora e é descartado.</p>
+<p>Se você pedir um livro pelo bot, o pedido vai para a curadoria sem nenhum dado seu.</p>
 <h2>Onde fica</h2>
-<p>Num banco de dados Cloudflare D1, fora do código do site e sem acesso público. A Cloudflare opera esse banco para nós.</p>
+<p>Num banco de dados Cloudflare D1, fora do código do site e sem acesso público. A Cloudflare opera esse banco para nós. As mensagens passam pelo Telegram, que tem a política de privacidade dele.</p>
+{"" if bot else "<p>Quando a lista de desejos estiver no ar, valerá o seguinte:</p>"}
 <h2>Por quanto tempo</h2>
-<p>Até o alerta disparar (ele é apagado quando a mensagem é enviada) ou por no máximo 90 dias, o que vier primeiro. Não guardamos histórico de alertas enviados.</p>
+<p>A lista fica guardada enquanto você usa o bot. Uma conversa sem nenhuma mensagem ou toque por 12 meses é apagada por inteiro, sem aviso. O preço do último aviso de um livro é apagado quando ele sai da oferta.</p>
 <h2>Como apagar</h2>
 <ul>
-<li><code>/remover</code> seguido do livro apaga um alerta;</li>
-<li><code>/parar</code> apaga todos os seus dados;</li>
+<li>em <code>/lista</code>, toque em “Tirar” para tirar um item;</li>
+<li><code>/parar</code> apaga a sua lista e todos os seus dados;</li>
 <li>bloquear o bot também apaga todos os seus dados.</li>
 </ul>
 </article>"""
@@ -1437,8 +1627,9 @@ def canais(offers, ch, bot=None):
     desc = {"Telegram": "as ofertas chegam assim que são publicadas, até 8 por dia, das 8h às 22h.",
             "WhatsApp": "um resumo por dia com até 5 ofertas."}
     items = "\n".join(f"<li>{ext(url, f'Canal no {name}')}: {desc[name]}</li>" for name, url in ch)
-    alert = (f'<p>Quer saber de um livro só? Peça um alerta de preço ao {ext(f"https://t.me/{bot}", "@" + e(bot))} '
-             'ou toque em “Me avise se baixar” na oferta.</p>' if bot else "")
+    alert = (f'<p>Quer saber de um livro só? Mande o título ao {ext(f"https://t.me/{bot}", "@" + e(bot))} '
+             'ou toque em “Me avise se baixar” na oferta: o bot avisa quando ele entrar em oferta. Para apagar tudo, mande /parar ao bot.</p>'
+             if bot else "")
     body = f"""<h1 class="page-h1">Canais</h1>
 <article class="doc">
 <p>Os canais repetem as ofertas do site, com preço conferido e o horário da verificação. São só de leitura e não pedem cadastro.</p>
@@ -1451,20 +1642,44 @@ def canais(offers, ch, bot=None):
     return shell(offers, "Canais: Ofertas Livros", "Siga as ofertas de livros no Telegram e no WhatsApp.", body, ch, "/canais/", bot=bot)
 
 
+def bot_key(text):
+    """Chave de busca do bot: fold e só [a-z0-9] separados por espaço (worker/bot.js normaliza igual)."""
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", fold(text)).split())
+
+
+def bot_json(offers, now):
+    """Catálogo público do bot do Telegram (docs/produto/bot-lista-de-desejos.md §7.2): busca e o aviso pronto.
+    texto só com oferta no prazo (o Worker não calcula oferta nem formata preço); valido_ate = checked_at +
+    FRESH da loja que vence primeiro, para o cron não mandar preço que venceu depois do deploy."""
+    # ponytail: autores divididos em , ; & e " e " erram nome com " e "; campo authors no contrato se aparecer caso real
+    livros = [{"id": o["id"], "titulo": o["title"], "autor": o["author"],
+               "busca": bot_key(f"{o['title']} {o['author']}"),
+               "autores": [k for a in re.split(r",|;|&| e ", o["author"]) if (k := bot_key(a))],
+               "preco_cents": o["price_cents"],
+               "desconto": off(o),  # % do "de/por" (0 sem oferta): desempate dos avisos no cron do bot
+               # a loja que vence primeiro: o texto pode citar a outra ("Também no ...")
+               "valido_ate": min(s["checked_at"] + FRESH[s["store"]] for s in o["stores"]).astimezone(timezone.utc)
+                             .isoformat(timespec="seconds"),
+               "texto": post_text(o, f"{SITE}/r/{o['id']}/bot") if o["oferta"] and not o["velho"] else None}
+              for o in offers]
+    return json.dumps({"version": 1, "gerado_em": now.astimezone(timezone.utc).isoformat(timespec="seconds"),
+                       "livros": livros}, ensure_ascii=False)
+
+
 MAX_REDIRECTS = 2000  # limite de regras estáticas do _redirects na Cloudflare
 
 
 def redirects(offers):
-    """/novidades/ (página antiga) vai para /curadoria/. Por livro: /r/<id> e /r/<id>/tg|wa
+    """/novidades/ (página antiga) vai para /curadoria/. Por livro: /r/<id> e /r/<id>/tg|wa|bot
     (vencedora, com a tag do canal se for a Amazon) e /r/<id>/<loja> para cada loja elegível.
     Vencido ou loja fora do prazo cai na home pelo curinga; o livro com a Amazon vencida (velho) segue no /r/.
-    Até 5 regras por livro: cabem 399 livros com duas lojas (1.995 + curinga + /novidades/)."""
+    Até 6 regras por livro: cabem 333 livros com duas lojas (1.998 + curinga + /novidades/)."""
     tags, aff = channel_tags(), ml_affiliate()
     lines = ["/novidades/ /curadoria/ 301\n"]  # destino interno fixo, nunca vindo do JSON
     for o in offers:
         lines.append(f"/r/{o['id']} {affiliate_url(o, tags[''], aff)} 302\n")
         lines += [f"/r/{o['id']}/{s['store']} {affiliate_url(s, tags[''], aff)} 302\n" for s in o["stores"]]
-        lines += [f"/r/{o['id']}{sfx} {affiliate_url(o, tags[sfx], aff)} 302\n" for sfx in ("/tg", "/wa")]  # ML: mesmo ml_url
+        lines += [f"/r/{o['id']}{sfx} {affiliate_url(o, tags[sfx], aff)} 302\n" for sfx in ("/tg", "/wa", "/bot")]  # ML: mesmo ml_url
     lines.append("/r/* / 302\n")
     if len(lines) > MAX_REDIRECTS:
         raise Invalid(f"{len(lines)} regras no _redirects (máximo {MAX_REDIRECTS})")
@@ -1500,6 +1715,8 @@ def render_pages(offers, bot=None, ch=()):
     """{caminho em dist/: HTML}. Uma página por nicho presente, por livro e a lista completa."""
     pages = {"index.html": page(offers, bot=bot, ch=ch), "privacidade/index.html": privacy(offers, bot, ch),
              "ofertas/index.html": all_page(offers, bot, ch), "curadoria/index.html": curadoria_page(offers, bot, ch)}
+    for t in FAIXAS:
+        pages[f"ofertas/{t}/index.html"] = faixa_page(offers, t, bot, ch)
     for g in {o["genre"] for o in offers}:
         pages[f"{g}/index.html"] = page(offers, g, bot, ch)
     if ch:
@@ -1526,12 +1743,14 @@ def build(dev=False):
     bot, ch = tg_bot(), channels()
     pages = render_pages(offers, bot, ch)  # tudo validado e renderizado antes de tocar no dist/
     rules = redirects(offers)
+    catalogo_bot = bot_json(offers, now)
     shutil.rmtree(DIST, ignore_errors=True)
     shutil.copytree(STATIC, DIST)
     for path, body in pages.items():
         (DIST / path).parent.mkdir(parents=True, exist_ok=True)
         (DIST / path).write_text(body, encoding="utf-8")
     (DIST / "_redirects").write_text(rules, encoding="utf-8")
+    (DIST / "bot.json").write_text(catalogo_bot, encoding="utf-8")
     (DIST / "_headers").write_text(HEADERS, encoding="utf-8")
     print(f"ok: {len(ofertas(offers))} ofertas, {len(sem_oferta(offers))} sem oferta ({len(books) - len(offers)} fora do prazo), "
           f"{len(pages)} páginas -> {DIST}")
@@ -1697,7 +1916,7 @@ def selftest():
     if saved is not None:
         os.environ["TELEGRAM_BOT_USERNAME"] = saved
     try:
-        tg_alert_url("ofertaslivros_bot", "a" * 65)
+        tg_alert_url("ofertaslivros_bot", "a" * 61)
         raise AssertionError("id longo")
     except Invalid:
         pass
@@ -1713,13 +1932,13 @@ def selftest():
         assert h.count('src="/logo.svg" alt="Ofertas Livros"') == 2 and h.count('src="/logo-negativo.svg" alt="Ofertas Livros"') == 2
         assert not re.search(r"https?://[^\"]*(fonts\.|googleapis|gstatic|jsdelivr|unpkg|cdn)", h)  # nenhuma fonte/script externo
         assert h.count("<h1") == 1
-    for h in every:  # header: espaço do menu (vazio e escondido), carimbo na barra e no conteúdo, sem número solto
+    for h in every:  # header: logo colado à esquerda (sem espaço de menu), carimbo na barra e no conteúdo, sem número solto
         top = h[h.index('<header class="top">'):h.index("</header>")]
-        assert '<span class="menu-slot" aria-hidden="true"></span>' in top and "<button" not in top.split("menu-slot")[0]
+        assert "menu-slot" not in top and "<button" not in top.split('class="brand"')[0]
         assert top.count('class="carimbo carimbo--bar"') == 1 and h.count('class="carimbo carimbo--m"') == 1
         assert "tnum" not in top and 'class="live"' not in top
-        assert top.index("menu-slot") < top.index('class="brand"') < top.index("carimbo--bar") < top.index("js-busca")
-    assert all((STATIC / f).is_file() for f in ("favicon.svg", "logo.svg", "logo-negativo.svg", "app.js", "grao.svg",
+        assert top.index('class="brand"') < top.index("carimbo--bar") < top.index("js-busca") < top.index("pill--tg")
+    assert all((STATIC / f).is_file() for f in ("favicon.svg", "logo.svg", "logo-negativo.svg", "app.js", "grao.svg", "mavi.svg",
                                                 "fonts/fraunces-latin-full-normal.woff2", "fonts/fraunces-latin-full-italic.woff2",
                                                 "fonts/outfit-latin-wght-normal.woff2", "fonts/SOURCES.md"))
     assert "<rect" not in (STATIC / "logo-negativo.svg").read_text()  # sem caixa no tema escuro
@@ -1733,21 +1952,33 @@ def selftest():
     assert '<a href="/privacidade/" aria-current="page">' in privacy(o)
     pv = privacy(o, "ofertaslivros_bot")
     assert all(w in pv for w in ("No pedido de livro", "Cloudflare", "endereço IP", "30 dias"))  # pedido de livro
-    assert all(w in pv for w in ("chat_id", "Cloudflare D1", "90 dias", "/parar", "bloquear o bot",
-                                 "https://t.me/ofertaslivros_bot"))
+    assert all(w in pv for w in ("Na lista de desejos do Telegram", "chat_id", "Cloudflare D1", "12 meses", "/lista",
+                                 "/parar", "bloquear o bot", "https://t.me/ofertaslivros_bot",
+                                 "o pedido vai para a curadoria sem nenhum dado seu", "fica guardado por 30 dias"))
+    # critério 36: o modelo antigo (preço-alvo, 90 dias, /remover) sai da privacidade e dos textos do alerta
+    for b_ in ("ofertaslivros_bot", None):
+        pv_ = privacy(o, b_)
+        assert not any(w in pv_ for w in ("preço-alvo", "/remover", "90 dias", "não guarda o pedido")), b_
+        for t_ in (faq(b_, ()), banner_bot(b_, 4), bot_block(b_)):
+            assert "preço de hoje" not in t_ and "quando ele disparar" not in t_ and "entrar em oferta" in t_, b_
+    assert all("/parar" in t_ for t_ in (faq("ofertaslivros_bot", ()), banner_bot("ofertaslivros_bot", 4),
+                                          bot_block("ofertaslivros_bot")))
     # _redirects: /novidades/ -> /curadoria/ (interno), 4 linhas por livro de uma loja + curinga; tag por canal
-    saved = {k: os.environ.pop(k, None) for k in ("AMAZON_TAG_TG", "AMAZON_TAG_WA")}
+    saved = {k: os.environ.pop(k, None) for k in ("AMAZON_TAG_TG", "AMAZON_TAG_WA", "AMAZON_TAG_BOT")}
     r = redirects(o).splitlines()
     t = partner_tag()
-    assert len(r) == 10 and r[0] == "/novidades/ /curadoria/ 301" and r[-1] == "/r/* / 302"
+    assert len(r) == 12 and r[0] == "/novidades/ /curadoria/ 301" and r[-1] == "/r/* / 302"
     assert [x for x in r if not x.startswith("/r/")] == ["/novidades/ /curadoria/ 301"]  # única regra fora do /r/
     assert f"/r/livro-1/amazon https://www.amazon.com.br/dp/B0ABCDEFGH?tag={t} 302" in r
     assert f"/r/livro-2/mercadolivre {ml_link} 302" in r
     assert not any("/r/livro-1/mercadolivre" in x or "/r/livro-2/amazon" in x for x in r)
     assert f"/r/livro-1/tg https://www.amazon.com.br/dp/B0ABCDEFGH?tag={t} 302" in r
     assert f"/r/livro-2/wa {ml_link} 302" in r and f"/r/livro-2 {ml_link} 302" in r
-    os.environ.update(AMAZON_TAG_TG="sitetg-20", AMAZON_TAG_WA="")
+    assert f"/r/livro-1/bot https://www.amazon.com.br/dp/B0ABCDEFGH?tag={t} 302" in r  # sem AMAZON_TAG_BOT: tag do site
+    assert f"/r/livro-2/bot {ml_link} 302" in r
+    os.environ.update(AMAZON_TAG_TG="sitetg-20", AMAZON_TAG_WA="", AMAZON_TAG_BOT="sitebot-20")
     r = redirects(o).splitlines()
+    assert "/r/livro-1/bot https://www.amazon.com.br/dp/B0ABCDEFGH?tag=sitebot-20 302" in r
     assert "/r/livro-1/tg https://www.amazon.com.br/dp/B0ABCDEFGH?tag=sitetg-20 302" in r
     assert f"/r/livro-1/wa https://www.amazon.com.br/dp/B0ABCDEFGH?tag={t} 302" in r
     # duas lojas: vencedora no /r/<id>, /tg e /wa; uma rota por loja; tag do canal só na Amazon
@@ -1756,12 +1987,12 @@ def selftest():
     amz_url = "https://www.amazon.com.br/dp/B0ABCDEFGH?tag="
     assert r[1:] == [f"/r/duas {amz_url}{t} 302", f"/r/duas/amazon {amz_url}{t} 302",
                  f"/r/duas/mercadolivre {ml_link} 302", f"/r/duas/tg {amz_url}sitetg-20 302",
-                 f"/r/duas/wa {amz_url}{t} 302", "/r/* / 302"]
+                 f"/r/duas/wa {amz_url}{t} 302", f"/r/duas/bot {amz_url}sitebot-20 302", "/r/* / 302"]
     r = redirects(load({**two, "stores": [amz, {**mls, "price_cents": 1890}]})).splitlines()
     assert f"/r/duas {ml_link} 302" in r and f"/r/duas/tg {ml_link} 302" in r
     assert f"/r/duas/amazon {amz_url}{t} 302" in r                        # loja da seta, tag do site
     r = redirects(load(two, now=datetime(2026, 10, 18, 10, 31, tzinfo=BRT))).splitlines()
-    assert "/r/duas/mercadolivre" not in "\n".join(r) and len(r) == 6      # ML fora do prazo: sem rota
+    assert "/r/duas/mercadolivre" not in "\n".join(r) and len(r) == 7      # ML fora do prazo: sem rota
     for bad in ("x&tag=evil", "a b", "x\n/r/y https://evil.com 302"):
         os.environ["AMAZON_TAG_TG"] = bad
         try:
@@ -1773,13 +2004,28 @@ def selftest():
         os.environ.pop(k, None)
         if v is not None:
             os.environ[k] = v
-    many = [{**good, "id": f"l-{n}", "stores": [amz, mls]} for n in range(400)]
+    many = [{**good, "id": f"l-{n}", "stores": [amz, mls]} for n in range(334)]
     try:
-        redirects(load(*many))  # 400 x 5 + curinga + /novidades/ = 2.002
+        redirects(load(*many))  # 334 x 6 + curinga + /novidades/ = 2.006
         raise AssertionError("limite do _redirects")
     except Invalid:
         pass
-    assert len(redirects(load(*many[:399])).splitlines()) == 1997
+    assert len(redirects(load(*many[:333])).splitlines()) == 2000
+    # bot.json: texto = post_text com /r/<id>/bot só em oferta no prazo; valido_ate = checked_at + FRESH
+    bj = json.loads(bot_json(load(two, {**good, "id": "sem", "author": "Neil Gaiman e Terry Pratchett; Ação",
+                                        "stores": [{**amz, "list_price_cents": amz["price_cents"]}]}), NOW))
+    assert bj["version"] == 1 and [b["id"] for b in bj["livros"]] == ["duas", "sem"]
+    duas, sem = bj["livros"]
+    assert duas["texto"] == post_text(load(two)[0], f"{SITE}/r/duas/bot") and duas["texto"].endswith("/r/duas/bot")
+    assert sem["texto"] is None and sem["autores"] == ["neil gaiman", "terry pratchett", "acao"]
+    assert duas["desconto"] == discount(load(two)[0]) > 0 and sem["desconto"] == 0
+    assert duas["valido_ate"] == (mls_at := min(s["checked_at"] + FRESH[s["store"]] for s in load(two)[0]["stores"])) \
+        .astimezone(timezone.utc).isoformat(timespec="seconds") and mls_at < load(two)[0]["checked_at"] + FRESH["amazon"]
+    velha = load({**good, "id": "velha", "stores": [amz]}, now=NOW + timedelta(days=1))[0]  # Amazon vencida, ainda oferta
+    assert velha["oferta"] and velha["velho"]
+    assert json.loads(bot_json([velha], NOW))["livros"][0]["texto"] is None
+    assert bot_key("Mangá: Ação!  Vol. 2") == "manga acao vol 2"
+    assert "Disallow: /bot.json" in (STATIC / "robots.txt").read_text()
     # canais: só com a env; validados; rel noopener noreferrer
     saved = {k: os.environ.pop(k, None) for k in ("TELEGRAM_CHANNEL_ID", "WHATSAPP_CHANNEL_ID")}
     assert channels() == [] and "/canais/" not in page(o)
@@ -1870,29 +2116,86 @@ def selftest():
         r = load(A(**kw))
         return vis(book_page(r[0], r))
     h = livro(history_since="2026-10-01", price_points=ok_pp)
-    assert h.count('<p class="hist"><svg class="spark"') == 1 and "<span>desde 01/10: R$ 19,90 a R$ 29,90</span>" in h
-    assert "<title>Preço na Amazon de 01/10 a 18/10: R$ 19,90 a R$ 29,90</title>" in h
-    assert 'class="spark-dot" cx="117.0" cy="29.0"' in h and 'points="3.0,3.0 63.4,16.0 117.0,29.0"' in h
-    assert "style=" not in h[h.index("<svg"):h.index("</svg>")]
-    assert 'class="hist"' not in livro(history_since="2026-10-01", price_points=ok_pp[:1])  # 1 ponto: sem gráfico
-    assert 'class="hist"' not in livro(history_since="2026-10-01")                          # sem série
+    svg = h[h.index('<figure class="hc" id="historico">'):h.index("</svg>", h.index('<figure class="hc" id="historico">'))]
+    assert h.count('<figure class="hc" id="historico">') == 1 and 'role="img" aria-labelledby="hc-t"' in svg and "style=" not in svg
+    assert "Amazon: menor R$ 19,90, maior R$ 29,90, hoje R$ 19,90." in svg  # title para leitor de tela
+    assert '<path class="hc-line hc-amz" d="M4.0 30.0h0M109.9 74.0h0M204.0 118.0h0"/>' in svg  # buracos de 9 e 8 dias: pontos soltos
+    # 3 marcadores com valor: o mais alto, o degrau mais recente e o atual (vermelho/rosa, com o preço embaixo do nome)
+    assert '<text class="hc-val hc-amz" x="32.8" y="22.0" text-anchor="middle">R$\u00a029,90</text><circle class="hc-pt hc-amz" cx="4.0" cy="30.0"' in svg
+    assert '<text class="hc-val hc-amz" x="109.9" y="66.0" text-anchor="middle">R$\u00a024,90</text><circle class="hc-pt hc-amz" cx="109.9"' in svg
+    assert svg.count('class="hc-pt') == 2 and 'class="hc-now" cx="204.0" cy="118.0"' in svg
+    assert '>Amazon</text><text class="hc-now-lbl" x="210" y="136.5">R$\u00a019,90</text>' in svg
+    assert ">menor R$" not in svg  # o menor é o atual: sem rótulo repetido
+    assert "<figcaption>Hoje é o menor preço desde 01/10.</figcaption>" in h  # frase do selo
+    h = livro(history_since="2026-10-01", lowest_90d_cents=1000, price_points=pp(("2026-10-12", 2990), ("2026-10-17", 2490)))
+    assert '<path class="hc-line hc-amz" d="M4.0 30.0L170.7 74.0L204.0 118.0"/>' in h  # 7 dias, retas entre leituras
+    assert "<figcaption>Desde 12/10: R$\u00a019,90 a R$\u00a029,90.</figcaption>" in h      # sem selo: faixa de preço
+    tb = livro(history_since="2026-10-01", price_points=ok_pp)
+    assert '<tr><th scope="row">18/10</th><td>R$\u00a019,90</td></tr>' in tb and tb.index(">18/10</th>") < tb.index(">01/10</th>")
+    assert 'class="hc"' in livro(history_since="2026-10-01", price_points=ok_pp[:1])  # 1 dia antes de hoje já é série
+    assert "Primeira leitura em 18/10: R$\u00a019,90." in livro(history_since="2026-10-18", price_points=pp(("2026-10-18", 1990)))
+    assert 'class="hc"' not in livro(history_since="2026-10-01") and 'class="hist"' not in livro(history_since="2026-10-01")
     # ponto de hoje: vale o preço atual verificado, não o do ponto
     r = load(A(history_since="2026-10-01", price_points=pp(("2026-10-01", 2990), ("2026-10-18", 2500))))[0]
     assert series(r) == [(date(2026, 10, 1), 2990), (date(2026, 10, 18), 1990)]
-    # rótulo: "90 dias" só com o selo de 90 dias e a série cobrindo os 90 dias
+    # eixo de no máximo 90 dias e no mínimo 7; buraco de mais de 7 dias quebra a linha
     full = pp(("2026-07-20", 2990), ("2026-09-01", 2490))
-    assert "<span>90 dias: R$ 19,90 a R$ 29,90</span>" in livro(history_since="2026-07-20", price_points=full)
-    assert "<span>desde 01/08: " in livro(history_since="2026-07-20", price_points=pp(("2026-08-01", 2990), ("2026-09-01", 2490)))
-    assert "<span>desde 21/07: " in livro(history_since="2026-07-21", price_points=pp(("2026-07-21", 2990), ("2026-09-01", 2490)))
-    assert "<span>desde 20/07: " in livro(history_since="2026-07-20", lowest_90d_cents=1000,  # sem selo
-                                          price_points=pp(("2026-07-20", 2990), ("2026-09-01", 2490)))
-    assert "<span>desde 01/10: R$ 19,90</span>" in livro(history_since="2026-10-01",       # preço parado
-                                                              price_points=pp(("2026-10-01", 1990), ("2026-10-10", 1990)))
-    # gráfico da vencedora (ML), não da outra loja
+    h = livro(history_since="2026-07-20", price_points=full)
+    assert '<text class="hc-lbl" x="4" y="158">21/07</text>' in h and "M" in h[h.index('d="M'):][4:30]
+    assert "<figcaption>Hoje é o menor preço dos últimos 90 dias.</figcaption>" in h
+    h = livro(history_since="2026-10-15", price_points=pp(("2026-10-15", 2990)))
+    assert '<text class="hc-lbl" x="4" y="158">12/10</text>' in h  # 3 dias de histórico, eixo de 7
+    h = livro(history_since="2026-10-01", price_points=pp(("2026-10-01", 1990), ("2026-10-10", 1990)))
+    assert 'class="hc-guide"' not in h and "<figcaption>Hoje é o menor preço desde 01/10.</figcaption>" in h
+    # duas lojas: uma linha cada, cor do ML, tracejado no menor das duas, ponto na vencedora (ML)
     two_pp = load({**good, "stores": [{**amz, "history_since": "2026-10-01", "price_points": ok_pp},
                                       {**mls, "price_cents": 1890, "history_since": "2026-10-05",
                                        "price_points": pp(("2026-10-05", 2190), ("2026-10-12", 2090))}]})
-    assert "<span>desde 05/10: R$ 18,90 a R$ 21,90</span>" in vis(book_page(two_pp[0], two_pp)) and "desde 01/10" not in vis(book_page(two_pp[0], two_pp))
+    h = vis(book_page(two_pp[0], two_pp))
+    assert 'class="hc-line hc-amz"' in h and 'class="hc-line hc-ml"' in h and 'class="hc-now-lbl" x="210"' in h and ">R$\u00a018,90</text>" in h
+    assert '<th scope="col">Amazon</th><th scope="col">Mercado Livre</th>' in h and '<span class="sr">sem leitura</span>' in h
+    assert h.count('class="hc-now"') == 2 and "Mercado Livre: menor R$ 18,90, maior R$ 21,90, hoje R$ 18,90." in h  # atual das duas lojas
+    assert '>Mercado Livre</text><text class="hc-now-lbl"' in h and '>Amazon</text><text class="hc-now-lbl"' in h
+    empate = load({**good, "stores": [{**amz, "price_cents": 1890, "lowest_90d_cents": 1890, "history_since": "2026-10-01", "price_points": ok_pp},
+                                      {**mls, "price_cents": 1890, "history_since": "2026-10-05",
+                                       "price_points": pp(("2026-10-05", 2190), ("2026-10-12", 2090))}]})
+    ys = [float(y) for y in re.findall(r'<text class="(?:hc-name[^"]*|hc-now-lbl)" x="210" y="([\d.]+)"', vis(book_page(empate[0], empate)))]
+    assert len(ys) == 4 and max(ys) <= 139 and all(b - a >= 14 for a, b in zip(sorted(ys), sorted(ys)[1:]))  # sem colidir com as datas
+    # Amazon vencida há mais de 90 dias: sem gráfico nem link, sem quebrar o build (review do PR #91)
+    old_ = load(A(checked_at="2026-07-01T10:00:00-03:00", history_since="2026-06-20",
+                  price_points=pp(("2026-06-20", 2990), ("2026-06-25", 2490))), now=datetime(2026, 10, 18, 12, tzinfo=BRT))[0]
+    assert old_["velho"] and not has_hc(old_) and 'class="hc"' not in chart(old_) and "ver-hist" not in card(old_)
+    # texto com a data real do primeiro ponto, mesmo com o eixo puxado para 7 dias
+    h = livro(history_since="2026-10-15", lowest_90d_cents=1000, price_points=pp(("2026-10-15", 2990)))
+    assert "<figcaption>Desde 15/10: " in h and "Preço desde 15/10." in h and ">12/10</text>" in h
+    # ponto solto de outra loja (entre buracos) ganha marcador
+    solto = load({**good, "stores": [{**amz, "history_since": "2026-10-01", "price_points": ok_pp},
+                                     {**mls, "price_cents": 1890, "history_since": "2026-09-01",
+                                      "price_points": pp(("2026-09-01", 2190), ("2026-10-05", 2090))}]})
+    hs = vis(book_page(solto[0], solto))
+    ml_d = re.search(r'class="hc-line hc-ml" d="([^"]+)"', hs).group(1)
+    assert ml_d.count("h0") == 3 and "L" not in ml_d  # 01/09, 05/10 e hoje: buracos de 34 e 13 dias
+    # degrau intermediário relevante ganha rótulo; o menor ganha rótulo quando não é o atual
+    h = livro(history_since="2026-10-01", lowest_90d_cents=1000, price_points=pp(
+        ("2026-10-01", 2990), *((f"2026-10-{d:02d}", 2490) for d in range(5, 11)), ("2026-10-14", 1500)))
+    svg = h[h.index('<figure class="hc"'):h.index("</svg>", h.index('<figure class="hc"'))]
+    assert ">R$\u00a015,00</text>" in svg and ">R$\u00a029,90</text>" in svg and ">R$\u00a024,90<" not in svg  # intermediário = degrau mais recente
+    assert ">menor R$" not in h  # o menor já está num marcador
+    h2 = livro(history_since="2026-10-01", lowest_90d_cents=1000, price_points=pp(
+        ("2026-10-01", 2990), ("2026-10-05", 1500), *((f"2026-10-{d:02d}", 2490) for d in range(10, 18))))
+    assert ">R$\u00a024,90</text>" in h2 and ">menor R$\u00a015,00</text>" in h2  # menor fora dos marcadores ganha rótulo
+    fig = h[h.index('<figure class="hc"'):h.index("</figure>")]
+    assert fig.count("<circle") == 3 and fig.count('class="hc-pt') == 2 and fig.count('class="hc-now"') == 1  # 3 marcadores por loja
+    # card: link "ver histórico" só com gráfico; o modal busca o #historico da página só quando há gráfico
+    def card_of(**kw):
+        return card(load(A(**kw))[0])
+    c = card_of(history_since="2026-10-01", price_points=ok_pp)
+    assert '<a class="ver-hist" href="/livro/livro-1/#historico" data-modal="livro-1">ver histórico' in c
+    assert c.index('class="stamp') < c.index('class="ver-hist"')
+    for kw in ({"history_since": "2026-10-01"}, {"history_since": "2026-10-18", "price_points": pp(("2026-10-18", 1990))}):
+        assert "ver-hist" not in card_of(**kw), kw  # sem série: sem link
+    assert offer_json(load(A(history_since="2026-10-01", price_points=ok_pp))[0], None)["hc"] is True
+    assert offer_json(load(A(history_since="2026-10-01"))[0], None)["hc"] is False
     assert rejects({**good, "history_start": "2026-07-01"})  # campo da proposta antiga, substituído
     # campos novos: tipo errado quebra o build
     for bad in ("true", 1, 0, None, "sim"):
@@ -2119,8 +2422,8 @@ def selftest():
         assert k in kinds, k                                                   # header, card, hero, banner, bloco, canais, FAB, rodapé
     assert any("Canal no WhatsApp" in t for k, t in soon if k == "pill pill--wa")  # texto acessível: "Canal no WhatsApp, em breve"
     assert not re.search(r"<(?:a|button)[^>]*\bis-soon", h) and "tabindex" not in re.sub(r'<p class="sr" aria-hidden="true"><label>Não preencha .*?</p>', "", h.split("<dialog")[0])  # só o honeypot
-    assert "Em breve você poderá tocar no sino" in h and "Para parar, mande /parar" not in h  # FAQ não promete o alerta
-    assert "O alerta ainda não está no ar" in pages0["privacidade/index.html"]
+    assert "Em breve você poderá tocar no sino" in h and "Ele avisa por lá" not in h  # FAQ não promete o alerta
+    assert "A lista de desejos ainda não está no ar" in pages0["privacidade/index.html"]
     js = (STATIC / "app.js").read_text(encoding="utf-8")
     assert "is-soon" in js and "aria-disabled" in js and "em breve" in js                  # modal sem bot: sino "em breve"
     hb = render_pages(load(*ofs(2)), "ofertaslivros_bot", [("Telegram", "https://t.me/ofertaslivros"),
@@ -2286,7 +2589,8 @@ def selftest():
     hero_ = h[:h.index('id="h-filtro"')]
     assert hero_.count('loading="eager" fetchpriority="high"') == 1 and h.count('loading="eager"') == 1
     assert hero_.index('loading="eager"') < hero_.index('loading="lazy"')
-    assert h.count("<img ") == h.count('width="120" height="180"') + 4       # + logo claro e escuro no topo e no rodapé
+    assert h.count("<img ") == h.count('width="120" height="180"') + 4 + h.count('src="/mavi.svg"')  # + logos (topo e rodapé) e a Mavi
+    assert h.count('src="/mavi.svg"') == 2 and "i-carimbo" not in h.split('class="mascote')[1][:200]  # Mavi no banner e no capítulo do bot
     r = load({**good, "image_url": img})
     assert vis(book_page(r[0], r)).count('loading="eager" fetchpriority="high"') == 1  # na página do livro a capa é a LCP
     h = vis(page(offers_n(5, {0: {"blurb": '<i>"Duas" & irmãs</i>'}})))
@@ -2334,6 +2638,7 @@ def selftest():
     # páginas geradas: home, nichos, /ofertas/, /livro/<id>/ e privacidade; /canais/ só com canal
     pg = render_pages(load(good, ml))
     assert set(pg) == {"index.html", "privacidade/index.html", "ofertas/index.html", "curadoria/index.html", "manga/index.html",
+                       "ofertas/40/index.html", "ofertas/50/index.html",
                        "ficcao/index.html", "livro/livro-1/index.html", "livro/livro-2/index.html"}
     assert "canais/index.html" in render_pages(load(good), ch=[("Telegram", "https://t.me/ofertaslivros")])
     for path, h in pg.items():                                                 # canonical absoluto, um por página
@@ -2364,6 +2669,24 @@ def selftest():
     b90 = {**good, "id": "bf-90d", "stores": pr(8000, 10000, history_since="2026-08-01")}  # 20%, mas selo de 90 dias
     bvel = {**good, "id": "bf-velho", "stores": pr(5000, 10000), "_h": 48}                # Amazon vencida: velho
     bnao = {**good, "id": "bf-nao", "stores": pr(9500, 10000)}                            # 5%: sem oferta
+    # Faixas de desconto: /ofertas/40/ e /ofertas/50/ sempre existem; sem vencidos; livro sem oferta entra
+    b50 = {**good, "id": "bf-50", "stores": pr(5000, 10000)}
+    b40 = {**good, "id": "bf-40", "stores": pr(6000, 10000)}
+    fo = bf((11, 10), b50, b40, b30, bvel, bnao)
+    fp = render_pages(fo)
+    ids = lambda h: re.findall(r'data-id="([^"]+)"', h.split('class="grid feed')[1])  # noqa: E731
+    assert ids(fp["ofertas/40/index.html"]) == ["bf-50", "bf-40"] and ids(fp["ofertas/50/index.html"]) == ["bf-50"]
+    for path in ("index.html", "ofertas/index.html", "ofertas/40/index.html", "ofertas/50/index.html"):
+        assert '<a class="pill" href="/ofertas/40/"' in fp[path] and '50%+<span class="faixa-n">1<span class="sr"> livros</span></span>' in fp[path], path
+    assert '<a class="pill" href="/ofertas/40/" aria-current="page">' in fp["ofertas/40/index.html"]
+    assert re.search(r'Todos</span>.*?2 ofertas', fp["ofertas/40/index.html"])                      # nichos contam a faixa
+    assert 'aria-current="page">Todas' in fp["ofertas/index.html"] and 'aria-current="page">Todas' not in fp["index.html"]
+    assert com_desconto([{"id": "nov", "velho": False, "oferta": False, "price_cents": 5000,
+                          "list_price_cents": 10000}], 50) == []                                 # fora da vitrine: não entra
+    assert all(len(com_desconto(fo, t)) <= len(ofertas(fo)) for t in FAIXAS)
+    assert 'data-id="bf-50"' in fp["ofertas/50/index.html"] and 'data-off="50"' in fp["ofertas/50/index.html"]
+    vazio = render_pages(bf((11, 10), b30))["ofertas/50/index.html"]
+    assert "Nenhum livro com 50% ou mais de desconto agora." in vazio and 'class="card"' not in vazio
     for day, on in (((11, 4), False), ((11, 5), True), ((12, 1), True), ((12, 2), False)):
         bo = bf(day, b30, b29, b90, bvel, bnao)
         pg = render_pages(bo)

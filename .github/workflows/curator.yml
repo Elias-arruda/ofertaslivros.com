@@ -125,7 +125,10 @@ jobs:
         run: |
           set -o pipefail
           { echo '```'; python3 collector/curator.py ml-match --max 70; echo '```'; } \
-            | tee "$RUNNER_TEMP/ml-match.md"
+            | tee "$RUNNER_TEMP/ml-match.log"
+          # O log vira a descrição do PR (pública): sem as linhas de comando do Actions
+          # (::add-mask::<token> etc.), que o log esconde, mas o PR mostraria.
+          grep -v '^::' "$RUNNER_TEMP/ml-match.log" > "$RUNNER_TEMP/ml-match.md"
 
       - name: Abrir o PR
         env:
@@ -134,6 +137,9 @@ jobs:
           f=collector/ml_links.tsv
           if [ -z "$(git status --porcelain -- $f)" ]; then
             echo "nenhum livro casado: sem PR"; exit 0
+          fi
+          if grep -qE 'APP_USR|::add-mask' "$RUNNER_TEMP/ml-match.md"; then
+            echo "::error::a descrição do PR traria segredo: sem PR"; exit 1
           fi
           branch="curator-ml-match/$(date -u +%F)"
           git switch -c "$branch"

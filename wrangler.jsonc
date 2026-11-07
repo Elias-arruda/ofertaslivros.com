@@ -6,12 +6,28 @@
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
-    // Só o POST do "Pedir um livro" roda o Worker; o resto sai direto dos assets (sem custo de requisição).
-    "run_worker_first": ["/pedido"]
+    // Só o POST do "Pedir um livro", o /painel e o webhook do bot rodam o Worker; o resto sai direto dos assets.
+    // /telegram não é segredo (este arquivo é público): o controle é o header X-Telegram-Bot-Api-Secret-Token.
+    "run_worker_first": ["/pedido", "/painel", "/painel/*", "/telegram"]
   },
+  // /painel (Access + JWT conferido no Worker): lê o daily_rollup do D1 e o GraphQL da zona.
+  // Segredo CF_ANALYTICS_TOKEN (só leitura de analytics) no painel: Worker > Settings > Variables and Secrets.
+  // BOT: lista de desejos do Telegram (chat_id e itens), separado do analytics (docs/produto/bot-lista-de-desejos.md §9).
+  // Segredos TELEGRAM_BOT_TOKEN e TELEGRAM_WEBHOOK_SECRET no Worker: Settings > Variables and Secrets.
+  "d1_databases": [
+    { "binding": "ANALYTICS", "database_name": "ofertaslivros-analytics", "database_id": "aa8a7b0d-e44f-4c1c-8c11-b6e204460e32" },
+    { "binding": "BOT", "database_name": "ofertaslivros-bot", "database_id": "9dccfcf7-1342-4d88-bec8-7f32d75cd1ca" }
+  ],
+  // Avisos do bot: 20 min depois do dispatch da coleta (o deploy já terminou). 4 de 5 Cron Triggers do Free.
+  "triggers": { "crons": ["20,50 * * * *"] },
   // E-mail pela Email Routing do .com.br. O destino (verificado no painel) fica no segredo
   // PEDIDOS_PARA do Worker, fora do repo: Worker > Settings > Variables and Secrets.
   "send_email": [{ "name": "PEDIDOS" }],
   // Anti-spam: 5 pedidos por minuto por IP (a chave não é guardada).
-  "ratelimits": [{ "name": "LIMITE", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }]
+  // Bot: 20 updates por minuto por chat_id e 1 pedido de livro por minuto por chat_id (a chave não é guardada).
+  "ratelimits": [
+    { "name": "LIMITE", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } },
+    { "name": "BOT_LIMITE", "namespace_id": "1002", "simple": { "limit": 20, "period": 60 } },
+    { "name": "BOT_PEDIDOS", "namespace_id": "1003", "simple": { "limit": 1, "period": 60 } }
+  ]
 }
