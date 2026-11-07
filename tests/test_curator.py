@@ -687,6 +687,10 @@ def test_retirada_no_pr_e_id_nunca_volta(env, tmp_path):
                        "ml_url": ML_URL.replace("ref=X", "ref=Z")})
     with pytest.raises(c.Invalid, match="retirado"):
         c.load_catalog(d)
+    d["books"].pop()
+    for bad in (["manga"], "manga", {"livro-1": "nao-existe"}, {"outro": "manga"}, {"livro-1": ["manga"]}):
+        with pytest.raises(c.Invalid, match="generos_retirados"):  # formato ruim: o curator nem começa
+            c.load_catalog({**d, "generos_retirados": bad})
 
 
 def test_so_retirada_ja_grava_o_pr(env, tmp_path):
