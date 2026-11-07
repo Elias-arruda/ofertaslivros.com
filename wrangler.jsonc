@@ -3,6 +3,9 @@
   "main": "worker/index.js",
   "compatibility_date": "2026-10-18",
   "workers_dev": true,
+  // Workers Logs desligado: a Cloudflare não guarda Referer, User-Agent nem fbclid do /r/ (spec da Meta CAPI §5.1).
+  // Já estava desligado no painel (script-settings sem observability em 2026-11-07); o wrangler tail segue funcionando.
+  "observability": { "enabled": false },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",

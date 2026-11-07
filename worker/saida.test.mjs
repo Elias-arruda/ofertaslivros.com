@@ -52,6 +52,12 @@ async function rodar({ request = req(), location = AMZ, status = 302, env = SEGR
   assert.ok(!chamadas[0].init.body.includes("abc123"));             // nada do livro
 }
 
+// event_source_url: só as 5 páginas de destino; o resto vira a raiz.
+for (const [pagina, esperado] of [["/mindset/", "/mindset/"], ["/livro/torto-arado/", "/"], ["/", "/"], ["/negocios", "/"]]) {
+  const { chamadas } = await rodar({ request: req({ ref: REF.replace("/negocios/", pagina) }) });
+  assert.equal(JSON.parse(chamadas[0].init.body).data[0].event_source_url, "https://ofertaslivros.com.br" + esperado, pagina);
+}
+
 // META_TEST_CODE só quando existe.
 {
   const { chamadas } = await rodar({ env: { ...SEGREDOS, META_TEST_CODE: "TEST123" } });

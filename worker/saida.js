@@ -10,6 +10,8 @@ const ORIGEM = "https://ofertaslivros.com.br";
 // Os mesmos hosts do ALLOWED_HOSTS do build.py. Só decide se dispara; o destino nunca sai daqui.
 const LOJAS = new Set(["amazon.com.br", "www.amazon.com.br", "mercadolivre.com.br", "www.mercadolivre.com.br", "mercadolivre.com"]);
 const FBCLID = /^[A-Za-z0-9_-]{10,500}$/;
+// As 5 páginas de destino dos anúncios; qualquer outra página vai como a raiz (não revela qual livro foi visto).
+const DESTINOS = new Set(["/black-friday/", "/negocios/", "/mindset/", "/romance/", "/fantasia/"]);
 
 /** Corpo do evento, ou null se não for clique de anúncio pago para uma loja. */
 export function evento(request, resposta, env, agora = Date.now()) {
@@ -31,7 +33,7 @@ export function evento(request, resposta, env, agora = Date.now()) {
       event_time: Math.floor(agora / 1000),
       event_id: crypto.randomUUID(),
       action_source: "website",
-      event_source_url: ORIGEM + ref.pathname,
+      event_source_url: ORIGEM + (DESTINOS.has(ref.pathname) ? ref.pathname : "/"),
       user_data: { fbc: `fb.1.${agora}.${fbclid}`, client_user_agent: ua },
     }],
   };
