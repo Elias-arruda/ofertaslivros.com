@@ -371,6 +371,8 @@ Fluxo, uma vez por dia, quando o Elias pedir ("posta as ofertas do WhatsApp"):
 1. No Telegram Web, abrir pela busca o chat com o @ofertaslivros_bot e copiar os textos do "Resumo WhatsApp" do dia, entre o cabeçalho e "fim do resumo". Sem resumo do dia, não posta nada.
 2. No WhatsApp Web, abrir pela busca o canal "Só Mais um Livro - Ofertas Livros" e conferir o nome no cabeçalho.
 3. Para cada texto: colar sem editar, fechar a prévia do link e enviar. Esperar cerca de 20 s antes do próximo.
+   - Limite conhecido: ao colar, o WhatsApp Web já busca a prévia do link, seguindo o `/r/<id>/wa` até a loja. Isso acontece uma vez por post, do mesmo jeito que na postagem manual. Fechar a prévia só evita que o post saia com o cartão da loja.
+   - Se isso virar problema (clique de robô contado pela loja), a saída é o texto do WhatsApp apontar para uma página do site sem redirect, e não para o `/r/`.
 4. Avisar o Elias de quantos posts saíram.
 
 O dedup e a medição continuam os do resumo (`channel_posts.csv`, linhas `wa`, e a tag `ofertaslivrwa-20`), porque o que vai ao Canal é o próprio resumo. Se o Claude não postar num dia, o Elias pode colar à mão, como antes.

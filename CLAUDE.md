@@ -47,7 +47,7 @@ Domínio comprado na HostGator. A HostGator é usada SÓ para o domínio (DNS).
 5. **WhatsApp:** nenhum código, script ou workflow controla o WhatsApp (whatsapp-web.js, Baileys, Whapi e similares). A API oficial não posta em Canal.
    - **Exceção decidida pelo Elias em 2026-11-06, com o risco aceito:** o Claude pode usar o Chrome do Elias (Claude in Chrome, com o WhatsApp Web já conectado pelo Elias) para postar no Canal do WhatsApp do site ("Só Mais um Livro - Ofertas Livros") as ofertas do resumo diário que o bot manda no chat do Elias no Telegram.
      - Só quando o Elias pedir na sessão. No máximo 1 rodada por dia, com as ofertas daquele resumo (até 5).
-     - O texto é exatamente o do resumo, com o link `/r/<id>/wa`, sem edição. A prévia de link é fechada antes de enviar: gerar a prévia seguiria o `/r/` até a loja e contaria um clique automatizado no link de afiliado.
+     - O texto é exatamente o do resumo, com o link `/r/<id>/wa`, sem edição. A prévia de link é fechada antes de enviar, para o post não sair com o cartão da loja. Limite conhecido e aceito: o WhatsApp Web busca a prévia assim que o link é colado (seguindo o `/r/` até a loja), uma vez por post, igual à postagem manual do Elias.
      - Ritmo: uma mensagem por vez, cerca de 20 s entre posts. O canal é aberto pela busca, e o nome no cabeçalho é conferido antes de digitar.
      - Proibido: postar ou ler em qualquer outro chat, grupo ou contato; guardar cookie, sessão ou QR; código que controle o WhatsApp Web; rodar agendado ou no GitHub Actions.
      - QR, logout, verificação ou aviso de restrição: parar na hora, sem resolver, e avisar o Elias.
