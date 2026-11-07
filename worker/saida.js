@@ -2,6 +2,8 @@
 // Para quem veio de anúncio pago da Meta (fbclid + utm_medium=paid no Referer), manda o evento SaidaLoja
 // à Conversions API depois de responder (docs/produto/meta-conversions-api.md). Sem IP, sem livro, nada guardado.
 // Segredos META_CAPI_TOKEN, META_DATASET_ID e META_TEST_CODE (opcional) no Worker; sem eles, nada sai.
+// Ordem: este código entra inerte, depois da spec (PR #143) e junto do PR da /privacidade/ (texto + botão de
+// opt-out, do frontend-developer). Os segredos só são gravados com a /privacidade/ já descrevendo o envio.
 
 const GRAPH = "https://graph.facebook.com/v27.0";
 const ORIGEM = "https://ofertaslivros.com.br";
