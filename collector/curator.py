@@ -48,7 +48,7 @@ GENRE_MAP = {
     "13464376": "historia",    # História
     "76624759": "historia",    # Ciência
 }
-DAY_MAX = 50       # livros novos por dia (somando as rodadas de hora em hora): meta e teto (§10.8, item 5)
+DAY_MAX = 50       # livros novos por dia (somando as rodadas a cada 2h): meta e teto (§10.8, item 5)
 GENRE_MAX = 10     # por gênero, por dia (tag não conta)
 ACTIVE_MAX = 500   # ativos + pendentes (§10.7, decisão 4)
 PRICE_MIN, PRICE_MAX = 1500, 40000  # centavos: R$ 15 a R$ 400 (decisão 3)
@@ -822,7 +822,7 @@ def suggest(catalog=None, seen_path=None, summary_path=None, today=None,
         seen.update({b["ml_product_id"]: today.isoformat() for b, _ in retired
                      if "ml_product_id" in b})  # não volta pela descoberta por SEEN_DAYS
         print("curator: retirados " + ", ".join(f"{b['id']} ({why})" for b, why in retired))
-    # Rodadas de hora em hora partem do PR do dia: o que já foi sugerido hoje (e segue no
+    # Rodadas a cada 2h partem do PR do dia: o que já foi sugerido hoje (e segue no
     # catálogo) conta nos tetos de DAY_MAX e GENRE_MAX.
     today_genres = [b["genre"] for b in books if seen.get(b.get("ml_product_id")) == hoje]
     picked, revisar, rc = [], [], 0

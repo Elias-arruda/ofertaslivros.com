@@ -225,7 +225,7 @@ def test_limite_diario_e_ordem(env, monkeypatch):
 
 
 def test_rodadas_do_mesmo_dia_somam_no_teto(env, monkeypatch):
-    """Curador de hora em hora: a 2ª rodada parte do PR do dia, não repete candidato e
+    """Curador a cada 2 horas: a 2ª rodada parte do PR do dia, não repete candidato e
     não passa de DAY_MAX nem de GENRE_MAX somando as rodadas."""
     monkeypatch.setattr(cur, "DAY_MAX", 5)
     monkeypatch.setattr(cur, "GENRE_MAX", 3)

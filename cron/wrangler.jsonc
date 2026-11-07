@@ -1,5 +1,5 @@
 {
-  // Agendador: a cada 30 min dispara o workflow "pipeline" (coleta) e, no minuto 5 de cada hora,
+  // Agendador: a cada 30 min dispara o workflow "pipeline" (coleta) e, no minuto 5 das horas pares (UTC, a cada 2h),
   // o "curator" (suggest), que acrescenta candidatos ao PR do dia.
   // Às 03:15 UTC grava no D1 o rollup do analytics do dia anterior (rollup.js).
   // O cron do GitHub Actions atrasa horas em horário de pico; o Cron Trigger da Cloudflare não.
@@ -9,7 +9,7 @@
   "workers_dev": false,
   "preview_urls": false,
   "triggers": {
-    "crons": ["*/30 * * * *", "5 * * * *", "15 3 * * *"]
+    "crons": ["*/30 * * * *", "5 */2 * * *", "15 3 * * *"]
   },
   // D1 do analytics (daily_rollup; depois sales). A tabela é criada pelo próprio rollup.
   "d1_databases": [{ "binding": "ANALYTICS", "database_name": "ofertaslivros-analytics", "database_id": "aa8a7b0d-e44f-4c1c-8c11-b6e204460e32" }]

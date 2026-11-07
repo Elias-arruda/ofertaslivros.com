@@ -1,7 +1,7 @@
 name: curator
 
-# docs/produto/curator.md. Um PR de curadoria por dia (até 50 candidatos e retirada), atualizado de hora em hora.
-# Nada de pull_request/pull_request_target. O agendamento (minuto 5 de cada hora, desde a Black Friday de
+# docs/produto/curator.md. Um PR de curadoria por dia (até 50 candidatos e retirada), atualizado a cada 2 horas.
+# Nada de pull_request/pull_request_target. O agendamento (minuto 5 das horas pares UTC, a cada 2h, desde a Black Friday de
 # 2026-11-05) é do Worker ofertaslivros-cron, que dispara este workflow com mode=suggest: o schedule do GitHub
 # perdia execuções.
 on:
@@ -51,7 +51,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # Roda de hora em hora (Worker ofertaslivros-cron, minuto 5). Um PR por dia, na data de Brasília
+      # Roda a cada 2 horas (Worker ofertaslivros-cron, minuto 5). Um PR por dia, na data de Brasília
       # (a mesma do curator.py): a 1ª rodada abre curator/AAAA-MM-DD; as seguintes acrescentam um commit
       # ao mesmo branch (sem force-push) e comentam os novos no PR. PR aberto de outro dia: nada a fazer
       # até ele ser fechado (como antes). PR de fork não conta.
