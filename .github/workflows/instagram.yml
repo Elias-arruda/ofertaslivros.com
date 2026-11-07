@@ -1,0 +1,77 @@
+name: instagram
+
+# 1 post por dia no Instagram (@ofertaslivros.com.br) pela API oficial da Meta (Instagram API com login do Instagram).
+# Roda depois de cada deploy bem-sucedido: o deploy já publicou o JPEG do post em /ig/ (instagram_post.py --render).
+# Janela (10h–20h BRT), 1 por dia e repetição (14 dias) ficam no instagram_post.py. O estado é o instagram_posts.csv
+# do branch instagram-posts, gravado só por este workflow (não disputa push com o telegram nem com o pipeline).
+# Sem INSTAGRAM_TOKEN ou INSTAGRAM_USER_ID o job sai com ::warning:: e não posta.
+on:
+  workflow_run:
+    workflows: [deploy]
+    types: [completed]
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: instagram
+  cancel-in-progress: false
+
+jobs:
+  post:
+    if: github.event.workflow_run.conclusion == 'success'
+    # INSTAGRAM_TOKEN (secret) e INSTAGRAM_USER_ID (variável) ficam no Environment instagram, restrito à main.
+    environment: instagram
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write # só para o push do instagram_posts.csv no branch instagram-posts
+    env:
+      POSTS_BRANCH: instagram-posts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Abrir as ofertas e o log dos posts
+        id: posts
+        run: |
+          git fetch --no-tags --depth=1 origin refs/heads/price-history:refs/remotes/origin/price-history
+          git show origin/price-history:offers.json > "$RUNNER_TEMP/offers.json"
+          rc=0; git ls-remote --exit-code --heads origin "$POSTS_BRANCH" >/dev/null || rc=$?
+          if [ "$rc" -eq 0 ]; then
+            git fetch --no-tags --depth=1 origin "$POSTS_BRANCH"
+            git worktree add --detach posts FETCH_HEAD
+          elif [ "$rc" -eq 2 ]; then
+            # 2 = branch não existe: primeira execução, branch órfão só com o log
+            git worktree add --orphan -b "$POSTS_BRANCH" posts
+          else
+            echo "::error::ls-remote falhou (código $rc)"; exit 1
+          fi
+
+      - name: Postar no Instagram
+        env:
+          INSTAGRAM_TOKEN: ${{ secrets.INSTAGRAM_TOKEN }}
+          INSTAGRAM_USER_ID: ${{ vars.INSTAGRAM_USER_ID }}
+          ML_AFFILIATE_ID: ${{ vars.ML_AFFILIATE_ID }}
+          AMAZON_PARTNER_TAG: ${{ vars.AMAZON_PARTNER_TAG }}
+        run: python3 instagram_post.py "$RUNNER_TEMP/offers.json" posts/instagram_posts.csv
+
+      - name: Gravar o log dos posts
+        # grava mesmo se o media_publish falhou: a linha sai antes dele, para nunca postar duas vezes
+        if: ${{ !cancelled() && steps.posts.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: posts
+        run: |
+          git add -A
+          if git diff --cached --quiet; then echo "sem posts novos"; exit 0; fi
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "instagram_posts: run $GITHUB_RUN_ID"
+          b64=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          echo "::add-mask::$b64"
+          export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="http.https://github.com/.extraheader" \
+                 GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $b64"
+          git push -q origin "HEAD:refs/heads/$POSTS_BRANCH"
