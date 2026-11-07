@@ -363,3 +363,16 @@ Implementação (`telegram_post.py`, no mesmo workflow do canal):
 - Conta como postado no envio: as linhas `wa` são gravadas antes da primeira mensagem. Se saiu incompleto ou falhou, não manda outro no mesmo dia.
 - Tag da Amazon do WhatsApp: `AMAZON_TAG_WA` (vars do Environment `production`, lida pelo deploy). Sem ela, `/wa` usa a tag do site.
 - Sem `TELEGRAM_ADMIN_CHAT_ID`, o resumo não sai e o canal do Telegram segue igual.
+
+## WhatsApp pelo navegador (decisão do Elias, 2026-11-06)
+O Elias aceitou o risco de o Claude postar no Canal pelo WhatsApp Web dele (CLAUDE.md, regra 5). Isso substitui, só neste ponto, a decisão 3 da seção 1. Continua proibido qualquer código ou ferramenta que controle o WhatsApp.
+
+Fluxo, uma vez por dia, quando o Elias pedir ("posta as ofertas do WhatsApp"):
+1. No Telegram Web, abrir pela busca o chat com o @ofertaslivros_bot e copiar os textos do "Resumo WhatsApp" do dia, entre o cabeçalho e "fim do resumo". Sem resumo do dia, não posta nada.
+2. No WhatsApp Web, abrir pela busca o canal "Só Mais um Livro - Ofertas Livros" e conferir o nome no cabeçalho.
+3. Para cada texto: colar sem editar, fechar a prévia do link e enviar. Esperar cerca de 20 s antes do próximo.
+4. Avisar o Elias de quantos posts saíram.
+
+O dedup e a medição continuam os do resumo (`channel_posts.csv`, linhas `wa`, e a tag `ofertaslivrwa-20`), porque o que vai ao Canal é o próprio resumo. Se o Claude não postar num dia, o Elias pode colar à mão, como antes.
+
+Risco: banimento do número dono do canal, que hoje é o WhatsApp pessoal do Elias. Para reduzir, ele pode pôr um chip separado como admin e conectar esse número no WhatsApp Web.
