@@ -119,10 +119,10 @@ def test_posta_texto_puro_com_link_tg_e_e_idempotente(run, monkeypatch):
     assert [m for m, _ in calls] == ["sendMessage", "sendPhoto"]   # maior desconto primeiro; foto só do ML
     (_, msg), (_, photo) = calls
     assert "parse_mode" not in msg and "parse_mode" not in photo
-    assert msg["link_preview_options"] == {"is_disabled": True}         # sem clique de robô na loja
+    assert "link_preview_options" not in msg                            # prévia da nossa página, com a capa
     assert msg["chat_id"] == "@ofertaslivros"
     assert "Torto *Arado* <b>, de Itamar" in msg["text"]                 # literal
-    assert msg["text"].endswith("Link de afiliado: https://ofertaslivros.com.br/r/torto-arado/tg")
+    assert msg["text"].endswith("Link: https://ofertaslivros.com.br/livro/torto-arado/")
     assert "O preço final é o da loja." in msg["text"] and "amazon.com" not in msg["text"]
     assert photo["photo"] == "https://http2.mlstatic.com/D_x.jpg" and photo["caption"].startswith("Com foto")
     assert run.csv.read_text().splitlines()[0] == "posted_at,channel,offer_id,store,price_cents"
@@ -161,26 +161,27 @@ def test_foto_recusada_vai_como_texto(run, monkeypatch):
     assert len(run.csv.read_text().splitlines()) == 3
 
 
-@pytest.mark.parametrize("code,loc,ok", [
-    (302, "https://www.amazon.com.br/dp/B0ABCDEFGH?tag=x-20", True),
-    (302, "https://www.mercadolivre.com.br/social/x", True),
-    (302, "/", False),                                   # curinga: oferta fora do deploy
-    (302, "https://ofertaslivros.com.br/", False),
-    (302, "http://www.amazon.com.br/dp/B0ABCDEFGH", False),
-    (302, "https://evil.example/", False),
-    (404, "", False),
-    (200, None, False),
+@pytest.mark.parametrize("code,ok", [
+    (200, True),
+    (301, False),   # livro retirado: vai para o nicho
+    (302, False),
+    (404, False),   # página fora do deploy
 ])
-def test_no_ar(monkeypatch, code, loc, ok):
+def test_no_ar(monkeypatch, code, ok):
+    class Resp:
+        status = code
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+
     class Opener:
         def open(self, req, timeout):
             assert req.get_method() == "HEAD"
             assert req.get_header("User-agent").startswith("ofertaslivros-telegram/")
             if code == 200:
-                return None
-            raise tp.urllib.error.HTTPError(req.full_url, code, "x", {"Location": loc}, None)
+                return Resp()
+            raise tp.urllib.error.HTTPError(req.full_url, code, "x", {"Location": "/manga/"}, None)
     monkeypatch.setattr(tp.urllib.request, "build_opener", lambda *h: Opener())
-    assert tp.no_ar("https://ofertaslivros.com.br/r/a/tg") is ok
+    assert tp.no_ar("https://ofertaslivros.com.br/livro/a/") is ok
 
 
 def test_resumo_wa_no_chat_do_admin_uma_vez_por_dia(run, monkeypatch):
@@ -191,7 +192,7 @@ def test_resumo_wa_no_chat_do_admin_uma_vez_por_dia(run, monkeypatch):
     assert all(d["chat_id"] == "123456" and "parse_mode" not in d for _, d in calls)
     texts = [d.get("text") for _, d in calls]
     assert texts[0] == "Resumo WhatsApp de 21/10: 2 ofertas" and texts[-1] == "fim do resumo"
-    assert texts[1].endswith("/r/torto-arado/wa") and "caption" not in calls[2][1]
+    assert texts[1].endswith("Link: https://ofertaslivros.com.br/livro/torto-arado/") and "caption" not in calls[2][1]
     assert sum(",wa," in line for line in run.csv.read_text().splitlines()) == 2
     assert len(run()) == 5                                                # 2ª execução no mesmo dia: nada
 

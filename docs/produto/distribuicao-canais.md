@@ -147,8 +147,10 @@ Menor preço em 90 dias
 Torto Arado, de Itamar Vieira Junior
 R$ 42,90 (de R$ 74,90, -42%)
 Amazon · preço verificado em 18/10 às 08h47. O preço final é o da loja.
-Link de afiliado: https://<dominio>/r/torto-arado/tg
+Link: https://<dominio>/livro/torto-arado/
 ```
+
+(Desde 2026-11-07 o link é a página do livro no site; ver "Link para o site" no fim.)
 
 - A linha 1 só aparece se o selo for válido. Se não houver desconto (`list_price_cents == price_cents`), a parte "(de ...)" some, igual ao card do site.
 - O desconto usa o mesmo cálculo do card (piso, para não exagerar).
@@ -246,7 +248,7 @@ Links e allowlist:
 Regras do projeto:
 15. Nenhum passo deste spec faz request HTTP a domínio da Amazon. Usar o mesmo teste de rede mockada do critério 2 da spec de alerta.
 16. Os logs do workflow mostram só contagens ("tg: 2 postadas, wa: resumo com 4"). Não mostram token, `chat_id` nem texto de post.
-17. Todo post tem "o preço final é o da loja", o horário da verificação e "Link de afiliado". A mensagem fixada dos dois canais tem o aviso de associado.
+17. Todo post tem "o preço final é o da loja", o horário da verificação e "Link:" com a página do livro (até 2026-11-07, "Link de afiliado"). A mensagem fixada dos dois canais tem o aviso de associado.
 
 Site:
 18. O rodapé e `/canais/` linkam o canal do Telegram (`https://t.me/<canal>`) e o do WhatsApp (`https://whatsapp.com/channel/<id>`), com `rel="noopener noreferrer"`, sem JS e com a CSP igual.
@@ -359,7 +361,7 @@ O Elias decidiu: no WhatsApp, só o Canal, seguindo o plano original (§5 a §8)
 Implementação (`telegram_post.py`, no mesmo workflow do canal):
 - Uma vez por dia, na primeira execução das 11h às 21h59 BRT com oferta disponível, o bot manda no chat do Elias (`TELEGRAM_ADMIN_CHAT_ID`, Secret do Environment `telegram`) até 5 ofertas.
 - Mesmo critério e mesma ordem do canal (`pick`). A repetição é controlada à parte, pelas linhas `wa` do `channel_posts.csv`.
-- Mensagens: cabeçalho, por oferta a foto do ML sem legenda e o texto do `build.post_text` com `/r/<id>/wa`, e "fim do resumo". Texto puro, sem prévia de link.
+- Mensagens: cabeçalho, por oferta a foto do ML sem legenda e o texto do `build.post_text` com a `/livro/<id>/`, e "fim do resumo". Texto puro, sem prévia de link no chat do Elias.
 - Conta como postado no envio: as linhas `wa` são gravadas antes da primeira mensagem. Se saiu incompleto ou falhou, não manda outro no mesmo dia.
 - Tag da Amazon do WhatsApp: `AMAZON_TAG_WA` (vars do Environment `production`, lida pelo deploy). Sem ela, `/wa` usa a tag do site.
 - Sem `TELEGRAM_ADMIN_CHAT_ID`, o resumo não sai e o canal do Telegram segue igual.
@@ -370,11 +372,19 @@ O Elias aceitou o risco de o Claude postar no Canal pelo WhatsApp Web dele (CLAU
 Fluxo, uma vez por dia, quando o Elias pedir ("posta as ofertas do WhatsApp"):
 1. No Telegram Web, abrir pela busca o chat com o @ofertaslivros_bot e copiar os textos do "Resumo WhatsApp" do dia, entre o cabeçalho e "fim do resumo". Sem resumo do dia, não posta nada.
 2. No WhatsApp Web, abrir pela busca o canal "Só Mais um Livro - Ofertas Livros" e conferir o nome no cabeçalho.
-3. Para cada texto: colar sem editar, fechar a prévia do link e enviar. Esperar cerca de 20 s antes do próximo.
-   - Limite conhecido: ao colar, o WhatsApp Web já busca a prévia do link, seguindo o `/r/<id>/wa` até a loja. Isso acontece uma vez por post, do mesmo jeito que na postagem manual. Fechar a prévia só evita que o post saia com o cartão da loja.
-   - Se isso virar problema (clique de robô contado pela loja), a saída é o texto do WhatsApp apontar para uma página do site sem redirect, e não para o `/r/`.
+3. Para cada texto: colar sem editar, esperar a prévia do link carregar (capa do livro) e enviar com ela. Esperar cerca de 20 s antes do próximo.
+   - O link é a `/livro/<id>/` do site, sem redirect: a prévia não passa pelo `/r/` nem pela loja (2026-11-07).
 4. Avisar o Elias de quantos posts saíram.
 
 O dedup e a medição continuam os do resumo (`channel_posts.csv`, linhas `wa`, e a tag `ofertaslivrwa-20`), porque o que vai ao Canal é o próprio resumo. Se o Claude não postar num dia, o Elias pode colar à mão, como antes.
 
 Risco: banimento do número dono do canal, que hoje é o WhatsApp pessoal do Elias. Para reduzir, ele pode pôr um chip separado como admin e conectar esse número no WhatsApp Web.
+
+## Link para o site (decisão do Elias, 2026-11-07)
+Nos posts do canal do Telegram e do Canal do WhatsApp, a última linha passa de "Link de afiliado: …/r/<id>/tg|wa" para "Link: …/livro/<id>/".
+- **Por quê:** o post do WhatsApp saía sem imagem, porque a prévia era fechada para não mostrar o cartão da loja. A página do livro tem `og:image` com a capa (151 de 160 ofertas em 2026-11-07), então a prévia mostra a capa e não gera clique de robô no link de afiliado.
+- **Telegram:** com foto do ML, segue `sendPhoto`. Sem foto, `sendMessage` agora vai com a prévia da página.
+- **Custo aceito:** o leitor dá um clique a mais (página do livro, depois a loja). O clique na loja sai pelo `/r/<id>` da página, com a tag do site, então as tags `AMAZON_TAG_TG`/`AMAZON_TAG_WA` e os caminhos `/r/<id>/tg|wa` deixam de medir os canais. As rotas continuam no `_redirects`, para os posts antigos.
+- **Transparência:** o post não leva mais link de afiliado, e a página do livro tem o aviso de associado no rodapé. A mensagem fixada dos canais continua com o aviso.
+- **Bot (aviso individual):** não muda. Segue com "Link de afiliado:" e `/r/<id>/bot`, sem prévia.
+

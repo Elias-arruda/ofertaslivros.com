@@ -4,7 +4,7 @@
     python3 telegram_post.py <offers.json> <channel_posts.csv>
 
 Também manda o resumo diário do WhatsApp (§5 e §6) no chat privado do Elias (TELEGRAM_ADMIN_CHAT_ID): até 5
-ofertas com o link /wa, para ele colar no Canal do WhatsApp. Não há API oficial para postar em Canal.
+ofertas com o link da /livro/<id>/, para ele colar no Canal do WhatsApp. Não há API oficial para postar em Canal.
 Oferta postável = a mesma do site (build.resolve + ofertas, sem preço vencido) e o texto é o build.post_text.
 O estado é o channel_posts.csv do branch channel-posts (fora do price-history, para não disputar push com o
 pipeline): uma linha por post, gravada depois do ok do Telegram.
@@ -18,7 +18,6 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from urllib.parse import urlsplit
 
 import build
 
@@ -76,16 +75,14 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def no_ar(url):
-    """O /r/ já está publicado e leva a uma loja (não ao curinga da home)? Não segue o redirect:
-    nenhum request sai para a loja."""
+    """A /livro/<id>/ já está publicada (200 direto, sem redirect)? Livro retirado dá 301 para o nicho."""
     try:
         # User-Agent próprio: o Cloudflare do site responde 403 ao padrão "Python-urllib"
         req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": USER_AGENT})
-        urllib.request.build_opener(_NoRedirect).open(req, timeout=10)
-    except urllib.error.HTTPError as e:
-        loc = urlsplit(e.headers.get("Location", ""))
-        return e.code == 302 and loc.scheme == "https" and loc.hostname in build.ALLOWED_HOSTS
-    return False
+        with urllib.request.build_opener(_NoRedirect).open(req, timeout=10) as r:
+            return r.status == 200
+    except urllib.error.HTTPError:
+        return False
 
 
 def telegram(token, method, data):
@@ -105,8 +102,8 @@ def telegram(token, method, data):
 
 def post(token, chat, o, text):
     """Texto puro, sem parse_mode: título e autor vêm de dado coletado. Foto só a do ML (https),
-    a capa local de /capas/ fica fora até o Elias decidir. Sem prévia do link: o servidor do Telegram
-    seguiria o /r/ até a loja e geraria um clique de robô no link de afiliado a cada post.
+    a capa local de /capas/ fica fora até o Elias decidir. Sem foto, vai com prévia do link: o link é a nossa
+    /livro/<id>/ (og:image com a capa), então a prévia não passa pelo /r/ nem gera clique de robô na loja.
     Foto recusada (404 no ML etc.) cai no texto: senão a mesma oferta travaria o canal a cada execução."""
     img = o["image_url"]
     if img and img.startswith("https://") and len(text) <= CAPTION_MAX:
@@ -114,7 +111,7 @@ def post(token, chat, o, text):
             return telegram(token, "sendPhoto", {"chat_id": chat, "photo": img, "caption": text})
         except RuntimeError as err:
             print(f"tg: foto recusada, vai sem foto ({err})")
-    telegram(token, "sendMessage", {"chat_id": chat, "text": text, "link_preview_options": {"is_disabled": True}})
+    telegram(token, "sendMessage", {"chat_id": chat, "text": text})
 
 
 def gravar(log_path, now, channel, o):
@@ -130,14 +127,14 @@ def gravar(log_path, now, channel, o):
 def canal(token, chat, offers, log_path, now):
     posted = fora = 0
     for o in pick(offers, read_log(log_path), now, intervalo_min=INTERVALO_MIN):
-        url = f"{build.SITE}/r/{o['id']}/{CHANNEL}"
+        url = f"{build.SITE}/livro/{o['id']}/"
         if not no_ar(url):
             fora += 1
             continue
         post(token, f"@{chat}", o, build.post_text(o, url))
         gravar(log_path, now, CHANNEL, o)
         posted += 1
-    print(f"tg: {posted} postadas, {fora} sem /r/ no ar")
+    print(f"tg: {posted} postadas, {fora} sem página no ar")
 
 
 def resumo_wa(token, admin, offers, log_path, now):
@@ -148,7 +145,7 @@ def resumo_wa(token, admin, offers, log_path, now):
     hoje = now.astimezone(build.BRT).date()
     if any(r["at"].astimezone(build.BRT).date() == hoje for r in log):
         return
-    sel = [(o, f"{build.SITE}/r/{o['id']}/wa") for o in pick(offers, log, now, WA_JANELA, WA_MAX, WA_MAX)]
+    sel = [(o, f"{build.SITE}/livro/{o['id']}/") for o in pick(offers, log, now, WA_JANELA, WA_MAX, WA_MAX)]
     sel = [(o, url) for o, url in sel if no_ar(url)]
     if not sel:
         return  # tenta de novo na próxima execução da janela

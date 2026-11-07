@@ -555,12 +555,14 @@ def seal(o):
 
 
 def post_text(o, url):
-    """Texto puro do post nos canais (sem parse_mode). url = nosso /r/<id>[/tg|/wa], nunca a da loja."""
+    """Texto puro do post (sem parse_mode). url, sempre do nosso domínio, nunca a da loja:
+    - canais (Telegram e WhatsApp): a /livro/<id>/, com "Link:" (decisão do Elias, 2026-11-07). A prévia do link
+      mostra a capa (og:image) e não passa pelo /r/, então não gera clique de robô na loja;
+    - bot (aviso individual): o /r/<id>/bot, com "Link de afiliado:"."""
     p = urlsplit(url)
     if (p.scheme != "https" or not p.hostname or p.hostname in ALLOWED_HOSTS
-            or p.path not in {f"/r/{o['id']}", f"/r/{o['id']}/tg", f"/r/{o['id']}/wa", f"/r/{o['id']}/bot"}
-            or p.query or p.fragment):
-        raise Invalid(f"post_text só aceita o /r/ do nosso domínio: {url!r}")
+            or p.path not in {f"/livro/{o['id']}/", f"/r/{o['id']}/bot"} or p.query or p.fragment):
+        raise Invalid(f"post_text só aceita a /livro/<id>/ ou o /r/<id>/bot do nosso domínio: {url!r}")
     if not o.get("oferta"):
         raise Invalid(f"post_text só publica oferta; {o['id']!r} está sem oferta")
     if o["velho"]:
@@ -574,7 +576,7 @@ def post_text(o, url):
     a = o["alt"]
     if a and a["price_cents"] * 10 <= o["price_cents"] * 11:  # outra loja até 10% mais cara; sem link
         lines.append(f"Também {na(a['store'])} por {brl(a['price_cents'])}")
-    lines.append(f"Link de afiliado: {url}")
+    lines.append(f"{'Link de afiliado' if p.path.startswith('/r/') else 'Link'}: {url}")
     return "\n".join(lines)
 
 
@@ -2200,7 +2202,7 @@ def selftest():
                                         "stores": [{**amz, "list_price_cents": amz["price_cents"]}]}), NOW))
     assert bj["version"] == 1 and [b["id"] for b in bj["livros"]] == ["duas", "sem"]
     duas, sem = bj["livros"]
-    assert duas["texto"] == post_text(load(two)[0], f"{SITE}/r/duas/bot") and duas["texto"].endswith("/r/duas/bot")
+    assert duas["texto"] == post_text(load(two)[0], f"{SITE}/r/duas/bot") and duas["texto"].endswith("Link de afiliado: https://ofertaslivros.com.br/r/duas/bot")
     assert sem["texto"] is None and sem["autores"] == ["neil gaiman", "terry pratchett", "acao"]
     assert duas["desconto"] == discount(load(two)[0]) > 0 and sem["desconto"] == 0
     assert duas["valido_ate"] == (mls_at := min(s["checked_at"] + FRESH[s["store"]] for s in load(two)[0]["stores"])) \
@@ -2240,16 +2242,17 @@ def selftest():
                   "stores": [{**amz, "price_cents": 4290, "list_price_cents": 7490, "lowest_90d_cents": 4590,
                               "checked_at": "2026-10-18T08:47:00-03:00", "history_since": "2026-06-01"}]})[0]
     nb = "\u00a0"
-    assert post_text(torto, "https://ofertaslivros.com.br/r/livro-1/tg") == (
+    assert post_text(torto, "https://ofertaslivros.com.br/livro/livro-1/") == (
         "Menor preço em 90 dias\nTorto Arado, de Itamar Vieira Junior\n"
         f"R${nb}42,90 (de R${nb}74,90, -42%)\n"
         "Amazon · preço verificado em 18/10 às 08h47. O preço final é o da loja.\n"
-        "Link de afiliado: https://ofertaslivros.com.br/r/livro-1/tg")
-    plain = post_text({**torto, "seal": None, "list_price_cents": 4290}, "https://x.com/r/livro-1")
+        "Link: https://ofertaslivros.com.br/livro/livro-1/")
+    plain = post_text({**torto, "seal": None, "list_price_cents": 4290}, "https://x.com/livro/livro-1/")
     assert plain.splitlines()[:2] == ["Torto Arado, de Itamar Vieira Junior", f"R${nb}42,90"]
-    assert "Menor preço" not in post_text({**torto, "seal": "since"}, "https://x.com/r/livro-1")
-    for bad in ("https://www.amazon.com.br/r/livro-1", "http://x.com/r/livro-1", "https://x.com/r/outro",
-                "https://x.com/r/livro-1?u=https://evil.com", "https://x.com/r/livro-1/tg\nhttps://evil.com"):
+    assert "Menor preço" not in post_text({**torto, "seal": "since"}, "https://x.com/livro/livro-1/")
+    for bad in ("https://www.amazon.com.br/livro/livro-1/", "http://x.com/livro/livro-1/", "https://x.com/livro/outro/",
+                "https://x.com/livro/livro-1/?u=https://evil.com", "https://x.com/livro/livro-1/\nhttps://evil.com",
+                "https://x.com/r/livro-1/tg", "https://x.com/r/livro-1", "https://x.com/livro/livro-1"):
         try:
             post_text(torto, bad)
             raise AssertionError(bad)
@@ -2515,11 +2518,11 @@ def selftest():
     blob = json.loads(re.search(r'id="ofertas">(.*?)</script>', page(mix)).group(1))
     assert all(d["off"] == 0 and d["de"] is None and d["nov"] for d in blob if d["id"].startswith("nov-"))
     try:
-        post_text(next(o for o in mix if o["id"] == "nov-1"), "https://ofertaslivros.com.br/r/nov-1/tg")
+        post_text(next(o for o in mix if o["id"] == "nov-1"), "https://ofertaslivros.com.br/livro/nov-1/")
         raise AssertionError("post_text aceitou livro sem oferta")
     except Invalid:
         pass
-    assert post_text(mix[0], "https://ofertaslivros.com.br/r/l-0/tg")                         # oferta passa
+    assert post_text(mix[0], "https://ofertaslivros.com.br/livro/l-0/")                         # oferta passa
     # /curadoria/: todo livro fresco, com ou sem oferta, uma seção por nicho na ordem de GENRES
     cur_books = [*mix_books, {**nov(5, "2026-10-12"), "genre": "literatura-brasileira"}, {**good, "id": "fc-1", "genre": "ficcao"}]
     cpg = render_pages(load(*cur_books))
@@ -2681,7 +2684,7 @@ def selftest():
     assert offer_json(v, None)["meta"].endswith(f". {VELHO}") and offer_json(v, None)["p"] == brl(1990)
     assert f"/r/livro-1 https://www.amazon.com.br/dp/B0ABCDEFGH?tag={t} 302" in redirects(vel).splitlines()
     try:
-        post_text(v, "https://x.com/r/livro-1")  # canal nunca publica preço vencido
+        post_text(v, "https://x.com/livro/livro-1/")  # canal nunca publica preço vencido
         raise AssertionError("post_text aceitou preço fora do prazo")
     except Invalid:
         pass
@@ -2971,11 +2974,11 @@ def selftest():
                   "stores": [{**amz, "price_cents": 4290, "list_price_cents": 7490, "lowest_90d_cents": 4290},
                              {**mls, "price_cents": ml_price, "list_price_cents": 7490,
                               "checked_at": "2026-10-18T08:40:00-03:00"}]}, now=now)[0]
-        return post_text(r, "https://ofertaslivros.com.br/r/livro-1/wa")
+        return post_text(r, "https://ofertaslivros.com.br/livro/livro-1/")
     assert post(4719).splitlines() == [
         "Torto Arado, de Itamar Vieira Junior", f"R${nb}42,90 (de R${nb}74,90, -42%)",
         "Amazon · preço verificado em 18/10 às 08h00. O preço final é o da loja.",
-        f"Também no Mercado Livre por R${nb}47,19", "Link de afiliado: https://ofertaslivros.com.br/r/livro-1/wa"]
+        f"Também no Mercado Livre por R${nb}47,19", "Link: https://ofertaslivros.com.br/livro/livro-1/"]
     assert "Também" not in post(4720)                                     # 10,02% mais cara
     t = post(4290)                                                        # empate: ML verificado depois vence
     assert t.splitlines()[2].startswith("Mercado Livre · ") and f"Também na Amazon por R${nb}42,90" in t
