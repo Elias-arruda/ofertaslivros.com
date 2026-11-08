@@ -30,3 +30,14 @@ def test_pendentes_so_isbn_valido(tmp_path, monkeypatch):
              {"isbn": next(iter(cp.RECUSADAS))},
              {"isbn": "../../etc/x"}, {"isbn": "97865556407861"}, {"isbn": 123}, {}]
     assert [b["isbn"] for b in cp.pendentes(books)] == ["9786555640786", "853591406X"]
+
+
+def test_todo_livro_no_site_tem_capa():
+    """Livro fora de pendente precisa de foto: ml_product_id (o coletor pega a do ML) ou static/capas/<isbn>.jpg.
+    Capa recusada sem ML = o livro fica pendente até ganhar uma das duas."""
+    import json
+    cat = json.loads((ROOT / "collector" / "catalog.json").read_text())
+    books = cat["books"] if isinstance(cat, dict) else cat
+    sem = [b["id"] for b in books if not b.get("pendente") and not b.get("ml_product_id")
+           and not (cp.CAPAS / f"{b.get('isbn')}.jpg").is_file()]
+    assert not sem, f"livros sem capa no site: {sem}"
