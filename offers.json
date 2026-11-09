@@ -17455,7 +17455,7 @@
      "list_price_cents": 5000,
      "lowest_90d_cents": 5000,
      "history_since": "2026-11-05",
-     "checked_at": "2026-11-06T05:30:54+00:00",
+     "checked_at": "2026-11-09T15:31:08+00:00",
      "price_points": [
       {
        "date": "2026-11-05",
@@ -17463,6 +17463,10 @@
       },
       {
        "date": "2026-11-06",
+       "price_cents": 5000
+      },
+      {
+       "date": "2026-11-09",
        "price_cents": 5000
       }
      ]
@@ -17742,6 +17746,7 @@
    "genre": "ficcao",
    "title": "Água fresca para as flores",
    "author": "Valérie Perrin",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_825998-MLU74111649146_012024-F.jpg",
    "stores": [
     {
      "store": "amazon",
@@ -17814,6 +17819,7 @@
    "genre": "fantasia",
    "title": "A guerra da papoula",
    "author": "R.F. Kuang",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_823846-MLU74995067034_032024-F.jpg",
    "stores": [
     {
      "store": "amazon",
@@ -17839,6 +17845,22 @@
       {
        "date": "2026-11-07",
        "price_cents": 4592
+      }
+     ]
+    },
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB19454989",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=ofertaslivros&matt_tool=31781474&forceInApp=true&ref=BIiFGHkCCvDqXRwVuzY6q%2FurNmdQmJprQh2sdFTxNwemXRAmmINY%2F73R2bVakV60UV5nIHSzouXYnKOJpKhELoGgLqQp1vt6E8rzAz6f9%2BXmsEDGXyE0c03WDURyEPFrDseA20IfBBPcUxCyvLB%2Fymh4gNQUqWYdeULMmkEKZRB3AFWFuBSZpQ6RjljYZ0mxjTT6gQBYAWYyhYodciBl%2FPURdCzdzy%2FCM2mY4kKBRX25YOjTkm8%2BgOLhSy7vUffPLPlg8w%3D%3D",
+     "price_cents": 5014,
+     "list_price_cents": 7990,
+     "lowest_90d_cents": 5014,
+     "history_since": "2026-11-09",
+     "checked_at": "2026-11-09T15:31:08+00:00",
+     "price_points": [
+      {
+       "date": "2026-11-09",
+       "price_cents": 5014
       }
      ]
     }
@@ -17994,6 +18016,7 @@
    "genre": "ficcao",
    "title": "Noites brancas",
    "author": "Fiódor Dostoiévski",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_747360-MLU50500078652_062022-F.jpg",
    "stores": [
     {
      "store": "amazon",
@@ -18019,6 +18042,22 @@
       {
        "date": "2026-11-07",
        "price_cents": 3510
+      }
+     ]
+    },
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB19368947",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=ofertaslivros&matt_tool=31781474&forceInApp=true&ref=BNlDQTvUusQSBLNqTApPQ6hfmkKGqL5W9GcEia3VebiozROyaABElK0lR1E%2BajOYIeHgNzr2y5clid5N1TOUSfPScpVWhnOXDFbi9ofUwswpQyMATKH%2FF5yhC3EhSYzF47broXF2JVN9XWziwdY9nPyIH9EoKsvIjFQKr%2BZjZ75MjoF4h08X4VJbhpp9vYdyue815MFfigKsNVazC33tTo8Kd4oE1CB5B2Bw7cp5qOXuaJdzxv4WRaOFU7WPVHtXK9RHTQ%3D%3D",
+     "price_cents": 3861,
+     "list_price_cents": 4577,
+     "lowest_90d_cents": 3861,
+     "history_since": "2026-11-09",
+     "checked_at": "2026-11-09T15:31:08+00:00",
+     "price_points": [
+      {
+       "date": "2026-11-09",
+       "price_cents": 3861
       }
      ]
     }
@@ -18138,6 +18177,7 @@
    "genre": "mindset",
    "title": "A morte é um dia que vale a pena viver",
    "author": "Ana Claudia Quintana Arantes",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_816501-MLA110249010129_042026-F.jpg",
    "stores": [
     {
      "store": "amazon",
@@ -18210,6 +18250,7 @@
    "genre": "ficcao",
    "title": "O monstro das cores",
    "author": "Anna Llenas",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_704236-MLA82450600755_022025-F.jpg",
    "stores": [
     {
      "store": "amazon",
@@ -18225,6 +18266,22 @@
        "price_cents": 6372
       }
      ]
+    },
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB19338132",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=ofertaslivros&matt_tool=31781474&forceInApp=true&ref=BGnYKhUOseGSKM4kG9iCjQLlwcJwh0vDfQPxY1h%2BxIbDoqyAhhjC%2BD0f0Z%2FtWY9l6enCPVWDn%2FcfV5pYQLhitHW52y7DStZpDs%2FgjcSZ4AO0FYWTBTkJEvZdvuV%2BfVRyCCRJqQGpMIXM2BM9gFMYZk8WG%2BnQZiXJdDCbcSjHZDGBzly33SMjAW2VbgdzPDVQ0%2BIxVkPcMJQpAhKpPm8Lqm8rCa83UX5HrWg7zu3yggYLJ%2BzHoeWLynkGVff1VxZnKae0iA%3D%3D",
+     "price_cents": 8249,
+     "list_price_cents": 16900,
+     "lowest_90d_cents": 8249,
+     "history_since": "2026-11-09",
+     "checked_at": "2026-11-09T15:31:08+00:00",
+     "price_points": [
+      {
+       "date": "2026-11-09",
+       "price_cents": 8249
+      }
+     ]
     }
    ]
   },
@@ -18234,6 +18291,7 @@
    "genre": "fantasia",
    "title": "Box Harry Potter (edição Pottermore)",
    "author": "J. K. Rowling",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_781039-MLA112165611290_062026-F.jpg",
    "stores": [
     {
      "store": "amazon",
@@ -18249,6 +18307,22 @@
        "price_cents": 29883
       }
      ]
+    },
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB36456927",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=ofertaslivros&matt_tool=31781474&forceInApp=true&ref=BApCLEwxaN4KyHujNGZUJqv0Wua1GrzxcKXtNpVQNIHE0UUHdOX8KjTBBvMXFEmOGVFcm%2F3bmuyfL8mVJ1ESI6eml7nMQcxz4rxXADNXfJK4MyvY3IVXM%2Fa%2FAbUEHThi43LAIBMoNJnoekFUPdSK7CmRAN20BhvVDz3SSg1zRDyqhpB9ykKk0xTGso5RAFyqFeyTSJ%2FICV83RqCi%2BYMcWhGAWQt0gbQGSg9gYWTe%2F5C9PH5CNTSlsZjIKv%2BmrAOFaTO2IQ%3D%3D",
+     "price_cents": 32486,
+     "list_price_cents": 59990,
+     "lowest_90d_cents": 32486,
+     "history_since": "2026-11-09",
+     "checked_at": "2026-11-09T15:31:08+00:00",
+     "price_points": [
+      {
+       "date": "2026-11-09",
+       "price_cents": 32486
+      }
+     ]
     }
    ]
   },
@@ -18258,6 +18332,7 @@
    "genre": "ficcao",
    "title": "O diário de uma princesa desastrada",
    "author": "Maidy Lacerda",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_960774-MLU50455305870_062022-F.jpg",
    "stores": [
     {
      "store": "amazon",
@@ -18273,6 +18348,22 @@
        "price_cents": 3705
       }
      ]
+    },
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB19305160",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=ofertaslivros&matt_tool=31781474&forceInApp=true&ref=BEaDI9%2B8xfWQfbz3065TFaeWD0410ySeXcBubO%2FVtbVYPKPsGjV74OyZpOoo55uXbqtiknCgzItgRMJrqyk%2F7CEWIWiYzYWewGze5TpTqob0wfWV7od6pbFBIpjFDZkfu7A1ERSLMuwUTUV09YfvOU08oN2ZkQKLV1ZDC7m4Dj6jU0P7DXx0VA9XLufKL%2BtLh6lkX26LggThfi5qOLDYtDQ4ChQvj%2B%2F4NP66MktXjxgsnwiznmCj4pbVeeFJCyrTUowvxw%3D%3D",
+     "price_cents": 4250,
+     "list_price_cents": 5990,
+     "lowest_90d_cents": 4250,
+     "history_since": "2026-11-09",
+     "checked_at": "2026-11-09T15:31:08+00:00",
+     "price_points": [
+      {
+       "date": "2026-11-09",
+       "price_cents": 4250
+      }
+     ]
     }
    ]
   },
@@ -18282,6 +18373,7 @@
    "genre": "romance",
    "title": "Box Os Bridgertons: os 9 títulos da série",
    "author": "Julia Quinn",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_954849-MLU50876735224_072022-F.jpg",
    "stores": [
     {
      "store": "amazon",
@@ -18297,6 +18389,22 @@
        "price_cents": 25410
       }
      ]
+    },
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB19418575",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=ofertaslivros&matt_tool=31781474&forceInApp=true&ref=BGcba1AJJgTAnb%2B8upuNieRVHWE3bEJcTY5M4dOYi5%2BkOS7dzXWx2MLsA%2FSORKxJzSPYzZWXstQEz%2FCRcPiNMuYhxlKpKGtxdGSupVBr3oYnBeiBSQsaxz3Uo6nqFjXArTbETlRyyNjz%2BB2IaiubZR3mNO2Vx%2BJC%2FgamUqKAJjC170pe33eGev3x2wyYJSEz12o8cuDaNQyoy6859Bj%2FosT8E4vnWSgRZiQbkL3HJpOShgpPIADnRFxWP2ImD1khSIoIgw%3D%3D",
+     "price_cents": 31367,
+     "list_price_cents": 49990,
+     "lowest_90d_cents": 31367,
+     "history_since": "2026-11-09",
+     "checked_at": "2026-11-09T15:31:08+00:00",
+     "price_points": [
+      {
+       "date": "2026-11-09",
+       "price_cents": 31367
+      }
+     ]
     }
    ]
   },
@@ -18306,6 +18414,7 @@
    "genre": "romance",
    "title": "Noiva (edição especial)",
    "author": "Ali Hazelwood",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_736425-MLA82468804795_022025-F.jpg",
    "stores": [
     {
      "store": "amazon",
@@ -18321,6 +18430,22 @@
        "price_cents": 4680
       }
      ]
+    },
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB43519812",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=ofertaslivros&matt_tool=31781474&forceInApp=true&ref=BP25qfCsyK%2FpYuWQVEre7KpOAKPDMpqti5Vnz5CBdM2nTHI4T3ZkVZB8yCNQ4F2W2sVpCwpZGjkEZ%2FchlQlO5JvtgIsIzl9XKvmolMEcAnL93filalp7sB7ZVLhyj5UuGkXWzkcZgIXLbbsNjmg%2FvLXueJicDrVDjqSeJsOfF9URDLYzPaf0r2ABY5eN3N%2B25N41dkxBy%2FPrp5hkCY4um%2BwTbmHdsnJCiIBxTJtSzyqKNA2x77ttdnWuMH1zNtH7lgclzg%3D%3D",
+     "price_cents": 6268,
+     "list_price_cents": 9990,
+     "lowest_90d_cents": 6268,
+     "history_since": "2026-11-09",
+     "checked_at": "2026-11-09T15:31:08+00:00",
+     "price_points": [
+      {
+       "date": "2026-11-09",
+       "price_cents": 6268
+      }
+     ]
     }
    ]
   },
@@ -18330,6 +18455,7 @@
    "genre": "ficcao",
    "title": "Box Série Livro das mil e uma noites",
    "author": "Anônimo",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_980112-MLA112270369126_062026-F.jpg",
    "stores": [
     {
      "store": "amazon",
@@ -18345,6 +18471,22 @@
        "price_cents": 18688
       }
      ]
+    },
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB29946581",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=ofertaslivros&matt_tool=31781474&forceInApp=true&ref=BOy07hVv%2BbM0QP3VTDDWXxEk4w%2B6wKanklo71ST5fNQV8h7p1wGfUIs4XXBY%2BIrc9N1JbuhFs%2BPj9n52hNGqVaqRay%2BpyYOJGMjTUjc%2BwaoGbxHjKojrru5nWw2tITd4bdwf9fvchhUfpmcPEC4yBlPG%2BEggI8JFjIf581sn48%2B5ySJUQyFW9N0ZKkypMW19OVygYphkyOTxC6fdQQq1KjvfF7p4L1wa5BTOoiIearebBzlLIreLKhjFdJA55Er38TKFqA%3D%3D",
+     "price_cents": 21969,
+     "list_price_cents": 34990,
+     "lowest_90d_cents": 21969,
+     "history_since": "2026-11-09",
+     "checked_at": "2026-11-09T15:31:08+00:00",
+     "price_points": [
+      {
+       "date": "2026-11-09",
+       "price_cents": 21969
+      }
+     ]
     }
    ]
   },
@@ -18354,6 +18496,7 @@
    "genre": "literatura-brasileira",
    "title": "Grande sertão: veredas",
    "author": "João Guimarães Rosa",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_659393-MLA113420425727_062026-F.jpg",
    "stores": [
     {
      "store": "amazon",
@@ -18369,6 +18512,22 @@
        "price_cents": 4130
       }
      ]
+    },
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB19197801",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=ofertaslivros&matt_tool=31781474&forceInApp=true&ref=BI6CXtiBPQ7V7EJO3hhFOrToeJm0%2B3sHef1bibGAREFndr0allF7ifNMoQpeAQXQk9olf%2FXgSWu0xiUph8pE9zUgH7TlqCHqsvupQe0TVUdKcvor0rxKW%2BnTufj3NmBHJ%2FRAZ3OW4%2F%2FPtLfV02VEUPwyDxb7cWpT2qgpofOJuBrXadUeKEtOL7lblYjhfIBvVKcJJHskzF0FVCBQF3vxl3l9Ac6Z5QBrHZPu3LOIJTeRxObOPjop5LhYfVWG46xw%2FnL%2FXQ%3D%3D",
+     "price_cents": 4758,
+     "list_price_cents": 7990,
+     "lowest_90d_cents": 4758,
+     "history_since": "2026-11-09",
+     "checked_at": "2026-11-09T15:31:08+00:00",
+     "price_points": [
+      {
+       "date": "2026-11-09",
+       "price_cents": 4758
+      }
+     ]
     }
    ]
   },
@@ -18378,6 +18537,7 @@
    "genre": "fantasia",
    "title": "Box Cidade da Lua Crescente",
    "author": "Sarah J. Maas",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_777472-MLA85690286271_062025-F.jpg",
    "stores": [
     {
      "store": "amazon",
@@ -18393,6 +18553,22 @@
        "price_cents": 12323
       }
      ]
+    },
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB50953139",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=ofertaslivros&matt_tool=31781474&forceInApp=true&ref=BIkqTCBy%2BR5GgQbV1XpbxkH%2FJ74FgraToaSyxEE9NSm3OuRQfH8HLrF0wDXtvtPMfd4vB5cMAVruDrSgcdM2DgjAEUuMJ4FHbjnQoX0Y%2FDGh2zfgJ8FMTWJiTUYuXcnbaSVYOJWiP0dKAGTa8GG9hYyTNRUW6tqVVJWmhmLJr5dqBx9Qcl22uYEZB0u%2FiapyY9mY6gc%2BrsOvg5gzjqwYkvUSeytSbipIGFqfwyNwPsussTdc4HnkO5UbiK1trviARDZ%2BTQ%3D%3D",
+     "price_cents": 16528,
+     "list_price_cents": 16528,
+     "lowest_90d_cents": 16528,
+     "history_since": "2026-11-09",
+     "checked_at": "2026-11-09T15:31:08+00:00",
+     "price_points": [
+      {
+       "date": "2026-11-09",
+       "price_cents": 16528
+      }
+     ]
     }
    ]
   },
@@ -18402,6 +18578,7 @@
    "genre": "mindset",
    "title": "Biblioteca Estoica: grandes mestres, volume I (box com 4 livros)",
    "author": "Marco Aurélio, Sêneca, Epiteto",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_690568-MLA112165462202_062026-F.jpg",
    "stores": [
     {
      "store": "amazon",
@@ -18417,6 +18594,22 @@
        "price_cents": 3700
       }
      ]
+    },
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB23821224",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=ofertaslivros&matt_tool=31781474&forceInApp=true&ref=BAgoW3AUwGwMLW6FKZ4ktzFdr13v1ML99zycmJkSnb5MIR0ri56I47UuRxYmiCQEYuL61j8osaPgZa9z75v4gFjX8f3MBU%2FUsx4yHbLXkmL6i%2BgOLn3i9QMj6ClAW9FFkgj0VSFWifA0LxTs86ySpP0ZTdrtPwmUsEfrXdgsYwNs6V9Lis50ousxsoDr6nImfFWFfXa2JfBUotyDpO1WtDt31Y6LE7nZ1Y1WWGzCyRTxHF5IltC0CPeYJ0uMub1xBuY6PA%3D%3D",
+     "price_cents": 4114,
+     "list_price_cents": 8990,
+     "lowest_90d_cents": 4114,
+     "history_since": "2026-11-09",
+     "checked_at": "2026-11-09T15:31:08+00:00",
+     "price_points": [
+      {
+       "date": "2026-11-09",
+       "price_cents": 4114
+      }
+     ]
     }
    ]
   },
@@ -18426,6 +18619,7 @@
    "genre": "historia",
    "title": "Confissões de Santo Agostinho (edição de luxo)",
    "author": "Agostinho de Hipona",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_821507-MLA113422448101_062026-F.jpg",
    "stores": [
     {
      "store": "amazon",
@@ -18441,6 +18635,22 @@
        "price_cents": 2918
       }
      ]
+    },
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB40611930",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=ofertaslivros&matt_tool=31781474&forceInApp=true&ref=BB2iywS8NcIG2jpiVwD0TdHYStGD8KkPZMa1naybyFhkTYsJtNP6c%2F2aDaBr6j6zxDTTh1MtOhfPrU%2FPAcnnM9N2S66IRWMoOb0vfxFoGBG%2BLqCJXEJMUV0Ma7MDdxQyvUnJMOx79Rep16HjmSoTIQj5U8gsKSG0K5wl7%2BELrFvbkv6qcT8LBkxNgrBvV3ve2u3anHDTkeHhqS%2BJS%2BME6OJyZhnz7lQrJROcDc4Cxgx0Vh5dFqOANT4MoBSBkJHVyVLanA%3D%3D",
+     "price_cents": 3790,
+     "list_price_cents": 7899,
+     "lowest_90d_cents": 3790,
+     "history_since": "2026-11-09",
+     "checked_at": "2026-11-09T15:31:08+00:00",
+     "price_points": [
+      {
+       "date": "2026-11-09",
+       "price_cents": 3790
+      }
+     ]
     }
    ]
   },
@@ -18450,6 +18660,7 @@
    "genre": "fantasia",
    "title": "Aprendiz do Vilão",
    "author": "Hannah Nicole Maehrer",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_795838-MLU78489082493_082024-F.jpg",
    "stores": [
     {
      "store": "amazon",
@@ -18465,6 +18676,22 @@
        "price_cents": 3767
       }
      ]
+    },
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB39385765",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=ofertaslivros&matt_tool=31781474&forceInApp=true&ref=BP3bgF2DElOQOMlUA7vSUOjUjwOKPJv9SUnQ6m6lSPoD6Sas2UzvwMkJfxyoUNgKIiDMGg1DhYxpan9DKYSlhuNzurWHLGQhOlDm%2FdhPJhnnlLXYSe%2Fd2WcS2bQM82DZnhmGBHcD6e6hXrfT%2FQ0PLWPgoCBKGu%2B1JD8FAvWVjABx4Ddbd88Nm9Xlvzq7jlSv%2FewvoiMMEmB6AY4Q4yaH%2BV0tk9ooF6m4FFBVphLsYBJTUe2jcz8cbNz2VaisWTFeWqAh%2Bg%3D%3D",
+     "price_cents": 3999,
+     "list_price_cents": 3999,
+     "lowest_90d_cents": 3999,
+     "history_since": "2026-11-09",
+     "checked_at": "2026-11-09T15:31:08+00:00",
+     "price_points": [
+      {
+       "date": "2026-11-09",
+       "price_cents": 3999
+      }
+     ]
     }
    ]
   },
@@ -18474,6 +18701,7 @@
    "genre": "fantasia",
    "title": "Box duologia Divinos Rivais",
    "author": "Rebecca Ross",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_834371-MLU79132276506_092024-F.jpg",
    "stores": [
     {
      "store": "amazon",
@@ -18489,6 +18717,22 @@
        "price_cents": 8001
       }
      ]
+    },
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB40970836",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=ofertaslivros&matt_tool=31781474&forceInApp=true&ref=BLp7kQhiCfKke3ZL5IcFwpSIGOPQI0K8iOMzQrzmzagDe42xtFzDtJhevhDxWxiBnkgri0np%2F39Iiiyt38vSD5%2FmOtMsPuKWnahgoBBvip6eCKeBPbpbYcgJScCOZQmLo620YLS3jQ8e7ue2oVqElB59PxWZei3oJTGRmEgWy%2BYzvT7rXmwJpjVuIDbGwkvWVA6vgZuiqbgVA66Gdg97xYg9Xd27hRuP08F6c%2F8WOtHDqxiEO13Dz6o242MG33C%2BDPN58Q%3D%3D",
+     "price_cents": 11150,
+     "list_price_cents": 14990,
+     "lowest_90d_cents": 11150,
+     "history_since": "2026-11-09",
+     "checked_at": "2026-11-09T15:31:08+00:00",
+     "price_points": [
+      {
+       "date": "2026-11-09",
+       "price_cents": 11150
+      }
+     ]
     }
    ]
   },
@@ -18498,6 +18742,7 @@
    "genre": "fantasia",
    "title": "O rei perverso (O Povo do Ar, vol. 2)",
    "author": "Holly Black",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_902923-MLU75135242141_032024-F.jpg",
    "stores": [
     {
      "store": "amazon",
@@ -18522,6 +18767,7 @@
    "genre": "fantasia",
    "title": "Box O Povo do Ar",
    "author": "Holly Black",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_876208-MLU77445268303_072024-F.jpg",
    "stores": [
     {
      "store": "amazon",
@@ -18546,6 +18792,7 @@
    "genre": "ficcao",
    "title": "O conde de Monte Cristo (edição bolso de luxo)",
    "author": "Alexandre Dumas",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_840441-MLA113307232189_062026-F.jpg",
    "stores": [
     {
      "store": "amazon",
@@ -18561,6 +18808,22 @@
        "price_cents": 6573
       }
      ]
+    },
+    {
+     "store": "mercadolivre",
+     "ml_product_id": "MLB19380033",
+     "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=ofertaslivros&matt_tool=31781474&forceInApp=true&ref=BLtmwTZxYilrgV%2BB%2F6XVQ2K35%2B4KYmeSF0jCLqvU6JHXx5wevXdCVnNhDZbx8ggvWsW%2Ft9gdX9eNmLk%2FDjZSbr6ELxyTbuHj8pfo3DdNkR%2FslGF7xfKi6Ba2pBuY0WHEyqUCG2jEaEvHdko76tUNkA4jgZ%2FJh10dnUlB7hc5XqTmy2vPulRzAgO890BHv9%2BQpPIuTTpyBP9TgiACULkerD0IZIbSsKdg%2FnHdE5eaAzlMMLQLglQVu5L1tHkVOvlqVe77iA%3D%3D",
+     "price_cents": 7899,
+     "list_price_cents": 7899,
+     "lowest_90d_cents": 7899,
+     "history_since": "2026-11-09",
+     "checked_at": "2026-11-09T15:31:08+00:00",
+     "price_points": [
+      {
+       "date": "2026-11-09",
+       "price_cents": 7899
+      }
+     ]
     }
    ]
   },
@@ -18570,6 +18833,7 @@
    "genre": "ficcao",
    "title": "O Conde de Monte-Cristo",
    "author": "Alexandre Dumas",
+   "image_url": "https://http2.mlstatic.com/D_NQ_NP_903773-MLU50500044710_062022-F.jpg",
    "stores": [
     {
      "store": "amazon",
