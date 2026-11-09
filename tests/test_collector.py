@@ -94,7 +94,6 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("ML_CLIENT_ID", "id")
     monkeypatch.setenv("ML_CLIENT_SECRET", "segredo")
     monkeypatch.setenv("ML_AFFILIATE_ID", "teste-aff")
-    monkeypatch.delenv("GITHUB_RUN_NUMBER", raising=False)
     cat = tmp_path / "catalog.json"
     cat.write_text(json.dumps(CATALOG))
     manual = tmp_path / "amazon_prices.csv"
@@ -817,10 +816,16 @@ def test_deadline_nao_espera_alem_do_orcamento():
     assert waits == []  # 20 s de espera estouraria os 10 s que sobram
 
 
-def test_rotacao_pelo_run_number(env, monkeypatch):
-    monkeypatch.setenv("GITHUB_RUN_NUMBER", "7")  # 7 % 2 = 1: começa pelo segundo
-    env["run"]()
-    assert env["fake"].paths[1] == "/products/MLB22"
+def test_fila_do_ml_nunca_lido_e_mais_antigo_primeiro(env):
+    env["run"]()                                        # 1ª: os dois nunca lidos, pela ordem do id
+    assert env["fake"].paths[1] == "/products/MLB11"    # livro-duplo < livro-ml-2
+    shard = env["hist"] / "price_history" / "2026-10.csv"
+    shard.write_text(shard.read_text().replace(           # livro-duplo lido depois do livro-ml-2
+        "livro-duplo,mercadolivre,3990,5990,2026-10-18T12:00:00+00:00",
+        "livro-duplo,mercadolivre,3990,5990,2026-10-18T12:30:00+00:00"))
+    env["fake"].paths.clear()
+    env["run"](now=NOW + timedelta(hours=1))
+    assert env["fake"].paths[1] == "/products/MLB22"    # o lido há mais tempo vem primeiro
 
 
 # ---- probe ----

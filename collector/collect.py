@@ -630,12 +630,13 @@ def _sale_path(item_id):
     return f"/items/{item_id}/sale_price?context=channel_marketplace"
 
 
-def collect_ml(books, token, now, deadline, start=0, clock=time.monotonic, sleep=None):
-    """-> (linhas do price_history, contagens, {book_id: image_url})."""
-    ml = [b for b in books if "ml_product_id" in b]
-    if ml:  # gira o início para nenhum item ficar "adiado" para sempre
-        k = start % len(ml)
-        ml = ml[k:] + ml[:k]
+def collect_ml(books, token, now, deadline, last_checked=None, clock=time.monotonic, sleep=None):
+    """-> (linhas do price_history, contagens, {book_id: image_url}).
+    Ordem: nunca lido no ML primeiro, depois o lido há mais tempo (o prazo não cobre o catálogo
+    inteiro; girar 1 posição por rodada deixava o fim do catálogo sem ler por dias)."""
+    last_checked = last_checked or {}
+    ml = sorted((b for b in books if "ml_product_id" in b),
+                key=lambda b: (last_checked.get(b["id"], ""), b["id"]))
     rows, images = [], {}
     n = {"ok": 0, "inativo": 0, "gtin_divergente": 0, "erro": 0, "adiado": 0, "auth": 0,
          "anuncios_suspeitos": 0}
@@ -698,11 +699,6 @@ def collect_ml(books, token, now, deadline, start=0, clock=time.monotonic, sleep
                   f"/items={d['items']} novos_brl={d['novos_brl']} caminho={d['caminho']} "
                   f"suspeitos={d['suspeitos']}")
     return rows, n, images
-
-
-def run_number():
-    v = os.environ.get("GITHUB_RUN_NUMBER", "")
-    return int(v) if v.isascii() and v.isdigit() else 0
 
 
 # ---------- offers.json v2 (o build escolhe a vencedora; aqui só fatos por loja) ----------
@@ -1053,7 +1049,9 @@ def run(hist_dir, now=None, catalog=None, manual=None, clock=time.monotonic):
             print("::error::ML_CLIENT_ID/ML_CLIENT_SECRET ausentes; coleta do ML pulada")
             status = 1
     if token and has_ml:
-        ml_rows, n, images = collect_ml(books, token, now, deadline, start=run_number(),
+        last = {k[0]: r["checked_at"] for k, r in summarize(hist_dir, now)[0].items()
+                if k[1] == "mercadolivre"}
+        ml_rows, n, images = collect_ml(books, token, now, deadline, last_checked=last,
                                         clock=clock)
         print("ML: " + ", ".join(f"{v} {k}" for k, v in n.items()))
         lidos = n["ok"] + n["inativo"] + n["gtin_divergente"] + n["erro"]
@@ -1066,7 +1064,7 @@ def run(hist_dir, now=None, catalog=None, manual=None, clock=time.monotonic):
         # ponytail: um livro com erro em toda rodada deixa o job verde e a retirada parada (só
         # o ::warning:: avisa); se isso acontecer, ficar vermelho após N rodadas do mesmo livro.
         # ponytail: com catálogo maior que o prazo (ML_DEADLINE_S), sempre há adiado e a
-        # retirada fica parada; aí trocar por data de leitura por livro.
+        # retirada fica parada.
         ml_ok = bool(n["ok"] or n["inativo"]) and not n["erro"] and not n["adiado"]
         if n["adiado"]:
             print(f"::warning::ML: {n['adiado']} adiados; coleta não conta para a retirada")
