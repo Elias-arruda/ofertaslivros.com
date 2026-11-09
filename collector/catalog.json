@@ -194,6 +194,7 @@
   {"id": "o-rei-perverso-o-povo-do-ar-vol-2", "isbn": "9788501118837", "genre": "fantasia", "title": "O rei perverso (O Povo do Ar, vol. 2)", "author": "Holly Black", "asin": "8501118834"},
   {"id": "box-o-povo-do-ar", "isbn": "9788501304469", "genre": "fantasia", "title": "Box O Povo do Ar", "author": "Holly Black", "asin": "8501304468"},
   {"id": "o-conde-de-monte-cristo-edicao-bolso-de-luxo", "isbn": "9788537808276", "genre": "ficcao", "title": "O conde de Monte Cristo (edição bolso de luxo)", "author": "Alexandre Dumas", "asin": "853780827X"},
-  {"id": "o-conde-de-monte-cristo", "isbn": "9788544001516", "genre": "ficcao", "title": "O Conde de Monte-Cristo", "author": "Alexandre Dumas", "asin": "8544001513"}
+  {"id": "o-conde-de-monte-cristo", "isbn": "9788544001516", "genre": "ficcao", "title": "O Conde de Monte-Cristo", "author": "Alexandre Dumas", "asin": "8544001513"},
+  {"id": "anos-2000-renascimento-marvel-vol-06", "genre": "historia", "genre_source": "ml_book_genre", "title": "ANOS 2000 RENASCIMENTO MARVEL - VOL. 06", "author": "Marvel", "ml_product_id": "MLB68507909", "pendente": true}
  ]
 }
