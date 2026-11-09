@@ -44,7 +44,7 @@ O nome difere de `curadoria-automatica.md` porque a main já tinha outro texto n
 | Separação oferta × sem oferta no site | **Sim, parcial**: `oferta` = desconto ≥ 10% sobre o `list_price_cents` da vencedora ou selo de 90 dias; o resto aparece como "novidade" (seção da home e `/novidades/`). Ainda não há área Curadoria nem a regra da mediana (§10.8) | `build.py:resolve` (`OFERTA_MIN_DESCONTO`) |
 | `_redirects` | 4 a 5 regras por livro e falha acima de 2.000 | `build.py:redirects`, `MAX_REDIRECTS` |
 | Workflows | `curator.yml` (só `workflow_dispatch`, abre PR), `catalog-check.yml` (PR, sem secrets) | `.github/workflows/` |
-| Coletor do ML | Lê os livros em rodízio, em série, com prazo de 40 s por execução | `collect.py:collect_ml`, `ML_DEADLINE_S = 40` |
+| Coletor do ML | Lê os livros em série (nunca lido no ML primeiro, depois o lido há mais tempo), com prazo de 40 s por execução | `collect.py:collect_ml`, `ML_DEADLINE_S = 40` |
 
 ## 3. O que as fontes dizem (fato x inferência)
 
@@ -195,7 +195,7 @@ O destino é sempre um caminho interno que começa com `/r/`, então não vira `
 **Fato a conferir antes de implementar:** a doc da Cloudflare diz que "static redirects should appear before dynamic redirects" e que, com a mesma origem, vale a de cima. Ela **não diz** explicitamente que uma regra estática vence uma dinâmica que vem depois em qualquer caso. O build atual já depende disso (o curinga `/r/*` está no fim). Critério de aceite: conferir no `wrangler dev` que `/r/<id>/tg` com regra estática usa a estática.
 
 **O teto de 380 não é a resposta.** Com R1, o `_redirects` deixa de ser o limite que aperta primeiro. O limite real passa a ser o **coletor**:
-- o `collect_ml` lê os livros em série, em rodízio, com `ML_DEADLINE_S = 40` por execução de 30 min;
+- o `collect_ml` lê os livros em série, do nunca lido ao lido há mais tempo, com `ML_DEADLINE_S = 40` por execução de 30 min;
 - cada livro do ML precisa ser lido pelo menos a cada 2 h (`FRESH`), ou seja, a cada 4 execuções;
 - com 1 a 2 requests por livro, a 0,3 a 0,5 s cada (**inferência**, não medido), cabem uns 40 a 80 livros por execução, o que dá **160 a 320 livros frescos**.
 
