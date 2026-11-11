@@ -117,7 +117,8 @@ async function tratar(u, env, api, agora) {
   }
 }
 
-// Sem parse_mode e sem prévia de link em toda mensagem (título vem de dado coletado; a prévia seguiria o /r/).
+// Sem parse_mode em toda mensagem (título vem de dado coletado). Sem prévia de link, salvo no aviso: o link dele é a
+// /livro/<id>/ do site (capa na prévia, sem passar pelo /r/ nem pela loja; decisão do Elias, 2026-11-07).
 const enviar = (c, text, extra = {}) =>
   c.api("sendMessage", { chat_id: c.chat, text, link_preview_options: { is_disabled: true }, ...extra });
 const teclado = linhas => ({ reply_markup: { inline_keyboard: linhas.map(l => l.map(([t, d]) => ({ text: corta(t), callback_data: d }))) } });
@@ -184,7 +185,7 @@ async function addAutor(c, l, k) {
 const autorNome = (l, k) => (l.autores.length === 1 ? l.autor : l.autores[k]);
 
 async function aviso(c, l, cabecalho) {
-  const r = await enviar(c, `${cabecalho}\n\n${l.texto}\n\nTirar da lista: /lista`);
+  const r = await enviar(c, `${cabecalho}\n\n${l.texto}\n\nTirar da lista: /lista`, { link_preview_options: { is_disabled: false } });
   if (r?.ok) await c.db.prepare(`INSERT INTO avisos (chat_id, book_id, price_cents, avisado_em) VALUES (?1, ?2, ?3, ?4)
     ON CONFLICT (chat_id, book_id) DO UPDATE SET price_cents = ?3, avisado_em = ?4`)
     .bind(c.chat, l.id, l.preco_cents, c.agora.toISOString()).run();

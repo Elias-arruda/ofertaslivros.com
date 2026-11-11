@@ -386,5 +386,5 @@ Nos posts do canal do Telegram e do Canal do WhatsApp, a última linha passa de 
 - **Telegram:** com foto do ML, segue `sendPhoto`. Sem foto, `sendMessage` agora vai com a prévia da página.
 - **Custo aceito:** o leitor dá um clique a mais (página do livro, depois a loja). O clique na loja sai pelo `/r/<id>` da página, com a tag do site, então as tags `AMAZON_TAG_TG`/`AMAZON_TAG_WA` e os caminhos `/r/<id>/tg|wa` deixam de medir os canais. As rotas continuam no `_redirects`, para os posts antigos.
 - **Transparência:** o post não leva mais link de afiliado, e a página do livro tem o aviso de associado no rodapé. A mensagem fixada dos canais continua com o aviso.
-- **Bot (aviso individual):** não muda. Segue com "Link de afiliado:" e `/r/<id>/bot`, sem prévia.
+- **Bot (aviso individual):** mesmo formato desde 2026-11-07 (pedido do Elias): "Link:" com a `/livro/<id>/` e prévia só na mensagem do aviso. As outras mensagens do bot seguem sem prévia. `/r/<id>/bot` e `AMAZON_TAG_BOT` ficam para os avisos antigos e deixam de medir o bot.
 
