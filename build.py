@@ -49,7 +49,7 @@ GENRES = {
     "manga": "Mangá e HQ",
 }
 # Rotas de dist/ que nenhum slug de nicho pode ocupar.
-RESERVED = {"r", "livro", "ofertas", "privacidade", "canais", "curadoria", "novidades", "fonts", "black-friday", "bot"}
+RESERVED = {"r", "ig", "livro", "ofertas", "privacidade", "canais", "curadoria", "novidades", "fonts", "black-friday", "bot"}
 if set(GENRES) & RESERVED:
     raise SystemExit("slug de GENRES reservado")
 
