@@ -10753,7 +10753,7 @@
      "list_price_cents": 3500,
      "lowest_90d_cents": 3500,
      "history_since": "2026-11-05",
-     "checked_at": "2026-11-12T17:35:08+00:00",
+     "checked_at": "2026-11-12T22:31:25+00:00",
      "price_points": [
       {
        "date": "2026-11-05",
@@ -18113,11 +18113,11 @@
      "store": "mercadolivre",
      "ml_product_id": "MLB19329287",
      "ml_url": "https://www.mercadolivre.com.br/social/elias-arruda?matt_word=ofertaslivros&matt_tool=31781474&forceInApp=true&ref=BNMr7d9LpamthJf3rBVATMVsm%2BKgIS9sdssQ%2FPYhfZJ98774fa23xeXHi7jIi1lg4%2FuEXrOuzlTCxXpjYleVtqFH3E7Ky0EfmBAY3Q8GpEC7GQUde%2FGxIW7klMgVE1FYhzioRZ3%2Fyt4SATpA2IpX1BP1lkKuW%2F1KXeTtweOXh9bEJgHlf0WbKvuO0c5lE0cvQ5WJ7aTiBFStizLmEv6nBk%2FVyasm5rgYVfRQFL6ldrcaaC30ZiBcQABZDMNHw8djprGgtA%3D%3D",
-     "price_cents": 6464,
-     "list_price_cents": 6464,
-     "lowest_90d_cents": 6464,
+     "price_cents": 6399,
+     "list_price_cents": 6399,
+     "lowest_90d_cents": 6399,
      "history_since": "2026-11-05",
-     "checked_at": "2026-11-12T17:35:08+00:00",
+     "checked_at": "2026-11-12T22:31:25+00:00",
      "price_points": [
       {
        "date": "2026-11-05",
@@ -18145,7 +18145,7 @@
       },
       {
        "date": "2026-11-12",
-       "price_cents": 6464
+       "price_cents": 6399
       }
      ]
     }
@@ -18679,7 +18679,7 @@
      "list_price_cents": 2499,
      "lowest_90d_cents": 2499,
      "history_since": "2026-11-05",
-     "checked_at": "2026-11-12T17:35:08+00:00",
+     "checked_at": "2026-11-12T22:31:25+00:00",
      "price_points": [
       {
        "date": "2026-11-05",
