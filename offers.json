@@ -14475,7 +14475,7 @@
      "list_price_cents": 3488,
      "lowest_90d_cents": 3488,
      "history_since": "2026-11-06",
-     "checked_at": "2026-11-13T00:31:08+00:00",
+     "checked_at": "2026-11-13T05:31:07+00:00",
      "price_points": [
       {
        "date": "2026-11-06",
@@ -14495,6 +14495,10 @@
       },
       {
        "date": "2026-11-12",
+       "price_cents": 3488
+      },
+      {
+       "date": "2026-11-13",
        "price_cents": 3488
       }
      ]
@@ -16715,7 +16719,7 @@
      "list_price_cents": 20000,
      "lowest_90d_cents": 20000,
      "history_since": "2026-11-05",
-     "checked_at": "2026-11-13T00:01:08+00:00",
+     "checked_at": "2026-11-13T05:31:07+00:00",
      "median_90d_cents": 25226,
      "price_points": [
       {
@@ -16740,6 +16744,10 @@
       },
       {
        "date": "2026-11-12",
+       "price_cents": 20000
+      },
+      {
+       "date": "2026-11-13",
        "price_cents": 20000
       }
      ]
@@ -21123,7 +21131,7 @@
      "list_price_cents": 49990,
      "lowest_90d_cents": 31367,
      "history_since": "2026-11-09",
-     "checked_at": "2026-11-13T00:01:08+00:00",
+     "checked_at": "2026-11-13T05:31:07+00:00",
      "price_points": [
       {
        "date": "2026-11-09",
@@ -21139,6 +21147,10 @@
       },
       {
        "date": "2026-11-12",
+       "price_cents": 31367
+      },
+      {
+       "date": "2026-11-13",
        "price_cents": 31367
       }
      ]
@@ -21237,7 +21249,7 @@
      "list_price_cents": 34990,
      "lowest_90d_cents": 21969,
      "history_since": "2026-11-09",
-     "checked_at": "2026-11-13T00:01:08+00:00",
+     "checked_at": "2026-11-13T05:31:07+00:00",
      "price_points": [
       {
        "date": "2026-11-09",
@@ -21253,6 +21265,10 @@
       },
       {
        "date": "2026-11-12",
+       "price_cents": 21969
+      },
+      {
+       "date": "2026-11-13",
        "price_cents": 21969
       }
      ]
@@ -21709,7 +21725,7 @@
      "list_price_cents": 15000,
      "lowest_90d_cents": 15000,
      "history_since": "2026-11-10",
-     "checked_at": "2026-11-13T00:01:08+00:00",
+     "checked_at": "2026-11-13T05:31:07+00:00",
      "price_points": [
       {
        "date": "2026-11-10",
@@ -21721,6 +21737,10 @@
       },
       {
        "date": "2026-11-12",
+       "price_cents": 15000
+      },
+      {
+       "date": "2026-11-13",
        "price_cents": 15000
       }
      ]
