@@ -1818,7 +1818,7 @@
      "list_price_cents": 2500,
      "lowest_90d_cents": 1999,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-14T16:31:07+00:00",
+     "checked_at": "2026-11-14T20:01:08+00:00",
      "median_90d_cents": 2500,
      "price_points": [
       {
@@ -3406,7 +3406,7 @@
      "list_price_cents": 3290,
      "lowest_90d_cents": 3290,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-14T16:31:07+00:00",
+     "checked_at": "2026-11-14T20:01:08+00:00",
      "median_90d_cents": 3290,
      "price_points": [
       {
@@ -3596,7 +3596,7 @@
      "list_price_cents": 2900,
      "lowest_90d_cents": 2900,
      "history_since": "2026-11-05",
-     "checked_at": "2026-11-14T16:01:12+00:00",
+     "checked_at": "2026-11-14T20:01:08+00:00",
      "median_90d_cents": 2900,
      "price_points": [
       {
@@ -4534,7 +4534,7 @@
      "list_price_cents": 7196,
      "lowest_90d_cents": 5800,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-14T16:01:12+00:00",
+     "checked_at": "2026-11-14T20:01:08+00:00",
      "median_90d_cents": 6633,
      "price_points": [
       {
@@ -6892,7 +6892,7 @@
      "list_price_cents": 6006,
      "lowest_90d_cents": 4000,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-14T16:01:12+00:00",
+     "checked_at": "2026-11-14T20:01:08+00:00",
      "median_90d_cents": 4000,
      "price_points": [
       {
@@ -8560,7 +8560,7 @@
      "list_price_cents": 3800,
      "lowest_90d_cents": 2989,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-14T16:01:12+00:00",
+     "checked_at": "2026-11-14T20:01:08+00:00",
      "median_90d_cents": 3000,
      "price_points": [
       {
@@ -8940,7 +8940,7 @@
      "list_price_cents": 3775,
      "lowest_90d_cents": 3200,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-14T16:01:12+00:00",
+     "checked_at": "2026-11-14T20:01:08+00:00",
      "median_90d_cents": 3200,
      "price_points": [
       {
@@ -9130,7 +9130,7 @@
      "list_price_cents": 3500,
      "lowest_90d_cents": 3190,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-14T16:01:12+00:00",
+     "checked_at": "2026-11-14T20:01:08+00:00",
      "median_90d_cents": 3190,
      "price_points": [
       {
@@ -16216,7 +16216,7 @@
      "list_price_cents": 2200,
      "lowest_90d_cents": 2200,
      "history_since": "2026-10-20",
-     "checked_at": "2026-11-14T16:01:12+00:00",
+     "checked_at": "2026-11-14T20:01:08+00:00",
      "median_90d_cents": 2200,
      "price_points": [
       {
@@ -17016,7 +17016,7 @@
      "list_price_cents": 1999,
      "lowest_90d_cents": 999,
      "history_since": "2026-11-07",
-     "checked_at": "2026-11-14T16:31:07+00:00",
+     "checked_at": "2026-11-14T20:01:08+00:00",
      "price_points": [
       {
        "date": "2026-11-07",
@@ -19045,7 +19045,7 @@
      "list_price_cents": 6460,
      "lowest_90d_cents": 6399,
      "history_since": "2026-11-05",
-     "checked_at": "2026-11-14T16:01:12+00:00",
+     "checked_at": "2026-11-14T20:01:08+00:00",
      "median_90d_cents": 6868,
      "price_points": [
       {
@@ -19409,7 +19409,7 @@
      "list_price_cents": 3556,
      "lowest_90d_cents": 3455,
      "history_since": "2026-11-05",
-     "checked_at": "2026-11-14T16:31:07+00:00",
+     "checked_at": "2026-11-14T20:01:08+00:00",
      "median_90d_cents": 3455,
      "price_points": [
       {
@@ -20034,7 +20034,7 @@
      "list_price_cents": 5750,
      "lowest_90d_cents": 3240,
      "history_since": "2026-11-05",
-     "checked_at": "2026-11-14T16:31:07+00:00",
+     "checked_at": "2026-11-14T20:01:08+00:00",
      "median_90d_cents": 3442,
      "price_points": [
       {
@@ -20125,7 +20125,7 @@
      "list_price_cents": 6490,
      "lowest_90d_cents": 3500,
      "history_since": "2026-11-05",
-     "checked_at": "2026-11-14T16:01:12+00:00",
+     "checked_at": "2026-11-14T20:01:08+00:00",
      "median_90d_cents": 3685,
      "price_points": [
       {
@@ -21287,7 +21287,7 @@
      "list_price_cents": 6506,
      "lowest_90d_cents": 4592,
      "history_since": "2026-11-09",
-     "checked_at": "2026-11-14T16:31:07+00:00",
+     "checked_at": "2026-11-14T20:01:08+00:00",
      "price_points": [
       {
        "date": "2026-11-09",
