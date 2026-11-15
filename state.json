@@ -344,7 +344,9 @@
   "o-monstro-das-cores|mercadolivre": "2026-11-09",
   "o-rei-perverso-o-povo-do-ar-vol-2|mercadolivre": "2026-11-09",
   "box-o-povo-do-ar|mercadolivre": "2026-11-10",
-  "a-morte-e-um-dia-que-vale-a-pena-viver|mercadolivre": "2026-11-11"
+  "a-morte-e-um-dia-que-vale-a-pena-viver|mercadolivre": "2026-11-11",
+  "agua-fresca-para-as-flores|mercadolivre": "2026-11-15",
+  "o-conde-de-monte-cristo|mercadolivre": "2026-11-15"
  },
  "image_url": {
   "irmao-do-jorel": "https://http2.mlstatic.com/D_NQ_NP_948056-MLA113307591683_062026-F.jpg",
@@ -646,7 +648,7 @@
   },
   "inteligencia-emocional": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-11",
+   "ultimo_anuncio": "2026-11-15",
    "ultima_oferta": "2026-11-11"
   },
   "o-milagre-da-manha": {
@@ -746,12 +748,12 @@
   },
   "escravidao-volume-1": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-11",
+   "ultimo_anuncio": "2026-11-15",
    "ultima_oferta": "2026-11-11"
   },
   "o-diario-de-anne-frank": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-11",
+   "ultimo_anuncio": "2026-11-15",
    "ultima_oferta": "2026-11-11"
   },
   "eu-sou-malala": {
@@ -811,8 +813,8 @@
   },
   "como-eu-era-antes-de-voce": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-11",
-   "ultima_oferta": "2026-11-12"
+   "ultimo_anuncio": "2026-11-15",
+   "ultima_oferta": "2026-11-15"
   },
   "amor-teoricamente": {
    "publicado": "2026-10-20",
@@ -941,7 +943,7 @@
   },
   "a-biblioteca-da-meia-noite": {
    "publicado": "2026-10-20",
-   "ultimo_anuncio": "2026-11-11",
+   "ultimo_anuncio": "2026-11-15",
    "ultima_oferta": "2026-11-12"
   },
   "ensaio-sobre-a-cegueira": {
@@ -1296,7 +1298,7 @@
   },
   "agua-fresca-para-as-flores": {
    "publicado": "2026-11-04",
-   "ultimo_anuncio": "2026-11-11",
+   "ultimo_anuncio": "2026-11-15",
    "ultima_oferta": "2026-11-12"
   },
   "o-risco": {
@@ -1436,7 +1438,7 @@
   },
   "o-conde-de-monte-cristo": {
    "publicado": "2026-11-07",
-   "ultimo_anuncio": "2026-11-11",
+   "ultimo_anuncio": "2026-11-15",
    "ultima_oferta": "2026-11-12"
   }
  },
