@@ -555,14 +555,13 @@ def seal(o):
 
 
 def post_text(o, url):
-    """Texto puro do post (sem parse_mode). url, sempre do nosso domínio, nunca a da loja:
-    - canais (Telegram e WhatsApp): a /livro/<id>/, com "Link:" (decisão do Elias, 2026-11-07). A prévia do link
-      mostra a capa (og:image) e não passa pelo /r/, então não gera clique de robô na loja;
-    - bot (aviso individual): o /r/<id>/bot, com "Link de afiliado:"."""
+    """Texto puro do post nos canais e no aviso do bot (sem parse_mode). url = a nossa /livro/<id>/, com "Link:",
+    nunca o /r/ nem a loja (decisão do Elias, 2026-11-07): a prévia do link mostra a capa (og:image) e não
+    passa pelo /r/, então não gera clique de robô na loja."""
     p = urlsplit(url)
     if (p.scheme != "https" or not p.hostname or p.hostname in ALLOWED_HOSTS
-            or p.path not in {f"/livro/{o['id']}/", f"/r/{o['id']}/bot"} or p.query or p.fragment):
-        raise Invalid(f"post_text só aceita a /livro/<id>/ ou o /r/<id>/bot do nosso domínio: {url!r}")
+            or p.path != f"/livro/{o['id']}/" or p.query or p.fragment):
+        raise Invalid(f"post_text só aceita a /livro/<id>/ do nosso domínio: {url!r}")
     if not o.get("oferta"):
         raise Invalid(f"post_text só publica oferta; {o['id']!r} está sem oferta")
     if o["velho"]:
@@ -576,7 +575,7 @@ def post_text(o, url):
     a = o["alt"]
     if a and a["price_cents"] * 10 <= o["price_cents"] * 11:  # outra loja até 10% mais cara; sem link
         lines.append(f"Também {na(a['store'])} por {brl(a['price_cents'])}")
-    lines.append(f"{'Link de afiliado' if p.path.startswith('/r/') else 'Link'}: {url}")
+    lines.append(f"Link: {url}")
     return "\n".join(lines)
 
 
@@ -1792,7 +1791,7 @@ def bot_json(offers, now, sem=()):
                # a loja que vence primeiro: o texto pode citar a outra ("Também no ...")
                "valido_ate": min(s["checked_at"] + FRESH[s["store"]] for s in o["stores"]).astimezone(timezone.utc)
                              .isoformat(timespec="seconds"),
-               "texto": post_text(o, f"{SITE}/r/{o['id']}/bot") if o["oferta"] and not o["velho"] else None}
+               "texto": post_text(o, f"{SITE}/livro/{o['id']}/") if o["oferta"] and not o["velho"] else None}
               for o in [*offers, *sem]]  # sem: livros sem preço, para o add:<id> do alerta (texto None)
     return json.dumps({"version": 1, "gerado_em": now.astimezone(timezone.utc).isoformat(timespec="seconds"),
                        "livros": livros}, ensure_ascii=False)
@@ -2197,12 +2196,12 @@ def selftest():
     except Invalid:
         pass
     assert len(redirects(load(*many[:333])).splitlines()) == 2000
-    # bot.json: texto = post_text com /r/<id>/bot só em oferta no prazo; valido_ate = checked_at + FRESH
+    # bot.json: texto = post_text com a /livro/<id>/ só em oferta no prazo; valido_ate = checked_at + FRESH
     bj = json.loads(bot_json(load(two, {**good, "id": "sem", "author": "Neil Gaiman e Terry Pratchett; Ação",
                                         "stores": [{**amz, "list_price_cents": amz["price_cents"]}]}), NOW))
     assert bj["version"] == 1 and [b["id"] for b in bj["livros"]] == ["duas", "sem"]
     duas, sem = bj["livros"]
-    assert duas["texto"] == post_text(load(two)[0], f"{SITE}/r/duas/bot") and duas["texto"].endswith("Link de afiliado: https://ofertaslivros.com.br/r/duas/bot")
+    assert duas["texto"] == post_text(load(two)[0], f"{SITE}/livro/duas/") and duas["texto"].endswith("Link: https://ofertaslivros.com.br/livro/duas/")
     assert sem["texto"] is None and sem["autores"] == ["neil gaiman", "terry pratchett", "acao"]
     assert duas["desconto"] == discount(load(two)[0]) > 0 and sem["desconto"] == 0
     assert duas["valido_ate"] == (mls_at := min(s["checked_at"] + FRESH[s["store"]] for s in load(two)[0]["stores"])) \
@@ -2252,7 +2251,7 @@ def selftest():
     assert "Menor preço" not in post_text({**torto, "seal": "since"}, "https://x.com/livro/livro-1/")
     for bad in ("https://www.amazon.com.br/livro/livro-1/", "http://x.com/livro/livro-1/", "https://x.com/livro/outro/",
                 "https://x.com/livro/livro-1/?u=https://evil.com", "https://x.com/livro/livro-1/\nhttps://evil.com",
-                "https://x.com/r/livro-1/tg", "https://x.com/r/livro-1", "https://x.com/livro/livro-1"):
+                "https://x.com/r/livro-1/tg", "https://x.com/r/livro-1/bot", "https://x.com/livro/livro-1"):
         try:
             post_text(torto, bad)
             raise AssertionError(bad)

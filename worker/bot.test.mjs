@@ -26,7 +26,7 @@ function fakeD1() {
 const livro = (id, titulo, autor, extra = {}) => ({ id, titulo, autor, busca: chave(`${titulo} ${autor}`),
   autores: autor.split(/,|;|&| e /).map(chave).filter(Boolean), preco_cents: 5000, valido_ate: ATE, texto: null, ...extra });
 const oferta = (l, preco = l.preco_cents) => ({ ...l, preco_cents: preco,
-  texto: `${l.titulo}, de ${l.autor}\nR$ ${preco / 100}\nLink de afiliado: https://ofertaslivros.com.br/r/${l.id}/bot` });
+  texto: `${l.titulo}, de ${l.autor}\nR$ ${preco / 100}\nLink: https://ofertaslivros.com.br/livro/${l.id}/` });
 
 function setup(livros) {
   const calls = [];
@@ -239,6 +239,7 @@ test("cron: uma vez por entrada, carência de 6 h, baixou mais, um por dia, praz
   await roda(6, 12, [oferta(TORTO, 4000)]);
   assert.equal(t.enviados().length, base + 1);                        // 2 execuções, 1 envio
   assert.match(t.ultimo(), /^Entrou em oferta \(está na sua lista\):\n\nTorto Arado[\s\S]*\n\nTirar da lista: \/lista$/);
+  assert.deepEqual(t.enviados().at(-1).body.link_preview_options, { is_disabled: false }); // capa da /livro/<id>/
   await roda(6, 15, [TORTO]);                                          // some por 5 h e volta: nada
   await roda(6, 17, [oferta(TORTO, 4000)]);
   await roda(6, 18, [oferta(TORTO, 3000)]);                            // -25% no mesmo dia: espera o dia seguinte
@@ -332,7 +333,7 @@ test("cron: com mais candidatos que vagas, vão o selo e os maiores descontos (7
   t.env.livros = ls;
   const n = t.enviados().length;
   await avisar(t.env, noDia(12), t.api);
-  const ids = t.enviados().slice(n).map(c => c.body.text.match(/r\/(\w+)\/bot/)[1]);
+  const ids = t.enviados().slice(n).map(c => c.body.text.match(/livro\/(\w+)\//)[1]);
   assert.deepEqual(ids, ["d", "b", "c"]);
 });
 
